@@ -1,0 +1,24 @@
+test_MAC_errors/
+test_MM_FP16/
+old_federated/
+test_pointwise/
+test_depthwise/
+Tiling_test_PW_DW_Conv/
+Tiling_test_single_buffering/
+test_im2col/
+test_im2col_fp16/
+build_every_layer_optim.py
+allprof.txt
+build_every_matmul.py
+all_matmul.txt
+start_pulp.sh
+v2_start_pulp.sh
+license_header.txt
+test_transpose/
+test_vfdotp_pack/
+test_blocktranspose/
+test_matmul_WCCI/
+test_optimizers/
+# TEMPORARY
+DS-CNN_L1/
+#test_losses/

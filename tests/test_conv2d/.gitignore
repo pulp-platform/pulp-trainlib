@@ -1,0 +1,8 @@
+BUILD/
+log.txt
+conv2d-grads.h
+conv2d-output.h
+init-defines.h
+input-image.h
+step-check.h
+runs.txt
