@@ -1,0 +1,7 @@
+BUILD/
+log.txt
+linear-data.h
+step-check.h
+output_eval.h
+runs.txt
+**/__pycache__/
