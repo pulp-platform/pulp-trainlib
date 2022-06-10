@@ -1,0 +1,47 @@
+----------------------------------------------------
+--- MM_MANAGER MATMUL LIST (for layer profiling) ---
+----------------------------------------------------
+
+STANDARD MATMULS:
+
+// Naives
+matmul_type == 0      
+mm_fp16
+matmul_type == 1      
+mm_M_fp16
+
+// Parallelism on N
+matmul_type == 2      
+mm_fp16_SIMD_2x4
+matmul_type == 3      
+mm_fp16_SIMD_4x8
+
+// Parallelism on M
+matmul_type == 4
+mm_M_fp16_SIMD_2x4
+matmul_type == 5
+mm_M_fp16_SIMD_4x8
+
+END STANDARD 
+
+
+
+DW MATMULS:
+
+matmul_type == 0
+mm_dw
+matmul_type == 1
+mm_dw_fp16_SIMD_1x2_u2
+
+END DW
+
+
+
+DW_IN_GRAD MATMULS:
+
+matmul_type == 0
+mm_dw_in_grad
+matmul_type == 1
+mm_dw_in_grad_fp16_SIMD_1x2_u2
+
+END DW_IN_GRAD

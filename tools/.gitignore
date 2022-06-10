@@ -1,0 +1,7 @@
+memory_footprint_tool/memreport.txt
+AutoTuner/fastest_tiling.txt
+AutoTuner/error_log.txt
+AutoTuner/raw_data_tiling.txt
+AutoTuner/basic.yml
+AutoTuner/treegen.py
+AutoTuner/Makefile
