@@ -6,10 +6,19 @@ To facilitate the deployment of training tasks on the target PULP device, PULP-T
 
 If you use any part of PULP-TrainLib , please cite:
 ```
-D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"
-
-BibTeX citation:
-(TBD)
+@inproceedings{NadaliniPULPTrainLib22,
+  author    = {Davide Nadalini and 
+               Manuele Rusci and
+               Giuseppe Tagliavini and
+               Leonardo Ravaglia and
+               Luca Benini and
+               Francesco Conti},
+  title     = {{{PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning}}},
+  booktitle = {Embedded Computer Systems: Architectures, Modeling, and Simulation
+               - 22nd International Conference, {SAMOS} 2022, Samos, Greece, July
+               3-7, 2022, Proceedings (to appear)},
+  series    = {Lecture Notes in Computer Science}
+}
 ```
 
 This repository is released under the [Apache License Version 2.0](./LICENSE).
@@ -87,30 +96,25 @@ PULP-TrainLib's repository is organized with these branches:
 
 
 
-# Status log
+# Available features status log
 
-## Available features
-
-- Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
-- Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
-- Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32)
-- Matmul test (FP32, FP16)
-- Memory profiling tool for estimating the memory occupation of a given layer/tile
-- Autotuner to profile tile/mm_optimization
-
-## To be completed/fixed
-
-- Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
-- Dependency of the tensor sizes on padding and stride in TrainLib Deployer (fix the computation of memory occupation in the internal function of the deployer)
-- DW, PW, Conv2D and all other primitives in FP16 (they need to be updated in the same way as FP32, which has the latest version)
-- Conv2D test in FP16
-- fp16 mm_dw SIMD kernels
-- sporadic bugs in "mm_M_.." matmuls and "mm_u2" in FP32 (mostly on leftovers)
-- fp16 DepthWise and PointWise test
-- padding operators for each primitive (asymmetrical padding)
-- stride operators for each primitive (implemented in im2col, but not tested)
-- functions that take "mm_manager_list" files as inputs, other than mm_manager
-- AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
+- [x] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
+- [x] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
+- [x] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32)
+- [x] Matmul test (FP32, FP16)
+- [x] Memory profiling tool for estimating the memory occupation of a given layer/tile
+- [x] Autotuner to profile tile/mm_optimization
+- [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
+- [ ] Dependency of the tensor sizes on padding and stride in TrainLib Deployer (fix the computation of memory occupation in the internal function of the deployer)
+- [ ] DW, PW, Conv2D and all other primitives in FP16 (they need to be updated in the same way as FP32, which has the latest version)
+- [ ] Conv2D test in FP16
+- [ ] fp16 mm_dw SIMD kernels
+- [ ] sporadic bugs in "mm_M_.." matmuls and "mm_u2" in FP32 (mostly on leftovers)
+- [ ] fp16 DepthWise and PointWise test
+- [ ] padding operators for each primitive (asymmetrical padding)
+- [ ] stride operators for each primitive (implemented in im2col, but not tested)
+- [ ] functions that take "mm_manager_list" files as inputs, other than mm_manager
+- [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 
 
 

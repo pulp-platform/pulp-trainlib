@@ -129,6 +129,10 @@ void pulp_im2col_fp32(void * void_args){
   }
   else // IN GRAD
   {
+    // Set up variables for the in grad propagation
+    Ho = (Hin-Hk+Upad+Dpad+Hstr);
+    Wo = (Win-Wk+Rpad+Dpad+Wstr);
+    
     for (int hi=0; hi<Hin; hi++) {
       for (int wi=0; wi<Win; wi++) {
         for (int co=start; co<stop; co++) {
