@@ -213,7 +213,7 @@ void pulp_conv_dw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coef
   im2col_args.c = coeff;
   im2col_args.output = output;
   im2col_args.pBuffer = i2c_buffer;
-  im2col_args.pad = pad; //ùùpad+pW-1;
+  im2col_args.pad = 0; //pad;
   im2col_args.mod = 1;
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;

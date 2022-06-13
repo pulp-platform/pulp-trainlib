@@ -144,6 +144,7 @@ void pulp_im2col_fp32(void * void_args){
   }
   else // BACKWARD
   {
+    pad = pW-1;
 
     h_stop = Hout-pH+1+2*pad; 
     w_stop = Wout-pW+1+2*pad;
@@ -303,7 +304,9 @@ void pulp_im2col_fp32(void * void_args){
               int w_pad_cond = wk + wo_rf;
               int h_pad_cond = hk + ho_rf;
 
-              if ((pad>0) && ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo))) {
+              int padding_cond = (h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo);
+
+              if (padding_cond) {
                 // Padding
                 i2c_buf[kernel_idx+segment_idx] = 0;
               }

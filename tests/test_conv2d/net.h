@@ -29,10 +29,10 @@
 // Net sizes
 
 // CONV2D
-#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+1)
-#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+1)
 #define Tpad_l1     (0)
 #define stride_l1   (1)
+#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+2*Tpad_l1+stride_l1)
+#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+2*Tpad_l1+stride_l1)
 #define stride_l1_steps (Tin_H_l1-Tker_H_l1+1)
 
 // Tensor checksum definition
