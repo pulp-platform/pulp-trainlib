@@ -202,6 +202,8 @@ void pulp_im2col_fp16(void * void_args){
   int pad = args->pad;
   int mod = args->mod;
   int DW = args->DW;
+  uint8_t Hstr = args->stride_h;
+  uint8_t Wstr = args->stride_w;
 
   // activations dimensions, w/o padding
   int Win = input->W;
@@ -214,6 +216,10 @@ void pulp_im2col_fp16(void * void_args){
   int Wo = output->W;
   int Ho = output->H;
   int Co = output->C;
+
+  // Set up internal variables (simpify external interface)
+  Ho = Hin - Hk + 2*pad + Hstr;
+  Wo = Win - Wk + 2*pad + Wstr;
 
   #if NUM_CORES > 1
   // Definitions for parallelism
@@ -273,6 +279,10 @@ void pulp_im2col_fp16(void * void_args){
   }
   else // IN GRAD
   {
+    // Set up variables for the in grad propagation
+    Ho = (Hin-Hk+2*pad+Hstr);
+    Wo = (Win-Wk+2*pad+Wstr);
+
     for (int hi=0; hi<Hin; hi++) {
       for (int wi=0; wi<Win; wi++) {
         for (int co=start; co<stop; co++) {

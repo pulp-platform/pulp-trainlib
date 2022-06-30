@@ -37,37 +37,37 @@ Tiler (Naive or DORY-based) which finds tiling schemes depending on the problem,
 # =====> USER SETTINGS <=====
 # Network setting                                         
 layer_type  = 'PW'    # Options: 'PW', 'DW', 'LINEAR', 'CONV2D'  
-IN_CH       = 64
-INPUT_H     = 27                    
-INPUT_W     = 7                       
+IN_CH       = 32
+INPUT_H     = 25                    
+INPUT_W     = 5                      
 KER_H       = 1                                          
 KER_W       = 1                                   
-OUT_CH      = 64
+OUT_CH      = 32
 PADDING     = 0                                            
 STRIDE      = 1   
 NUM_CORES   = 8                                     
 # Tiler settings
-NUM_TILING_SOLUTIONS    = 5
+NUM_TILING_SOLUTIONS    = 2
 NUM_INPUT_BITS          = 32
 NUM_ACTIVATION_BITS     = NUM_INPUT_BITS
 NUM_KERNEL_BITS         = 32
 NUM_OUTPUT_BITS         = 32
 # Select if to ignore FW and WGT GRAD
-IGNORE_FW = False
+IGNORE_FW = True
 IGNORE_WGT_GRAD = False
 # Select if to ignore input grads
-IGNORE_IN_GRAD = False
+IGNORE_IN_GRAD = True
 # Select if to use either the naive or the DORY-based tiler
 USE_NAIVE_TILER = True
 # Select if to compile locally after finding the tiling
 FIND_FASTEST_MATMUL = True
 # Select if to write the file for server execution (specify trainlib's folder location on server)
-WRITE_YML_FILE = True
+WRITE_YML_FILE = False
 trainlib_path = '/home/Work/pulp-trainlib'
 # PULP settings
 NUM_STD_MATMUL      = 24
 NUM_DW_MATMUL       = 7
-TILING_BUFFER_SIZE  = 28*1024     # Standard = 64k
+TILING_BUFFER_SIZE  = 64*1024     # Standard = 64k
 # =====> END OF USER SETTINGS <=====
 
 

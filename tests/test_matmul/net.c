@@ -81,6 +81,8 @@ static inline void multiply ()
     mm_args.trans_B = TRANSPOSE_B;
     // End of general setup
 
+
+
     if (mm_args.trans_B == 1) printf("Running matmuls with transposed B matrix.\n");
     else printf("Running matmuls with no transpositions.\n");
 
@@ -96,6 +98,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_u2:\n");
     START_STATS();
@@ -104,6 +107,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_1x2:\n");
     START_STATS();
@@ -112,6 +116,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_1x4:\n");
     START_STATS();
@@ -120,6 +125,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_1x8:\n");
     START_STATS();
@@ -128,6 +134,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_2x1:\n");
     START_STATS();
@@ -136,6 +143,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_4x1:\n");
     START_STATS();
@@ -144,6 +152,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_8x1:\n");
     START_STATS();
@@ -152,6 +161,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_2x2:\n");
     START_STATS();
@@ -160,6 +170,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_2x4:\n");
     START_STATS();
@@ -168,6 +179,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_4x2:\n");
     START_STATS();
@@ -176,6 +188,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_unroll_4x4:\n");
     START_STATS();
@@ -184,6 +197,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n=====> PROFILING MATMULS WITH PARALLELISM ON M <=====\n");    
 
@@ -194,6 +208,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_u2:\n");
     START_STATS();
@@ -202,6 +217,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_2x1:\n");
     START_STATS();
@@ -210,6 +226,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_4x1:\n");
     START_STATS();
@@ -218,6 +235,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_8x1:\n");
     START_STATS();
@@ -226,6 +244,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_1x2:\n");
     START_STATS();
@@ -234,6 +253,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_1x4:\n");
     START_STATS();
@@ -242,6 +262,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_1x8:\n");
     START_STATS();
@@ -250,6 +271,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_2x2:\n");
     START_STATS();
@@ -258,6 +280,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_4x2:\n");
     START_STATS();
@@ -266,6 +289,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_2x4:\n");
     START_STATS();
@@ -274,6 +298,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_unroll_4x4:\n");
     START_STATS();
@@ -282,6 +307,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
     #endif
 
 
@@ -294,6 +320,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_fp16:\n");
     START_STATS();
@@ -302,6 +329,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_fp16_SIMD_2x4:\n");
     START_STATS();
@@ -310,6 +338,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);    
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_fp16_SIMD_4x8:\n");
     START_STATS();
@@ -318,6 +347,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);    
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_fp16_SIMD_2x4:\n");
     START_STATS();
@@ -326,6 +356,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);    
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
 
     printf("\n-----> Profiling mm_M_fp16_SIMD_4x8:\n");
     START_STATS();
@@ -334,6 +365,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH); 
+    printf("[NUM_CORES=%d] MAC/cycle = %f\n", NUM_CORES, IN_CH*MID_CH*OUT_CH/(float) _cycles);
     #endif
 
 
@@ -352,6 +384,7 @@ void net_step () {
 
     #ifdef STANDARD
     printf("Matmul sizes are:\nN: %d, K: %d, M: %d\n", IN_CH, MID_CH, OUT_CH);
+    printf("Total ideal MAC operations: %d\n", IN_CH*MID_CH*OUT_CH);
     #endif
 
     #ifdef FLOAT32
