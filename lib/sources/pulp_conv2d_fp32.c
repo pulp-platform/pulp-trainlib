@@ -196,6 +196,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
     im2col_args.tile_start = 0;
     im2col_args.tile_h = H_out;
     im2col_args.DW = 0;
+    im2col_args.USE_DMA = 0;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
@@ -306,8 +307,11 @@ void pulp_conv2d_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff
   im2col_args.Rpad = 0; //pW-1;
   im2col_args.Upad = 0; //pH-1;
   im2col_args.Dpad = 0; //pH-1;
+  im2col_args.stride_h = 1;
+  im2col_args.stride_w = 1;
   im2col_args.mod = 1;
-  im2col_args.DW = 0; 
+  im2col_args.DW = 0;
+  im2col_args.USE_DMA = 0; 
 
   //if (H_in == pH) im2col_args.pad = 2;
 

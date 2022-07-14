@@ -1,8 +1,8 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=8
-IMAGE_W?=8
+IMAGE_H?=5
+IMAGE_W?=5
 KER_H?=3
 KER_W?=3
 IN_CH?=8

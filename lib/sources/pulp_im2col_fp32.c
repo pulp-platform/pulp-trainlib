@@ -92,8 +92,6 @@ void pulp_im2col_fp32(void * void_args){
    * LOCAL L1 IM2COL (FROM L1 TENSOR TO L1 IM2COL_BUFFER)
    */
   if (USE_DMA == 0) {
-    //printf("\nIM2COL WITHOUT DMA\nPAD=(%d,%d,%d,%d), STRIDE=(%d,%d)\n",
-    //  Lpad, Rpad, Upad, Dpad, Hstr, Wstr);
     // FORWARD & WEIGHT GRAD
     if (mod==0)
     {
