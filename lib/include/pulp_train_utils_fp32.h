@@ -59,6 +59,7 @@ struct blob {
  * @param stride_w sets the amount of horizontal stride
  * @param stride_h sets the amount of vertical stride
  * @param DW if == 1, notifies that the convolution is a DepthWise
+ * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
  */
 struct im2col_args
 {
@@ -76,6 +77,7 @@ struct im2col_args
   int stride_w;
   int stride_h;
   int DW;
+  int USE_DMA;
 };
 
 /**
@@ -205,7 +207,7 @@ struct matMul_args {
   int M;
   int K;
   int trans_B;
-  // For Conv2D in grad
+  // For Conv2D in grad & naive
   int H;
   int W;
   int pW;

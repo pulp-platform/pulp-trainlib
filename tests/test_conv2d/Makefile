@@ -1,12 +1,18 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=64
-IMAGE_W?=64
-KER_H?=7
-KER_W?=7
-IN_CH?=3
-OUT_CH?=2
+IMAGE_H?=8
+IMAGE_W?=8
+KER_H?=3
+KER_W?=3
+IN_CH?=8
+OUT_CH?=8
+PAD_L?=0
+PAD_R?=0
+PAD_U?=0
+PAD_D?=0
+STRIDE_H?=1
+STRIDE_W?=1
 NUM_CORES?=8
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
@@ -14,6 +20,7 @@ APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
+IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -30,6 +37,13 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -mhwloopalign
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_CFLAGS += -DMEMOCC_COMP
+APP_CFLAGS += -DIM2COL=$(IM2COL)
+APP_CFLAGS += -DPAD_R=$(PAD_R)
+APP_CFLAGS += -DPAD_L=$(PAD_L)
+APP_CFLAGS += -DPAD_U=$(PAD_U)
+APP_CFLAGS += -DPAD_D=$(PAD_D)
+APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
+APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_LDFLAGS += -lm
 
 

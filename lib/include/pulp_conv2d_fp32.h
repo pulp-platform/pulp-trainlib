@@ -39,6 +39,7 @@
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
  * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  */
 void pulp_conv2d_fp32_fw_cl(
 	struct blob * input, 
@@ -51,7 +52,8 @@ void pulp_conv2d_fp32_fw_cl(
 	int stride_h,
 	int stride_w,
 	float * i2c_buffer,
-	int opt_matmul_type
+	int opt_matmul_type,
+	int USE_IM2COL
 );
 
 
@@ -72,6 +74,7 @@ void pulp_conv2d_fp32_fw_cl(
  * @param bt_buffer pointer to the blocktranspose buffer (to compute input gradients)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  */
 void pulp_conv2d_fp32_bw_cl(
 	struct blob * input, 
@@ -87,7 +90,8 @@ void pulp_conv2d_fp32_bw_cl(
 	float * bt_buffer,
 	int skip_in_grad,
 	int opt_matmul_type_wg,
-	int opt_matmul_type_ig
+	int opt_matmul_type_ig,
+	int USE_IM2COL
 );
 
 /**
@@ -103,6 +107,7 @@ void pulp_conv2d_fp32_bw_cl(
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
  * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  */
 void pulp_conv2d_fp32_bw_param_grads_cl(
 	struct blob * input, 
@@ -115,7 +120,8 @@ void pulp_conv2d_fp32_bw_param_grads_cl(
 	int stride_h,
 	int stride_w,
 	float * i2c_buffer,
-	int opt_matmul_type
+	int opt_matmul_type,
+	int USE_IM2COL
 );
 
 /**
@@ -132,6 +138,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl(
  * @param i2c_buffer pointer to the im2col buffer
  * @param bt_buffer pointer to the blocktranspose buffer (to reshape the weights for the in grad step)
  * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  */
 void pulp_conv2d_fp32_bw_input_grads_cl(
 	struct blob * input, 
@@ -145,5 +152,6 @@ void pulp_conv2d_fp32_bw_input_grads_cl(
 	int stride_w,
 	float * i2c_buffer,
 	float * bt_buffer,
-	int opt_matmul_type
+	int opt_matmul_type,
+	int USE_IM2COL
 );

@@ -35,9 +35,14 @@ PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
 
 #ifdef FORWARD
-#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tin_C_l1*(Tin_H_l1-Tker_H_l1+1)*(Tin_W_l1-Tker_W_l1+1))
-PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+#if (IM2COL == 1)
+#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tin_C_l1*((Tin_H_l1-Tker_H_l1+PAD_U+PAD_D+STRIDE_H)/STRIDE_H)*((Tin_W_l1-Tker_W_l1+PAD_L+PAD_R+STRIDE_W)/STRIDE_W))
 PI_L1 float im2col_buffer[IM2COL_SIZE];
+#else 
+#define IM2COL_SIZE 1
+PI_L1 float im2col_buffer[IM2COL_SIZE];
+#endif
+PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
@@ -255,7 +260,7 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, 1, 1, im2col_buffer, MATMUL_TYPE);
+  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
   #endif
 }
 
@@ -313,7 +318,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, 1, 1, im2col_buffer, MATMUL_TYPE);
+  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
   #endif
 
   #ifdef PROF_FWD
@@ -327,11 +332,11 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_GRAD
-  pulp_conv2d_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, 1, 1, im2col_buffer, MATMUL_TYPE);
+  pulp_conv2d_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_conv2d_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, im2col_buffer, bt_buffer, MATMUL_TYPE);
+  pulp_conv2d_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, bt_buffer, MATMUL_TYPE, IM2COL);
   #endif
 
   #ifdef PROF_BKWD

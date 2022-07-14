@@ -348,6 +348,50 @@ void mm_conv2d_in_grad (void * void_args)
 
 
 
+void naive_conv2d_fw_kernel (void * void_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)void_args;
+  float * __restrict__ inData = args->A;
+  float * __restrict__ coeffData = args->B;
+  float * __restrict__ outData = args->C;
+
+  const int H_in = args->H;
+  const int W_in = args->W;
+  const int pW = args->pW;
+  const int pH = args->pH;
+  const int C_in = args->pCin;
+  const int C_out = args->pCout;
+
+  const int H_out = H_in - pH + 1;
+  const int W_out = W_in - pW + 1;
+
+  const int blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  for (int co=start; co<stop; co++) {
+    for (int ho=0; ho<H_out; ho++) {
+      for (int wo=0; wo<W_out; wo++) {
+        float temp = 0;
+        int outIdx = wo+ho*W_out+co*H_out*W_out;
+        for (int ci=0; ci<C_in; ci++) {
+          for (int hk=0; hk<pH; hk++) {
+            for (int wk=0; wk<pW; wk++) {
+              int inIdx = (wo+wk)+(ho+hk)*W_in+ci*H_in*W_in;
+              int kerIdx = wk+hk*pW+ci*pH*pW+co*H_in*W_in;
+              temp += inData[inIdx] * coeffData[kerIdx];
+            }
+          }
+        }
+        outData[outIdx] = temp;
+      }
+    }
+  }
+
+}
+
+
+
 
 
 

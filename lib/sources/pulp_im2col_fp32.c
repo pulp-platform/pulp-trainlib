@@ -44,6 +44,8 @@ void pulp_im2col_fp32(void * void_args){
   uint8_t DW = args->DW;
   uint8_t Hstr = args->stride_h;
   uint8_t Wstr = args->stride_w;
+  // Flag to activate the DMA version of the IM2COL
+  uint8_t USE_DMA = args->USE_DMA;
 
   // activations dimensions, w/o padding
   uint32_t Win = input->W;
@@ -86,40 +88,91 @@ void pulp_im2col_fp32(void * void_args){
   }
   #endif
 
-  // FORWARD & WEIGHT GRAD
-  if (mod==0)
-  {
-    uint32_t Htot, Wtot;
-    if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
-    else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-    if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
-    else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
+  /**
+   * LOCAL L1 IM2COL (FROM L1 TENSOR TO L1 IM2COL_BUFFER)
+   */
+  if (USE_DMA == 0) {
+    //printf("\nIM2COL WITHOUT DMA\nPAD=(%d,%d,%d,%d), STRIDE=(%d,%d)\n",
+    //  Lpad, Rpad, Upad, Dpad, Hstr, Wstr);
+    // FORWARD & WEIGHT GRAD
+    if (mod==0)
+    {
+      uint32_t Htot, Wtot;
+      if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
+      else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+      if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
+      else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
-    int padding = Lpad + Rpad + Upad + Dpad;
+      int padding = Lpad + Rpad + Upad + Dpad;
 
-    for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
-      for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
-        for (int ci=start; ci<stop; ci++) {
-          for (int hk=0; hk<Hk; hk++) {
-            for (int wk=0; wk<Wk; wk++) {
-              // IM2COl buffer coordinates
-              int kernel_idx = wk + hk*Wk + ci*Hk*Wk;
-              int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
-              // Input tensor coordinates
-              int receptive_field_idx = wk + hk*Win + (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
-              // Padding condition
-              int w_pad_cond = wk + wo*Wstr;
-              int h_pad_cond = hk + ho*Hstr;
+      for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
+        for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+          for (int ci=start; ci<stop; ci++) {
+            // IM2COL buffer coordinates
+            int kernel_idx = ci*Hk*Wk;
+            int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+            // Input tensor coordinates
+            int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+            for (int hk=0; hk<Hk; hk++) {
+              for (int wk=0; wk<Wk; wk++) {
+                // IM2COl buffer coordinate update
+                int i2c_inner_idx = wk + hk*Wk;
+                // Input tensor coordinate update
+                int in_inner_idx = wk + hk*Win;
+                // Padding condition
+                int w_pad_cond = wk + wo*Wstr;
+                int h_pad_cond = hk + ho*Hstr;
 
-              if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Dpad) || (w_pad_cond>Wo+Rpad))) {
-                // Padding
-                i2c_buf[kernel_idx+segment_idx] = 0;
-                printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
+                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Dpad) || (w_pad_cond>Wo+Rpad))) {
+                  // Padding
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
+                  //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
+                }
+                else {
+                  // Fill IM2COL buffer
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = input->data[receptive_field_idx+in_inner_idx];
+                  //printf("(i2c) i2c_buf[%d]=%f (indata=%f)      kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], input->data[receptive_field_idx], kernel_idx, segment_idx, ho);
+                }
               }
-              else {
-                // Fill IM2COL buffer
-                i2c_buf[kernel_idx+segment_idx] = input->data[receptive_field_idx];
-                printf("(i2c) i2c_buf[%d]=%f (indata=%f)      kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], input->data[receptive_field_idx], kernel_idx, segment_idx, ho);
+            }
+          }
+        }
+      }
+    }
+    else // IN GRAD
+    {
+      // Set up variables for the in grad propagation
+      Ho = (Hin-Hk+Upad+Dpad+Hstr);
+      Wo = (Win-Wk+Rpad+Dpad+Wstr);
+      
+      for (int hi=0; hi<Hin; hi++) {
+        for (int wi=0; wi<Win; wi++) {
+          for (int co=start; co<stop; co++) {
+            // IM2COL buffer coordinates
+            int kernel_idx = co*Hk*Wk;
+            int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
+            // Output grad tensor coordinates
+            int ho_rf = hi - (Hk-1);
+            int wo_rf = wi - (Wk-1);
+            int receptive_field_idx = wo_rf + ho_rf*Wo + co*Ho*Wo;
+            for (int hk=0; hk<Hk; hk++) {
+              for (int wk=0; wk<Wk; wk++) {
+                // IM2COl buffer coordinates
+                int i2c_inner_idx = wk +hk*Wk;
+                // Output grad tensor coordinates
+                int out_inner_idx = wk + hk*Wo;
+                // Padding condition
+                int w_pad_cond = wk + wo_rf;
+                int h_pad_cond = hk + ho_rf;
+
+                if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo)) {
+                  // Padding
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
+                }
+                else {
+                  // Fill IM2COL buffer
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
+                }
               }
             }
           }
@@ -127,41 +180,97 @@ void pulp_im2col_fp32(void * void_args){
       }
     }
   }
-  else // IN GRAD
-  {
-    // Set up variables for the in grad propagation
-    Ho = (Hin-Hk+Upad+Dpad+Hstr);
-    Wo = (Win-Wk+Rpad+Dpad+Wstr);
-    
-    for (int hi=0; hi<Hin; hi++) {
-      for (int wi=0; wi<Win; wi++) {
-        for (int co=start; co<stop; co++) {
-          for (int hk=0; hk<Hk; hk++) {
-            for (int wk=0; wk<Wk; wk++) {
-              // IM2COl buffer coordinates
-              int kernel_idx = wk + hk*Wk + co*Hk*Wk;
-              int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
-              // Output grad tensor coordinates
-              int ho_rf = hi - (Hk-1);
-              int wo_rf = wi - (Wk-1);
-              int receptive_field_idx = wk + hk*Wo + wo_rf + ho_rf*Wo + co*Ho*Wo;
-              // Padding condition
-              int w_pad_cond = wk + wo_rf;
-              int h_pad_cond = hk + ho_rf;
 
-              if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo)) {
-                // Padding
-                i2c_buf[kernel_idx+segment_idx] = 0;
-              }
-              else {
-                // Fill IM2COL buffer
-                i2c_buf[kernel_idx+segment_idx] = output->diff[receptive_field_idx];
+  /**
+   * IM2COL FROM L2 DATA TO L1 IM2COL_BUFFER
+   */
+  else if (USE_DMA == 1) {
+    // FORWARD & WEIGHT GRAD
+    if (mod==0)
+    {
+      uint32_t Htot, Wtot;
+      if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
+      else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+      if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
+      else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
+
+      int padding = Lpad + Rpad + Upad + Dpad;
+
+      for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
+        for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+          for (int ci=start; ci<stop; ci++) {
+            // IM2COl buffer coordinates
+            int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+            int kernel_idx = ci*Hk*Wk;
+            // Input tensor coordinates
+            int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+            for (int hk=0; hk<Hk; hk++) {
+              for (int wk=0; wk<Wk; wk++) {
+                // IM2COL buffer coordinate update
+                int i2c_inner_idx = wk + hk*Wk;
+                // Input tensor coordinate update
+                int in_inner_idx = wk + hk*Win;
+                // Padding condition
+                int w_pad_cond = wk + wo*Wstr;
+                int h_pad_cond = hk + ho*Hstr;
+
+                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Dpad) || (w_pad_cond>Wo+Rpad))) {
+                  // Padding
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
+                  //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
+                }
+                else {
+                  // Fill IM2COL buffer
+                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = input->data[receptive_field_idx+in_inner_idx];
+                  //printf("(i2c) i2c_buf[%d]=%f (indata=%f)      kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], input->data[receptive_field_idx], kernel_idx, segment_idx, ho);
+                }
               }
             }
           }
         }
       }
     }
+    else // IN GRAD
+    {
+      // Set up variables for the in grad propagation
+      Ho = (Hin-Hk+Upad+Dpad+Hstr);
+      Wo = (Win-Wk+Rpad+Dpad+Wstr);
+      
+      for (int hi=0; hi<Hin; hi++) {
+        for (int wi=0; wi<Win; wi++) {
+          for (int co=start; co<stop; co++) {
+            for (int hk=0; hk<Hk; hk++) {
+              for (int wk=0; wk<Wk; wk++) {
+                // IM2COl buffer coordinates
+                int kernel_idx = wk + hk*Wk + co*Hk*Wk;
+                int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
+                // Output grad tensor coordinates
+                int ho_rf = hi - (Hk-1);
+                int wo_rf = wi - (Wk-1);
+                int receptive_field_idx = wk + hk*Wo + wo_rf + ho_rf*Wo + co*Ho*Wo;
+                // Padding condition
+                int w_pad_cond = wk + wo_rf;
+                int h_pad_cond = hk + ho_rf;
+
+                if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo)) {
+                  // Padding
+                  i2c_buf[kernel_idx+segment_idx] = 0;
+                }
+                else {
+                  // Fill IM2COL buffer
+                  i2c_buf[kernel_idx+segment_idx] = output->diff[receptive_field_idx];
+                }
+              }
+            }
+          }
+        }
+      }
+    }    
+  }
+
+  // ERROR SIGNAL
+  else {
+    printf("\n[pulp_im2col_fp32: 259] Invalid USE_DMA parameter (not 0 or 1)\n");
   }
 }
 
