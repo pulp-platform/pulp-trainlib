@@ -66,12 +66,30 @@ void mm_conv2d_in_grad(
 
 /**
  * @brief Naive conv2d kernel for forward propagation
- * 
  * @param void_args pointer to a matMul_args structure  
  */
 void naive_conv2d_fw_kernel(
     void * void_args
 );
+
+/**
+ * @brief Naive conv2d kernel for the computation of the weight gradient
+ * @param void_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_param_grad_kernel(
+    void * void_args
+);
+
+/**
+ * @brief Naive conv2d kernel for the computation of the input gradient
+ * @param void_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_in_grad_kernel(
+    void * void_args
+);
+
+
+
 
 
 

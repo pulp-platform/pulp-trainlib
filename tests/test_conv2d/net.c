@@ -260,7 +260,7 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
+  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
   #endif
 }
 
@@ -318,7 +318,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
+  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
   #endif
 
   #ifdef PROF_FWD
@@ -332,11 +332,11 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_GRAD
-  pulp_conv2d_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL);
+  pulp_conv2d_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_conv2d_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, bt_buffer, MATMUL_TYPE, IM2COL);
+  pulp_conv2d_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, bt_buffer, MATMUL_TYPE, IM2COL, DMA);
   #endif
 
   #ifdef PROF_BKWD
