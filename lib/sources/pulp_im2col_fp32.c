@@ -192,6 +192,10 @@ void pulp_im2col_fp32(void * void_args){
       if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
       else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
+      //printf("Entering DMA managed fw im2col..\n");
+
+
+
       int padding = Lpad + Rpad + Upad + Dpad;
 
       for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
@@ -202,28 +206,23 @@ void pulp_im2col_fp32(void * void_args){
             int kernel_idx = ci*Hk*Wk;
             // Input tensor coordinates
             int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
-            for (int hk=0; hk<Hk; hk++) {
-              for (int wk=0; wk<Wk; wk++) {
-                // IM2COL buffer coordinate update
-                int i2c_inner_idx = wk + hk*Wk;
-                // Input tensor coordinate update
-                int in_inner_idx = wk + hk*Win;
-                // Padding condition
-                int w_pad_cond = wk + wo*Wstr;
-                int h_pad_cond = hk + ho*Hstr;
 
-                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Dpad) || (w_pad_cond>Wo+Rpad))) {
-                  // Padding
-                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
-                  //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
-                }
-                else {
-                  // Fill IM2COL buffer
-                  i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = input->data[receptive_field_idx+in_inner_idx];
-                  //printf("(i2c) i2c_buf[%d]=%f (indata=%f)      kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], input->data[receptive_field_idx], kernel_idx, segment_idx, ho);
-                }
-              }
-            }
+            // DMA Copy structures
+            pi_cl_dma_copy_2d_t dma_i2cfw;
+
+            // Load first data into L1A
+            dma_i2cfw.dir = PI_CL_DMA_DIR_EXT2LOC;
+            dma_i2cfw.merge = 0;
+            dma_i2cfw.stride = 4*Win;
+            dma_i2cfw.length = 4*Wk;
+            dma_i2cfw.size = 4*Hk*Wk;
+            dma_i2cfw.id = pi_core_id();
+            dma_i2cfw.ext = (uint32_t) (input->data + receptive_field_idx);
+            dma_i2cfw.loc = (uint32_t) &i2c_buf[segment_idx+kernel_idx];
+            pi_cl_dma_memcpy_2d(&dma_i2cfw);    
+
+            pi_cl_dma_wait(&dma_i2cfw);      
+
           }
         }
       }

@@ -5,7 +5,6 @@ test_pointwise/
 test_depthwise/
 Tiling_test_PW_DW_Conv/
 Tiling_test_single_buffering/
-test_im2col/
 test_im2col_fp16/
 build_every_layer_optim.py
 allprof.txt
