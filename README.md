@@ -104,6 +104,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [x] Matmul test (FP32, FP16)
 - [x] Memory profiling tool for estimating the memory occupation of a given layer/tile
 - [x] Autotuner to profile tile/mm_optimization
+- [X] padding operators for each primitive (asymmetrical padding)
+- [x] stride operators for conv2d and DW
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
 - [ ] Dependency of the tensor sizes on padding and stride in TrainLib Deployer (fix the computation of memory occupation in the internal function of the deployer)
 - [ ] DW, PW, Conv2D and all other primitives in FP16 (they need to be updated in the same way as FP32, which has the latest version)
@@ -111,11 +113,10 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] fp16 mm_dw SIMD kernels
 - [ ] sporadic bugs in "mm_M_.." matmuls and "mm_u2" in FP32 (mostly on leftovers)
 - [ ] fp16 DepthWise and PointWise test
-- [ ] padding operators for each primitive (asymmetrical padding)
-- [ ] stride operators for each primitive (implemented in im2col, but not tested)
 - [ ] functions that take "mm_manager_list" files as inputs, other than mm_manager
 - [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
-
+- [ ] im2col with DMA (only partially implemented, to move L2 to L1 operands directly)
+- [ ] bugs in im2col with DMA (FW/WG) when putting opposite paddings (left-right, up-down)
 
 
 # References

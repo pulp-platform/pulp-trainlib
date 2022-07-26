@@ -173,10 +173,10 @@ void net_step ()
 
     printf("\nHello, starting im2col!\n");
     if (MOD==0) {
-        printf("Performing IM2COL for forward and weight gradient.\n");
+        printf("Performing IM2COL for forward and weight gradient (DMA=%d).\n", DMA_ENABLE);
     }
     else if (MOD==1) {
-        printf("Performing IM2COL for input gradient.\n");
+        printf("Performing IM2COL for input gradient (DMA=%d).\n", DMA_ENABLE);
     }
     else {
         printf("[net.c:182]: INVALID MOD PARAMETER!!");
