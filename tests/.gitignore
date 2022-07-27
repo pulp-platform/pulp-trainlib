@@ -18,6 +18,7 @@ test_vfdotp_pack/
 test_blocktranspose/
 test_matmul_WCCI/
 test_optimizers/
+test_DMA_tensor/
 # TEMPORARY
 DS-CNN_L1/
 #test_losses/
