@@ -1,9 +1,10 @@
 APP = im2col_fp32
 
 # User settings
+DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=1
-MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
-DMA_ENABLE?=1					# Use Cluster DMA to move data or not
+MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
+DMA_ENABLE?=0					# Use Cluster DMA to move data or not
 # Layer padding and stride
 LPAD?=0
 RPAD?=0
@@ -16,7 +17,7 @@ Tin_W_l1?=3
 Tin_C_l1?=1
 Tker_W_l1?=2
 Tout_C_l1?=1
-APP_CFLAGS += -DPRINT_OUTPUT
+#APP_CFLAGS += -DPRINT_OUTPUT
 #STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 # End of user settings
 
@@ -30,6 +31,7 @@ APP_CFLAGS += -DFABRIC
 APP_CFLAGS += -DCLUSTER
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DPROF_NET
+APP_CFLAGS += -DDATA_BITS=$(DATA_BITS)
 APP_CFLAGS += -DMOD=$(MOD)
 APP_CFLAGS += -DDMA_ENABLE=$(DMA_ENABLE)
 APP_CFLAGS += -DLPAD=$(LPAD)
@@ -52,8 +54,8 @@ APP_CFLAGS += -DSTATS
 # Sources
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
-#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_dw_fp32.c
-#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c
 
 #get_golden:
 #	python3.6 ./utils/GM.py --step ${STEP}

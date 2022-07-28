@@ -49,14 +49,17 @@ struct blob_fp16 {
  * @param c weight matrix of the conv layer
  * @param output output of the conv layer
  * @param pBuffer im2col buffer which will contain the transformed version of the data to be tranformed
- * @param pad  padding parameter
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  * @param mod  0 stands for forward (im2col of the input feature map), 1 for backward (im2col and flip of output feature map)
  * @param tile_start  im2col starting element of current processed tile
- * @param tile_h  size of the tile
- * @param large sets the amount of padding as large-pad (to be fixed, im2col_temporary only)
+ * @param tile_h  horizontal size of the tile
  * @param stride_w sets the amount of horizontal stride
  * @param stride_h sets the amount of vertical stride
  * @param DW if == 1, notifies that the convolution is a DepthWise
+ * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
  */
 struct im2col_args_fp16
 {
@@ -64,14 +67,17 @@ struct im2col_args_fp16
   struct blob_fp16 * c;
   struct blob_fp16 * output;
   fp16 * pBuffer;
-  int pad;
+  int Lpad;
+  int Rpad;
+  int Upad;
+  int Dpad;
   int mod;
   int tile_start;
   int tile_h;
-  int large;
   int stride_w;
   int stride_h;
   int DW;
+  int USE_DMA;
 };
 
 /**

@@ -4,9 +4,15 @@
 #include "net.h"
 
 // Blobs for im2col
+#if DATA_BITS == 32
 PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
+#elif DATA_BITS == 16
+PI_L1 struct blob_fp16 layer1_in, layer1_wgt, layer1_out;
+#endif
 
-// IM2COL data 
+
+// IM2COL data
+#if DATA_BITS == 32 
 #if DMA_ENABLE == 1
 PI_L2 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 #else
@@ -24,8 +30,33 @@ PI_L2 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
+#elif DATA_BITS == 16
+#if DMA_ENABLE == 1
+PI_L2 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+#else
+PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+#endif
+#if MOD==0
+PI_L1 fp16 im2col_buffer[i2c_b_size*2];
+#else
+PI_L1 fp16 im2col_buffer_bw[i2c_b_size_bw*2];
+#endif
+PI_L1 fp16 l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+#if DMA_ENABLE == 1
+PI_L2 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+#else 
+PI_L1 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+#endif
+#endif
+
+
 // Extra variables
+#if DATA_BITS == 32
 float temp_val = 0.1f;
+#elif DATA_BITS == 16
+fp16 temp_val = 0.1f;
+#endif
+
 
 // Other functions
 static inline void tensor_init(){
@@ -74,7 +105,11 @@ static inline void connect_blobs(){
 // Launcher
 static inline void train () 
 {
+    #if DATA_BITS == 32
     struct im2col_args im2col_args;
+    #elif DATA_BITS == 16
+    struct im2col_args_fp16 im2col_args;
+    #endif
 
     im2col_args.input = &layer1_in;
     im2col_args.c = &layer1_wgt;
@@ -107,7 +142,13 @@ static inline void train ()
     #ifdef PROF_NET
     START_STATS();
     #endif
+    
+    #if DATA_BITS == 32
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    #elif DATA_BITS == 16
+    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
+    #endif
+
     #ifdef PROF_NET
     STOP_STATS();
     #endif
@@ -171,7 +212,7 @@ void net_step ()
     PRE_START_STATS();
     #endif
 
-    printf("\nHello, starting im2col!\n");
+    printf("\nHello, starting im2col FP%d!\n", DATA_BITS);
     if (MOD==0) {
         printf("Performing IM2COL for forward and weight gradient (DMA=%d).\n", DMA_ENABLE);
     }
