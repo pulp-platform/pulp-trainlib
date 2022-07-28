@@ -156,7 +156,7 @@ void pulp_im2col_fp32(void * void_args){
             for (int hk=0; hk<Hk; hk++) {
               for (int wk=0; wk<Wk; wk++) {
                 // IM2COl buffer coordinates
-                int i2c_inner_idx = wk +hk*Wk;
+                int i2c_inner_idx = wk + hk*Wk;
                 // Output grad tensor coordinates
                 int out_inner_idx = wk + hk*Wo;
                 // Padding condition

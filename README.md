@@ -116,7 +116,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] functions that take "mm_manager_list" files as inputs, other than mm_manager
 - [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - [ ] im2col with DMA (only partially implemented, to move L2 to L1 operands directly)
-- [ ] bugs in im2col with DMA (FW/WG) when putting opposite paddings (left-right, up-down)
+- [ ] bug fix in im2col with padding with kernel size > 2 (error in padding conditions)
+- [ ] bug fix in im2col with DMA (FW/WG) when putting opposite paddings (left-right, up-down)
 
 
 # References

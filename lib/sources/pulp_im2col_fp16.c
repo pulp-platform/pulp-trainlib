@@ -276,13 +276,39 @@ void pulp_im2col_fp16(void * void_args){
             // Input tensor coordinates
             int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
             for (int hk=0; hk<Hk; hk++) {
-              for (int wk=0; wk<Wk; wk++) {
+              for (int wk=0; wk<(Wk & 0xfffffffe); wk+=2) {
                 // IM2COl buffer coordinate update
                 int i2c_inner_idx = wk + hk*Wk;
                 // Input tensor coordinate update
                 int in_inner_idx = wk + hk*Win;
                 // Padding condition
-                int w_pad_cond = wk + wo*Wstr;
+                int w_pad_cond_0 = wk + wo*Wstr;      int pad_w0_l = (w_pad_cond_0<Lpad);   int pad_w0_r = (w_pad_cond_0>Wo+Rpad);
+                int w_pad_cond_1 = wk+1 + wo*Wstr;    int pad_w1_l = (w_pad_cond_1<Lpad);   int pad_w1_r = (w_pad_cond_1>Wo+Rpad);
+                int h_pad_cond = hk + ho*Hstr;
+                // Vector of the final data
+                v2f16 im2col_fill = (v2f16) {0, 0};
+
+                im2col_fill = *((v2f16 *) &input->data[receptive_field_idx+in_inner_idx]);
+
+                if ((padding>0)) {      // FIXME!!
+                  // Fill the padding vector with correct bits
+                  if (((h_pad_cond<Upad) || (h_pad_cond>Ho+Dpad)))  {im2col_fill = (v2f16) {0, 0};}
+                  else if (pad_w0_l)                                {im2col_fill[0] = 0;}
+                  else if (pad_w1_l)                                {im2col_fill[1] = 0;}
+                  else if (pad_w0_r)                                {im2col_fill[0] = 0;}
+                  else if (pad_w1_r)                                {im2col_fill[1] = 0;}
+                }
+                // Fill IM2COL buffer
+                v2f16 *I2C = (v2f16 *) &i2c_buf[kernel_idx+segment_idx+i2c_inner_idx];
+                *I2C = im2col_fill;
+              }
+              if (Wk & 0x00000001) {
+                // IM2COl buffer coordinate update
+                int i2c_inner_idx = (Wk-1) + hk*Wk;
+                // Input tensor coordinate update
+                int in_inner_idx = (Wk-1) + hk*Win;
+                // Padding condition
+                int w_pad_cond = (Wk-1) + wo*Wstr;
                 int h_pad_cond = hk + ho*Hstr;
 
                 if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Dpad) || (w_pad_cond>Wo+Rpad))) {
@@ -294,7 +320,7 @@ void pulp_im2col_fp16(void * void_args){
                   // Fill IM2COL buffer
                   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = input->data[receptive_field_idx+in_inner_idx];
                   //printf("(i2c) i2c_buf[%d]=%f (indata=%f)      kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], input->data[receptive_field_idx], kernel_idx, segment_idx, ho);
-                }
+                }                
               }
             }
           }
@@ -318,13 +344,38 @@ void pulp_im2col_fp16(void * void_args){
             int wo_rf = wi - (Wk-1);
             int receptive_field_idx = wo_rf + ho_rf*Wo + co*Ho*Wo;
             for (int hk=0; hk<Hk; hk++) {
-              for (int wk=0; wk<Wk; wk++) {
+              for (int wk=0; wk<(Wk & 0xfffffffe); wk+=2) {
                 // IM2COl buffer coordinates
                 int i2c_inner_idx = wk +hk*Wk;
                 // Output grad tensor coordinates
                 int out_inner_idx = wk + hk*Wo;
                 // Padding condition
-                int w_pad_cond = wk + wo_rf;
+                int w_pad_cond_0 = wk + wo_rf;    int pad_w0_l = w_pad_cond_0<0;    int pad_w0_r = w_pad_cond_0>=Wo;
+                int w_pad_cond_1 = wk+1 + wo_rf;  int pad_w1_l = w_pad_cond_1<0;    int pad_w1_r = w_pad_cond_1>=Wo;
+                int h_pad_cond = hk + ho_rf;      int pad_h_u = h_pad_cond<0;       int pad_h_d = h_pad_cond>=Ho;
+                // Vector for the final data
+                v2f16 im2col_fill = (v2f16) {0, 0};
+
+                im2col_fill = *((v2f16 *) &output->diff[receptive_field_idx+out_inner_idx]);
+
+                if (pad_w0_l || pad_w0_r || pad_w1_l || pad_w1_r || pad_h_u || pad_h_d) {
+                  if (pad_h_u || pad_h_d)         {im2col_fill = (v2f16) {0, 0};}
+                  else if (pad_w0_l)              {im2col_fill[0] = 0;}
+                  else if (pad_w1_l)              {im2col_fill[1] = 0;}
+                  else if (pad_w0_r)              {im2col_fill[0] = 0;}
+                  else if (pad_w1_r)              {im2col_fill[1] = 0;}
+                }
+                // Fill IM2COL buffer
+                v2f16 *I2C = (v2f16 *) &i2c_buf[kernel_idx+segment_idx+i2c_inner_idx];
+                *I2C = im2col_fill;
+              }
+              if (Wk & 0x00000001) {
+                // IM2COl buffer coordinates
+                int i2c_inner_idx = (Wk-1) + hk*Wk;
+                // Output grad tensor coordinates
+                int out_inner_idx = (Wk-1) + hk*Wo;
+                // Padding condition
+                int w_pad_cond = (Wk-1) + wo_rf;
                 int h_pad_cond = hk + ho_rf;
 
                 if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo)) {
@@ -334,13 +385,13 @@ void pulp_im2col_fp16(void * void_args){
                 else {
                   // Fill IM2COL buffer
                   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
-                }
               }
             }
           }
         }
       }
     }
+  }
   }
 
   /**
