@@ -280,7 +280,7 @@ void pulp_im2col_fp32(void * void_args){
               //pi_cl_dma_wait(&dma_i2cfw_pad);    
 
               // Fill the pad_buffer
-              for (int i=0; i<transfer_size; i++) {
+              for (int i=0; i<transfer_size; i++) { // FIX, IT'S NOT BIG AS THE TRANSFER!!
                 for (int j=0; j<row_size; j++) {
                   int pad_buffer_idx = pad_l + j + (pad_u+i)*Wk;
                   pad_buffer[pad_buffer_idx] = load_buffer[j+i*row_size];
@@ -318,25 +318,26 @@ void pulp_im2col_fp32(void * void_args){
             // Padding conditions
             int pad_l = -wo_rf;  int pad_r = wo_rf + (Wk-1);
             int pad_u = -ho_rf;  int pad_d = ho_rf + (Hk-1);
+            int load_shift = 0;
+            int offs_l = 0, offs_u = 0;
             // Transfer size
             int row_size = Wk;  int col_size = Hk;
-            if (pad_l>0)          {row_size -= pad_l;}
+            if (pad_l>0)          {row_size -= pad_l;   load_shift += pad_l;      offs_l = pad_l;}
             if (pad_r>=Wox)       {row_size -= pad_r-1;}
-            if (pad_u>0)          {col_size -= pad_u;}
+            if (pad_u>0)          {col_size -= pad_u;   load_shift += pad_u*Wox;  offs_u = pad_u;}
             if (pad_d>=Hox)       {col_size -= pad_d-1;}
             int transfer_size = col_size*row_size;
-            printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size);
+            printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\toffs_l=%d, offs_r=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size, offs_l, offs_u);
 
             // DMA variables
             pi_cl_dma_copy_2d_t dma_i2cbw;
-            int load_shift = pad_l + pad_u*Wox;
             float load_buffer[transfer_size];
             float pad_buffer[Hk*Wk];
 
             // Load first data into L1A
             dma_i2cbw.dir = PI_CL_DMA_DIR_EXT2LOC;
             dma_i2cbw.merge = 0;
-            dma_i2cbw.stride = 4*Win;
+            dma_i2cbw.stride = 4*Wox;
             dma_i2cbw.length = 4*row_size;
             dma_i2cbw.size = 4*transfer_size;
             dma_i2cbw.id = pi_core_id();
@@ -344,11 +345,25 @@ void pulp_im2col_fp32(void * void_args){
             dma_i2cbw.loc = (uint32_t) load_buffer; 
             pi_cl_dma_memcpy_2d(&dma_i2cbw);    
 
+            // Prepare pad_buffer 
+            for (int idx=0; idx<Hk*Wk; idx++)   pad_buffer[idx] = 0;
+
             pi_cl_dma_wait(&dma_i2cbw);    
 
+            // Fill pad_buffer
+            for (int kh=0; kh<col_size; kh++) {
+              for (int kw=0; kw<row_size; kw++) {
+                int pad_buf_idx = (kw+offs_l) + (kh+offs_u)*Wk;
+                pad_buffer[pad_buf_idx] = load_buffer[kw+kh*row_size];
+                printf("pad_buffer[%d] = load_buffer[%d] = %f\n", pad_buf_idx, kw+kh*row_size, load_buffer[kw+kh*row_size]);
+              }
+            }
+
             // Fill im2col_buffer
-
-
+            for (int idx=0; idx<Hk*Wk; idx++)   {
+              i2c_buf[kernel_idx+segment_idx+idx] = pad_buffer[idx];
+              printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]); 
+            }
           }
         }
       }
