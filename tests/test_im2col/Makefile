@@ -3,19 +3,19 @@ APP = im2col_fp32
 # User settings
 DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=1
-MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
+MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
 DMA_ENABLE?=1					# Use Cluster DMA to move data or not
 # Layer padding and stride
-LPAD?=1
-RPAD?=1
-UPAD?=1
-DPAD?=1
+LPAD?=0
+RPAD?=0
+UPAD?=0
+DPAD?=0
 HSTR?=1
 WSTR?=1
 # Layer sizes
-Tin_W_l1?=3
+Tin_W_l1?=4
 Tin_C_l1?=1
-Tker_W_l1?=2
+Tker_W_l1?=3
 Tout_C_l1?=1
 APP_CFLAGS += -DPRINT_OUTPUT
 #STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'

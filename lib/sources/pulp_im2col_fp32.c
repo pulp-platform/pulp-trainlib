@@ -121,7 +121,7 @@ void pulp_im2col_fp32(void * void_args){
                 int w_pad_cond = wk + wo*Wstr;
                 int h_pad_cond = hk + ho*Hstr;
 
-                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Hk-Dpad) || (w_pad_cond>Wo+Wk-Rpad))) {
+                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+(Hk)-Dpad) || (w_pad_cond>Wo+(Wk)-Rpad))) {
                   // Padding
                   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
                   //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
@@ -196,7 +196,11 @@ void pulp_im2col_fp32(void * void_args){
       if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
       else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
+      printf("Htot = %d, Wtot = %d\n", Htot, Wtot);
+
       int padding = Lpad + Rpad + Upad + Dpad;
+
+      printf("padding = %d\n", padding);
 
       if (padding == 0) {
         for (int ho=0; ho<Htot; ho++) {
@@ -206,7 +210,7 @@ void pulp_im2col_fp32(void * void_args){
               int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
               int kernel_idx = ci*Hk*Wk;
               // Input tensor coordinates
-              int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+              int receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
 
               // DMA Copy structures
               pi_cl_dma_copy_2d_t dma_i2cfw;
@@ -227,33 +231,25 @@ void pulp_im2col_fp32(void * void_args){
           }
         }
       }
-      else {
+      else if (0) {
         for (int ho=0; ho<Htot; ho++) {
           for (int wo=0; wo<Wtot; wo++) {
-            printf("\nho=%d, wo=%d\n", ho, wo);
             // Initialize padding conditions and variables
-            int pad_l = wo*Wstr + Lpad;  
-            int pad_r = wo*Wstr + Rpad; //+ (Wk-1) + Rpad;
-            int pad_u = ho*Hstr + Upad;
-            int pad_d = ho*Hstr + Dpad; //+ (Hk-1) + Dpad;
+            int pad_l = Lpad - wo*Wstr;  
+            int pad_r = wo*Wstr + (Wk) - Wtot - Rpad;
+            int pad_u = Upad - ho*Hstr;
+            int pad_d = ho*Hstr + (Hk) - Htot - Dpad;
             int row_size = Wk;                // Transfer lenght (length of a row)
-            int transfer_size = Hk*Wk;        // Transfer size (depends on the padding)
+            int col_size = Hk;
             int in_shift_idx = 0;             // Index to shift input reading
-            printf("transfer_size=%d\n", transfer_size);
             // Check if conditions for padding are met and assign zeros
-            if (pad_l < 0)  {pad_l = -pad_l;  row_size -= pad_l;  transfer_size -= pad_l*Hk;  in_shift_idx += pad_l;}       
-            else {pad_l = 0;}
-            if (pad_r > Wo+Wk) {pad_r = pad_r-Wo;  row_size -= pad_r;  transfer_size -= pad_r*Hk;}   
-            else {pad_r = 0;}
-            if (pad_u < 0)  {pad_u = -pad_u;  transfer_size -= pad_u*Wk;  in_shift_idx += Win*pad_u;  if(pad_l>0 || pad_r>0) {transfer_size++;}}       
-            else {pad_u = 0;}
-            if (pad_d > Ho+Hk) {if(pad_u==0) {pad_d = pad_d-Ho;  transfer_size -= pad_d*Wk; if(pad_l>0 || pad_r>0) {transfer_size++;}}}   
-            else {pad_d = 0;}
-            printf("pad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\n", pad_l, pad_r, pad_u, pad_d);
-            printf("row_size=%d, transfer_size=%d\n", row_size, transfer_size);
-            // Check if to perform padding operation
-            int padding_int = pad_l + pad_r + pad_u + pad_d;
-            printf("padding_int=%d, in_shift_idx=%d\n", padding_int, in_shift_idx);
+            if (pad_l > 0)      {row_size -= pad_l;   in_shift_idx += pad_l;}
+            if (pad_r > 0)      {row_size -= pad_r;}
+            if (pad_u > 0)      {col_size -= pad_u;   in_shift_idx += pad_u * Win;}       
+            if (pad_d > 0)      {col_size -= pad_d;}
+            int transfer_size = row_size * col_size;
+
+            //printf("ho=%d, wo=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\trow_size=%d, col_size=%d, transfer_size=%d\n", ho, wo, pad_l, pad_r, pad_u, pad_d, row_size, col_size, transfer_size);
 
             for (int ci=start; ci<stop; ci++) {
               // IM2COL buffer coordinates
@@ -262,56 +258,39 @@ void pulp_im2col_fp32(void * void_args){
               // Input tensor coordinates
               int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
 
-              if (padding_int == 0) {
-                // DMA Copy structures
-                pi_cl_dma_copy_2d_t dma_i2cfw_pad;
+              // DMA Copy structures
+              pi_cl_dma_copy_2d_t dma_i2cfw_pad;
+              float load_buffer[transfer_size];
+              float pad_buffer[Wk*Hk];
 
-                // Load first data into L1A
-                dma_i2cfw_pad.dir = PI_CL_DMA_DIR_EXT2LOC;
-                dma_i2cfw_pad.merge = 0;
-                dma_i2cfw_pad.stride = 4*Win;
-                dma_i2cfw_pad.length = 4*Wk;
-                dma_i2cfw_pad.size = 4*Hk*Wk;
-                dma_i2cfw_pad.id = pi_core_id();
-                dma_i2cfw_pad.ext = (uint32_t) (input->data + receptive_field_idx);
-                dma_i2cfw_pad.loc = (uint32_t) &i2c_buf[segment_idx+kernel_idx];
-                pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
+              // Load first data into L1A
+              dma_i2cfw_pad.dir = PI_CL_DMA_DIR_EXT2LOC;
+              dma_i2cfw_pad.merge = 0;
+              dma_i2cfw_pad.stride = 4*Win;
+              dma_i2cfw_pad.length = 4*row_size;
+              dma_i2cfw_pad.size = 4*transfer_size;
+              dma_i2cfw_pad.id = pi_core_id();
+              dma_i2cfw_pad.ext = (uint32_t) (input->data + receptive_field_idx + in_shift_idx);
+              dma_i2cfw_pad.loc = (uint32_t) load_buffer; 
+              //pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
 
-                pi_cl_dma_wait(&dma_i2cfw_pad);                      
-              }
-              else {
-                // DMA Copy structures
-                pi_cl_dma_copy_2d_t dma_i2cfw_pad;
-                float load_buffer[transfer_size];
-                float pad_buffer[Wk*Hk];
+              // Initialize pad_buffer
+              //for (int i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
 
-                // Load first data into L1A
-                dma_i2cfw_pad.dir = PI_CL_DMA_DIR_EXT2LOC;
-                dma_i2cfw_pad.merge = 0;
-                dma_i2cfw_pad.stride = 4*Win;
-                dma_i2cfw_pad.length = 4*row_size;
-                dma_i2cfw_pad.size = 4*transfer_size;
-                dma_i2cfw_pad.id = pi_core_id();
-                dma_i2cfw_pad.ext = (uint32_t) (input->data + receptive_field_idx + in_shift_idx);
-                dma_i2cfw_pad.loc = (uint32_t) load_buffer; 
-                pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
+              //pi_cl_dma_wait(&dma_i2cfw_pad);    
 
-                // Initialize pad_buffer
-                for (int i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
+              // Fill the pad_buffer
+              for (int i=0; i<transfer_size; i++) {
+                for (int j=0; j<row_size; j++) {
+                  int pad_buffer_idx = pad_l + j + (pad_u+i)*Wk;
+                  pad_buffer[pad_buffer_idx] = load_buffer[j+i*row_size];
+                }
+              } 
 
-                pi_cl_dma_wait(&dma_i2cfw_pad);    
+              //for (int idx=0; idx<Wk*Hk; idx++)   printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]);
 
-                // Fill the pad_buffer
-                for (int i=0; i<transfer_size; i++) {
-                  for (int j=0; j<row_size; j++) {
-                    int pad_buffer_idx = pad_l + j + (pad_u+i)*Wk;
-                    pad_buffer[pad_buffer_idx] = load_buffer[j+i*row_size];
-                  }
-                } 
-
-                // Fill im2col
-                for (int i=0; i<Wk*Hk; i++)   i2c_buf[segment_idx+kernel_idx+i] = pad_buffer[i];
-              }
+              // Fill im2col
+              for (int i=0; i<Wk*Hk; i++)   {i2c_buf[segment_idx+kernel_idx+i] = pad_buffer[i];}
             }
           }
         }
@@ -320,8 +299,11 @@ void pulp_im2col_fp32(void * void_args){
     else // IN GRAD
     {
       // Set up variables for the in grad propagation
-      Ho = (Hin-Hk+Upad+Dpad+Hstr);
-      Wo = (Win-Wk+Rpad+Lpad+Wstr);
+      //Ho = (Hin-Hk+Upad+Dpad+Hstr);
+      //Wo = (Win-Wk+Rpad+Lpad+Wstr);
+
+      int Hox = output->H;
+      int Wox = output->W;
       
       for (int hi=0; hi<Hin; hi++) {
         for (int wi=0; wi<Win; wi++) {
@@ -332,44 +314,41 @@ void pulp_im2col_fp32(void * void_args){
             // Output grad tensor coordinates
             int ho_rf = hi - (Hk-1);
             int wo_rf = wi - (Wk-1);
-            int receptive_field_idx = wo_rf + ho_rf*Wo + co*Ho*Wo;
+            int receptive_field_idx = wo_rf + ho_rf*Wox + co*Hox*Wox;
             // Padding conditions
-            int pad_l = (ho_rf);  int pad_r = -((Hk-1) + ho_rf);
-            int pad_u = (wo_rf);  int pad_d = -((Wk-1) + wo_rf);
+            int pad_l = -wo_rf;  int pad_r = wo_rf + (Wk-1);
+            int pad_u = -ho_rf;  int pad_d = ho_rf + (Hk-1);
             // Transfer size
             int row_size = Wk;  int col_size = Hk;
-            if (pad_l<0)      {row_size += pad_l;}
-            if (pad_r>=Wo)    {row_size += pad_r;}
-            if (pad_u<0)      {col_size += pad_u;}
-            if (pad_d>=Ho)    {col_size += pad_d;}
+            if (pad_l>0)          {row_size -= pad_l;}
+            if (pad_r>=Wox)       {row_size -= pad_r-1;}
+            if (pad_u>0)          {col_size -= pad_u;}
+            if (pad_d>=Hox)       {col_size -= pad_d-1;}
             int transfer_size = col_size*row_size;
-            printf("pad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\n", pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size);
+            printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size);
 
-            // Output gradient index
-            //int i2c_inner_idx = wk + hk*Wk;
-            //int out_inner_idx = wk + hk*Wo;
+            // DMA variables
+            pi_cl_dma_copy_2d_t dma_i2cbw;
+            int load_shift = pad_l + pad_u*Wox;
+            float load_buffer[transfer_size];
+            float pad_buffer[Hk*Wk];
+
+            // Load first data into L1A
+            dma_i2cbw.dir = PI_CL_DMA_DIR_EXT2LOC;
+            dma_i2cbw.merge = 0;
+            dma_i2cbw.stride = 4*Win;
+            dma_i2cbw.length = 4*row_size;
+            dma_i2cbw.size = 4*transfer_size;
+            dma_i2cbw.id = pi_core_id();
+            dma_i2cbw.ext = (uint32_t) (output->diff + receptive_field_idx + load_shift);
+            dma_i2cbw.loc = (uint32_t) load_buffer; 
+            pi_cl_dma_memcpy_2d(&dma_i2cbw);    
+
+            pi_cl_dma_wait(&dma_i2cbw);    
+
+            // Fill im2col_buffer
 
 
-            // for (int hk=0; hk<Hk; hk++) {
-            //   for (int wk=0; wk<Wk; wk++) {
-            //     // IM2COl buffer coordinates
-            //     int i2c_inner_idx = wk + hk*Wk;
-            //     // Output grad tensor coordinates
-            //     int out_inner_idx = wk + hk*Wo;
-            //     // Padding condition
-            //     int w_pad_cond = wk + wo_rf;
-            //     int h_pad_cond = hk + ho_rf;
-
-            //     if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Ho) || (w_pad_cond>=Wo)) {
-            //       // Padding
-            //       i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
-            //     }
-            //     else {
-            //       // Fill IM2COL buffer
-            //       i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
-            //     }
-            //   }
-            // }
           }
         }
       }
