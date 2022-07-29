@@ -223,6 +223,9 @@ void net_step ()
         printf("[net.c:182]: INVALID MOD PARAMETER!!");
     }
 
+    if (MOD == 0) printf("IM2COL size: %d\n", i2c_b_size);
+    if (MOD == 1) printf("IM2COL size: %d\n", i2c_b_size_bw); 
+
     tensor_init();
 
     connect_blobs();

@@ -121,7 +121,7 @@ void pulp_im2col_fp32(void * void_args){
                 int w_pad_cond = wk + wo*Wstr;
                 int h_pad_cond = hk + ho*Hstr;
 
-                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+(Hk)-Dpad) || (w_pad_cond>Wo+(Wk)-Rpad))) {
+                if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+Hk-Dpad) || (w_pad_cond>Wo+Wk-Rpad))) {
                   // Padding
                   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
                   //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
@@ -140,8 +140,8 @@ void pulp_im2col_fp32(void * void_args){
     else // IN GRAD
     {
       // Set up variables for the in grad propagation
-      Ho = (int) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-      Wo = (int) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
+      //Ho = (int) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+      //Wo = (int) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
 
       int Hox = output->H;
       int Wox = output->W;
@@ -199,10 +199,8 @@ void pulp_im2col_fp32(void * void_args){
       int padding = Lpad + Rpad + Upad + Dpad;
 
       if (padding == 0) {
-        Htot = Hin;
-        Wtot = Win;
-        for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
-          for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+        for (int ho=0; ho<Htot; ho++) {
+          for (int wo=0; wo<Wtot; wo++) {
             for (int ci=start; ci<stop; ci++) {
               // IM2COl buffer coordinates
               int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
@@ -230,13 +228,13 @@ void pulp_im2col_fp32(void * void_args){
         }
       }
       else {
-        for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
-          for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+        for (int ho=0; ho<Htot; ho++) {
+          for (int wo=0; wo<Wtot; wo++) {
             printf("\nho=%d, wo=%d\n", ho, wo);
             // Initialize padding conditions and variables
-            int pad_l = wo*Wstr - Lpad;  
+            int pad_l = wo*Wstr + Lpad;  
             int pad_r = wo*Wstr + Rpad; //+ (Wk-1) + Rpad;
-            int pad_u = ho*Hstr - Upad;
+            int pad_u = ho*Hstr + Upad;
             int pad_d = ho*Hstr + Dpad; //+ (Hk-1) + Dpad;
             int row_size = Wk;                // Transfer lenght (length of a row)
             int transfer_size = Hk*Wk;        // Transfer size (depends on the padding)
@@ -245,11 +243,11 @@ void pulp_im2col_fp32(void * void_args){
             // Check if conditions for padding are met and assign zeros
             if (pad_l < 0)  {pad_l = -pad_l;  row_size -= pad_l;  transfer_size -= pad_l*Hk;  in_shift_idx += pad_l;}       
             else {pad_l = 0;}
-            if (pad_r > Wo) {pad_r = pad_r-Wo;  row_size -= pad_r;  transfer_size -= pad_r*Hk;}   
+            if (pad_r > Wo+Wk) {pad_r = pad_r-Wo;  row_size -= pad_r;  transfer_size -= pad_r*Hk;}   
             else {pad_r = 0;}
             if (pad_u < 0)  {pad_u = -pad_u;  transfer_size -= pad_u*Wk;  in_shift_idx += Win*pad_u;  if(pad_l>0 || pad_r>0) {transfer_size++;}}       
             else {pad_u = 0;}
-            if (pad_d > Ho) {if(pad_u==0) {pad_d = pad_d-Ho;  transfer_size -= pad_d*Wk; if(pad_l>0 || pad_r>0) {transfer_size++;}}}   
+            if (pad_d > Ho+Hk) {if(pad_u==0) {pad_d = pad_d-Ho;  transfer_size -= pad_d*Wk; if(pad_l>0 || pad_r>0) {transfer_size++;}}}   
             else {pad_d = 0;}
             printf("pad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\n", pad_l, pad_r, pad_u, pad_d);
             printf("row_size=%d, transfer_size=%d\n", row_size, transfer_size);
