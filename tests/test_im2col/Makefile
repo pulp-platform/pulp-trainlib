@@ -4,7 +4,7 @@ APP = im2col_fp32
 DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=1
 MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
-DMA_ENABLE?=1					# Use Cluster DMA to move data or not
+DMA_ENABLE?=0					# Use Cluster DMA to move data or not
 # Layer padding and stride
 LPAD?=1
 RPAD?=1

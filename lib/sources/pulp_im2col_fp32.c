@@ -196,11 +196,7 @@ void pulp_im2col_fp32(void * void_args){
       if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
       else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
-      printf("Htot = %d, Wtot = %d\n", Htot, Wtot);
-
       int padding = Lpad + Rpad + Upad + Dpad;
-
-      printf("padding = %d\n", padding);
 
       if (padding == 0) {
         for (int ho=0; ho<Htot; ho++) {
