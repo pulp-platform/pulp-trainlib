@@ -231,7 +231,7 @@ void pulp_im2col_fp32(void * void_args){
           }
         }
       }
-      else if (0) {
+      else {
         for (int ho=0; ho<Htot; ho++) {
           for (int wo=0; wo<Wtot; wo++) {
             // Initialize padding conditions and variables
@@ -242,10 +242,11 @@ void pulp_im2col_fp32(void * void_args){
             int row_size = Wk;                // Transfer lenght (length of a row)
             int col_size = Hk;
             int in_shift_idx = 0;             // Index to shift input reading
+            int offs_l = 0, offs_u = 0;
             // Check if conditions for padding are met and assign zeros
-            if (pad_l > 0)      {row_size -= pad_l;   in_shift_idx += pad_l;}
+            if (pad_l > 0)      {row_size -= pad_l;   in_shift_idx += pad_l;  offs_l = pad_l;}
             if (pad_r > 0)      {row_size -= pad_r;}
-            if (pad_u > 0)      {col_size -= pad_u;   in_shift_idx += pad_u * Win;}       
+            if (pad_u > 0)      {col_size -= pad_u;   in_shift_idx += pad_u * Win;  offs_u = pad_u;}       
             if (pad_d > 0)      {col_size -= pad_d;}
             int transfer_size = row_size * col_size;
 
@@ -272,22 +273,20 @@ void pulp_im2col_fp32(void * void_args){
               dma_i2cfw_pad.id = pi_core_id();
               dma_i2cfw_pad.ext = (uint32_t) (input->data + receptive_field_idx + in_shift_idx);
               dma_i2cfw_pad.loc = (uint32_t) load_buffer; 
-              //pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
+              pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
 
               // Initialize pad_buffer
-              //for (int i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
+              for (int i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
 
-              //pi_cl_dma_wait(&dma_i2cfw_pad);    
+              pi_cl_dma_wait(&dma_i2cfw_pad);    
 
               // Fill the pad_buffer
-              for (int i=0; i<transfer_size; i++) { // FIX, IT'S NOT BIG AS THE TRANSFER!!
+              for (int i=0; i<col_size; i++) { 
                 for (int j=0; j<row_size; j++) {
-                  int pad_buffer_idx = pad_l + j + (pad_u+i)*Wk;
+                  int pad_buffer_idx = offs_l + j + (offs_u+i)*Wk;
                   pad_buffer[pad_buffer_idx] = load_buffer[j+i*row_size];
                 }
               } 
-
-              //for (int idx=0; idx<Wk*Hk; idx++)   printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]);
 
               // Fill im2col
               for (int i=0; i<Wk*Hk; i++)   {i2c_buf[segment_idx+kernel_idx+i] = pad_buffer[i];}
@@ -327,7 +326,7 @@ void pulp_im2col_fp32(void * void_args){
             if (pad_u>0)          {col_size -= pad_u;   load_shift += pad_u*Wox;  offs_u = pad_u;}
             if (pad_d>=Hox)       {col_size -= pad_d-1;}
             int transfer_size = col_size*row_size;
-            printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\toffs_l=%d, offs_r=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size, offs_l, offs_u);
+            //printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\toffs_l=%d, offs_r=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size, offs_l, offs_u);
 
             // DMA variables
             pi_cl_dma_copy_2d_t dma_i2cbw;
@@ -355,14 +354,14 @@ void pulp_im2col_fp32(void * void_args){
               for (int kw=0; kw<row_size; kw++) {
                 int pad_buf_idx = (kw+offs_l) + (kh+offs_u)*Wk;
                 pad_buffer[pad_buf_idx] = load_buffer[kw+kh*row_size];
-                printf("pad_buffer[%d] = load_buffer[%d] = %f\n", pad_buf_idx, kw+kh*row_size, load_buffer[kw+kh*row_size]);
+                //printf("pad_buffer[%d] = load_buffer[%d] = %f\n", pad_buf_idx, kw+kh*row_size, load_buffer[kw+kh*row_size]);
               }
             }
 
             // Fill im2col_buffer
             for (int idx=0; idx<Hk*Wk; idx++)   {
               i2c_buf[kernel_idx+segment_idx+idx] = pad_buffer[idx];
-              printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]); 
+              //printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]); 
             }
           }
         }

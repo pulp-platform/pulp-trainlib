@@ -3,13 +3,13 @@ APP = im2col_fp32
 # User settings
 DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=1
-MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
+MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
 DMA_ENABLE?=1					# Use Cluster DMA to move data or not
 # Layer padding and stride
-LPAD?=0
-RPAD?=0
-UPAD?=0
-DPAD?=0
+LPAD?=1
+RPAD?=1
+UPAD?=1
+DPAD?=1
 HSTR?=1
 WSTR?=1
 # Layer sizes
