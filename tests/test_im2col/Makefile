@@ -2,22 +2,23 @@ APP = im2col_fp32
 
 # User settings
 DATA_BITS?=32				# 32=FP32, 16=FP16
-NUM_CORES?=1
+NUM_CORES?=8
 MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
-DMA_ENABLE?=0					# Use Cluster DMA to move data or not
+DMA_ENABLE?=1					# Use Cluster DMA to move data or not
 # Layer padding and stride
-LPAD?=1
-RPAD?=1
-UPAD?=1
-DPAD?=1
+LPAD?=0
+RPAD?=0
+UPAD?=0
+DPAD?=0
 HSTR?=1
 WSTR?=1
 # Layer sizes
-Tin_W_l1?=4
-Tin_C_l1?=1
+Tin_H_l1?=8
+Tin_W_l1?=8
+Tin_C_l1?=16
 Tker_W_l1?=3
-Tout_C_l1?=1
-APP_CFLAGS += -DPRINT_OUTPUT
+Tout_C_l1?=8
+#APP_CFLAGS += -DPRINT_OUTPUT
 #STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 # End of user settings
 
@@ -40,6 +41,7 @@ APP_CFLAGS += -DUPAD=$(UPAD)
 APP_CFLAGS += -DDPAD=$(DPAD)
 APP_CFLAGS += -DHSTR=$(HSTR)
 APP_CFLAGS += -DWSTR=$(WSTR)
+APP_CFLAGS += -DTin_H_l1=$(Tin_H_l1)
 APP_CFLAGS += -DTin_W_l1=$(Tin_W_l1)
 APP_CFLAGS += -DTin_C_l1=$(Tin_C_l1)
 APP_CFLAGS += -DTker_W_l1=$(Tker_W_l1)

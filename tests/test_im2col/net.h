@@ -1,5 +1,4 @@
 // Tensor sizes
-#define Tin_H_l1 Tin_W_l1
 #define Tker_H_l1 Tker_W_l1
 
 #define Tout_W_l1 ((int)(Tin_W_l1-Tker_W_l1+LPAD+RPAD+WSTR)/WSTR)
