@@ -596,47 +596,23 @@ void pulp_blocktransp_fp16 (void * void_args)
 
   int HW = Hk*Wk;
 
-  // Temporary matrix
-  //fp16 temp[Cin*Cout*HW];
-
   int blockSize = (Cout+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > Cout ? Cout : start+blockSize;
 
   // Block tranposition
-  // for (int k=0; k<Cout; k++)
-  for (int k=start; k<stop; k++)
-  {
-    for (int c=0; c<Cin; c++)
-    {
-      for (int i=0; i<Hk*Wk; i++)
-      {
-        // OLD 
-        //temp[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
-        //temp[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
-
-        // OTHER MATRIX
-        //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
-        bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+  for (int k=start; k<stop; k++) {
+    for (int c=0; c<Cin; c++) {
+      for (int i=0; i<(HW & 0xfffffffe); i+=2) {
+        v2f16 wgt_elems = (v2f16) {0, 0};
+        wgt_elems = *((v2f16 *) &weights[(HW-1-i-1)+c*HW+k*Cin*HW]);
+        wgt_elems = (v2f16)(__builtin_shuffle(wgt_elems, (v2s){1,0}));
+        v2f16 *BUF = (v2f16 *) &bt_weights[i+k*HW+c*Cout*HW];
+        *BUF = wgt_elems;
+      }
+      if (HW & 0x00000001) {
+        bt_weights[(HW-1)+k*HW+c*Cout*HW] = weights[c*HW+k*Cin*HW];
       }
     }
   } 
-
-  // OLD NOT WORKING
-  // #if NUM_CORES > 1
-  // pi_cl_team_barrier();
-  // #endif
-
-  // // Store back
-  // // for (int k=0; k<Cout; k++)
-  // for (int k=start; k<stop; k++)
-  // {
-  //   for (int c=0; c<Cin; c++)
-  //   {
-  //     for (int i=0; i<HW; i++)
-  //     {
-  //       weights[i+k*HW+c*Cout*HW] = temp[i+k*HW+c*Cout*HW];     
-  //     }
-  //   }
-  // }
 }

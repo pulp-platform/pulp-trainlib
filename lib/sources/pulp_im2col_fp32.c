@@ -196,12 +196,19 @@ void pulp_im2col_fp32(void * void_args){
       if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
       else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;     
 
+      // Internal parallelization scheme on sizes
+      int HblockSize = (Htot+NUM_CORES-1) / NUM_CORES;
+      int Hstart = pi_core_id()*HblockSize;
+      int Hstop = Hstart+HblockSize > Htot ? Htot : Hstart+HblockSize;      
+
       int padding = Lpad + Rpad + Upad + Dpad;
 
       if (padding == 0) {
-        for (int ho=0; ho<Htot; ho++) {
+        //for (int ho=0; ho<Htot; ho++) {
+        for (int ho=Hstart; ho<Hstop; ho++) {
           for (int wo=0; wo<Wtot; wo++) {
-            for (int ci=start; ci<stop; ci++) { // ci+=2) {
+            //for (int ci=start; ci<stop; ci++) {
+            for (int ci=0; ci<Cin; ci++) {
               // IM2COl buffer coordinates
               int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
               int kernel_idx = ci*Hk*Wk;
@@ -209,7 +216,7 @@ void pulp_im2col_fp32(void * void_args){
               int receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
 
               // DMA Copy structures
-              pi_cl_dma_copy_2d_t dma_i2cfw; //, dma_i2cfw_next;
+              pi_cl_dma_copy_2d_t dma_i2cfw;
 
               // Load first data into L1A
               dma_i2cfw.dir = PI_CL_DMA_DIR_EXT2LOC;
@@ -222,24 +229,7 @@ void pulp_im2col_fp32(void * void_args){
               dma_i2cfw.loc = (uint32_t) &i2c_buf[segment_idx+kernel_idx];
               pi_cl_dma_memcpy_2d(&dma_i2cfw);  
 
-              // if (ci+1<stop) {
-              //   // Load first data into L1A
-              //   dma_i2cfw_next.dir = PI_CL_DMA_DIR_EXT2LOC;
-              //   dma_i2cfw_next.merge = 0;
-              //   dma_i2cfw_next.stride = 4*Win;
-              //   dma_i2cfw_next.length = 4*Wk;
-              //   dma_i2cfw_next.size = 4*Hk*Wk;
-              //   dma_i2cfw_next.id = pi_core_id();
-              //   dma_i2cfw_next.ext = (uint32_t) (input->data + receptive_field_idx + Hin*Win);
-              //   dma_i2cfw_next.loc = (uint32_t) &i2c_buf[segment_idx+kernel_idx+Hk*Wk];
-              //   pi_cl_dma_memcpy_2d(&dma_i2cfw_next);   
-              // } 
-
-              // // Avoid leftover with index rollback mechanism (take last channel)
-              // if (ci==stop) ci -= 1;
-
-              pi_cl_dma_wait(&dma_i2cfw);
-              //pi_cl_dma_wait(&dma_i2cfw_next);      
+              pi_cl_dma_wait(&dma_i2cfw);    
             }
           }
         }
