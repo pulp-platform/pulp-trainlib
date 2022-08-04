@@ -290,7 +290,8 @@ void pulp_im2col_fp16(void * void_args){
 
                 im2col_fill = *((v2f16 *) &input->data[receptive_field_idx+in_inner_idx]);
 
-                if ((padding>0)) {      // FIXME!!
+                // OLD PADDING (SLOW!!)
+                if (padding>0) {      // FIXME!!
                   // Fill the padding vector with correct bits
                   if (((h_pad_cond<Upad) || (h_pad_cond>Ho+Dpad)))  {im2col_fill = (v2f16) {0, 0};}
                   else if (pad_w0_l)                                {im2col_fill[0] = 0;}

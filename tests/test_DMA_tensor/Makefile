@@ -1,0 +1,39 @@
+APP = dma_transfer
+
+# User settings
+NUM_CORES?=1
+BITS?=16
+# Layer sizes
+HEIGHT?=8
+WIDTH?=8
+CHANNELS?=16
+#APP_CFLAGS += -DMERGE_PARALLEL
+#APP_CFLAGS += -DDEBUG_APP
+#APP_CFLAGS += -DPRINT_OUTPUT
+# End of user settings
+
+TRAIN_LIB=../../lib
+TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
+APP_SRCS = main.c net.c
+
+APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
+APP_CFLAGS += -O3 -g3 -mno-memcpy
+APP_CFLAGS += -DFABRIC
+APP_CFLAGS += -DCLUSTER
+APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
+APP_CFLAGS += -DBITS=$(BITS)
+APP_CFLAGS += -DPROF_NET
+APP_CFLAGS += -DHEIGHT=$(HEIGHT)
+APP_CFLAGS += -DWIDTH=$(WIDTH)
+APP_CFLAGS += -DCHANNELS=$(CHANNELS)
+#APP_CFLAGS += -DDEBUG
+APP_CFLAGS += -mhwloopalign
+APP_LDFLAGS += -lm
+
+# STATISTICS
+APP_CFLAGS += -DSTATS
+
+# Sources
+# APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
+
+include $(RULES_DIR)/pmsis_rules.mk

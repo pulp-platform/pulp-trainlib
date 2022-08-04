@@ -19,9 +19,11 @@ PI_L2 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 #endif
 #if MOD==0
-PI_L1 float im2col_buffer[i2c_b_size*2];
+#define i2c_check_size (i2c_b_size*2)
+PI_L1 float im2col_buffer[i2c_check_size];
 #else
-PI_L1 float im2col_buffer_bw[i2c_b_size_bw*2];
+#define i2c_check_size (i2c_b_size_bw*2)
+PI_L1 float im2col_buffer_bw[i2c_check_size];
 #endif
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 #if DMA_ENABLE == 1
@@ -37,9 +39,11 @@ PI_L2 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 #endif
 #if MOD==0
-PI_L1 fp16 im2col_buffer[i2c_b_size*2];
+#define i2c_check_size (i2c_b_size*2)
+PI_L1 fp16 im2col_buffer[i2c_check_size];
 #else
-PI_L1 fp16 im2col_buffer_bw[i2c_b_size_bw*2];
+#define i2c_check_size (i2c_b_size_bw*2)
+PI_L1 fp16 im2col_buffer_bw[i2c_check_size];
 #endif
 PI_L1 fp16 l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 #if DMA_ENABLE == 1
@@ -63,9 +67,9 @@ static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             {l1_in[i] = temp_val; temp_val+=0.1;}
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = weight_init;
   #if MOD==0
-  for (int i=0; i<i2c_b_size*2; i++)                                           im2col_buffer[i] = 0.0f;
+  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer[i] = 0.0f;
   #else 
-  for (int i=0; i<i2c_b_size_bw*2; i++)                                        im2col_buffer_bw[i] = 0.0f;
+  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer_bw[i] = 0.0f;
   #endif
   temp_val = 0.1f;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          {l1_out[i] = temp_val; temp_val+=0.1;} //l1_out[i] =  0.0f;
@@ -166,7 +170,7 @@ static inline void train ()
     printf("\n\n");
     
     printf("\n\nIm2col buffer:\n");
-    for (int idx=0; idx<i2c_b_size*2; idx++)
+    for (int idx=0; idx<i2c_check_size; idx++)
     {
         //if (!(idx%Tker_H_l1)) printf("\n");
         if (!(idx%(Tker_H_l1*Tker_W_l1))) printf("\n");
@@ -189,7 +193,7 @@ static inline void train ()
     printf("\n\n");
 
     printf("\n\nIm2col buffer:\n");
-    for (int idx=0; idx<i2c_b_size_bw*2; idx++)
+    for (int idx=0; idx<i2c_check_size; idx++)
     {
         //if (!(idx%Tker_H_l1)) printf("\n");
         if (!(idx%((Tker_H_l1)*(Tker_W_l1)))) printf("\n");
