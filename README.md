@@ -93,6 +93,7 @@ PULP-TrainLib's repository is organized with these branches:
 - `pulp-trainlib-stable`: stable version 
 - `pulp-trainlib-dev`: this is the work-in-progress version (more features, less stable)
 - `pulp-trainlib-paper`: this is the version with the results shown in the paper "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"
+- `pulp-trainlib-stm32`: this is a version (initially forked from `pulp-trainlib-dev`) compatible with STM32, with FP32 format only
 
 
 
