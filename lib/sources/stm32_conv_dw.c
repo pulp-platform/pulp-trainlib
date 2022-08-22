@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 #include "stm32_im2col.h"
@@ -80,7 +81,7 @@ void stm32_conv_dw_fp32_fw(struct blob * input, struct blob * coeff, struct blob
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   // to PRINT outDiff orderly
   printf("ACTIV OUTPUT DW LAYER \n\n");
   for (int i=0; i<W_out*H_out*C_out; i++) {
@@ -169,7 +170,7 @@ void stm32_conv_dw_fp32_bw_param_grads(struct blob * input, struct blob * coeff,
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("GRADIENT DW LAYER \n\n");
   for (int i=0; i<pW*pH*C_in; i++) {
     if ((i+1)%pW==0) {
@@ -226,7 +227,7 @@ void stm32_conv_dw_fp32_bw_input_grads(struct blob * input, struct blob * coeff,
 
   stm32_im2col_fp32(&im2col_args);
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("\nim2col buffer:\n");
   for (int idx=0; idx<W_in*H_in*C_out*(pW)*(pH); idx++) {
     if (!(idx%pW)) printf("\n");
@@ -264,7 +265,7 @@ void stm32_conv_dw_fp32_bw_input_grads(struct blob * input, struct blob * coeff,
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   // to PRINT inDiff orderly
   printf("ERROR PROP DW LAYER \n\n");
   for (int i=0; i<(W_in)*(H_in)*C_in; i++) {

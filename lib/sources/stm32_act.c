@@ -18,8 +18,9 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
-#include "stm32_train_utils.h"
+#include "stdio.h"
 #include "math.h"
+#include "stm32_train_utils.h"
 
 void stm32_relu_fp32_fw(struct blob * input, struct blob * output){
 

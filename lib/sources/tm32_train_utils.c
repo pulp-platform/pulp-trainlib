@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 
@@ -103,7 +104,7 @@ void mm_manager (void * void_args)
     int step_type = args->step_type;
     int matmul_type = args->matmul_type;
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("Running layer %d, step %d, matmul %d\n", layer_type, step_type, matmul_type);
     #endif
     

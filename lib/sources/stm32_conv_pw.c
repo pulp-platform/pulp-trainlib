@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 #include "stm32_conv_pw.h"
@@ -59,7 +60,7 @@ void stm32_conv_pw_fp32_fw(struct blob * input, struct blob * coeff, struct blob
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("FORWARD PW LAYER \n\n");
   for (int i=0; i<Cout*output->W*output->H; i++) {
     if ((i+1)%output->W==0) {
@@ -103,7 +104,7 @@ void stm32_conv_pw_fp32_bw_param_grads(struct blob * input, struct blob * coeff,
   int H_out = output->H;
   int C_out = output->C;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("OUTDIM %d %d %d ", W_in, H_in, C_in);
   #endif
 
@@ -136,7 +137,7 @@ void stm32_conv_pw_fp32_bw_param_grads(struct blob * input, struct blob * coeff,
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("%d %d %d %d\n\n", pW,pH,C_in,C_out);
 
   printf("GRADIENT PW LAYER \n\n");
@@ -170,7 +171,7 @@ void stm32_conv_pw_fp32_bw_input_grads(struct blob * input, struct blob * coeff,
   int H_out = output->H;
   int C_out = output->C;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("OUTDIM %d %d %d ", W_out, H_out, C_out);
   #endif
 
@@ -203,7 +204,7 @@ void stm32_conv_pw_fp32_bw_input_grads(struct blob * input, struct blob * coeff,
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   // to PRINT outDiff orderly
   printf("ERROR PROP PW LAYER \n\n");
   for (int i=0; i<W_in*H_in*C_in; i++) {

@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "math.h"
 #include "stm32_train_utils.h"
 #include "stm32_losses.h"
@@ -34,14 +35,14 @@ void stm32_CrossEntropyLoss (struct blob * output, float * target, float * wr_lo
   for(int i=0; i<size; i++){
     loss += -target[i]*logf(outData[i]);
     
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
       printf("target: %f, out_diff: %f, out_data:%f\n", target[i], outDiff[i], outData[i]);
       printf("loss:%f \n",loss);
     #endif
   }
 
   // Skip printf profiling in debug mode
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   #ifdef PROF_NET
   pi_perf_stop();
   #endif
@@ -56,7 +57,7 @@ void stm32_CrossEntropyLoss (struct blob * output, float * target, float * wr_lo
   for(int i=0; i<size; i++){
     outDiff[i] = (-target[i]+outData[i]);
     
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("target: %+.4f, out_diff: %+.4f, out_data:%+.4f\n", target[i], outDiff[i], outData[i]);
     #endif
   }
@@ -73,21 +74,21 @@ void stm32_MSELoss (struct blob * output, float * target, float * wr_loss)
   float loss = 0.0;
   float meanval = 1.0f / size;
   
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("loss meanval is: %f\n", meanval);
   #endif
   
   for(int i=0; i<size; i++){
     loss += meanval * (target[i] - outData[i]) * (target[i] - outData[i]);
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("target: %f, out_diff: %f, out_data:%f\n", target[i], outDiff[i], outData[i]);
     printf("loss:%f \n",loss);
     #endif
   }
 
   // Skip printf profiling in debug mode
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   #ifdef PROF_NET
   pi_perf_stop();
   #endif
@@ -102,7 +103,7 @@ void stm32_MSELoss (struct blob * output, float * target, float * wr_loss)
   for(int i=0; i<size; i++){
     outDiff[i] = meanval * 2.0f *(outData[i] - target[i]);
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("target: %+.4f, out_diff: %+.4f, out_data:%+.4f\n", target[i], outDiff[i], outData[i]);
     #endif
   }

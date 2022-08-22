@@ -18,6 +18,8 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
+#include "stdint.h"
 #include "stm32_train_utils.h"
 
 void stm32_avgpool_fp32_fw(void * pool_args) {

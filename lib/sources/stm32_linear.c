@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 #include "stm32_linear.h"
@@ -49,7 +50,7 @@ void stm32_linear_fp32_fw(struct blob * input, struct blob * coeff, struct blob 
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG 
+  #ifdef DEBUG_APP 
     printf("\nLinear OutData: %d\n", matMul_args.N);
     for (int i=0; i<output->dim; i++){
       printf("%4.2e ", outData[i]);
@@ -80,7 +81,7 @@ void stm32_linear_fp32_bw_param_grads(struct blob * input, struct blob * coeff, 
 
   struct matMul_args matMul_args;
 
-#ifdef DEBUG
+#ifdef DEBUG_APP
   printf("\nLinear outDiff\n");
   for(int i=0; i<output->dim; i++)
     printf("%4.2e ", outDiff[i]);
@@ -106,7 +107,7 @@ void stm32_linear_fp32_bw_param_grads(struct blob * input, struct blob * coeff, 
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG 
+  #ifdef DEBUG_APP 
   printf("\nLinear coeffDiff ");
     for (int i=0; i<input->dim*output->dim; i++){
       if(!(i%(output->dim))) printf("\n");
@@ -128,7 +129,7 @@ void stm32_linear_fp32_bw_input_grads(struct blob * input, struct blob * coeff, 
 
   struct matMul_args matMul_args;
 
-#ifdef DEBUG
+#ifdef DEBUG_APP
   printf("\nLinear outDiff\n");
   for(int i=0; i<output->dim; i++)
     printf("%4.2e ", outDiff[i]);
@@ -154,7 +155,7 @@ void stm32_linear_fp32_bw_input_grads(struct blob * input, struct blob * coeff, 
   mm_manager(&man_args);
   #endif
 
-  #ifdef DEBUG 
+  #ifdef DEBUG_APP 
   printf("\nLinear outDiff (coeffData.T * inDiff)");
 
     for (int i=0; i<output->dim/*+2*/; i++){

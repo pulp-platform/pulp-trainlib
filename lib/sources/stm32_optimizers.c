@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_optimizers.h"
 
@@ -30,7 +31,7 @@ void stm32_gradient_descent_fp32 (void * void_args)
     const int wgt_size = args->weights->dim; 
     float lr = args->learning_rate;
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("\n*** WEIGHTS ***\n");
     for (int i=0; i<wgt_size; i++)  printf("%f ", weights[i]);  
     printf("\n*** WEIGHT GRAD ***\n");
@@ -43,7 +44,7 @@ void stm32_gradient_descent_fp32 (void * void_args)
         weights[i] -= lr * weight_grad[i];
     }    
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("\n*** WEIGHTS ***\n");
     for (int i=0; i<wgt_size; i++)  printf("%f ", weights[i]);  
     printf("\n\n");

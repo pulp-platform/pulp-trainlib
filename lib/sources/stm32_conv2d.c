@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 #include "stm32_im2col.h"
@@ -41,7 +42,7 @@ void stm32_conv2d_fp32_fw(struct blob * input, struct blob * coeff, struct blob 
     int C_in = input->C;
     int C_out = output->C;
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     int in_size = input->dim;
     int ker_size = coeff->dim;
     #endif
@@ -67,7 +68,7 @@ void stm32_conv2d_fp32_fw(struct blob * input, struct blob * coeff, struct blob 
 
     stm32_im2col_fp32(&im2col_args);
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     printf("\nForward input data (size: %d, address: %x):\n", in_size, inData);
     for(int index=0; index<in_size; index++) {
       printf("%f ", inData[index]);
@@ -130,7 +131,7 @@ void stm32_conv2d_fp32_fw(struct blob * input, struct blob * coeff, struct blob 
     printf("[stm32_conv2d_fp32.c:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
   }
 
-    #ifdef DEBUG
+    #ifdef DEBUG_APP
     // to PRINT outData orderly
     printf("FORWARD OUTPUT CONV2D LAYER \n\n");
     for (int i=0; i<W_out*H_out*C_out; i++) {
@@ -220,7 +221,7 @@ void stm32_conv2d_fp32_bw_param_grads(struct blob * input, struct blob * coeff, 
     #endif
     
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("\nBackward outDiff data (size: %d, address: %x):\n", C_out*W_out*H_out, outDiff);
   for(int index=0; index<C_out*W_out*H_out; index++) {
     if(!(index%(W_out))) printf("\n");
@@ -254,7 +255,7 @@ void stm32_conv2d_fp32_bw_param_grads(struct blob * input, struct blob * coeff, 
   printf("\n\n");
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("COEFF GRADIENT CONV2D LAYER \n\n");
   for (int i=0; i<pW*pH*C_in*C_out; i++) {
     if ((i+1)%pW==0) {
@@ -352,7 +353,7 @@ void stm32_conv2d_fp32_bw_input_grads(struct blob * input, struct blob * coeff, 
 
   //pmsis_l1_malloc_free(temp_bt, (uint32_t) C_in*C_out*pW*pH);
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("\nBackward outDiff data (size: %d, address: %x):\n", C_out*W_out*H_out, outDiff);
   for(int index=0; index<C_out*W_out*H_out; index++) {
     if(!(index%(W_out))) printf("\n");
@@ -387,7 +388,7 @@ void stm32_conv2d_fp32_bw_input_grads(struct blob * input, struct blob * coeff, 
   #endif
 
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   // to PRINT outDiff orderly
   printf("ERROR PROP CONV2D LAYER \n\n");
   for (int i=0; i<W_in*H_in*C_in; i++) {

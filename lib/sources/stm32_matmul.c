@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "stdio.h"
 #include "stm32_train_utils.h"
 #include "stm32_matmul.h"
 
@@ -49,7 +50,7 @@ void mm(void * void_args) {
         for (int j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j];
-          #ifdef DEBUG
+          #ifdef DEBUG_APP
           printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i], B[j]);
           #endif
         }
@@ -65,7 +66,7 @@ void mm(void * void_args) {
           for (int k = 0; k < K; k++) 
           {
                 temp += A[i*K+k] * B[j+k*M];
-                #ifdef DEBUG
+                #ifdef DEBUG_APP
                 printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
                 #endif
           } 
@@ -85,7 +86,7 @@ void mm(void * void_args) {
         for (int j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j*K];
-          #ifdef DEBUG
+          #ifdef DEBUG_APP
           printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i, j*K, C[i*M+j], A[i*K], B[j*K]);
           #endif
         } 
@@ -101,7 +102,7 @@ void mm(void * void_args) {
           for (int k = 0; k < K; k++) 
           {
               temp += A[i*K+k] * B[k+j*K];
-              #ifdef DEBUG
+              #ifdef DEBUG_APP
               printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, k+j*K, C[i*M+j], A[i*K+k], B[k+j*K]);
               #endif
           } 
@@ -128,11 +129,11 @@ void mm_dw(void * void_args) {
   int K = args->K;
   int ker_dim = args->ker_size;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   int num_MAC = 0;
   #endif
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   float a = 0;
   float b = 0;
   int idx_a = 0;
@@ -146,7 +147,7 @@ void mm_dw(void * void_args) {
       float temp = 0; 
       for (int t = 0; t < ker_dim; t++) 
       {
-        #ifdef DEBUG
+        #ifdef DEBUG_APP
           // variables needed for debugging, remove to measure performances
           idx_a = /*i*K+*/(k*ker_dim+t);
           a = A[idx_a];
@@ -160,13 +161,13 @@ void mm_dw(void * void_args) {
         #endif
       }
       C[j+k*M] = temp;
-      #ifdef DEBUG
+      #ifdef DEBUG_APP
         printf("C[%d] = %f\n", j+k*M, temp);
       #endif
     } 
   }
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("\n\n=====> MM_DW MAC: %d <=====\n\n", num_MAC);
   #endif
 }
@@ -187,7 +188,7 @@ void mm_dw_in_grad(void * void_args) {
 
   int Kappa = K/ker_dim;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   int num_MAC = 0;
   #endif
 
@@ -206,7 +207,7 @@ void mm_dw_in_grad(void * void_args) {
           // Flipped weights (A matrix inverted channel-by-channel)
           temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];
           
-          #ifdef DEBUG
+          #ifdef DEBUG_APP
           num_MAC++;
           #endif
         }
@@ -215,7 +216,7 @@ void mm_dw_in_grad(void * void_args) {
     }
   }
 
-  #ifdef DEBUG
+  #ifdef DEBUG_APP
   printf("\n\n=====> MM_DW_IN_GRAD MAC: %d <=====\n\n", num_MAC);
   #endif
 }
@@ -251,7 +252,7 @@ void mm_conv2d_in_grad (void * void_args)
       for (int Co = 0; Co < pCout; Co++) {  
         for (int elem = 0; elem < pW*pH; elem++) {
           temp += A[pW*pH*pCin*Co+pW*pH*Ci+elem] * B[pH*pW*pCout*rec_field+pW*pH*Co+elem];
-          //#ifdef DEBUG
+          //#ifdef DEBUG_APP
           #if 1
           printf("coeffdata[%d]=%f, i2c_buffer[%d]=%f, temp=%f\n",
                   pW*pH*pCin*Co+pW*pH*Ci+elem, A[pW*pH*pCin*Co+pW*pH*Ci+elem], 
@@ -261,7 +262,7 @@ void mm_conv2d_in_grad (void * void_args)
         }
       }
       C[M*Ci+rec_field] = temp;
-      #ifdef DEBUG
+      #ifdef DEBUG_APP
       printf("C[%d]=%f\n", M*Ci+rec_field, C[M*Ci+rec_field]);
       #endif
     }

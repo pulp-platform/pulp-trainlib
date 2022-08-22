@@ -18,6 +18,8 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
 */ 
 
+#include "stdio.h"
+#include "stdint.h"
 #include "stm32_train_utils.h"
 #include "stm32_im2col.h"
 
