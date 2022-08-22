@@ -18,8 +18,8 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
-#include "stm32_train_utils_fp32.h"
-#include "stm32_matmul_fp32.h"
+#include "stm32_train_utils.h"
+#include "stm32_matmul.h"
 
 
 /**
