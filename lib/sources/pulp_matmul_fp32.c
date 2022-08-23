@@ -348,7 +348,7 @@ void mm_conv2d_in_grad (void * void_args)
 
 
 
-void naive_conv2d_fw_kernel (void * void_args) 
+void naive_conv2d_fw_kernel_CHW (void * void_args) 
 {
   struct matMul_args* args = (struct matMul_args *)void_args;
   float * __restrict__ inData = args->A;
@@ -372,15 +372,18 @@ void naive_conv2d_fw_kernel (void * void_args)
   for (int co=start; co<stop; co++) {
     for (int ho=0; ho<H_out; ho++) {
       for (int wo=0; wo<W_out; wo++) {
-        outData[wo+ho*W_out+co*H_out*W_out] = 0;
+        //outData[wo+ho*W_out+co*H_out*W_out] = 0;
+        float temp = 0;
         // Receptive field
         for (int ci=0; ci<C_in; ci++) {
           for (int hk=0; hk<pH; hk++) {
             for (int wk=0; wk<pW; wk++) {
-              outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+              //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+              temp += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
             }
           }
         }
+        outData[wo+ho*W_out+co*H_out*W_out] = temp;
       }
     }
   }
@@ -389,12 +392,12 @@ void naive_conv2d_fw_kernel (void * void_args)
 
 
 
-void naive_conv2d_param_grad_kernel (void * void_args) 
+void naive_conv2d_param_grad_kernel_CHW (void * void_args) 
 {
   struct matMul_args* args = (struct matMul_args *)void_args;
   float * __restrict__ inData = args->A;
-  float * __restrict__ coeffData = args->B;
-  float * __restrict__ outData = args->C;
+  float * __restrict__ coeffDiff = args->B;
+  float * __restrict__ outDiff = args->C;
 
   const int H_in = args->H;
   const int W_in = args->W;
@@ -410,18 +413,32 @@ void naive_conv2d_param_grad_kernel (void * void_args)
   const int start = pi_core_id()*blockSize;
   const int stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
+  for (int co=start; co<stop; co++) {
+    for (int hk=0; hk<pH; hk++) {
+      for (int wk=0; wk<pW; wk++) {
+        for (int ci=0; ci<C_in; ci++) {
+          float temp = 0;
+          for (int ho=0; ho<H_out; ho++) {
+            for (int wo=0; wo<W_out; wo++) {
+              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in];
+            }
+          }
+          coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
+        }
+      }
+    }
+  }
   
-
 }
 
 
 
-void naive_conv2d_in_grad_kernel (void * void_args) 
+void naive_conv2d_in_grad_kernel_CHW (void * void_args) 
 {
   struct matMul_args* args = (struct matMul_args *)void_args;
-  float * __restrict__ inData = args->A;
+  float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
-  float * __restrict__ outData = args->C;
+  float * __restrict__ outDiff = args->C;
 
   const int H_in = args->H;
   const int W_in = args->W;
@@ -433,10 +450,32 @@ void naive_conv2d_in_grad_kernel (void * void_args)
   const int H_out = H_in - pH + 1;
   const int W_out = W_in - pW + 1;
 
-  const int blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const int blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > C_out ? C_out : start+blockSize;  
+  const int stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
+  for (int ci=0; ci<C_in; ci++) {
+    for (int hi=0; hi<H_in; hi++) {
+      for (int wi=0; wi<W_in; wi++) {
+        float temp = 0;
+        for (int co=0; co<C_out; co++) {
+          for (int hk=0; hk<pH; hk++) {
+            for (int wk=0; wk<pW; wk++) {
+              // Coefficient to be loaded
+              float coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
+              // Padding conditions
+              int ho = hi + hk - (pH-1);
+              int wo = wi + wk - (pW-1);
+              // Compute in grad partial product
+              if ((ho < 0) || (ho > H_out) || (wo < 0) || (wo > W_out))   temp += 0;
+              else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
+            }
+          }
+        }
+        inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
+      }
+    }
+  }
 
 }
 

@@ -1,12 +1,12 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=5
-IMAGE_W?=5
+IMAGE_H?=3
+IMAGE_W?=3
 KER_H?=3
 KER_W?=3
-IN_CH?=8
-OUT_CH?=8
+IN_CH?=2
+OUT_CH?=1
 PAD_L?=0
 PAD_R?=0
 PAD_U?=0
@@ -20,7 +20,7 @@ APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
-IM2COL?=0			# Selects to use or not the im2col+matmul (0=don't, 1=use)
+IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
 # End of user settings
 

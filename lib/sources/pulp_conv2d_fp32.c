@@ -121,13 +121,13 @@ void pulp_conv2d_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blo
     matMul_args.pH = pH;
     matMul_args.pW = pW;
 
-    pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel, &matMul_args);
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW, &matMul_args);
     
   }
 
   // ERROR IN SELECTING IM2COL
   else {
-    printf("[pulp_conv2d_fp32.c:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+    printf("[pulp_conv2d_fp32_fw_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
   }
 
     #ifdef DEBUG
@@ -182,6 +182,8 @@ void pulp_conv2d_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
     float * outDiff = output->diff;
     float * outData = output->data;
 
+  if (USE_IM2COL == 1) {
+
     im2col_args.input = input;
     im2col_args.c = coeff;
     im2col_args.output = output;
@@ -218,6 +220,28 @@ void pulp_conv2d_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
     man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
     #endif
+
+  }
+
+  else if (USE_IM2COL == 0) {
+
+    matMul_args.A = inData;
+    matMul_args.B = coeffDiff;
+    matMul_args.C = outDiff;
+    matMul_args.H = H_in;
+    matMul_args.W = W_in;
+    matMul_args.pCin = C_in;
+    matMul_args.pCout = C_out;
+    matMul_args.pH = pH;
+    matMul_args.pW = pW;
+
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW, &matMul_args);
+
+  }
+
+  else {
+    printf("[pulp_conv2d_fp32_bw_param_grads_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+  }
     
 
   #ifdef DEBUG
@@ -298,59 +322,83 @@ void pulp_conv2d_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff
   //float * temp_bt;
   float * temp_bt = bt_buffer;
 
-  // PREPARE im2col_buffer for ACTIV_GRAD
-  im2col_args.input = input;
-  im2col_args.c = coeff;
-  im2col_args.output = output;
-  im2col_args.pBuffer = i2c_buffer;
-  im2col_args.Lpad = 0; //pW-1;
-  im2col_args.Rpad = 0; //pW-1;
-  im2col_args.Upad = 0; //pH-1;
-  im2col_args.Dpad = 0; //pH-1;
-  im2col_args.stride_h = 1;
-  im2col_args.stride_w = 1;
-  im2col_args.mod = 1;
-  im2col_args.DW = 0;
-  im2col_args.USE_DMA = USE_DMA_IM2COL; 
+  if (USE_IM2COL == 1) {
 
-  //if (H_in == pH) im2col_args.pad = 2;
+    // PREPARE im2col_buffer for ACTIV_GRAD
+    im2col_args.input = input;
+    im2col_args.c = coeff;
+    im2col_args.output = output;
+    im2col_args.pBuffer = i2c_buffer;
+    im2col_args.Lpad = 0; //pW-1;
+    im2col_args.Rpad = 0; //pW-1;
+    im2col_args.Upad = 0; //pH-1;
+    im2col_args.Dpad = 0; //pH-1;
+    im2col_args.stride_h = 1;
+    im2col_args.stride_w = 1;
+    im2col_args.mod = 1;
+    im2col_args.DW = 0;
+    im2col_args.USE_DMA = USE_DMA_IM2COL; 
 
-  pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    //if (H_in == pH) im2col_args.pad = 2;
 
-  //temp_bt = pmsis_l1_malloc((uint32_t) C_in*C_out*pW*pH);
+    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
-//=========> METHOD 1 (Working)
-  // Blocktranspose weights
-  struct blocktransp_args bt_args;
-  bt_args.weights = coeffData;
-  bt_args.bt_weights = temp_bt;
-  bt_args.Cout = C_out;
-  bt_args.Cin = C_in;
-  bt_args.Hk = pH;
-  bt_args.Wk = pW;
+    //temp_bt = pmsis_l1_malloc((uint32_t) C_in*C_out*pW*pH);
 
-  matMul_args.A = temp_bt; //coeffData;
-  matMul_args.B = i2c_buffer;
-  matMul_args.C = inDiff;
-  matMul_args.N = C_in;
-  matMul_args.K = pW*pH*C_out;
-  matMul_args.M = W_in*H_in;
-  matMul_args.trans_B = 1;
+  //=========> METHOD 1 (Working)
+    // Blocktranspose weights
+    struct blocktransp_args bt_args;
+    bt_args.weights = coeffData;
+    bt_args.bt_weights = temp_bt;
+    bt_args.Cout = C_out;
+    bt_args.Cin = C_in;
+    bt_args.Hk = pH;
+    bt_args.Wk = pW;
 
-  pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp32, &bt_args);
+    matMul_args.A = temp_bt; //coeffData;
+    matMul_args.B = i2c_buffer;
+    matMul_args.C = inDiff;
+    matMul_args.N = C_in;
+    matMul_args.K = pW*pH*C_out;
+    matMul_args.M = W_in*H_in;
+    matMul_args.trans_B = 1;
 
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-  #else
-  struct mm_manager_args man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_CONV2D;
-  man_args.step_type = STEP_IN_GRAD;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-  #endif
+    pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp32, &bt_args);
 
-  //pmsis_l1_malloc_free(temp_bt, (uint32_t) C_in*C_out*pW*pH);
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
+    #else
+    struct mm_manager_args man_args;
+    man_args.mm_args = &matMul_args;
+    man_args.layer_type = LAYER_CONV2D;
+    man_args.step_type = STEP_IN_GRAD;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+    #endif
+
+    //pmsis_l1_malloc_free(temp_bt, (uint32_t) C_in*C_out*pW*pH);
+
+  }
+
+  else if (USE_IM2COL == 0) {
+
+    matMul_args.A = inDiff;
+    matMul_args.B = coeffData;
+    matMul_args.C = outDiff;
+    matMul_args.H = H_in;
+    matMul_args.W = W_in;
+    matMul_args.pCin = C_in;
+    matMul_args.pCout = C_out;
+    matMul_args.pH = pH;
+    matMul_args.pW = pW;
+
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW, &matMul_args);
+
+  }
+
+  else {
+    printf("[pulp_conv2d_fp32_bw_input_grads_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+  }  
 
   #ifdef DEBUG
   printf("\nBackward outDiff data (size: %d, address: %x):\n", C_out*W_out*H_out, outDiff);
