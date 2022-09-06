@@ -18,7 +18,7 @@ limitations under the License.
 Authors: Davide Nadalini, Leonardo Ravaglia
 '''
 
-
+from copy import deepcopy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -270,14 +270,40 @@ else:
   inp = torch.ones(1, dw_channel, input_h, input_w).half()
   label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1), input_w-(ker1-1)-(ker2_w-1)).half()  
 
+# Prepare weight tensors for init
+print("Shape of DW kernel:")
+print(net.convDW.weight.data.shape)
+print(net.convDW.weight.data)
+print("\n")
+
+if bf16_format == 1:
+  wgt_init_tensor = torch.zeros(dw_channel, 1, ker2_h, ker2_w).bfloat16()
+  for o in range(dw_channel):
+      for hk in range(ker2_h):
+        for wk in range(ker2_w):
+          wgt_init_tensor[o, 0, hk, wk] = (o+hk+wk)*weight_init
+else:
+  wgt_init_tensor = torch.zeros(dw_channel, 1, ker2_h, ker2_w).half()
+  for o in range(dw_channel):
+      for hk in range(ker2_h):
+        for wk in range(ker2_w):
+          wgt_init_tensor[o, 0, hk, wk] = (o+hk+wk)*weight_init
+
 with torch.no_grad():
     net.convDW0.weight[:, :] = 0.1
     net.convDW0.bias[:] = 0.0
-    net.convDW.weight[:, :] = weight_init
+    #net.convDW.weight[:, :] = weight_init
+    net.convDW.weight.data = deepcopy(wgt_init_tensor)
     net.convDW.bias[:] = 0.0
     net.convPW.weight[:] = weight_init
     net.convPW.bias[:] = 0.0
 
+# Print weights to init file
+f = open("init-defines.h", 'a')
+f.write("\n\n// Weight initialization\n")
+f.write("#define DW_WGT_SIZE (Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
+f.write('PI_L2 float DW_WEIGHTS[DW_WGT_SIZE] = {'+dump.tensor_to_string(net.convDW.weight.data)+'};\n')
+f.close()
 
 criterion = nn.MSELoss()
 out = net(inp)

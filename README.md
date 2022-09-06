@@ -6,19 +6,26 @@ To facilitate the deployment of training tasks on the target PULP device, PULP-T
 
 If you use any part of PULP-TrainLib , please cite:
 ```
-@inproceedings{NadaliniPULPTrainLib22,
-  author    = {Davide Nadalini and 
-               Manuele Rusci and
-               Giuseppe Tagliavini and
-               Leonardo Ravaglia and
-               Luca Benini and
-               Francesco Conti},
-  title     = {{{PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning}}},
-  booktitle = {Embedded Computer Systems: Architectures, Modeling, and Simulation
-               - 22nd International Conference, {SAMOS} 2022, Samos, Greece, July
-               3-7, 2022, Proceedings (to appear)},
-  series    = {Lecture Notes in Computer Science}
+@InProceedings{10.1007/978-3-031-15074-6_13,
+author="Nadalini, Davide
+and Rusci, Manuele
+and Tagliavini, Giuseppe
+and Ravaglia, Leonardo
+and Benini, Luca
+and Conti, Francesco",
+editor="Orailoglu, Alex
+and Reichenbach, Marc
+and Jung, Matthias",
+title="PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-core MCUs Through Performance-Driven Autotuning",
+booktitle="Embedded Computer Systems: Architectures, Modeling, and Simulation",
+year="2022",
+publisher="Springer International Publishing",
+address="Cham",
+pages="200--216",
+abstract="An open challenge in making Internet-of-Things sensor nodes ``smart'' and self-adaptive is to enable on-chip Deep Neural Network (DNN) training on Ultra-Low-Power (ULP) microcontroller units (MCUs). To this aim, we present a framework, based on PULP-TrainLib, to deploy DNN training tasks on RISC-V-based Parallel-ULP (PULP) MCUs. PULP-TrainLib is a library of parallel software DNN primitives enabling the execution of forward and backward steps on PULP MCUs. To optimize PULP-TrainLib's kernels, we propose a strategy to automatically select and configure (autotune) the fastest among a set of tiling options and optimized floating-point matrix multiplication kernels, according to the tensor shapes of every DNN layer. Results on an 8-core RISC-V MCU show that our auto-tuned primitives improve MAC/clk by up to 2.4{\$}{\$}{\backslash}times {\$}{\$}{\texttimes}compared to ``one-size-fits-all'' matrix multiplication, achieving up to 4.39 MAC/clk - 36.6{\$}{\$}{\backslash}times {\$}{\$}{\texttimes}better than a commercial STM32L4 MCU executing the same DNN layer training workload. Furthermore, our strategy proves to be 30.7{\$}{\$}{\backslash}times {\$}{\$}{\texttimes}faster than AIfES, a state-of-the-art training library for MCUs, while training a complete TinyML model.",
+isbn="978-3-031-15074-6"
 }
+
 ```
 
 This repository is released under the [Apache License Version 2.0](./LICENSE).
@@ -123,4 +130,4 @@ PULP-TrainLib's repository is organized with these branches:
 
 # References
 
-D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"
+D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)

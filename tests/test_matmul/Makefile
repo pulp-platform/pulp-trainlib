@@ -2,13 +2,13 @@ APP = test_matmul
 
 # User settings
 # Standard matmul arguments
-IN_CH?=16			# Used also to define the number of channels of DW Conv
-MID_CH?=64
-OUT_CH?=144
+IN_CH?=64			# Used also to define the number of channels of DW Conv
+MID_CH?=16
+OUT_CH?=125
 # General arguments
 DATA_TYPE?='fp16' 	# float, fp16 (=>float16), bf16 (=>float16alt)  to select the desired format
 DIVIDER?=100000000	# Scaling factor for data initialization in golden model
-TRANSP?=1			# Matrix B is transposed if = 1, not transposed if = 0.
+TRANSP?=0			# Matrix B is transposed if = 1, not transposed if = 0.
 NUM_CORES?=1
 # End of user settings
 

@@ -36,6 +36,8 @@ parser.add_argument( '--ch_in_dw', type=int, default=128 )
 parser.add_argument( '--weight', type=float, default=0.1)
 parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
+parser.add_argument( '--pad_h', type=int, default='0')
+parser.add_argument( '--pad_w', type=int, default='0')
 parser.add_argument( '--bypass_size_automation', type=int, default=0)
 
 args = parser.parse_args()
@@ -51,6 +53,8 @@ input_w = args.image_width+ker1-1
 input_h = args.image_height+ker1-1
 image_width = args.image_width
 image_height = args.image_height
+pad_h = args.pad_h
+pad_w = args.pad_w
 step = args.step
 
 if (bypass == 0):
@@ -82,7 +86,7 @@ class myNet(nn.Module):
   def __init__(self):
     super().__init__()
     self.convDW0 = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=ker1,  stride = 1, groups=dw_channel)
-    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel)
+    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel) #, padding=(pad_h, pad_w))
     self.convPW = nn.Conv2d(dw_channel, pw_channel, 1, stride = 1)
 
   def forward(self, x):

@@ -1,12 +1,22 @@
 APP = dw_pw_fp16
 
 # User settings
-IMAGE_W?=3
-IMAGE_H?=27
-DW_KER_W?=2
-DW_KER_H?=2
+# Depthwise
+IMAGE_W?=5
+IMAGE_H?=25
+DW_KER_W?=3
+DW_KER_H?=3
 DW_IN_CH?=16
+# Pointwise
 PW_OUT_CH?=1
+# Depthwise Padding and stride
+LPAD?=1
+RPAD?=1
+UPAD?=1
+DPAD?=1
+HSTR?=1
+WSTR?=1
+# Others
 NUM_CORES?=8
 STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 #APP_CFLAGS += -DDEBUG
@@ -14,6 +24,7 @@ APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=6	# When profiling with multiple matmul algorithms
 NUM_SIZES?=3	# When profiling multiple sizes of the network
+#APP_CFLAGS += -DCHECK_PRINT
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -31,6 +42,10 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_CFLAGS += -mhwloopalign
+APP_CFLAGS += -DLPAD=$(LPAD)
+APP_CFLAGS += -DRPAD=$(RPAD)
+APP_CFLAGS += -DUPAD=$(UPAD)
+APP_CFLAGS += -DDPAD=$(DPAD)
 APP_LDFLAGS += -lm
 
 # STATISTICS

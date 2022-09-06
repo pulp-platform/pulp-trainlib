@@ -504,7 +504,7 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef PW_FORWARD
@@ -568,7 +568,7 @@ static inline void train(){
   #endif
 
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef PROF_DW_FWD
@@ -611,11 +611,11 @@ static inline void train(){
   #endif
 
   #ifdef DW_BACKWARD_GRAD
-  pulp_conv_dw_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1+1, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef DW_BACKWARD_ERROR
-  pulp_conv_dw_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1+1, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef PROF_DW_BKWD
@@ -623,6 +623,7 @@ static inline void train(){
   #endif
 
 
+  #ifdef CHECK_PRINT
 
   #ifdef DW_FORWARD
   printf("DW FORWARD CHECK: \n");
@@ -705,6 +706,8 @@ static inline void train(){
     if (!(index%Tin_H_l2)) printf("\n");
     printf("%f ", l2_in_diff[index]);
   }
+  #endif
+
   #endif
 }
 

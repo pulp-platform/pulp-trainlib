@@ -1,13 +1,13 @@
 APP = linear_test_fp16
 
 # User settings
-IN_CH?=32
-OUT_CH?=32
-NUM_CORES?=1
+IN_CH?=64
+OUT_CH?=12
+NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=0
+MATMUL_TYPE?=1
 NUM_MATMULS?=6		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings

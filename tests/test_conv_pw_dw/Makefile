@@ -1,19 +1,30 @@
 APP = dw_pw_fp32
 
 # User settings
-IMAGE_W?=3
-IMAGE_H?=27
+# Depthwise
+IMAGE_W?=5
+IMAGE_H?=25
 DW_KER_W?=3
 DW_KER_H?=3
 DW_IN_CH?=16
+# Pointwise
 PW_OUT_CH?=1
-NUM_CORES?=8
+# Depthwise Padding and stride
+LPAD?=0
+RPAD?=0
+UPAD?=0
+DPAD?=0
+HSTR?=1
+WSTR?=1
+# Others
+NUM_CORES?=1
 STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
-#APP_CFLAGS += -DDEBUG
+# Optimization
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=0
+MATMUL_TYPE?=4
 NUM_MATMULS?=24	# When profiling with multiple matmul algorithms
 NUM_SIZES?=3	# When profiling multiple sizes of the network
+#APP_CFLAGS += -DCHECK_PRINT
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -31,6 +42,10 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_CFLAGS += -mhwloopalign
+APP_CFLAGS += -DLPAD=$(LPAD)
+APP_CFLAGS += -DRPAD=$(RPAD)
+APP_CFLAGS += -DUPAD=$(UPAD)
+APP_CFLAGS += -DDPAD=$(DPAD)
 APP_LDFLAGS += -lm
 
 # STATISTICS
@@ -44,7 +59,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 
 get_golden:
-	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} --bypass_size_automation ${BYPASS}
+	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} --pad_h ${UPAD} --pad_w ${LPAD} --bypass_size_automation ${BYPASS}
 
 profile_all_optim:
 	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} 

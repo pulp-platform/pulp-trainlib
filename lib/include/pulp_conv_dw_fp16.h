@@ -31,15 +31,23 @@
  * @param input input feauture maps for the depthwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the depthwise layer
- * @param pad layer padding
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
+ * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp16_fw_cl(
 	struct blob_fp16 * input, 
 	struct blob_fp16 * coeff, 
 	struct blob_fp16 * output, 
-	int pad, 
-	fp16 * i2c_buffer
+	int Lpad,
+	int Rpad,
+	int Upad,
+	int Dpad,
+	fp16 * i2c_buffer,
+	int opt_matmul_type
 );
 
 
@@ -50,15 +58,27 @@ void pulp_conv_dw_fp16_fw_cl(
  * @param input input feauture maps for the depthwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the depthwise layer
- * @param pad layer padding
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
+ * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp16_bw_cl(
 	struct blob_fp16 * input, 
 	struct blob_fp16 * coeff, 
 	struct blob_fp16 * output, 
-	int pad, 
-	fp16 * i2c_buffer
+	int Lpad,
+	int Rpad,
+	int Upad,
+	int Dpad,
+	fp16 * i2c_buffer,
+	int skip_in_grad,
+	int opt_matmul_type_wg,
+	int opt_matmul_type_ig
 );
 
 /**
@@ -66,15 +86,22 @@ void pulp_conv_dw_fp16_bw_cl(
  * @param input input feauture maps for the depthwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the depthwise layer
- * @param pad layer padding
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
  */
 void pulp_conv_dw_fp16_bw_param_grads_cl(
 	struct blob_fp16 * input, 
 	struct blob_fp16 * coeff, 
 	struct blob_fp16 * output, 
-	int pad, 
-	fp16 * i2c_buffer
+	int Lpad,
+	int Rpad,
+	int Upad,
+	int Dpad,
+	fp16 * i2c_buffer,
+	int opt_matmul_type
 );
 
 /**
@@ -82,13 +109,20 @@ void pulp_conv_dw_fp16_bw_param_grads_cl(
  * @param input input feauture maps for the depthwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the depthwise layer
- * @param pad layer padding
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
  */
 void pulp_conv_dw_fp16_bw_input_grads_cl(
 	struct blob_fp16 * input, 
 	struct blob_fp16 * coeff, 
 	struct blob_fp16 * output, 
-	int pad, 
-	fp16 * i2c_buffer
+	int Lpad,
+	int Rpad,
+	int Upad,
+	int Dpad,
+	fp16 * i2c_buffer,
+	int opt_matmul_type
 );

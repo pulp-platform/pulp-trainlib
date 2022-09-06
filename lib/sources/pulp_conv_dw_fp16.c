@@ -24,7 +24,7 @@
 #include "pulp_conv_dw_fp16.h"
 #include "pulp_train_defines.h"
 
-void pulp_conv_dw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer) 
+void pulp_conv_dw_fp16_fw_cl(	struct blob_fp16 * input, struct blob_fp16 * coeff,	struct blob_fp16 * output, int Lpad, int Rpad, int Upad, int Dpad, fp16 * i2c_buffer, int opt_matmul_type) 
 {
   struct matMul_DW_args_fp16 matMul_args;
   struct im2col_args_fp16 im2col_args;
@@ -50,20 +50,26 @@ void pulp_conv_dw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff,
   im2col_args.c = coeff;
   im2col_args.output = output;
   im2col_args.pBuffer = i2c_buffer;
-  im2col_args.pad = pad;
+  im2col_args.Lpad = Lpad;
+  im2col_args.Rpad = Rpad;
+  im2col_args.Upad = Upad;
+  im2col_args.Dpad = Dpad;
   im2col_args.mod = 0;
   im2col_args.tile_start = 0;
   im2col_args.tile_h = W_in;
+  im2col_args.stride_h = 1;
+  im2col_args.stride_w = 1;
   im2col_args.DW = 1;
+  im2col_args.USE_DMA = 0;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
-
+  
   matMul_args.A = coeffData;
   matMul_args.B = i2c_buffer;
   matMul_args.C = outData;
   matMul_args.N = C_out;
   matMul_args.K = pW*pH*C_in;
-  matMul_args.M = (W_in-pW+1)*(H_in-pH+1);
+  matMul_args.M = (W_in-pW+1+Lpad+Rpad)*(H_in-pH+1+Upad+Dpad);
   matMul_args.ker_size = pW*pH;
 
   #ifndef OPTIMIZE
@@ -96,15 +102,18 @@ void pulp_conv_dw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff,
 
 
 
-void pulp_conv_dw_fp16_bw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer)
+void pulp_conv_dw_fp16_bw_cl(	struct blob_fp16 * input, struct blob_fp16 * coeff,	struct blob_fp16 * output,	int Lpad,	int Rpad,	int Upad,	int Dpad,	fp16 * i2c_buffer, int skip_in_grad,	int opt_matmul_type_wg,	int opt_matmul_type_ig)
 {
-  pulp_conv_dw_fp16_bw_param_grads_cl(input, coeff, output, pad, i2c_buffer);
-  pulp_conv_dw_fp16_bw_input_grads_cl(input, coeff, output, pad, i2c_buffer);
+  pulp_conv_dw_fp16_bw_param_grads_cl(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_wg);
+  if (skip_in_grad == 0)
+  {
+    pulp_conv_dw_fp16_bw_input_grads_cl(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_ig);
+  }
 }
 
 
 
-void pulp_conv_dw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer)
+void pulp_conv_dw_fp16_bw_param_grads_cl(	struct blob_fp16 * input, struct blob_fp16 * coeff,	struct blob_fp16 * output, int Lpad,	int Rpad,	int Upad,	int Dpad,	fp16 * i2c_buffer, int opt_matmul_type)
 {
   struct matMul_DW_args_fp16 matMul_args;
   struct im2col_args_fp16 im2col_args;
@@ -132,11 +141,17 @@ void pulp_conv_dw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_f
   im2col_args.c = coeff;
   im2col_args.output = output; 
   im2col_args.pBuffer = i2c_buffer;
-  im2col_args.pad = 0;
+  im2col_args.Lpad = 0;
+  im2col_args.Rpad = 0;
+  im2col_args.Upad = 0;
+  im2col_args.Dpad = 0;
   im2col_args.mod = 0;
   im2col_args.tile_start = 0;
   im2col_args.tile_h = W_out;
+  im2col_args.stride_h = 1;
+  im2col_args.stride_w = 1;
   im2col_args.DW = 1;
+  im2col_args.USE_DMA = 0;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
@@ -177,7 +192,7 @@ void pulp_conv_dw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_f
 
 
 
-void pulp_conv_dw_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer)
+void pulp_conv_dw_fp16_bw_input_grads_cl(	struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int Lpad,	int Rpad,	int Upad,	int Dpad,	fp16 * i2c_buffer, int opt_matmul_type)
 {
   struct matMul_DW_args_fp16 matMul_args;
   struct im2col_args_fp16 im2col_args;
@@ -206,11 +221,17 @@ void pulp_conv_dw_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_f
   im2col_args.c = coeff;
   im2col_args.output = output;
   im2col_args.pBuffer = i2c_buffer;
-  im2col_args.pad = pW-1; //1;
+  im2col_args.Lpad = 0; //Lpad;
+  im2col_args.Rpad = 0; //Rpad;
+  im2col_args.Upad = 0; //Upad;
+  im2col_args.Dpad = 0; //Dpad;
   im2col_args.mod = 1;
+  im2col_args.stride_h = 1;
+  im2col_args.stride_w = 1;
   im2col_args.DW = 1;
+  im2col_args.USE_DMA = 0;
   
-  if (H_in == pH) im2col_args.pad = 2;
+  //if (H_in == pH) im2col_args.pad = 2;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 

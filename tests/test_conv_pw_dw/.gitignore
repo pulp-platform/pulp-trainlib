@@ -11,3 +11,4 @@ step-check.h
 utils/GM_old.py
 README.md
 runs.txt
+utils/__pycache__/

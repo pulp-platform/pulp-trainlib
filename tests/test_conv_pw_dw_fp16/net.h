@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "pulp_train_defines.h"
 #include "step-check.h"
 
 // User profiling flags
@@ -37,8 +38,8 @@
 // Net sizes
 
 // SEPARABLE CONV
-#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+1)
-#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+1)
+#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+1+UPAD+DPAD)
+#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+1+LPAD+RPAD)
 #define Tout_C_l1   (Tin_C_l1)
 #define Tpad_l1     (0)
 #define stride_l1   (1)
@@ -68,9 +69,8 @@
 
 // Support functions
 static inline void forward();
-static inline void compare_tensors(float *A, float *B, int length);
-int check_tensor(float * tensor_out, float * tensor_ref, int size);
+static inline void compare_tensors(fp16 *A, fp16 *B, int length);
+int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size);
 static inline void train();
 // Main function
 void net_step ();
-

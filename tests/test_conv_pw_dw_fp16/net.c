@@ -86,9 +86,8 @@ PI_L1 fp16 l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
 
 #ifdef DW_FORWARD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = 0.4f;
-  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           if (i>=Tker_H_l1*Tker_W_l1) {l1_ker[i] = weight_init;}
-                                                                               else {l1_ker[i] = weight_init;}
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
+  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  0.0f;
 }
@@ -156,7 +155,7 @@ static inline void compute_memory_occupation() {
 
 #ifdef DW_BACKWARD_GRAD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = 0.4f;
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = 0.0f;
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
@@ -232,8 +231,7 @@ static inline void compute_memory_occupation() {
 #ifdef DW_BACKWARD_ERROR
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = 0.0f;
-  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           if (i>=Tker_H_l1*Tker_W_l1) {l1_ker[i] = weight_init;}
-                                                                               else {l1_ker[i] = weight_init;}
+  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //if (i>=Tker_H_l1*Tker_W_l1) {l1_ker[i] = weight_init;} else {l1_ker[i] = weight_init;}
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
 }
@@ -506,11 +504,11 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp16_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, im2col_buffer_bw);
+  pulp_conv_dw_fp16_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef PW_FORWARD
-  pulp_conv_pw_fp16_fw_cl(&layer1_out, &layer2_wgt, &layer2_out, Tpad_l2);
+  pulp_conv_pw_fp16_fw_cl(&layer1_out, &layer2_wgt, &layer2_out, Tpad_l2, MATMUL_TYPE);
   #endif
 }
 
@@ -570,7 +568,7 @@ static inline void train(){
   #endif
 
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp16_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1, im2col_buffer_bw);
+  pulp_conv_dw_fp16_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef PROF_DW_FWD
@@ -613,18 +611,20 @@ static inline void train(){
   #endif
 
   #ifdef DW_BACKWARD_GRAD
-  pulp_conv_dw_fp16_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1+1, im2col_buffer_bw);
+  pulp_conv_dw_fp16_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
 
   #ifdef DW_BACKWARD_ERROR
-  pulp_conv_dw_fp16_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, Tpad_l1+1, im2col_buffer_bw);
+  pulp_conv_dw_fp16_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
   #endif
+
 
   #ifdef PROF_DW_BKWD
   STOP_STATS();
   #endif
 
 
+  #ifdef CHECK_PRINT
 
   #ifdef DW_FORWARD
   printf("DW FORWARD CHECK: \n");
@@ -707,6 +707,8 @@ static inline void train(){
     if (!(index%Tin_H_l2)) printf("\n");
     printf("%f ", l2_in_diff[index]);
   }
+  #endif
+
   #endif
 }
 
