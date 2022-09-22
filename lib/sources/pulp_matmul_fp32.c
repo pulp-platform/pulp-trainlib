@@ -35,24 +35,24 @@ void mm(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int M = args->M;
-  const int K = args->K;
+  const uint32_t N = args->N;
+  const uint32_t M = args->M;
+  const uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  const int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > N ? N : start+blockSize;
+  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
     if (K == 1) 
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j];
           #ifdef DEBUG
@@ -63,12 +63,12 @@ void mm(void * void_args) {
     }
     else if (K > 0)
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           float temp = 0;
-          for (int k = 0; k < K; k++) 
+          for (uint32_t k = 0; k < K; k++) 
           {
                 temp += A[i*K+k] * B[j+k*M];
                 #ifdef DEBUG
@@ -86,9 +86,9 @@ void mm(void * void_args) {
   {
     if (K == 1) 
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j*K];
           #ifdef DEBUG
@@ -99,12 +99,12 @@ void mm(void * void_args) {
     }
     else if (K > 0)
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           float temp = 0;
-          for (int k = 0; k < K; k++) 
+          for (uint32_t k = 0; k < K; k++) 
           {
               temp += A[i*K+k] * B[k+j*K];
               #ifdef DEBUG
@@ -127,25 +127,25 @@ void mm_M(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int M = args->M;
-  const int K = args->K;
+  const uint32_t N = args->N;
+  const uint32_t M = args->M;
+  const uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  const int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > M ? M: start+blockSize;
+  const uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > M ? M: start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
-      for (int j=start; j < stop; j++) 
+      for (uint32_t j=start; j < stop; j++) 
       {
         float temp = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
               temp += A[i*K+k] * B[j+k*M];
               #ifdef DEBUG
@@ -160,12 +160,12 @@ void mm_M(void * void_args) {
   // =====> B IS TRANSPOSED <=====
   else 
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
-      for (int j=start; j < stop; j++) 
+      for (uint32_t j=start; j < stop; j++) 
       {
         float temp = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
               temp += A[i*K+k] * B[j*K+k];
               #ifdef DEBUG              
@@ -188,35 +188,35 @@ void mm_dw(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   #ifdef DEBUG
-  int num_MAC = 0;
+  uint32_t num_MAC = 0;
   #endif
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   #ifdef DEBUG
   float a = 0;
   float b = 0;
-  int idx_a = 0;
-  int idx_b = 0;
+  uint32_t idx_a = 0;
+  uint32_t idx_b = 0;
   #endif
 
-  for (int j = 0; j < M; j++) 
+  for (uint32_t j = 0; j < M; j++) 
   {
-    for (int k=start; k < stop; k++) 
+    for (uint32_t k=start; k < stop; k++) 
     {
       #ifdef DEBUG
         printf("\nCORE %d: start=%d, stop=%d\n", pi_core_id(), start, stop);
       #endif
       float temp = 0; 
-      for (int t = 0; t < ker_dim; t++) 
+      for (uint32_t t = 0; t < ker_dim; t++) 
       {
         #ifdef DEBUG
           // variables needed for debugging, remove to measure performances
@@ -252,27 +252,27 @@ void mm_dw_in_grad(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
   #ifdef DEBUG
-  int num_MAC = 0;
+  uint32_t num_MAC = 0;
   #endif
 
-  for (int i=0; i<N; i++) 
+  for (uint32_t i=0; i<N; i++) 
   {
-    for (int j=0; j<M; j++) 
+    for (uint32_t j=0; j<M; j++) 
     {
-      for (int k=start; k<stop; k++)
+      for (uint32_t k=start; k<stop; k++)
       {
         float temp = 0;
-        for (int u=0; u<ker_dim; u++) 
+        for (uint32_t u=0; u<ker_dim; u++) 
         {
           // In-order weights (A matrix)
           // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
@@ -304,30 +304,30 @@ void mm_conv2d_in_grad (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int K = args->K;
-  const int M = args->M;
+  const uint32_t N = args->N;
+  const uint32_t K = args->K;
+  const uint32_t M = args->M;
 
-  const int pW = args->pW;
-  const int pH = args->pH;
-  const int pCin = args->pCin;
-  const int pCout = args->pCout;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t pCin = args->pCin;
+  const uint32_t pCout = args->pCout;
 
-  const int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > M ? M : start+blockSize;
+  const uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
   // ALGORITHM
   // For each receptive field of the output on the weights
-  for (int rec_field = 0; rec_field < M; rec_field++) {
+  for (uint32_t rec_field = 0; rec_field < M; rec_field++) {
     // For each channel of the output
-    for (int Ci = 0; Ci < pCin; Ci++) {
+    for (uint32_t Ci = 0; Ci < pCin; Ci++) {
       // Multiply each receptive field for the corresponding
       // set of channels and accumulate on the input channel by channel
       float temp = 0;
       printf("\ntemp = 0\n");
-      for (int Co = 0; Co < pCout; Co++) {  
-        for (int elem = 0; elem < pW*pH; elem++) {
+      for (uint32_t Co = 0; Co < pCout; Co++) {  
+        for (uint32_t elem = 0; elem < pW*pH; elem++) {
           temp += A[pW*pH*pCin*Co+pW*pH*Ci+elem] * B[pH*pW*pCout*rec_field+pW*pH*Co+elem];
           //#ifdef DEBUG
           #if 1
@@ -355,29 +355,29 @@ void naive_conv2d_fw_kernel_CHW (void * void_args)
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outData = args->C;
 
-  const int H_in = args->H;
-  const int W_in = args->W;
-  const int pW = args->pW;
-  const int pH = args->pH;
-  const int C_in = args->pCin;
-  const int C_out = args->pCout;
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
 
-  const int H_out = H_in - pH + 1;
-  const int W_out = W_in - pW + 1;
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
 
-  const int blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > C_out ? C_out : start+blockSize;  
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
-  for (int co=start; co<stop; co++) {
-    for (int ho=0; ho<H_out; ho++) {
-      for (int wo=0; wo<W_out; wo++) {
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t ho=0; ho<H_out; ho++) {
+      for (uint32_t wo=0; wo<W_out; wo++) {
         //outData[wo+ho*W_out+co*H_out*W_out] = 0;
         float temp = 0;
         // Receptive field
-        for (int ci=0; ci<C_in; ci++) {
-          for (int hk=0; hk<pH; hk++) {
-            for (int wk=0; wk<pW; wk++) {
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
               //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
               temp += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
             }
@@ -399,27 +399,27 @@ void naive_conv2d_param_grad_kernel_CHW (void * void_args)
   float * __restrict__ coeffDiff = args->B;
   float * __restrict__ outDiff = args->C;
 
-  const int H_in = args->H;
-  const int W_in = args->W;
-  const int pW = args->pW;
-  const int pH = args->pH;
-  const int C_in = args->pCin;
-  const int C_out = args->pCout;
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
 
-  const int H_out = H_in - pH + 1;
-  const int W_out = W_in - pW + 1;
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
 
-  const int blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > C_out ? C_out : start+blockSize;  
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
-  for (int co=start; co<stop; co++) {
-    for (int hk=0; hk<pH; hk++) {
-      for (int wk=0; wk<pW; wk++) {
-        for (int ci=0; ci<C_in; ci++) {
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t hk=0; hk<pH; hk++) {
+      for (uint32_t wk=0; wk<pW; wk++) {
+        for (uint32_t ci=0; ci<C_in; ci++) {
           float temp = 0;
-          for (int ho=0; ho<H_out; ho++) {
-            for (int wo=0; wo<W_out; wo++) {
+          for (uint32_t ho=0; ho<H_out; ho++) {
+            for (uint32_t wo=0; wo<W_out; wo++) {
               temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in];
             }
           }
@@ -440,34 +440,34 @@ void naive_conv2d_in_grad_kernel_CHW (void * void_args)
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
 
-  const int H_in = args->H;
-  const int W_in = args->W;
-  const int pW = args->pW;
-  const int pH = args->pH;
-  const int C_in = args->pCin;
-  const int C_out = args->pCout;
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
 
-  const int H_out = H_in - pH + 1;
-  const int W_out = W_in - pW + 1;
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
 
-  const int blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > C_in ? C_in : start+blockSize;  
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
-  for (int ci=0; ci<C_in; ci++) {
-    for (int hi=0; hi<H_in; hi++) {
-      for (int wi=0; wi<W_in; wi++) {
+  for (uint32_t ci=0; ci<C_in; ci++) {
+    for (uint32_t hi=0; hi<H_in; hi++) {
+      for (uint32_t wi=0; wi<W_in; wi++) {
         float temp = 0;
-        for (int co=0; co<C_out; co++) {
-          for (int hk=0; hk<pH; hk++) {
-            for (int wk=0; wk<pW; wk++) {
+        for (uint32_t co=0; co<C_out; co++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
               // Coefficient to be loaded
               float coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
               // Padding conditions
               int ho = hi + hk - (pH-1);
               int wo = wi + wk - (pW-1);
               // Compute in grad partial product
-              if ((ho < 0) || (ho > H_out) || (wo < 0) || (wo > W_out))   temp += 0;
+              if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
               else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
             }
           }
@@ -497,25 +497,25 @@ void mm_u2 (void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
-    for (int i=start; i < stop; i++) 
+    for (uint32_t i=start; i < stop; i++) 
     {
-      for (int j = 0; j < M; j++) 
+      for (uint32_t j = 0; j < M; j++) 
       {
         float temp = 0;
-        for (int k = 0; k < (K & 0xfffffffe); k=k+2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe); k=k+2) 
         {
               temp += A[i*K+k]   * B[j+k*M];
               temp += A[i*K+k+1] * B[j+(k+1)*M];
@@ -526,9 +526,9 @@ void mm_u2 (void * void_args) {
     // Leftover on K
     if (K & 0x00000001)
     {
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<M; j++) 
+        for (uint32_t j=0; j<M; j++) 
         {
           C[i*M+j] += A[i*K+(K-1)] * B[j+(K-1)*M];
         }
@@ -539,12 +539,12 @@ void mm_u2 (void * void_args) {
   // =====> B IS TRANSPOSED <=====
   else 
   {
-    for (int i=start; i < stop; i++) 
+    for (uint32_t i=start; i < stop; i++) 
     {
-      for (int j = 0; j < M; j++) 
+      for (uint32_t j = 0; j < M; j++) 
       {
         float temp = 0;
-        for (int k = 0; k < (K & 0xfffffffe); k=k+2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe); k=k+2) 
         {
               temp += A[i*K+k]   * B[k+j*K];
               temp += A[i*K+k+1] * B[k+1+j*K];              
@@ -556,9 +556,9 @@ void mm_u2 (void * void_args) {
     // Leftover on K 
     if (K & 0x00000001)
     {
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<M; j++) 
+        for (uint32_t j=0; j<M; j++) 
         {
           C[i*M+j] += A[i*K+(K-1)] * B[(K-1)+j*K];
         }
@@ -576,14 +576,14 @@ void mm_unroll_1x2 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if (M < 2) { mm(args); }
@@ -593,16 +593,16 @@ void mm_unroll_1x2 (void * void_args)
     if (transp == 0) 
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1];
@@ -614,10 +614,10 @@ void mm_unroll_1x2 (void * void_args)
       // Leftover on M
       if (M & 0x00000001) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
           float temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp += A[i*K+k] * B[k*M+M-1];
           }
@@ -630,16 +630,16 @@ void mm_unroll_1x2 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K];
@@ -651,10 +651,10 @@ void mm_unroll_1x2 (void * void_args)
       // Leftover on M
       if (M & 0x00000001) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
           float temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp += A[i*K+k] * B[k+(M-1)*K];
           }
@@ -674,14 +674,14 @@ void mm_unroll_1x4 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if (M < 4) { mm_unroll_1x2(args); }
@@ -691,18 +691,18 @@ void mm_unroll_1x4 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1];
@@ -718,12 +718,12 @@ void mm_unroll_1x4 (void * void_args)
       // Leftover on M
       if (M & 0x00000003) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
-          for (int j=(M-(M & 0x00000003)); j<M; j++)
+          for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k*M+j];
             }
@@ -737,18 +737,18 @@ void mm_unroll_1x4 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K];
@@ -764,12 +764,12 @@ void mm_unroll_1x4 (void * void_args)
       // Leftover on M
       if (M & 0x00000003) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
-          for (int j=(M-(M & 0x00000003)); j<M; j++)
+          for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k+j*K];
             }
@@ -790,14 +790,14 @@ void mm_unroll_1x8 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if (M < 8) { mm_unroll_1x4(args); }
@@ -807,9 +807,9 @@ void mm_unroll_1x8 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffff8); j=j+8)
+        for (uint32_t j=0; j<(M & 0xfffffff8); j=j+8)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -820,9 +820,9 @@ void mm_unroll_1x8 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1];
@@ -846,12 +846,12 @@ void mm_unroll_1x8 (void * void_args)
       // Leftover on M
       if (M & 0x00000007) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
-          for (int j=(M-(M & 0x00000007)); j<M; j++)
+          for (uint32_t j=(M-(M & 0x00000007)); j<M; j++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k*M+j];
             }
@@ -865,9 +865,9 @@ void mm_unroll_1x8 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i++) 
+      for (uint32_t i=start; i<stop; i++) 
       {
-        for (int j=0; j<(M & 0xfffffff8); j=j+8)
+        for (uint32_t j=0; j<(M & 0xfffffff8); j=j+8)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -878,9 +878,9 @@ void mm_unroll_1x8 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K];
@@ -904,12 +904,12 @@ void mm_unroll_1x8 (void * void_args)
       // Leftover on M
       if (M & 0x00000007) 
       {
-        for (int i=start; i<stop; i++) 
+        for (uint32_t i=start; i<stop; i++) 
         {
-          for (int j=(M-(M & 0x00000007)); j<M; j++)
+          for (uint32_t j=(M-(M & 0x00000007)); j<M; j++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k+j*K];
             }
@@ -931,18 +931,18 @@ void mm_unroll_2x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t transp = args->trans_B;
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if ((N_par/NUM_CORES) < 2) { mm(args); }
@@ -951,16 +951,16 @@ void mm_unroll_2x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp==0) 
     {
-      for (int i=start; i<stop; i=i+2)
+      for (uint32_t i=start; i<stop; i=i+2)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k*M+j];
             temp0     += A[idx]   * Bsh;
             temp1     += A[idx+K] * Bsh;
@@ -972,16 +972,16 @@ void mm_unroll_2x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int jj=j_start; jj<j_stop; jj++)
+        for (uint32_t jj=j_start; jj<j_stop; jj++)
         {
-          for (int ii=N-N_left; ii<N; ii++)
+          for (uint32_t ii=N-N_left; ii<N; ii++)
           {
             float temp = 0;
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               temp += A[ii*K+kk] * B[kk*M+jj];
             }
@@ -994,16 +994,16 @@ void mm_unroll_2x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int i=start; i<stop; i=i+2)
+      for (uint32_t i=start; i<stop; i=i+2)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k+j*K];
             temp0     += A[idx]   * Bsh;
             temp1     += A[idx+K] * Bsh;
@@ -1015,16 +1015,16 @@ void mm_unroll_2x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int jj=j_start; jj<j_stop; jj++)
+        for (uint32_t jj=j_start; jj<j_stop; jj++)
         {
-          for (int ii=N-N_left; ii<N; ii++)
+          for (uint32_t ii=N-N_left; ii<N; ii++)
           {
             float temp = 0;
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               temp += A[ii*K+kk] * B[kk+jj*K];
             }
@@ -1046,18 +1046,18 @@ void mm_unroll_4x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
-  int N_par = N & 0xfffffffc;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t transp = args->trans_B;
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if ((N_par/NUM_CORES) < 4) { mm_unroll_2x1(args); }
@@ -1066,18 +1066,18 @@ void mm_unroll_4x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp==0) 
     {
-      for (int i=start; i<stop; i=i+4)
+      for (uint32_t i=start; i<stop; i=i+4)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k*M+j];
             temp0     += A[idx]     * Bsh;
             temp1     += A[idx+K]   * Bsh;
@@ -1093,16 +1093,16 @@ void mm_unroll_4x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k*M+j];
             }
@@ -1115,18 +1115,18 @@ void mm_unroll_4x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int i=start; i<stop; i=i+4)
+      for (uint32_t i=start; i<stop; i=i+4)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k+j*K];
             temp0 += A[idx]     * Bsh;
             temp1 += A[idx+K]   * Bsh;
@@ -1142,16 +1142,16 @@ void mm_unroll_4x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k+j*K];
             }
@@ -1173,18 +1173,18 @@ void mm_unroll_8x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
-  int N_par = N & 0xfffffff8;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t transp = args->trans_B;
+  uint32_t N_par = N & 0xfffffff8;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if ((N_par/NUM_CORES) < 8) { mm_unroll_4x1(args); }
@@ -1193,9 +1193,9 @@ void mm_unroll_8x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp==0) 
     {
-      for (int i=start; i<stop; i=i+8)
+      for (uint32_t i=start; i<stop; i=i+8)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -1206,9 +1206,9 @@ void mm_unroll_8x1 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k*M+j];
             temp0     += A[idx]     * Bsh;
             temp1     += A[idx+K]   * Bsh;
@@ -1232,16 +1232,16 @@ void mm_unroll_8x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k*M+j];
             }
@@ -1254,9 +1254,9 @@ void mm_unroll_8x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int i=start; i<stop; i=i+8)
+      for (uint32_t i=start; i<stop; i=i+8)
       {
-        for (int j=0; j<M; j++)
+        for (uint32_t j=0; j<M; j++)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -1267,9 +1267,9 @@ void mm_unroll_8x1 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             float Bsh = B[k+j*K];
             temp0     += A[idx]     * Bsh;
             temp1     += A[idx+K]   * Bsh;
@@ -1293,16 +1293,16 @@ void mm_unroll_8x1 (void * void_args)
       // Leftover on N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;       
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp += A[i*K+k] * B[k+j*K];
             }
@@ -1323,18 +1323,18 @@ void mm_unroll_2x2 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -1350,18 +1350,18 @@ void mm_unroll_2x2 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+2) 
+      for (uint32_t i=start; i<stop; i=i+2) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           temp0 = 0;
           temp1 = 0;
           temp2 = 0;
           temp3 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1381,10 +1381,10 @@ void mm_unroll_2x2 (void * void_args)
         // Leftover in M
         if (M & 0x00000001) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[ii*K+k] * B[k*M+(M-1)];
             }
@@ -1396,14 +1396,14 @@ void mm_unroll_2x2 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
           float temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j+k*M];
           }
@@ -1416,18 +1416,18 @@ void mm_unroll_2x2 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+2) 
+      for (uint32_t i=start; i<stop; i=i+2) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           temp0 = 0;
           temp1 = 0;
           temp2 = 0;
           temp3 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1447,10 +1447,10 @@ void mm_unroll_2x2 (void * void_args)
         // Leftover in M
         if (M & 0x00000001) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[ii*K+k] * B[k+(M-1)*K];
             }
@@ -1462,14 +1462,14 @@ void mm_unroll_2x2 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
           float temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j*K+k];
           }
@@ -1489,18 +1489,18 @@ void mm_unroll_2x4 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -1521,9 +1521,9 @@ void mm_unroll_2x4 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+2) 
+      for (uint32_t i=start; i<stop; i=i+2) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           temp0 = 0;
           temp1 = 0;
@@ -1534,9 +1534,9 @@ void mm_unroll_2x4 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1566,12 +1566,12 @@ void mm_unroll_2x4 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k*M+j];
               }
@@ -1584,14 +1584,14 @@ void mm_unroll_2x4 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
           float temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j+k*M];
           }
@@ -1604,9 +1604,9 @@ void mm_unroll_2x4 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+2) 
+      for (uint32_t i=start; i<stop; i=i+2) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           temp0 = 0;
           temp1 = 0;
@@ -1617,9 +1617,9 @@ void mm_unroll_2x4 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1649,12 +1649,12 @@ void mm_unroll_2x4 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k+j*K];
               }
@@ -1667,14 +1667,14 @@ void mm_unroll_2x4 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
           float temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j*K+k];
           }
@@ -1694,18 +1694,18 @@ void mm_unroll_4x2 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffc;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -1726,9 +1726,9 @@ void mm_unroll_4x2 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+4) 
+      for (uint32_t i=start; i<stop; i=i+4) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           temp0 = 0;
           temp1 = 0;
@@ -1739,9 +1739,9 @@ void mm_unroll_4x2 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1773,12 +1773,12 @@ void mm_unroll_4x2 (void * void_args)
         // Leftover in M
         if (M & 0x00000001) 
         {
-          for (int ii=i; ii<i+4; ii++) 
+          for (uint32_t ii=i; ii<i+4; ii++) 
           {
-            for (int j=(M-(M & 0x00000001)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000001)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k*M+j];
               }
@@ -1791,16 +1791,16 @@ void mm_unroll_4x2 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=N-N_left; i<N; i++)
+          for (uint32_t i=N-N_left; i<N; i++)
           {
             float temp_left = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp_left += A[i*K+k] * B[j+k*M];
             }
@@ -1814,9 +1814,9 @@ void mm_unroll_4x2 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+4) 
+      for (uint32_t i=start; i<stop; i=i+4) 
       {
-        for (int j=0; j<(M & 0xfffffffe); j=j+2)
+        for (uint32_t j=0; j<(M & 0xfffffffe); j=j+2)
         {
           temp0 = 0;
           temp1 = 0;
@@ -1827,9 +1827,9 @@ void mm_unroll_4x2 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -1861,12 +1861,12 @@ void mm_unroll_4x2 (void * void_args)
         // Leftover in M
         if (M & 0x00000001) 
         {
-          for (int ii=i; ii<i+4; ii++) 
+          for (uint32_t ii=i; ii<i+4; ii++) 
           {
-            for (int j=(M-(M & 0x00000001)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000001)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k+j*K];
               }
@@ -1879,16 +1879,16 @@ void mm_unroll_4x2 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
-          for (int i=N-N_left; i<N; i++)
+          for (uint32_t i=N-N_left; i<N; i++)
           {  
             float temp_left = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp_left += A[i*K+k] * B[j*K+k];
             }
@@ -1909,18 +1909,18 @@ void mm_unroll_4x4 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffc;
-  int N_left = N - N_par;
-  int core_id = pi_core_id();
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > N_par ? N_par : start+blockSize;
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;  float temp8   = 0;
@@ -1942,9 +1942,9 @@ void mm_unroll_4x4 (void * void_args)
     if (transp == 0)
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+4) 
+      for (uint32_t i=start; i<stop; i=i+4) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           temp0 = 0;  temp8   = 0;
           temp1 = 0;  temp9   = 0;
@@ -1955,9 +1955,9 @@ void mm_unroll_4x4 (void * void_args)
           temp6 = 0;  temp14  = 0;
           temp7 = 0;  temp15  = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k*M+j;
+            uint32_t idx   = k*M+j;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -2007,12 +2007,12 @@ void mm_unroll_4x4 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+4; ii++) 
+          for (uint32_t ii=i; ii<i+4; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k*M+j];
               }
@@ -2025,16 +2025,16 @@ void mm_unroll_4x4 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int i=N-N_left; i<N; i++)
+        for (uint32_t i=N-N_left; i<N; i++)
         {
-          for (int j=j_start; j<j_stop; j++)
+          for (uint32_t j=j_start; j<j_stop; j++)
           {
             float temp_left = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp_left += A[i*K+k] * B[j+k*M];
             }
@@ -2048,9 +2048,9 @@ void mm_unroll_4x4 (void * void_args)
     else 
     {
       // Unrolled core
-      for (int i=start; i<stop; i=i+4) 
+      for (uint32_t i=start; i<stop; i=i+4) 
       {
-        for (int j=0; j<(M & 0xfffffffc); j=j+4)
+        for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
           temp0 = 0;  temp8   = 0;
           temp1 = 0;  temp9   = 0;
@@ -2061,9 +2061,9 @@ void mm_unroll_4x4 (void * void_args)
           temp6 = 0;  temp14  = 0;
           temp7 = 0;  temp15  = 0;
 
-          for (int k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++) 
           {
-            int idx   = k+j*K;
+            uint32_t idx   = k+j*K;
             // First A row
             float Ash = A[i*K+k];
             float Ba  = B[idx];
@@ -2113,12 +2113,12 @@ void mm_unroll_4x4 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+4; ii++) 
+          for (uint32_t ii=i; ii<i+4; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k+j*K];
               }
@@ -2131,16 +2131,16 @@ void mm_unroll_4x4 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int i=N-N_left; i<N; i++)
+        for (uint32_t i=N-N_left; i<N; i++)
         {
-          for (int j=j_start; j<j_stop; j++)
+          for (uint32_t j=j_start; j<j_stop; j++)
           {
             float temp_left = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               temp_left += A[i*K+k] * B[j*K+k];
             }
@@ -2170,25 +2170,25 @@ void mm_M_u2 (void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > M ? M : start+blockSize;
+  uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
-      for (int j = start; j < stop; j++) 
+      for (uint32_t j = start; j < stop; j++) 
       {
         float temp = 0;
-        for (int k = 0; k < (K & 0xfffffffe); k=k+2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe); k=k+2) 
         {
               temp += A[i*K+k]   * B[j+k*M];
               temp += A[i*K+k+1] * B[j+(k+1)*M];
@@ -2202,8 +2202,8 @@ void mm_M_u2 (void * void_args) {
 
     // Leftover on K
     if (K & 0x00000001)
-    for (int i=0; i<N; i++) {
-      for (int j=start; j<stop; j++) {
+    for (uint32_t i=0; i<N; i++) {
+      for (uint32_t j=start; j<stop; j++) {
         C[i*M+j] += A[i*K+(K-1)] * B[j+(K-1)*M];
       }
     }
@@ -2212,12 +2212,12 @@ void mm_M_u2 (void * void_args) {
   // =====> B IS TRANSPOSED <=====
   else 
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
       float temp = 0;
-      for (int j = start; j < stop; j++) 
+      for (uint32_t j = start; j < stop; j++) 
       {
-        for (int k = 0; k < (K & 0xfffffffe); k=k+2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe); k=k+2) 
         {
               temp += A[i*K+k]   * B[k+j*K];
               temp += A[i*K+k+1] * B[k+1+j*K];
@@ -2231,8 +2231,8 @@ void mm_M_u2 (void * void_args) {
 
     // Leftover on K 
     if (K & 0x00000001)
-    for (int i=0; i<N; i++) {
-      for (int j=start; j<stop; j++) {
+    for (uint32_t i=0; i<N; i++) {
+      for (uint32_t j=start; j<stop; j++) {
         C[i*M+j] += A[i*K+(K-1)] * B[(K-1)+j*K];
       }
     }
@@ -2249,17 +2249,17 @@ void mm_M_unroll_2x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > M ? M : start+blockSize;
+  uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
    // Check if sizes are smaller than the unrolling, and take countermeasures
   if      (N < 2) { mm_M(args); }
@@ -2268,18 +2268,18 @@ void mm_M_unroll_2x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0) 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffffe); i=i+2)
+        for (uint32_t i=0; i<(N & 0xfffffffe); i=i+2)
         {
           float temp0 = 0;
           float temp1 = 0;
           
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j+k*M];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
           }
@@ -2290,10 +2290,10 @@ void mm_M_unroll_2x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
           float temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           { 
             temp += A[(N-1)*K+k] * B[j+k*M];
           }
@@ -2305,18 +2305,18 @@ void mm_M_unroll_2x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffffe); i=i+2)
+        for (uint32_t i=0; i<(N & 0xfffffffe); i=i+2)
         {
           float temp0 = 0;
           float temp1 = 0;
           
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j*K+k];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
           }
@@ -2327,10 +2327,10 @@ void mm_M_unroll_2x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
           float temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           { 
             temp += A[(N-1)*K+k] * B[j*K+k];
           }
@@ -2350,17 +2350,17 @@ void mm_M_unroll_4x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffffc;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > M ? M : start+blockSize;
+  uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
    // Check if sizes are smaller than the unrolling, and take countermeasures
   if      (N < 4) { mm_M_unroll_2x1(args); }
@@ -2369,22 +2369,22 @@ void mm_M_unroll_4x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0) 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffffc); i=i+4)
+        for (uint32_t i=0; i<(N & 0xfffffffc); i=i+4)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
           
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j+k*M];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
-            int idx2 = (i+2)*K+k;
-            int idx3 = (i+3)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
+            uint32_t idx2 = (i+2)*K+k;
+            uint32_t idx3 = (i+3)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
             temp2 += A[idx2] * Bsh;
@@ -2399,12 +2399,12 @@ void mm_M_unroll_4x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
-          for (int i=(N-N_left); i<N; i++) 
+          for (uint32_t i=(N-N_left); i<N; i++) 
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             { 
               temp += A[i*K+k] * B[j+k*M];
             }
@@ -2417,22 +2417,22 @@ void mm_M_unroll_4x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffffc); i=i+4)
+        for (uint32_t i=0; i<(N & 0xfffffffc); i=i+4)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j*K+k];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
-            int idx2 = (i+2)*K+k;
-            int idx3 = (i+3)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
+            uint32_t idx2 = (i+2)*K+k;
+            uint32_t idx3 = (i+3)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
             temp2 += A[idx2] * Bsh;
@@ -2447,12 +2447,12 @@ void mm_M_unroll_4x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             { 
               temp += A[i*K+k] * B[j*K+k];
             }
@@ -2473,17 +2473,17 @@ void mm_M_unroll_8x1 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int N_par = N & 0xfffffff8;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffff8;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > M ? M : start+blockSize;
+  uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
    // Check if sizes are smaller than the unrolling, and take countermeasures
   if      (N < 8) { mm_M_unroll_4x1(args); }
@@ -2492,9 +2492,9 @@ void mm_M_unroll_8x1 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0) 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffff8); i=i+8)
+        for (uint32_t i=0; i<(N & 0xfffffff8); i=i+8)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -2505,17 +2505,17 @@ void mm_M_unroll_8x1 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
           
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j+k*M];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
-            int idx2 = (i+2)*K+k;
-            int idx3 = (i+3)*K+k;
-            int idx4 = (i+4)*K+k;
-            int idx5 = (i+5)*K+k;
-            int idx6 = (i+6)*K+k;
-            int idx7 = (i+7)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
+            uint32_t idx2 = (i+2)*K+k;
+            uint32_t idx3 = (i+3)*K+k;
+            uint32_t idx4 = (i+4)*K+k;
+            uint32_t idx5 = (i+5)*K+k;
+            uint32_t idx6 = (i+6)*K+k;
+            uint32_t idx7 = (i+7)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
             temp2 += A[idx2] * Bsh;
@@ -2538,12 +2538,12 @@ void mm_M_unroll_8x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
-          for (int i=(N-N_left); i<N; i++) 
+          for (uint32_t i=(N-N_left); i<N; i++) 
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             { 
               temp += A[i*K+k] * B[j+k*M];
             }
@@ -2556,9 +2556,9 @@ void mm_M_unroll_8x1 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j++)
+      for (uint32_t j=start; j<stop; j++)
       {
-        for (int i=0; i<(N & 0xfffffff8); i=i+8)
+        for (uint32_t i=0; i<(N & 0xfffffff8); i=i+8)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -2569,17 +2569,17 @@ void mm_M_unroll_8x1 (void * void_args)
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j*K+k];
-            int idx0 = i*K+k;
-            int idx1 = (i+1)*K+k;
-            int idx2 = (i+2)*K+k;
-            int idx3 = (i+3)*K+k;
-            int idx4 = (i+4)*K+k;
-            int idx5 = (i+5)*K+k;
-            int idx6 = (i+6)*K+k;
-            int idx7 = (i+7)*K+k;
+            uint32_t idx0 = i*K+k;
+            uint32_t idx1 = (i+1)*K+k;
+            uint32_t idx2 = (i+2)*K+k;
+            uint32_t idx3 = (i+3)*K+k;
+            uint32_t idx4 = (i+4)*K+k;
+            uint32_t idx5 = (i+5)*K+k;
+            uint32_t idx6 = (i+6)*K+k;
+            uint32_t idx7 = (i+7)*K+k;
             temp0 += A[idx0] * Bsh;
             temp1 += A[idx1] * Bsh;
             temp2 += A[idx2] * Bsh;
@@ -2602,12 +2602,12 @@ void mm_M_unroll_8x1 (void * void_args)
       // Leftover on N
       if (N_left > 0)
       {
-        for (int j=start; j<stop; j++) 
+        for (uint32_t j=start; j<stop; j++) 
         {
-          for (int i=(N-N_left); i<N; i++)
+          for (uint32_t i=(N-N_left); i<N; i++)
           {
             float temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             { 
               temp += A[i*K+k] * B[j*K+k];
             }
@@ -2628,19 +2628,19 @@ void mm_M_unroll_1x2 (void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffe;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffe;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par: start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par: start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if      ((M_par/NUM_CORES) < 2) { mm_M(args); }
@@ -2649,16 +2649,16 @@ void mm_M_unroll_1x2 (void * void_args) {
     // =====> B NOT TRANSPOSED <=====
     if (transp==0)
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j+k*M;
+            uint32_t idx   = j+k*M;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1]; 
@@ -2670,17 +2670,17 @@ void mm_M_unroll_1x2 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;   
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;   
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++) 
+          for (uint32_t jj=M-M_left; jj<M; jj++) 
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj+kk*M];
             }
@@ -2693,16 +2693,16 @@ void mm_M_unroll_1x2 (void * void_args) {
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j*K+k;
+            uint32_t idx   = j*K+k;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K]; 
@@ -2714,17 +2714,17 @@ void mm_M_unroll_1x2 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;      
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;      
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++)
+          for (uint32_t jj=M-M_left; jj<M; jj++)
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj*K+kk];
             }
@@ -2745,19 +2745,19 @@ void mm_M_unroll_1x4 (void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffc;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffc;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par: start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par: start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if      ((M_par/NUM_CORES) < 4) { mm_M_unroll_1x2(args); }
@@ -2766,18 +2766,18 @@ void mm_M_unroll_1x4 (void * void_args) {
     // =====> B NOT TRANSPOSED <=====
     if (transp==0)
     {
-      for (int j=start; j<stop; j=j+4)
+      for (uint32_t j=start; j<stop; j=j+4)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j+k*M;
+            uint32_t idx   = j+k*M;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1];
@@ -2793,17 +2793,17 @@ void mm_M_unroll_1x4 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;      
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;      
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++)
+          for (uint32_t jj=M-M_left; jj<M; jj++)
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj+kk*M];
             }
@@ -2816,16 +2816,16 @@ void mm_M_unroll_1x4 (void * void_args) {
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j*K+k;
+            uint32_t idx   = j*K+k;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K]; 
@@ -2837,17 +2837,17 @@ void mm_M_unroll_1x4 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;      
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;      
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++)
+          for (uint32_t jj=M-M_left; jj<M; jj++)
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj*K+kk];
             }
@@ -2868,19 +2868,19 @@ void mm_M_unroll_1x8 (void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffff8;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffff8;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par: start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par: start+blockSize;
 
   // Check if sizes are smaller than the unrolling, and take countermeasures
   if      ((M_par/NUM_CORES) < 8) { mm_M_unroll_1x4(args); }
@@ -2889,9 +2889,9 @@ void mm_M_unroll_1x8 (void * void_args) {
     // =====> B NOT TRANSPOSED <=====
     if (transp==0)
     {
-      for (int j=start; j<stop; j=j+8)
+      for (uint32_t j=start; j<stop; j=j+8)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -2902,9 +2902,9 @@ void mm_M_unroll_1x8 (void * void_args) {
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j+k*M;
+            uint32_t idx   = j+k*M;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+1];
@@ -2928,17 +2928,17 @@ void mm_M_unroll_1x8 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;      
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;      
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++)
+          for (uint32_t jj=M-M_left; jj<M; jj++)
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj+kk*M];
             }
@@ -2951,9 +2951,9 @@ void mm_M_unroll_1x8 (void * void_args) {
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+8)
+      for (uint32_t j=start; j<stop; j=j+8)
       {
-        for (int i=0; i<N; i++)
+        for (uint32_t i=0; i<N; i++)
         {
           float temp0 = 0;
           float temp1 = 0;
@@ -2964,9 +2964,9 @@ void mm_M_unroll_1x8 (void * void_args) {
           float temp6 = 0;
           float temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = j*K+k;
+            uint32_t idx   = j*K+k;
             float Ash = A[i*K+k];
             temp0     += Ash * B[idx];
             temp1     += Ash * B[idx+K];
@@ -2990,17 +2990,17 @@ void mm_M_unroll_1x8 (void * void_args) {
       // Leftover in M (parallel in N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;      
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;      
 
-        for (int ii=i_start; ii<i_stop; ii++)
+        for (uint32_t ii=i_start; ii<i_stop; ii++)
         {
-          for (int jj=M-M_left; jj<M; jj++)
+          for (uint32_t jj=M-M_left; jj<M; jj++)
           {
             float left_temp = 0;
 
-            for (int kk=0; kk<K; kk++)
+            for (uint32_t kk=0; kk<K; kk++)
             {
               left_temp += A[ii*K+kk] * B[jj*K+kk];
             }
@@ -3021,21 +3021,21 @@ void mm_M_unroll_2x2 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffe;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffe;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par : start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -3050,18 +3050,18 @@ void mm_M_unroll_2x2 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0)
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<(N & 0xfffffffe); i=i+2)
+        for (uint32_t i=0; i<(N & 0xfffffffe); i=i+2)
         {
           temp0 = 0;
           temp1 = 0;
           temp2 = 0;
           temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B column
             float Bsh = B[j+k*M];
             float Aa  = A[idx];
@@ -3081,10 +3081,10 @@ void mm_M_unroll_2x2 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+2; jj++)
+          for (uint32_t jj=j; jj<j+2; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj+k*M];
             }
@@ -3096,15 +3096,15 @@ void mm_M_unroll_2x2 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
           float left_temp = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             left_temp += A[i*K+k] * B[(M-1)+k*M];
           }
@@ -3116,18 +3116,18 @@ void mm_M_unroll_2x2 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N_par; i=i+2)
+        for (uint32_t i=0; i<N_par; i=i+2)
         {
           temp0 = 0;
           temp1 = 0;
           temp2 = 0;
           temp3 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B column
             float Bsh = B[j*K+k];
             float Aa  = A[idx];
@@ -3147,10 +3147,10 @@ void mm_M_unroll_2x2 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+2; jj++)
+          for (uint32_t jj=j; jj<j+2; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj*K+k];
             }
@@ -3162,15 +3162,15 @@ void mm_M_unroll_2x2 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
           float left_temp = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             left_temp += A[i*K+k] * B[(M-1)*K+k];
           }
@@ -3190,21 +3190,21 @@ void mm_M_unroll_4x2 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffe;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffe;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int N_par = N & 0xfffffffc;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par : start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -3224,9 +3224,9 @@ void mm_M_unroll_4x2 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0)
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N_par; i=i+4)
+        for (uint32_t i=0; i<N_par; i=i+4)
         {
           temp0 = 0;
           temp1 = 0;
@@ -3237,10 +3237,10 @@ void mm_M_unroll_4x2 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j+k*M];
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             temp0 += A[idx]     * Bsh;
             temp1 += A[idx+K]   * Bsh;
             temp2 += A[idx+2*K] * Bsh;
@@ -3264,12 +3264,12 @@ void mm_M_unroll_4x2 (void * void_args)
         // Leftover on N
         if (N & 0x00000003)
         {
-          for (int jj=j; jj<j+2; jj++)
+          for (uint32_t jj=j; jj<j+2; jj++)
           {
-            for (int i=(N-(N & 0x00000003)); i<N; i++)
+            for (uint32_t i=(N-(N & 0x00000003)); i<N; i++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[i*K+k] * B[jj+k*M];
               }
@@ -3282,14 +3282,14 @@ void mm_M_unroll_4x2 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
           float left_temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             left_temp += A[i*K+k] * B[(M-1)+k*M];
           }
@@ -3301,9 +3301,9 @@ void mm_M_unroll_4x2 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+2)
+      for (uint32_t j=start; j<stop; j=j+2)
       {
-        for (int i=0; i<N_par; i=i+4)
+        for (uint32_t i=0; i<N_par; i=i+4)
         {
           temp0 = 0;
           temp1 = 0;
@@ -3314,10 +3314,10 @@ void mm_M_unroll_4x2 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             float Bsh = B[j*K+k];
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             temp0 += A[idx]     * Bsh;
             temp1 += A[idx+K]   * Bsh;
             temp2 += A[idx+2*K] * Bsh;
@@ -3341,12 +3341,12 @@ void mm_M_unroll_4x2 (void * void_args)
         // Leftover on N
         if (N & 0x00000003)
         {
-          for (int jj=j; jj<j+2; jj++)
+          for (uint32_t jj=j; jj<j+2; jj++)
           {
-            for (int i=(N-(N & 0x00000003)); i<N; i++)
+            for (uint32_t i=(N-(N & 0x00000003)); i<N; i++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[i*K+k] * B[jj*K+k];
               }
@@ -3359,14 +3359,14 @@ void mm_M_unroll_4x2 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
           float left_temp = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             left_temp += A[i*K+k] * B[(M-1)*K+k];
           }
@@ -3386,21 +3386,21 @@ void mm_M_unroll_2x4 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffc;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffc;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par : start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;
@@ -3420,9 +3420,9 @@ void mm_M_unroll_2x4 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0)
     {
-      for (int j=start; j<stop; j=j+4)
+      for (uint32_t j=start; j<stop; j=j+4)
       {
-        for (int i=0; i<N_par; i=i+2)
+        for (uint32_t i=0; i<N_par; i=i+2)
         {
           temp0 = 0;
           temp1 = 0;
@@ -3433,9 +3433,9 @@ void mm_M_unroll_2x4 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B column
             float Bsh = B[j+k*M];
             float Aa  = A[idx];
@@ -3467,10 +3467,10 @@ void mm_M_unroll_2x4 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj+k*M];
             }
@@ -3482,16 +3482,16 @@ void mm_M_unroll_2x4 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
-          for (int j=M-M_left; j<M; j++)
+          for (uint32_t j=M-M_left; j<M; j++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j+k*M];
             }
@@ -3504,9 +3504,9 @@ void mm_M_unroll_2x4 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+4)
+      for (uint32_t j=start; j<stop; j=j+4)
       {
-        for (int i=0; i<N_par; i=i+2)
+        for (uint32_t i=0; i<N_par; i=i+2)
         {
           temp0 = 0;
           temp1 = 0;
@@ -3517,9 +3517,9 @@ void mm_M_unroll_2x4 (void * void_args)
           temp6 = 0;
           temp7 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B row
             float Bsh = B[j*K+k];
             float Aa  = A[idx];
@@ -3551,10 +3551,10 @@ void mm_M_unroll_2x4 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj*K+k];
             }
@@ -3566,16 +3566,16 @@ void mm_M_unroll_2x4 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
-          for (int j=M-M_left; j<M; j++)
+          for (uint32_t j=M-M_left; j<M; j++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j*K+k];
             }
@@ -3596,18 +3596,18 @@ void mm_M_unroll_4x4 (void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int transp = args->trans_B;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
 
-  int M_par = M & 0xfffffffc;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffc;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-  int start = core_id*blockSize;
-  int stop = start+blockSize > M_par ? M_par : start+blockSize;
+  uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > M_par ? M_par : start+blockSize;
 
   // Global accumulators
   float temp0 = 0;  float temp8  = 0;
@@ -3628,9 +3628,9 @@ void mm_M_unroll_4x4 (void * void_args)
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0)
     {
-      for (int j=start; j<stop; j=j+4)
+      for (uint32_t j=start; j<stop; j=j+4)
       {
-        for (int i=0; i<(N & 0xfffffffc); i=i+4)
+        for (uint32_t i=0; i<(N & 0xfffffffc); i=i+4)
         {
           temp0 = 0;  temp8  = 0;
           temp1 = 0;  temp9  = 0;
@@ -3641,9 +3641,9 @@ void mm_M_unroll_4x4 (void * void_args)
           temp6 = 0;  temp14 = 0;
           temp7 = 0;  temp15 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B colums
             float Bsh = B[j+k*M];
             float Aa  = A[idx];
@@ -3693,12 +3693,12 @@ void mm_M_unroll_4x4 (void * void_args)
         // Leftover on N
         if (N & 0x00000003)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
-            for (int i=(N-(N & 0x00000003)); i<N; i++)
+            for (uint32_t i=(N-(N & 0x00000003)); i<N; i++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[i*K+k] * B[jj+k*M];
               }
@@ -3711,16 +3711,16 @@ void mm_M_unroll_4x4 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int j=(M-M_left); j<M; j++)
+        for (uint32_t j=(M-M_left); j<M; j++)
         {
-          for (int i=i_start; i<i_stop; i++)
+          for (uint32_t i=i_start; i<i_stop; i++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j+k*M];
             }
@@ -3733,9 +3733,9 @@ void mm_M_unroll_4x4 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else 
     {
-      for (int j=start; j<stop; j=j+4)
+      for (uint32_t j=start; j<stop; j=j+4)
       {
-        for (int i=0; i<(N & 0xfffffffc); i=i+4)
+        for (uint32_t i=0; i<(N & 0xfffffffc); i=i+4)
         {
           temp0 = 0;  temp8  = 0;
           temp1 = 0;  temp9  = 0;
@@ -3746,9 +3746,9 @@ void mm_M_unroll_4x4 (void * void_args)
           temp6 = 0;  temp14 = 0;
           temp7 = 0;  temp15 = 0;
 
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
-            int idx   = i*K+k;
+            uint32_t idx   = i*K+k;
             // First B row
             float Bsh = B[j*K+k];
             float Aa  = A[idx];
@@ -3798,12 +3798,12 @@ void mm_M_unroll_4x4 (void * void_args)
         // Leftover on N
         if (N & 0x00000003)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
-            for (int i=(N-(N & 0x00000003)); i<N; i++)
+            for (uint32_t i=(N-(N & 0x00000003)); i<N; i++)
             {
               float left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[i*K+k] * B[jj*K+k];
               }
@@ -3816,16 +3816,16 @@ void mm_M_unroll_4x4 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int j=M-M_left; j<M; j++)
+        for (uint32_t j=M-M_left; j<M; j++)
         {
-          for (int i=i_start; i<i_stop; i++)
+          for (uint32_t i=i_start; i<i_stop; i++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j*K+k];
             }
@@ -3861,30 +3861,30 @@ void mm_dw_u2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if (ker_dim < 2) { mm_dw(args); }
   else
   {
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
     float a = 0;
     float b = 0;
-    int idx_a = 0;
-    int idx_b = 0;
+    uint32_t idx_a = 0;
+    uint32_t idx_b = 0;
 
-    for (int i = 0; i < 1; i++) {  
-      for (int j = 0; j < M; j++) {
-        for (int k=start; k < stop; k++) {
+    for (uint32_t i = 0; i < 1; i++) {  
+      for (uint32_t j = 0; j < M; j++) {
+        for (uint32_t k=start; k < stop; k++) {
           float temp = 0;
-          for (int t = 0; t < (ker_dim & 0xfffffffe); t=t+2) {
+          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t=t+2) {
               temp += A[i*K+(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
               temp += A[i*K+(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];            
           }
@@ -3909,30 +3909,30 @@ void mm_dw_u3(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if (ker_dim < 3) { mm_dw(args); }
   else
   {
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
     float a = 0;
     float b = 0;
-    int idx_a = 0;
-    int idx_b = 0;
+    uint32_t idx_a = 0;
+    uint32_t idx_b = 0;
 
-    for (int i = 0; i < 1; i++) {  
-      for (int j = 0; j < M; j++) {
-        for (int k=start; k < stop; k++) {
+    for (uint32_t i = 0; i < 1; i++) {  
+      for (uint32_t j = 0; j < M; j++) {
+        for (uint32_t k=start; k < stop; k++) {
           float temp = 0;
-          for (int t = 0; t < (ker_dim & 0xfffffffd); t=t+3) {
+          for (uint32_t t = 0; t < (ker_dim & 0xfffffffd); t=t+3) {
               temp += A[i*K+(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
               temp += A[i*K+(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
               temp += A[i*K+(k*ker_dim+t+2)] * B[j*(N*ker_dim)+(k*ker_dim+t+2)];
@@ -3964,29 +3964,29 @@ void mm_dw_unroll_1x2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int ker_dim = args->ker_size;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if (M < 2) { mm_dw(args); }
   else 
   {
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-      for (int j = 0; j < (M & 0xfffffffe); j+=2) 
+      for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
       {
-        for (int k=start; k < stop; k++) 
+        for (uint32_t k=start; k < stop; k++) 
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int t = 0; t < ker_dim; t++) 
+          for (uint32_t t = 0; t < ker_dim; t++) 
           {
             float Ash  = A[k*ker_dim+t];
             temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
@@ -3998,11 +3998,11 @@ void mm_dw_unroll_1x2(void * void_args) {
         // Leftover in M
         if (M % 2) 
         {
-          for (int k=start; k < stop; k++) 
+          for (uint32_t k=start; k < stop; k++) 
           {
             float temp = 0;
 
-            for (int t = 0; t < ker_dim; t++) 
+            for (uint32_t t = 0; t < ker_dim; t++) 
             {
               temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
             }
@@ -4023,33 +4023,33 @@ void mm_dw_unroll_1x4(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int ker_dim = args->ker_size;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if (M < 4) { mm_dw_unroll_1x2(args); }
   else
   {
-    int M_left = M % 4;
+    uint32_t M_left = M % 4;
 
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-      for (int j = 0; j < (M & 0xfffffffc); j+=4) 
+      for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
       {
-        for (int k=start; k < stop; k++) 
+        for (uint32_t k=start; k < stop; k++) 
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int t = 0; t < ker_dim; t++) 
+          for (uint32_t t = 0; t < ker_dim; t++) 
           {
             float Ash  = A[(k*ker_dim+t)];
             temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
@@ -4065,12 +4065,12 @@ void mm_dw_unroll_1x4(void * void_args) {
         // Leftover in M
         if (M % 4) 
         {
-          for (int j = M-M_left; j < M; j++) 
+          for (uint32_t j = M-M_left; j < M; j++) 
           {
-            for (int k=start; k < stop; k++) 
+            for (uint32_t k=start; k < stop; k++) 
             {
               float temp = 0; 
-              for (int t = 0; t < ker_dim; t++) 
+              for (uint32_t t = 0; t < ker_dim; t++) 
               {
                 temp += A[(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
               }
@@ -4092,30 +4092,30 @@ void mm_dw_unroll_1x2_u2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int ker_dim = args->ker_size;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if      (M < 2)         { mm_dw(args); }
   else if (ker_dim < 2)   { mm_dw_unroll_1x2(args); }
   else 
   {
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-      for (int j = 0; j < (M & 0xfffffffe); j+=2) 
+      for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
       {
-        for (int k=start; k < stop; k++) 
+        for (uint32_t k=start; k < stop; k++) 
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
+          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
           {
             float Ash  = A[(k*ker_dim+t)];
             temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
@@ -4134,11 +4134,11 @@ void mm_dw_unroll_1x2_u2(void * void_args) {
         // Leftover in M
         if (M % 2) 
         {
-          for (int k=start; k < stop; k++) 
+          for (uint32_t k=start; k < stop; k++) 
           {
             float temp = 0;
 
-            for (int t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
+            for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
             {
               temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
               temp += A[(k*ker_dim+t+1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t+1)];
@@ -4164,34 +4164,34 @@ void mm_dw_unroll_1x4_u2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
 
-  int ker_dim = args->ker_size;
+  uint32_t ker_dim = args->ker_size;
 
-  int k = 0;
+  uint32_t k = 0;
 
   if      (M < 4)         { mm_dw_unroll_1x2(args); }
   else if (ker_dim < 2)   { mm_dw_unroll_1x4(args); }
   else
   {
-    int M_left = M % 4;
+    uint32_t M_left = M % 4;
 
-    int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > N ? N : start+blockSize;
+    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-      for (int j = 0; j < (M & 0xfffffffc); j+=4) 
+      for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
       {
-        for (int k=start; k < stop; k++) 
+        for (uint32_t k=start; k < stop; k++) 
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
+          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
           {
             float Ash  = A[(k*ker_dim+t)];
             temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
@@ -4219,12 +4219,12 @@ void mm_dw_unroll_1x4_u2(void * void_args) {
         // Leftover in M
         if (M % 4) 
         {
-          for (int j = M-M_left; j < M; j++) 
+          for (uint32_t j = M-M_left; j < M; j++) 
           {
-            for (int k=start; k < stop; k++) 
+            for (uint32_t k=start; k < stop; k++) 
             {
               float temp = 0; 
-              for (int t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
+              for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
               {
                 temp += A[(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
                 temp += A[(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
@@ -4251,26 +4251,26 @@ void mm_dw_in_grad_u2(void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if (ker_dim < 2)  { mm_dw_in_grad(args); }
   else
   {
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j<M; j++) 
+      for (uint32_t j=0; j<M; j++) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp = 0;
-          for (int u=0; u < (ker_dim & 0xfffffffe); u=u+2) 
+          for (uint32_t u=0; u < (ker_dim & 0xfffffffe); u=u+2) 
           {
             temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
             temp += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+j*K];
@@ -4296,26 +4296,26 @@ void mm_dw_in_grad_u3(void * void_args)
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if (ker_dim < 3)  { mm_dw_in_grad(args); }
   else
   {
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j<M; j++) 
+      for (uint32_t j=0; j<M; j++) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp = 0;
-          for (int u=0; u < (ker_dim & 0xfffffffd); u=u+3) 
+          for (uint32_t u=0; u < (ker_dim & 0xfffffffd); u=u+3) 
           {
             temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
             temp += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+j*K];
@@ -4346,28 +4346,28 @@ void mm_dw_in_grad_unroll_1x2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if (M < 2) { mm_dw_in_grad(args); }
   else 
   {
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j< (M & 0xfffffffe); j+=2) 
+      for (uint32_t j=0; j< (M & 0xfffffffe); j+=2) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int u=0; u<ker_dim; u++) 
+          for (uint32_t u=0; u<ker_dim; u++) 
           {
             // In-order weights (A matrix)
             // float Ash = A[u+k*ker_dim];
@@ -4386,10 +4386,10 @@ void mm_dw_in_grad_unroll_1x2(void * void_args) {
       // Leftover in M
       if (M % 1) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp = 0;
-          for (int u=0; u<ker_dim; u++) 
+          for (uint32_t u=0; u<ker_dim; u++) 
           {
             // In-order weights (A matrix)
             // temp += A[u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
@@ -4413,32 +4413,32 @@ void mm_dw_in_grad_unroll_1x4(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if (M < 4) { mm_dw_in_grad_unroll_1x2(args); }
   else 
   {
-    int M_left = M % 4;
+    uint32_t M_left = M % 4;
 
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j< (M & 0xfffffffc); j+=4) 
+      for (uint32_t j=0; j< (M & 0xfffffffc); j+=4) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int u=0; u<ker_dim; u++) 
+          for (uint32_t u=0; u<ker_dim; u++) 
           {
             // In-order weights (A matrix)
             // float Ash = A[u+k*ker_dim];
@@ -4463,12 +4463,12 @@ void mm_dw_in_grad_unroll_1x4(void * void_args) {
       // Leftover in M
       if (M % 4) 
       {
-        for (int j=M-M_left; j< M; j++) 
+        for (uint32_t j=M-M_left; j< M; j++) 
         {
-          for (int k=start; k<stop; k++)
+          for (uint32_t k=start; k<stop; k++)
           {
             float temp = 0;
-            for (int u=0; u<ker_dim; u++) 
+            for (uint32_t u=0; u<ker_dim; u++) 
             {
               // In-order weights (A matrix)
               // temp0    += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
@@ -4493,29 +4493,29 @@ void mm_dw_in_grad_unroll_1x2_u2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if      (M < 2)         { mm_dw_in_grad(args); }
   else if (ker_dim < 2)   { mm_dw_in_grad_unroll_1x2(args); }
   else 
   {
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j< (M & 0xfffffffe); j+=2) 
+      for (uint32_t j=0; j< (M & 0xfffffffe); j+=2) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp0 = 0;
           float temp1 = 0;
 
-          for (int u=0; u<(ker_dim & 0xfffffffe); u+=2) 
+          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
           {
             // In-order weights (A matrix)
             // float Ash = A[u+k*ker_dim];
@@ -4551,10 +4551,10 @@ void mm_dw_in_grad_unroll_1x2_u2(void * void_args) {
       // Leftover in M
       if (M % 1) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp = 0;
-          for (int u=0; u<(ker_dim & 0xfffffffe); u+=2) 
+          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
           {
             // In-order weights (A matrix)
             // temp += A[u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
@@ -4583,33 +4583,33 @@ void mm_dw_in_grad_unroll_1x4_u2(void * void_args) {
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   if      (M < 4)         { mm_dw_in_grad_unroll_1x2(args); }
   else if (ker_dim < 2)   { mm_dw_in_grad_unroll_1x4(args); }
   else 
   {
-    int M_left = M % 4;
+    uint32_t M_left = M % 4;
 
-    int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+    uint32_t start = pi_core_id()*blockSize;
+    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-    for (int i=0; i<N; i++) 
+    for (uint32_t i=0; i<N; i++) 
     {
-      for (int j=0; j< (M & 0xfffffffc); j+=4) 
+      for (uint32_t j=0; j< (M & 0xfffffffc); j+=4) 
       {
-        for (int k=start; k<stop; k++)
+        for (uint32_t k=start; k<stop; k++)
         {
           float temp0 = 0;
           float temp1 = 0;
           float temp2 = 0;
           float temp3 = 0;
 
-          for (int u=0; u<(ker_dim & 0xfffffffe); u+=2) 
+          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
           {
             // In-order weights (A matrix)
             // float Ash = A[u+k*ker_dim];
@@ -4659,12 +4659,12 @@ void mm_dw_in_grad_unroll_1x4_u2(void * void_args) {
       // Leftover in M
       if (M % 4) 
       {
-        for (int j=M-M_left; j< M; j++) 
+        for (uint32_t j=M-M_left; j< M; j++) 
         {
-          for (int k=start; k<stop; k++)
+          for (uint32_t k=start; k<stop; k++)
           {
             float temp = 0;
-            for (int u=0; u<(ker_dim & 0xfffffffe); u+=2) 
+            for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
             {
               // In-order weights (A matrix)
               // temp0    += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];

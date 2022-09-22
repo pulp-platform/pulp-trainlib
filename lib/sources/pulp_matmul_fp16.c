@@ -31,24 +31,24 @@ void mm_fp16(void * void_args) {
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int M = args->M;
-  const int K = args->K;
+  const uint32_t N = args->N;
+  const uint32_t M = args->M;
+  const uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  const int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > N ? N : start+blockSize;
+  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
     if (K == 1) 
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j];
           #ifdef DEBUG
@@ -59,12 +59,12 @@ void mm_fp16(void * void_args) {
     }
     else if (K > 0)
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           fp16 temp = 0;
-          for (int k = 0; k < K; k++) 
+          for (uint32_t k = 0; k < K; k++) 
           {
                 temp += A[i*K+k] * B[j+k*M];
                 #ifdef DEBUG
@@ -82,9 +82,9 @@ void mm_fp16(void * void_args) {
   {
     if (K == 1) 
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           C[i*M+j] = A[i*K] * B[j*K];
           #ifdef DEBUG
@@ -95,12 +95,12 @@ void mm_fp16(void * void_args) {
     }
     else if (K > 0)
     {
-      for (int i=start; i < stop; i++) 
+      for (uint32_t i=start; i < stop; i++) 
       {
-        for (int j = 0; j < M; j++) 
+        for (uint32_t j = 0; j < M; j++) 
         {
           fp16 temp = 0;
-          for (int k = 0; k < K; k++) 
+          for (uint32_t k = 0; k < K; k++) 
           {
               temp += A[i*K+k] * B[k+j*K];
               #ifdef DEBUG
@@ -123,25 +123,25 @@ void mm_M_fp16(void * void_args) {
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int M = args->M;
-  const int K = args->K;
+  const uint32_t N = args->N;
+  const uint32_t M = args->M;
+  const uint32_t K = args->K;
 
-  int transp = args->trans_B;
+  uint32_t transp = args->trans_B;
 
-  const int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > M ? M: start+blockSize;
+  const uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > M ? M: start+blockSize;
 
   // =====> B NOT TRANSPOSED <=====
   if (transp==0)
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
-      for (int j=start; j < stop; j++) 
+      for (uint32_t j=start; j < stop; j++) 
       {
         fp16 temp = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
               temp += A[i*K+k] * B[j+k*M];
               #ifdef DEBUG
@@ -156,12 +156,12 @@ void mm_M_fp16(void * void_args) {
   // =====> B IS TRANSPOSED <=====
   else 
   {
-    for (int i = 0; i < N; i++) 
+    for (uint32_t i = 0; i < N; i++) 
     {
-      for (int j=start; j < stop; j++) 
+      for (uint32_t j=start; j < stop; j++) 
       {
         fp16 temp = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
               temp += A[i*K+k] * B[j*K+k];
               #ifdef DEBUG              
@@ -184,35 +184,35 @@ void mm_dw_fp16(void * void_args) {
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
   #ifdef DEBUG
-  int num_MAC = 0;
+  uint32_t num_MAC = 0;
   #endif
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   #ifdef DEBUG
   fp16 a = 0;
   fp16 b = 0;
-  int idx_a = 0;
-  int idx_b = 0;
+  uint32_t idx_a = 0;
+  uint32_t idx_b = 0;
   #endif
 
-  for (int j = 0; j < M; j++) 
+  for (uint32_t j = 0; j < M; j++) 
   {
-    for (int k=start; k < stop; k++) 
+    for (uint32_t k=start; k < stop; k++) 
     {
       #ifdef DEBUG
         printf("\nCORE %d: start=%d, stop=%d\n", pi_core_id(), start, stop);
       #endif
       fp16 temp = 0; 
-      for (int t = 0; t < ker_dim; t++) 
+      for (uint32_t t = 0; t < ker_dim; t++) 
       {
         #ifdef DEBUG
           // variables needed for debugging, remove to measure performances
@@ -248,27 +248,27 @@ void mm_dw_in_grad_fp16(void * void_args) {
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
   #ifdef DEBUG
-  int num_MAC = 0;
+  uint32_t num_MAC = 0;
   #endif
 
-  for (int i=0; i<N; i++) 
+  for (uint32_t i=0; i<N; i++) 
   {
-    for (int j=0; j<M; j++) 
+    for (uint32_t j=0; j<M; j++) 
     {
-      for (int k=start; k<stop; k++)
+      for (uint32_t k=start; k<stop; k++)
       {
         fp16 temp = 0;
-        for (int u=0; u<ker_dim; u++) 
+        for (uint32_t u=0; u<ker_dim; u++) 
         {
           // In-order weights (A matrix)
           // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
@@ -300,29 +300,29 @@ void mm_conv2d_in_grad_fp16 (void * void_args)
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  const int N = args->N;
-  const int K = args->K;
-  const int M = args->M;
+  const uint32_t N = args->N;
+  const uint32_t K = args->K;
+  const uint32_t M = args->M;
 
-  const int pW = args->pW;
-  const int pH = args->pH;
-  const int pCin = args->pCin;
-  const int pCout = args->pCout;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t pCin = args->pCin;
+  const uint32_t pCout = args->pCout;
 
-  const int blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start+blockSize > M ? M : start+blockSize;
+  const uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > M ? M : start+blockSize;
 
   // ALGORITHM
   // For each receptive field of the output on the weights
-  for (int rec_field = 0; rec_field < M; rec_field++) {
+  for (uint32_t rec_field = 0; rec_field < M; rec_field++) {
     // For each channel of the output
-    for (int Ci = 0; Ci < pCin; Ci++) {
+    for (uint32_t Ci = 0; Ci < pCin; Ci++) {
       // Multiply each receptive field for the corresponding
       // set of channels and accumulate on the input channel by channel
       fp16 temp = 0;
-      for (int Co = 0; Co < pCout; Co++) {  
-        for (int elem = 0; elem < pW*pH; elem++) {
+      for (uint32_t Co = 0; Co < pCout; Co++) {  
+        for (uint32_t elem = 0; elem < pW*pH; elem++) {
           temp += A[pW*pH*pCin*Co+pW*pH*Ci+elem] * B[pH*pW*pCout*rec_field+pW*pH*Co+elem];
           #ifdef DEBUG
           printf("coeffdata[%d]=%f, i2c_buffer[%d]=%f, temp=%f\n",
@@ -364,19 +364,19 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
   fp16 * __restrict__ A = args->A; 
   fp16 * __restrict__ B = args->B; 
   fp16 * __restrict__ C = args->C; 
-  int N = args->N;  
-  int M = args->M; 
-  int K = args->K;  
-  int transp = args->trans_B;
+  uint32_t N = args->N;  
+  uint32_t M = args->M; 
+  uint32_t K = args->K;  
+  uint32_t transp = args->trans_B;
 
-  int indexA, indexB;
+  uint32_t indexA, indexB;
   v2f16 Av;
   v2f16 Bv0, Bv1;
   v2f16 *Cv;
 
   // Optimized looping variables
-  int M_loop = (M & 0xfffffffe);
-  int K_loop = (K & 0xfffffffe);
+  uint32_t M_loop = (M & 0xfffffffe);
+  uint32_t K_loop = (K & 0xfffffffe);
 
   if      (M < 2) mm_fp16(args);
   else if (K < 2) mm_fp16(args);
@@ -385,25 +385,25 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
   if (transp == 0) 
   {
     #if NUM_CORES > 1
-      const int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-      const int start = pi_core_id()*blockSize;
-      const int stop = start+blockSize < N? start+blockSize: N;
+      const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+      const uint32_t start = pi_core_id()*blockSize;
+      const uint32_t stop = start+blockSize < N? start+blockSize: N;
 
-      for (int i = start; i < stop; i++) {
+      for (uint32_t i = start; i < stop; i++) {
 
     #else
-      const int start = 0;
-      const int stop = N;
+      const uint32_t start = 0;
+      const uint32_t stop = N;
 
-      for (int i = start; i < stop; i++) {
+      for (uint32_t i = start; i < stop; i++) {
     #endif
       
-      for (int j = 0; j < M_loop; j+=2) {
+      for (uint32_t j = 0; j < M_loop; j+=2) {
         v2f16 temp = (v2f16) {0, 0};
         indexA = i*K;
         indexB = j;
             
-        for (int k = 0; k < K_loop; k+=2) {
+        for (uint32_t k = 0; k < K_loop; k+=2) {
           Av  = *((v2f16 *) &A[indexA/*i*K+k*/]);
           Bv0 = *((v2f16 *) &B[indexB/*k*M+j*/]);
           Bv1 = *((v2f16 *) &B[indexB+M/*k*M+j+M*/]);
@@ -425,9 +425,9 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
       }
       // Leftover on M
       if(M & 1) {
-        for (int i = start; i < stop; i++) {
+        for (uint32_t i = start; i < stop; i++) {
           fp16 val = 0;
-          for (int k = 0; k < K; k++) {
+          for (uint32_t k = 0; k < K; k++) {
             val += A[i*K+k]*B[k*M+(M-1)];
           }
           C[i*M+(M-1)] = val;
@@ -441,20 +441,20 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
   else 
   {
     #if NUM_CORES > 1
-      const int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-      const int start = pi_core_id()*blockSize;
-      const int stop = start+blockSize < N? start+blockSize: N;
+      const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+      const uint32_t start = pi_core_id()*blockSize;
+      const uint32_t stop = start+blockSize < N? start+blockSize: N;
 
-      for (int i = start; i < stop; i++) {
+      for (uint32_t i = start; i < stop; i++) {
 
     #else
-      const int start = 0;
-      const int stop = N;
+      const uint32_t start = 0;
+      const uint32_t stop = N;
 
-      for (int i = start; i < stop; i++) {
+      for (uint32_t i = start; i < stop; i++) {
     #endif
       
-      for (int j = 0; j < M_loop; j+=2) {
+      for (uint32_t j = 0; j < M_loop; j+=2) {
         // Global accumulator
         v2f16 temp = (v2f16) {0, 0};
         // Dot product accumulators
@@ -469,7 +469,7 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
         indexA = i*K;
         indexB = j*K; //j*M;
 
-        for (int k = 0; k < K_loop; k+=2) {
+        for (uint32_t k = 0; k < K_loop; k+=2) {
           Av  = *((v2f16 *) &A[indexA/*i*K+k*/]);
 
           Bv0 = *((v2f16 *) &B[indexB]);
@@ -507,9 +507,9 @@ void __attribute__((noinline)) mm_fp16_SIMD_2x4 (void * void_args)
 
     // Leftover on N
     if(M & 1) {
-      for (int i = start; i < stop; i++) {
+      for (uint32_t i = start; i < stop; i++) {
         fp16 val = 0;
-        for (int k = 0; k < K; k++) {
+        for (uint32_t k = 0; k < K; k++) {
           val += A[i*K+k]*B[(M-1)*K+k];
         }
       C[i*M+(M-1)] = val;
@@ -529,26 +529,26 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
   fp16 * __restrict__ A = args->A; 
   fp16 * __restrict__ B = args->B; 
   fp16 * __restrict__ C = args->C; 
-  int N = args->N; 
-  int M = args->M; 
-  int K = args->K;  
-  int transp = args->trans_B;
+  uint32_t N = args->N; 
+  uint32_t M = args->M; 
+  uint32_t K = args->K;  
+  uint32_t transp = args->trans_B;
 
-  int indexA0, indexA1; 
-  int indexB;
+  uint32_t indexA0, indexA1; 
+  uint32_t indexB;
   v2f16 Av0, Av1;
   v2f16 Bv0, Bv1, Bv2, Bv3;
   v2f16 *Cv;
 
   // Looping variables for leftovers
-  int N_loop = N & 0xfffffffe;
-  int N_left = N - N_loop;
-  int core_id = pi_core_id();
+  uint32_t N_loop = N & 0xfffffffe;
+  uint32_t N_left = N - N_loop;
+  uint32_t core_id = pi_core_id();
 
   // Integrity barrier for oversized unrolling
-  int N_bound = (N_loop)/NUM_CORES;
-  int M_bound = (M-(M&0x00000003));
-  int K_bound = (K-(K&0x00000001));
+  uint32_t N_bound = (N_loop)/NUM_CORES;
+  uint32_t M_bound = (M-(M&0x00000003));
+  uint32_t K_bound = (K-(K&0x00000001));
 
   if      (M_bound < 4) mm_fp16_SIMD_2x4(args);
   else if (K_bound < 2) mm_fp16_SIMD_2x4(args);
@@ -558,26 +558,26 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
     if (transp == 0) 
     {
     #if NUM_CORES > 1
-      const int blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
-      const int start = core_id*blockSize;
-      const int stop = start+blockSize < N_loop? start+blockSize: N_loop;
+      const uint32_t blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
+      const uint32_t start = core_id*blockSize;
+      const uint32_t stop = start+blockSize < N_loop? start+blockSize: N_loop;
 
-      for (int i = start; i < stop; i+=2) {
+      for (uint32_t i = start; i < stop; i+=2) {
 
     #else
-      const int start = 0;
-      const int stop = N_loop;
+      const uint32_t start = 0;
+      const uint32_t stop = N_loop;
 
-      for (int i = start; i < stop; i+=2) {
+      for (uint32_t i = start; i < stop; i+=2) {
     #endif
-        for (int j = 0; j < (M & 0xfffffffc); j+=4) 
+        for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
           v2f16 temp0 = (v2f16) {0, 0};
           v2f16 temp1 = (v2f16) {0, 0};
           v2f16 temp2 = (v2f16) {0, 0};
           v2f16 temp3 = (v2f16) {0, 0};
 
-          for (int k = 0; k < (K & 0xfffffffe); k+=2) 
+          for (uint32_t k = 0; k < (K & 0xfffffffe); k+=2) 
           {
             // A vectors
             Av0 = *(v2f16 *) &A[i*K+k];
@@ -628,12 +628,12 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               fp16 left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[k*M+j];
               }
@@ -645,14 +645,14 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
         {
           fp16 temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j+k*M];
           }
@@ -665,19 +665,19 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
     else
     {
     #if NUM_CORES > 1
-      const int blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
-      const int start = pi_core_id()*blockSize;
-      const int stop = start+blockSize < N_loop? start+blockSize: N_loop;
+      const uint32_t blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
+      const uint32_t start = pi_core_id()*blockSize;
+      const uint32_t stop = start+blockSize < N_loop? start+blockSize: N_loop;
 
-      for (int i = start; i < stop; i+=2) {
+      for (uint32_t i = start; i < stop; i+=2) {
 
     #else
-      const int start = 0;
-      const int stop = N_loop;
+      const uint32_t start = 0;
+      const uint32_t stop = N_loop;
 
-      for (int i = start; i < stop; i+=2) {
+      for (uint32_t i = start; i < stop; i+=2) {
     #endif
-        for (int j = 0; j < (M & 0xfffffffc); j+=4) 
+        for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
           // Global accumulator
           v2f16 temp = (v2f16) {0, 0};
@@ -694,7 +694,7 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
           fp16 a = 0;
           fp16 b = 0;
 
-          for (int k = 0; k < (K & 0xfffffffe); k+=2) 
+          for (uint32_t k = 0; k < (K & 0xfffffffe); k+=2) 
           {
             // A vectors
             Av0 = *(v2f16 *) &A[i*K+k];
@@ -768,12 +768,12 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
         // Leftover in M
         if (M & 0x00000003) 
         {
-          for (int ii=i; ii<i+2; ii++) 
+          for (uint32_t ii=i; ii<i+2; ii++) 
           {
-            for (int j=(M-(M & 0x00000003)); j<M; j++)
+            for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
             {
               fp16 left_temp = 0;
-              for (int k=0; k<K; k++)
+              for (uint32_t k=0; k<K; k++)
               {
                 left_temp += A[ii*K+k] * B[j*K+k];
               }
@@ -785,15 +785,15 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
       // Leftover in N (parallel on M)
       if (N_left > 0)
       {
-        int j_block = (M+NUM_CORES-1) / NUM_CORES;
-        int j_start = core_id*j_block;
-        int j_stop = j_start+j_block > M ? M : j_start+j_block;
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
 
-        for (int j=j_start; j<j_stop; j++)
-        //for (int j=0; j<M; j++)
+        for (uint32_t j=j_start; j<j_stop; j++)
+        //for (uint32_t j=0; j<M; j++)
         {
           fp16 temp_left = 0;
-          for (int k=0; k<K; k++)
+          for (uint32_t k=0; k<K; k++)
           {
             temp_left += A[(N-1)*K+k] * B[j*K+k];
           }
@@ -831,19 +831,19 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
   fp16 * __restrict__ A = args->A; 
   fp16 * __restrict__ B = args->B; 
   fp16 * __restrict__ C = args->C; 
-  int N = args->N;  
-  int M = args->M; 
-  int K = args->K;  
-  int transp = args->trans_B;
+  uint32_t N = args->N;  
+  uint32_t M = args->M; 
+  uint32_t K = args->K;  
+  uint32_t transp = args->trans_B;
 
-  int indexA, indexB;
+  uint32_t indexA, indexB;
   v2f16 Av;
   v2f16 Bv0, Bv1;
   v2f16 *Cv;
 
-  int M_par = M & 0xfffffffe;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffe;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
   if      (M_par < 2) mm_fp16(args);
   else if (K < 2)     mm_fp16(args);
@@ -852,25 +852,25 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
   if (transp == 0) 
   {
     #if NUM_CORES > 1
-    const int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-    const int start = core_id*blockSize;
-    const int stop = start+blockSize < M_par? start+blockSize: M_par;
+    const uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+    const uint32_t start = core_id*blockSize;
+    const uint32_t stop = start+blockSize < M_par? start+blockSize: M_par;
 
-    for (int j = start; j < stop; j+=2)
+    for (uint32_t j = start; j < stop; j+=2)
     #else 
-    const int start = 0;
-    const int stop = M_par;
+    const uint32_t start = 0;
+    const uint32_t stop = M_par;
 
-    for (int j = start; j < stop; j+=2)
+    for (uint32_t j = start; j < stop; j+=2)
     #endif
     {
-      for (int i = 0; i < N; i++)
+      for (uint32_t i = 0; i < N; i++)
       {
         v2f16 temp = (v2f16) {0, 0};
         indexA = i*K;
         indexB = j;
 
-        for (int k = 0; k < (K & 0xfffffffe) ; k+=2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe) ; k+=2) 
         {
           Av  = *((v2f16 *) &A[indexA/*i*K+k*/]);
           Bv0 = *((v2f16 *) &B[indexB/*k*M+j*/]);
@@ -894,14 +894,14 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
     // Leftover on M
     if(M_left > 0) 
     {
-      int i_block = (N+NUM_CORES-1) / NUM_CORES;
-      int i_start = core_id*i_block;
-      int i_stop = i_start+i_block > N ? N : i_start+i_block;
+      uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+      uint32_t i_start = core_id*i_block;
+      uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-      for (int i = i_start; i < i_stop; i++) 
+      for (uint32_t i = i_start; i < i_stop; i++) 
       {
         fp16 val = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
           val += A[i*K+k]*B[k*M+(M-1)];
         }
@@ -914,19 +914,19 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
   else 
   {
     #if NUM_CORES > 1
-    const int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-    const int start = core_id*blockSize;
-    const int stop = start+blockSize < M_par? start+blockSize: M_par;
+    const uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+    const uint32_t start = core_id*blockSize;
+    const uint32_t stop = start+blockSize < M_par? start+blockSize: M_par;
 
-    for (int j = start; j < stop; j+=2)
+    for (uint32_t j = start; j < stop; j+=2)
     #else 
-    const int start = 0;
-    const int stop = M_par;
+    const uint32_t start = 0;
+    const uint32_t stop = M_par;
 
-    for (int j = start; j < stop; j+=2)
+    for (uint32_t j = start; j < stop; j+=2)
     #endif
     {
-      for (int i = 0; i < N; i++)
+      for (uint32_t i = 0; i < N; i++)
       {
         // Global accumulator
         v2f16 temp = (v2f16) {0, 0};
@@ -942,7 +942,7 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
         indexA = i*K;
         indexB = j*K; //j*M;
 
-        for (int k = 0; k < (K & 0xfffffffe) ; k+=2) 
+        for (uint32_t k = 0; k < (K & 0xfffffffe) ; k+=2) 
         {
           Av  = *((v2f16 *) &A[indexA/*i*K+k*/]);
 
@@ -981,14 +981,14 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (void * void_args)
     // Leftover on M
     if(M_left > 0) 
     {
-      int i_block = (N+NUM_CORES-1) / NUM_CORES;
-      int i_start = core_id*i_block;
-      int i_stop = i_start+i_block > N ? N : i_start+i_block;
+      uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+      uint32_t i_start = core_id*i_block;
+      uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
       
-      for (int i = i_start; i < i_stop; i++) 
+      for (uint32_t i = i_start; i < i_stop; i++) 
       {
         fp16 val = 0;
-        for (int k = 0; k < K; k++) 
+        for (uint32_t k = 0; k < K; k++) 
         {
           val += A[i*K+k]*B[(M-1)*K+k];
         }
@@ -1008,27 +1008,27 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
   fp16 * __restrict__ A = args->A; 
   fp16 * __restrict__ B = args->B; 
   fp16 * __restrict__ C = args->C; 
-  int N = args->N;  
-  int M = args->M; 
-  int K = args->K;  
-  int transp = args->trans_B;
+  uint32_t N = args->N;  
+  uint32_t M = args->M; 
+  uint32_t K = args->K;  
+  uint32_t transp = args->trans_B;
 
-  int indexA, indexB;
+  uint32_t indexA, indexB;
   v2f16 Av0, Av1;
   v2f16 Bv0, Bv1, Bv2, Bv3;
   v2f16 *Cv;
 
-  int M_par = M & 0xfffffffc;
-  int M_left = M - M_par;
-  int core_id = pi_core_id();
+  uint32_t M_par = M & 0xfffffffc;
+  uint32_t M_left = M - M_par;
+  uint32_t core_id = pi_core_id();
 
-  int N_par = N & 0xfffffffe;
-  int N_left = N - N_par;
+  uint32_t N_par = N & 0xfffffffe;
+  uint32_t N_left = N - N_par;
 
   // Integrity barrier for oversized unrolling
-  int N_bound = (N-(N&0x00000001));
-  int M_bound = (M_par)/NUM_CORES;
-  int K_bound = (K-(K&0x00000001));
+  uint32_t N_bound = (N-(N&0x00000001));
+  uint32_t M_bound = (M_par)/NUM_CORES;
+  uint32_t K_bound = (K-(K&0x00000001));
 
   if      (M_bound < 4) mm_M_fp16_SIMD_2x4(args);
   else if (K_bound < 2) mm_M_fp16_SIMD_2x4(args);
@@ -1038,26 +1038,26 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
   if (transp == 0) 
   {
     #if NUM_CORES > 1
-      const int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-      const int start = core_id*blockSize;
-      const int stop = start+blockSize < M_par? start+blockSize: M_par;
+      const uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+      const uint32_t start = core_id*blockSize;
+      const uint32_t stop = start+blockSize < M_par? start+blockSize: M_par;
 
-      for (int j = start; j < stop; j+=4)
+      for (uint32_t j = start; j < stop; j+=4)
     #else 
-      const int start = 0;
-      const int stop = M_par;
+      const uint32_t start = 0;
+      const uint32_t stop = M_par;
 
-      for (int j = start; j < stop; j+=4)
+      for (uint32_t j = start; j < stop; j+=4)
     #endif
       {
-        for (int i = 0; i < N_par; i+=2)
+        for (uint32_t i = 0; i < N_par; i+=2)
         {
           v2f16 temp0 = (v2f16) {0, 0};
           v2f16 temp1 = (v2f16) {0, 0};
           v2f16 temp2 = (v2f16) {0, 0};
           v2f16 temp3 = (v2f16) {0, 0};
 
-          for (int k = 0; k < (K & 0xfffffffe) ; k+=2) 
+          for (uint32_t k = 0; k < (K & 0xfffffffe) ; k+=2) 
           {
             // A vectors
             Av0 = *(v2f16 *) &A[i*K+k];
@@ -1108,10 +1108,10 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj+k*M];
             }
@@ -1122,16 +1122,16 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
-          for (int j=M-M_left; j<M; j++)
+          for (uint32_t j=M-M_left; j<M; j++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j+k*M];
             }
@@ -1145,19 +1145,19 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
   else 
   {
   #if NUM_CORES > 1
-    const int blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
-    const int start = core_id*blockSize;
-    const int stop = start+blockSize < M_par? start+blockSize: M_par;
+    const uint32_t blockSize = (M_par+NUM_CORES-1) / NUM_CORES;
+    const uint32_t start = core_id*blockSize;
+    const uint32_t stop = start+blockSize < M_par? start+blockSize: M_par;
 
-    for (int j = start; j < stop; j+=4)
+    for (uint32_t j = start; j < stop; j+=4)
   #else 
-    const int start = 0;
-    const int stop = M_par;
+    const uint32_t start = 0;
+    const uint32_t stop = M_par;
 
-    for (int j = start; j < stop; j+=4)
+    for (uint32_t j = start; j < stop; j+=4)
   #endif
       {
-        for (int i = 0; i < (N & 0xfffffffe); i+=2)
+        for (uint32_t i = 0; i < (N & 0xfffffffe); i+=2)
         {
           // Global accumulator
           v2f16 temp = (v2f16) {0, 0};
@@ -1174,7 +1174,7 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
           fp16 a = 0;
           fp16 b = 0;
 
-          for (int k = 0; k < (K & 0xfffffffe) ; k+=2) 
+          for (uint32_t k = 0; k < (K & 0xfffffffe) ; k+=2) 
           {
             // A vectors
             Av0 = *(v2f16 *) &A[i*K+k];
@@ -1247,10 +1247,10 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
         // Leftover on N
         if (N & 0x00000001)
         {
-          for (int jj=j; jj<j+4; jj++)
+          for (uint32_t jj=j; jj<j+4; jj++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[(N-1)*K+k] * B[jj*K+k];
             }
@@ -1261,16 +1261,16 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
       // Leftover on M (parallel on N)
       if (M_left > 0)
       {
-        int i_block = (N+NUM_CORES-1) / NUM_CORES;
-        int i_start = core_id*i_block;
-        int i_stop = i_start+i_block > N ? N : i_start+i_block;
+        uint32_t i_block = (N+NUM_CORES-1) / NUM_CORES;
+        uint32_t i_start = core_id*i_block;
+        uint32_t i_stop = i_start+i_block > N ? N : i_start+i_block;
 
-        for (int i=i_start; i<i_stop; i++)
+        for (uint32_t i=i_start; i<i_stop; i++)
         {
-          for (int j=M-M_left; j<M; j++)
+          for (uint32_t j=M-M_left; j<M; j++)
           {
             float left_temp = 0;
-            for (int k=0; k<K; k++)
+            for (uint32_t k=0; k<K; k++)
             {
               left_temp += A[i*K+k] * B[j*K+k];
             }
@@ -1311,27 +1311,27 @@ void __attribute__((noinline)) mm_dw_fp16_SIMD_1x2_u2(void * void_args) {
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-  for (int j = 0; j < (M & 0xfffffffe); j+=2) 
+  for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
   {
-    for (int k=start; k < stop; k++) 
+    for (uint32_t k=start; k < stop; k++) 
     {
       v2f16 temp0 = (v2f16) {0, 0};
       v2f16 temp1 = (v2f16) {0, 0}; 
       fp16 res0 = 0;
       fp16 res1 = 0;
-      for (int t = 0; t < ker_dim; t+=2) 
+      for (uint32_t t = 0; t < ker_dim; t+=2) 
       {
-          int Aidx     = k*ker_dim+t;
-          int Bidx     = j*(N*ker_dim)+(k*ker_dim+t);
+          uint32_t Aidx     = k*ker_dim+t;
+          uint32_t Bidx     = j*(N*ker_dim)+(k*ker_dim+t);
           v2f16 Avsh   = *((v2f16*) &A[Aidx]);
           v2f16 Bv     = *((v2f16*) &B[Bidx]);
           // Compute first couple of operands
@@ -1356,11 +1356,11 @@ void __attribute__((noinline)) mm_dw_fp16_SIMD_1x2_u2(void * void_args) {
     // Leftover in M
     if (M % 2) 
     {
-      for (int k=start; k < stop; k++) 
+      for (uint32_t k=start; k < stop; k++) 
       {
         fp16 temp = 0;
 
-        for (int t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
+        for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
         {
           temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
           temp += A[(k*ker_dim+t+1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t+1)];
@@ -1385,23 +1385,23 @@ void __attribute__((noinline)) mm_dw_in_grad_fp16_SIMD_1x2_u2(void * void_args) 
   fp16 * __restrict__ B = args->B;
   fp16 * __restrict__ C = args->C;
 
-  int N = args->N;
-  int M = args->M;
-  int K = args->K;
-  int ker_dim = args->ker_size;
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t ker_dim = args->ker_size;
 
-  int blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
 
-  for (int i=0; i<N; i++) 
+  for (uint32_t i=0; i<N; i++) 
   {
-    for (int j=0; j<M; j++) 
+    for (uint32_t j=0; j<M; j++) 
     {
-      for (int k=start; k<stop; k++)
+      for (uint32_t k=start; k<stop; k++)
       {
         fp16 temp = 0;
-        for (int u=0; u<ker_dim; u++) 
+        for (uint32_t u=0; u<ker_dim; u++) 
         {
           // In-order weights (A matrix)
           // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
