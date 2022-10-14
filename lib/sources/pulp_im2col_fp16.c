@@ -71,7 +71,7 @@ void pulp_im2col_fp16(void * void_args){
 
   #if NUM_CORES > 1
   // Definitions for parallelism
-  uint32_t blockSize, start, stop;
+  uint32_t blockSize=0, start=0, stop=0;
   if (HWC == 0 && mod == 0) {
     blockSize = (Cin+NUM_CORES-1) / NUM_CORES;
     start = pi_core_id()*blockSize;
@@ -282,7 +282,7 @@ void pulp_im2col_fp16(void * void_args){
                   int w_pad_cond = (Wk-1) + wo_rf;
                   int h_pad_cond = hk + ho_rf;
 
-                  if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=(uint32_t)Ho) || (w_pad_cond>=(uint32_t)Wo)) {
+                  if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=(int)Ho) || (w_pad_cond>=(int)Wo)) {
                     // Padding
                     i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
                   }
@@ -432,9 +432,9 @@ void pulp_im2col_fp16(void * void_args){
               // Transfer size
               uint32_t row_size = Wk;  uint32_t col_size = Hk;
               if (pad_l>0)          {row_size -= pad_l;   load_shift += pad_l;      offs_l = pad_l;}
-              if (pad_r>=(uint32_t)Wox)  {row_size -= pad_r-1;}
+              if (pad_r>=(int)Wox)  {row_size -= pad_r-1;}
               if (pad_u>0)          {col_size -= pad_u;   load_shift += pad_u*Wox;  offs_u = pad_u;}
-              if (pad_d>=(uint32_t)Hox)  {col_size -= pad_d-1;}
+              if (pad_d>=(int)Hox)  {col_size -= pad_d-1;}
               uint32_t transfer_size = col_size*row_size;
               //printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\toffs_l=%d, offs_r=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size, offs_l, offs_u);
 
