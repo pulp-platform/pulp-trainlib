@@ -143,10 +143,6 @@ static inline void train ()
         im2col_args.pBuffer = im2col_buffer_bw;
     #endif
 
-    #ifdef PROF_NET
-    START_STATS();
-    #endif
-    
     #if HWC_format == 1
     // Transpose input matrix to HWC
     #if DATA_BITS == 32
@@ -155,9 +151,10 @@ static inline void train ()
     #if MOD == 0
     transp_args.matrix = l1_in;
     #else 
-    transp_args.matrix = im2col_buffer_bw;
+    transp_args.matrix = l1_out;
     #endif 
     transp_args.transp_matrix = transp_buffer;
+    transp_args.matrix = l1_in;
     transp_args.N = Tin_C_l1;
     transp_args.M = Tin_H_l1*Tin_W_l1;
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
@@ -168,6 +165,10 @@ static inline void train ()
     #elif DATA_BITS == 16
 
     #endif
+    #endif
+
+    #ifdef PROF_NET
+    START_STATS();
     #endif
 
     #if DATA_BITS == 32
