@@ -77,7 +77,6 @@ static inline void tensor_init(){
 
 static inline void connect_blobs(){
 
-  // ********** LAYER SEPARABLE CONV **************
   layer1_in.data = l1_in;
   layer1_in.dim = Tin_H_l1*Tin_W_l1*Tin_C_l1;
   layer1_in.W = Tin_W_l1;
@@ -128,6 +127,7 @@ static inline void train ()
     im2col_args.tile_start = 0;
     im2col_args.tile_h = Tin_H_l1;
     im2col_args.USE_DMA = DMA_ENABLE;
+    im2col_args.HWC = HWC_format;
 
     #if MOD==0
         im2col_args.Lpad = LPAD;
@@ -147,6 +147,29 @@ static inline void train ()
     START_STATS();
     #endif
     
+    #if HWC_format == 1
+    // Transpose input matrix to HWC
+    #if DATA_BITS == 32
+    struct transp_args transp_args;
+    float transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+    #if MOD == 0
+    transp_args.matrix = l1_in;
+    #else 
+    transp_args.matrix = im2col_buffer_bw;
+    #endif 
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.N = Tin_C_l1;
+    transp_args.M = Tin_H_l1*Tin_W_l1;
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    struct copy_args copy_args;
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_in;
+    copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
+    #elif DATA_BITS == 16
+
+    #endif
+    #endif
+
     #if DATA_BITS == 32
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
     #elif DATA_BITS == 16
@@ -158,6 +181,8 @@ static inline void train ()
     #endif
 
     #ifdef PRINT_OUTPUT
+    
+    #if HWC_format == 0
     // FORWARD
     #if MOD==0
     printf("\n\nInput:\n");
@@ -203,6 +228,56 @@ static inline void train ()
     }
     printf("\n\n");
     #endif
+    #endif
+
+    #if HWC_format == 1
+    // FORWARD
+    #if MOD==0
+    printf("\n\nInput:\n");
+    for (int idx=0; idx<Tin_H_l1*Tin_W_l1*Tin_C_l1; idx++)
+    {
+        if (!(idx%Tin_C_l1)) printf("\n");
+        if (!(idx%(Tin_C_l1*Tin_H_l1))) printf("\n");
+        printf("%f ", l1_in[idx]);
+    }
+    printf("\n\n");
+    
+    printf("\n\nIm2col buffer:\n");
+    for (int idx=0; idx<i2c_check_size; idx++)
+    {
+        if (!(idx%(Tin_C_l1*Tker_H_l1*Tker_W_l1))) printf("\n");
+        printf("%f ", im2col_buffer[idx]);
+
+        if (idx==i2c_b_size-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");
+    }
+    printf("\n\n");
+    
+
+    // BACKWARD
+    #else 
+    printf("\n\nOuput:\n");
+    for (int idx=0; idx<Tout_H_l1*Tout_W_l1*Tout_C_l1; idx++)
+    {
+        if (!(idx%Tout_H_l1)) printf("\n");
+        if (!(idx%(Tout_H_l1*Tout_W_l1))) printf("\n");
+        printf("%f ", l1_out[idx]);
+    }
+    printf("\n\n");
+
+    printf("\n\nIm2col buffer:\n");
+    for (int idx=0; idx<i2c_check_size; idx++)
+    {
+        //if (!(idx%Tker_H_l1)) printf("\n");
+        if (!(idx%((Tker_H_l1)*(Tker_W_l1)))) printf("\n");
+        printf("%f ", im2col_buffer_bw[idx]);
+
+        if (idx==i2c_b_size_bw-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");
+    }
+    printf("\n\n");
+    #endif
+    #endif
+
+
     #endif
 
 }

@@ -123,9 +123,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] fp16 DepthWise and PointWise test
 - [ ] functions that take "mm_manager_list" files as inputs, other than mm_manager
 - [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
-- [ ] im2col with DMA (only partially implemented, to move L2 to L1 operands directly)
-- [ ] bug fix in im2col with padding with kernel size > 2 (error in padding conditions)
-- [ ] bug fix in im2col with DMA (FW/WG) when putting opposite paddings (left-right, up-down)
+- [ ] im2col with DMA verification and performance debugging
+- [ ] MOD==1 and padding in HWC version of both FP32 and FP16 im2col + complete im2col test with HWC feature
 
 
 # References

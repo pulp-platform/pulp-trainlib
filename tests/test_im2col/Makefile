@@ -1,10 +1,11 @@
 APP = im2col_fp32
 
 # User settings
-DATA_BITS?=16				# 32=FP32, 16=FP16
+DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=1
 MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
-DMA_ENABLE?=1				# Use Cluster DMA to move data or not
+DMA_ENABLE?=0				# Use Cluster DMA to move data or not
+HWC_format?=1				# CHW (=0) or HWC (=1) data format for the im2col
 # Layer padding and stride
 LPAD?=0
 RPAD?=0
@@ -13,12 +14,12 @@ DPAD?=0
 HSTR?=1
 WSTR?=1
 # Layer sizes
-Tin_H_l1?=8
-Tin_W_l1?=8
-Tin_C_l1?=16
+Tin_H_l1?=4
+Tin_W_l1?=4
+Tin_C_l1?=2
 Tker_W_l1?=3
-Tout_C_l1?=16
-#APP_CFLAGS += -DPRINT_OUTPUT
+Tout_C_l1?=2
+APP_CFLAGS += -DPRINT_OUTPUT
 #STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 # End of user settings
 
@@ -46,6 +47,7 @@ APP_CFLAGS += -DTin_W_l1=$(Tin_W_l1)
 APP_CFLAGS += -DTin_C_l1=$(Tin_C_l1)
 APP_CFLAGS += -DTker_W_l1=$(Tker_W_l1)
 APP_CFLAGS += -DTout_C_l1=$(Tout_C_l1)
+APP_CFLAGS += -DHWC_format=$(HWC_format)
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -mhwloopalign
 APP_LDFLAGS += -lm
@@ -54,6 +56,8 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 # Sources
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
