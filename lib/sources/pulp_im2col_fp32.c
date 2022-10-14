@@ -629,24 +629,24 @@ void pulp_blocktransp_fp32 (void * void_args)
   struct blocktransp_args * args = (struct blocktransp_args *)void_args;
   float * weights = args->weights;
   float * bt_weights = args->bt_weights;
-  int Cin = args->Cin;
-  int Cout = args->Cout;
-  int Hk = args->Hk;
-  int Wk = args->Wk;
+  uint32_t Cin = args->Cin;
+  uint32_t Cout = args->Cout;
+  uint32_t Hk = args->Hk;
+  uint32_t Wk = args->Wk;
 
-  int HW = Hk*Wk;
+  uint32_t HW = Hk*Wk;
 
-  int blockSize = (Cout+NUM_CORES-1) / NUM_CORES;
-  int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > Cout ? Cout : start+blockSize;
+  uint32_t blockSize = (Cout+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > Cout ? Cout : start+blockSize;
 
   // Block tranposition
-  // for (int k=0; k<Cout; k++)
-  for (int k=start; k<stop; k++)
+  // for (uint32_t k=0; k<Cout; k++)
+  for (uint32_t k=start; k<stop; k++)
   {
-    for (int c=0; c<Cin; c++)
+    for (uint32_t c=0; c<Cin; c++)
     {
-      for (int i=0; i<Hk*Wk; i++)
+      for (uint32_t i=0; i<Hk*Wk; i++)
       {
         // OLD 
         //temp[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
