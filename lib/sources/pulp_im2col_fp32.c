@@ -128,23 +128,23 @@ void pulp_im2col_fp32(void * void_args){
         if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
-        int padding = Lpad + Rpad + Upad + Dpad;
+        uint32_t padding = Lpad + Rpad + Upad + Dpad;
 
         if (padding == 0) {
-          for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
-            for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
-              for (int ci=start; ci<stop; ci++) {
+          for (uint32_t ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
+            for (uint32_t wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+              for (uint32_t ci=start; ci<stop; ci++) {
                 // IM2COL buffer coordinates
-                int kernel_idx = ci*Hk*Wk;
-                int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+                uint32_t kernel_idx = ci*Hk*Wk;
+                uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
                 // Input tensor coordinates
-                int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
-                for (int hk=0; hk<Hk; hk++) {
-                  for (int wk=0; wk<Wk; wk++) {
+                uint32_t receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+                for (uint32_t hk=0; hk<Hk; hk++) {
+                  for (uint32_t wk=0; wk<Wk; wk++) {
                     // IM2COl buffer coordinate update
-                    int i2c_inner_idx = wk + hk*Wk;
+                    uint32_t i2c_inner_idx = wk + hk*Wk;
                     // Input tensor coordinate update
-                    int in_inner_idx = wk + hk*Win;
+                    uint32_t in_inner_idx = wk + hk*Win;
 
                     i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = input->data[receptive_field_idx+in_inner_idx];
                   }
@@ -155,23 +155,23 @@ void pulp_im2col_fp32(void * void_args){
         }
 
         else {
-          for (int ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
-            for (int wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
-              for (int ci=start; ci<stop; ci++) {
+          for (uint32_t ho=0; ho<Htot/*Ho+2*pad*/; ho++) {
+            for (uint32_t wo=0; wo<Wtot/*Wo+2*pad*/; wo++) {
+              for (uint32_t ci=start; ci<stop; ci++) {
                 // IM2COL buffer coordinates
-                int kernel_idx = ci*Hk*Wk;
-                int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+                uint32_t kernel_idx = ci*Hk*Wk;
+                uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
                 // Input tensor coordinates
-                int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
-                for (int hk=0; hk<Hk; hk++) {
-                  for (int wk=0; wk<Wk; wk++) {
+                uint32_t receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+                for (uint32_t hk=0; hk<Hk; hk++) {
+                  for (uint32_t wk=0; wk<Wk; wk++) {
                     // IM2COl buffer coordinate update
-                    int i2c_inner_idx = wk + hk*Wk;
+                    uint32_t i2c_inner_idx = wk + hk*Wk;
                     // Input tensor coordinate update
-                    int in_inner_idx = wk + hk*Win;
+                    uint32_t in_inner_idx = wk + hk*Win;
                     // Padding condition
-                    int w_pad_cond = wk + wo*Wstr;
-                    int h_pad_cond = hk + ho*Hstr;
+                    uint32_t w_pad_cond = wk + wo*Wstr;
+                    uint32_t h_pad_cond = hk + ho*Hstr;
 
                     if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+(Hk)-Dpad) || (w_pad_cond>Wo+(Wk)-Rpad))) {
                       // Padding
@@ -194,29 +194,29 @@ void pulp_im2col_fp32(void * void_args){
       else // IN GRAD
       {
         // Set up variables for the in grad propagation
-        //Ho = (int) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        //Wo = (int) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
+        //Ho = (uint32_t) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+        //Wo = (uint32_t) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
 
-        int Hox = output->H;
-        int Wox = output->W;
+        uint32_t Hox = output->H;
+        uint32_t Wox = output->W;
         
-        for (int hi=0; hi<Hin; hi++) {
-          for (int wi=0; wi<Win; wi++) {
-            for (int co=start; co<stop; co++) {
+        for (uint32_t hi=0; hi<Hin; hi++) {
+          for (uint32_t wi=0; wi<Win; wi++) {
+            for (uint32_t co=start; co<stop; co++) {
               // IM2COL buffer coordinates
-              int kernel_idx = co*Hk*Wk;
-              int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
+              uint32_t kernel_idx = co*Hk*Wk;
+              uint32_t segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
               // Output grad tensor coordinates
               int ho_rf = hi - (Hk-1);
               int wo_rf = wi - (Wk-1);
               int receptive_field_idx = wo_rf + ho_rf*Wox + co*Hox*Wox;
 
-              for (int hk=0; hk<Hk; hk++) {
-                for (int wk=0; wk<Wk; wk++) {
+              for (uint32_t hk=0; hk<Hk; hk++) {
+                for (uint32_t wk=0; wk<Wk; wk++) {
                   // IM2COl buffer coordinates
-                  int i2c_inner_idx = wk + hk*Wk;
+                  uint32_t i2c_inner_idx = wk + hk*Wk;
                   // Output grad tensor coordinates
-                  int out_inner_idx = wk + hk*Wox;
+                  uint32_t out_inner_idx = wk + hk*Wox;
                   // Padding condition
                   int w_pad_cond = wk + wo_rf;
                   int h_pad_cond = hk + ho_rf;
@@ -250,23 +250,23 @@ void pulp_im2col_fp32(void * void_args){
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;     
 
         // Internal parallelization scheme on sizes
-        int HblockSize = (Htot+NUM_CORES-1) / NUM_CORES;
-        int Hstart = pi_core_id()*HblockSize;
-        int Hstop = Hstart+HblockSize > Htot ? Htot : Hstart+HblockSize;      
+        uint32_t HblockSize = (Htot+NUM_CORES-1) / NUM_CORES;
+        uint32_t Hstart = pi_core_id()*HblockSize;
+        uint32_t Hstop = Hstart+HblockSize > Htot ? Htot : Hstart+HblockSize;      
 
-        int padding = Lpad + Rpad + Upad + Dpad;
+        uint32_t padding = Lpad + Rpad + Upad + Dpad;
 
         if (padding == 0) {
-          //for (int ho=0; ho<Htot; ho++) {
-          for (int ho=Hstart; ho<Hstop; ho++) {
-            for (int wo=0; wo<Wtot; wo++) {
-              //for (int ci=start; ci<stop; ci++) {
-              for (int ci=0; ci<Cin; ci++) {
+          //for (uint32_t ho=0; ho<Htot; ho++) {
+          for (uint32_t ho=Hstart; ho<Hstop; ho++) {
+            for (uint32_t wo=0; wo<Wtot; wo++) {
+              //for (uint32_t ci=start; ci<stop; ci++) {
+              for (uint32_t ci=0; ci<Cin; ci++) {
                 // IM2COl buffer coordinates
-                int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
-                int kernel_idx = ci*Hk*Wk;
+                uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+                uint32_t kernel_idx = ci*Hk*Wk;
                 // Input tensor coordinates
-                int receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
+                uint32_t receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
 
                 // DMA Copy structures
                 pi_cl_dma_copy_2d_t dma_i2cfw;
@@ -288,15 +288,15 @@ void pulp_im2col_fp32(void * void_args){
           }
         }
         else {
-          for (int ho=0; ho<Htot; ho++) {
-            for (int wo=0; wo<Wtot; wo++) {
+          for (uint32_t ho=0; ho<Htot; ho++) {
+            for (uint32_t wo=0; wo<Wtot; wo++) {
               // Initialize padding conditions and variables
               int pad_l = Lpad - wo*Wstr;  
               int pad_r = wo*Wstr + (Wk) - Wtot - Rpad;
               int pad_u = Upad - ho*Hstr;
               int pad_d = ho*Hstr + (Hk) - Htot - Dpad;
-              int row_size = Wk;                // Transfer lenght (length of a row)
-              int col_size = Hk;
+              uint32_t row_size = Wk;                // Transfer lenght (length of a row)
+              uint32_t col_size = Hk;
               int in_shift_idx = 0;             // Index to shift input reading
               int offs_l = 0, offs_u = 0;
               // Check if conditions for padding are met and assign zeros
@@ -304,16 +304,16 @@ void pulp_im2col_fp32(void * void_args){
               if (pad_r > 0)      {row_size -= pad_r;}
               if (pad_u > 0)      {col_size -= pad_u;   in_shift_idx += pad_u * Win;  offs_u = pad_u;}       
               if (pad_d > 0)      {col_size -= pad_d;}
-              int transfer_size = row_size * col_size;
+              uint32_t transfer_size = row_size * col_size;
 
               //printf("ho=%d, wo=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\trow_size=%d, col_size=%d, transfer_size=%d\n", ho, wo, pad_l, pad_r, pad_u, pad_d, row_size, col_size, transfer_size);
 
-              for (int ci=start; ci<stop; ci++) {
+              for (uint32_t ci=start; ci<stop; ci++) {
                 // IM2COL buffer coordinates
-                int kernel_idx = ci*Hk*Wk;
-                int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+                uint32_t kernel_idx = ci*Hk*Wk;
+                uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
                 // Input tensor coordinates
-                int receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+                uint32_t receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
 
                 // DMA Copy structures
                 pi_cl_dma_copy_2d_t dma_i2cfw_pad;
@@ -332,20 +332,20 @@ void pulp_im2col_fp32(void * void_args){
                 pi_cl_dma_memcpy_2d(&dma_i2cfw_pad);    
 
                 // Initialize pad_buffer
-                for (int i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
+                for (uint32_t i=0; i<Wk*Hk; i++) pad_buffer[i]=0;
 
                 pi_cl_dma_wait(&dma_i2cfw_pad);    
 
                 // Fill the pad_buffer
-                for (int i=0; i<col_size; i++) { 
-                  for (int j=0; j<row_size; j++) {
-                    int pad_buffer_idx = offs_l + j + (offs_u+i)*Wk;
+                for (uint32_t i=0; i<col_size; i++) { 
+                  for (uint32_t j=0; j<row_size; j++) {
+                    uint32_t pad_buffer_idx = offs_l + j + (offs_u+i)*Wk;
                     pad_buffer[pad_buffer_idx] = load_buffer[j+i*row_size];
                   }
                 } 
 
                 // Fill im2col
-                for (int i=0; i<Wk*Hk; i++)   {i2c_buf[segment_idx+kernel_idx+i] = pad_buffer[i];}
+                for (uint32_t i=0; i<Wk*Hk; i++)   {i2c_buf[segment_idx+kernel_idx+i] = pad_buffer[i];}
               }
             }
           }
@@ -357,15 +357,15 @@ void pulp_im2col_fp32(void * void_args){
         //Ho = (Hin-Hk+Upad+Dpad+Hstr);
         //Wo = (Win-Wk+Rpad+Lpad+Wstr);
 
-        int Hox = output->H;
-        int Wox = output->W;
+        uint32_t Hox = output->H;
+        uint32_t Wox = output->W;
         
-        for (int hi=0; hi<Hin; hi++) {
-          for (int wi=0; wi<Win; wi++) {
-            for (int co=start; co<stop; co++) {
+        for (uint32_t hi=0; hi<Hin; hi++) {
+          for (uint32_t wi=0; wi<Win; wi++) {
+            for (uint32_t co=start; co<stop; co++) {
               // IM2COL buffer coordinates
-              int kernel_idx = co*Hk*Wk;
-              int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
+              uint32_t kernel_idx = co*Hk*Wk;
+              uint32_t segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
               // Output grad tensor coordinates
               int ho_rf = hi - (Hk-1);
               int wo_rf = wi - (Wk-1);
@@ -376,12 +376,12 @@ void pulp_im2col_fp32(void * void_args){
               int load_shift = 0;
               int offs_l = 0, offs_u = 0;
               // Transfer size
-              int row_size = Wk;  int col_size = Hk;
+              uint32_t row_size = Wk;  uint32_t col_size = Hk;
               if (pad_l>0)          {row_size -= pad_l;   load_shift += pad_l;      offs_l = pad_l;}
               if (pad_r>=Wox)       {row_size -= pad_r-1;}
               if (pad_u>0)          {col_size -= pad_u;   load_shift += pad_u*Wox;  offs_u = pad_u;}
               if (pad_d>=Hox)       {col_size -= pad_d-1;}
-              int transfer_size = col_size*row_size;
+              uint32_t transfer_size = col_size*row_size;
               //printf("hi=%d, wi=%d\tpad_l=%d, pad_r=%d, pad_u=%d, pad_d=%d\tcol_size=%d, row_size=%d, transfer_size=%d\toffs_l=%d, offs_r=%d\n", hi, wi, pad_l, pad_r, pad_u, pad_d, col_size, row_size, transfer_size, offs_l, offs_u);
 
               // DMA variables
@@ -401,21 +401,21 @@ void pulp_im2col_fp32(void * void_args){
               pi_cl_dma_memcpy_2d(&dma_i2cbw);    
 
               // Prepare pad_buffer 
-              for (int idx=0; idx<Hk*Wk; idx++)   pad_buffer[idx] = 0;
+              for (uint32_t idx=0; idx<Hk*Wk; idx++)   pad_buffer[idx] = 0;
 
               pi_cl_dma_wait(&dma_i2cbw);    
 
               // Fill pad_buffer
-              for (int kh=0; kh<col_size; kh++) {
-                for (int kw=0; kw<row_size; kw++) {
-                  int pad_buf_idx = (kw+offs_l) + (kh+offs_u)*Wk;
+              for (uint32_t kh=0; kh<col_size; kh++) {
+                for (uint32_t kw=0; kw<row_size; kw++) {
+                  uint32_t pad_buf_idx = (kw+offs_l) + (kh+offs_u)*Wk;
                   pad_buffer[pad_buf_idx] = load_buffer[kw+kh*row_size];
                   //printf("pad_buffer[%d] = load_buffer[%d] = %f\n", pad_buf_idx, kw+kh*row_size, load_buffer[kw+kh*row_size]);
                 }
               }
 
               // Fill im2col_buffer
-              for (int idx=0; idx<Hk*Wk; idx++)   {
+              for (uint32_t idx=0; idx<Hk*Wk; idx++)   {
                 i2c_buf[kernel_idx+segment_idx+idx] = pad_buffer[idx];
                 //printf("pad_buffer[%d] = %f\n", idx, pad_buffer[idx]); 
               }
@@ -449,23 +449,23 @@ void pulp_im2col_fp32(void * void_args){
         if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
-        int padding = Lpad + Rpad + Upad + Dpad;
+        uint32_t padding = Lpad + Rpad + Upad + Dpad;
 
         if (padding == 0) {
 
-          for (int ho=start; ho<stop/*Htot*/; ho++) {
-            for (int wo=0; wo<Wtot/*Wtot*/; wo++) {
+          for (uint32_t ho=start; ho<stop/*Htot*/; ho++) {
+            for (uint32_t wo=0; wo<Wtot/*Wtot*/; wo++) {
               // Im2Col indices
-              int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+              uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
               // Input activation indices
-              int input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
-              for (int hk=0; hk<Hk; hk++) {
-                for (int wk=0; wk<Wk; wk++) {
-                  for (int ci=0; ci<Cin; ci++) {
+              uint32_t input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
+              for (uint32_t hk=0; hk<Hk; hk++) {
+                for (uint32_t wk=0; wk<Wk; wk++) {
+                  for (uint32_t ci=0; ci<Cin; ci++) {
                     // Im2Col indices
-                    int i2c_inner_idx = ci + wk*Cin + hk*Cin*Wk;
+                    uint32_t i2c_inner_idx = ci + wk*Cin + hk*Cin*Wk;
                     // Input activation indices                    
-                    int act_idx = ci + wk*Cin + hk*Cin*Win;
+                    uint32_t act_idx = ci + wk*Cin + hk*Cin*Win;
                     // Fill im2col buffer
                     i2c_buf[segment_idx+i2c_inner_idx] = input->data[input_idx+act_idx];
                   }
@@ -479,19 +479,19 @@ void pulp_im2col_fp32(void * void_args){
 
           printf("\n[pulp_im2col_fp32.c:] Padding not implemented for HWC im2col without DMA!\n");
 
-          // for (int ho=start; ho<stop/*Htot*/; ho++) {
-          //   for (int wo=0; wo<Wtot/*Wtot*/; wo++) {
+          // for (uint32_t ho=start; ho<stop/*Htot*/; ho++) {
+          //   for (uint32_t wo=0; wo<Wtot/*Wtot*/; wo++) {
           //     // Im2Col indices
-          //     int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+          //     uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
           //     // Input activation indices
-          //     int input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
-          //     for (int hk=0; hk<Hk; hk++) {
-          //       for (int wk=0; wk<Wk; wk++) {
-          //         for (int ci=0; ci<Cin; ci++) {
+          //     uint32_t input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
+          //     for (uint32_t hk=0; hk<Hk; hk++) {
+          //       for (uint32_t wk=0; wk<Wk; wk++) {
+          //         for (uint32_t ci=0; ci<Cin; ci++) {
           //           // Im2Col indices
-          //           int i2c_inner_idx = ci + wk*Cin + hk*Cin*Wk;
+          //           uint32_t i2c_inner_idx = ci + wk*Cin + hk*Cin*Wk;
           //           // Input activation indices                    
-          //           int act_idx = ci + wk*Cin + hk*Cin*Win;
+          //           uint32_t act_idx = ci + wk*Cin + hk*Cin*Win;
           //           // Fill im2col buffer
           //           i2c_buf[segment_idx+i2c_inner_idx] = input->data[input_idx+act_idx];
           //         }
@@ -505,31 +505,31 @@ void pulp_im2col_fp32(void * void_args){
       else // IN GRAD
       {
         // Set up variables for the in grad propagation
-        //Ho = (int) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        //Wo = (int) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
+        //Ho = (uint32_t) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+        //Wo = (uint32_t) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
 
-        int Hox = output->H;
-        int Wox = output->W;
+        uint32_t Hox = output->H;
+        uint32_t Wox = output->W;
         
         printf("\n[pulp_im2col_fp32:] HWC Im2Col for IN GRAD not implemented!!\n");
 
-        for (int hi=0; hi<Hin; hi++) {
-          for (int wi=0; wi<Win; wi++) {
-            for (int hk=0; hk<Hk; hk++) {
-              for (int wk=0; wk<Wk; wk++) {
-                for (int co=0; co<Co; co++) {
+        for (uint32_t hi=0; hi<Hin; hi++) {
+          for (uint32_t wi=0; wi<Win; wi++) {
+            for (uint32_t hk=0; hk<Hk; hk++) {
+              for (uint32_t wk=0; wk<Wk; wk++) {
+                for (uint32_t co=0; co<Co; co++) {
                   // // IM2COL buffer coordinates
-                  // int kernel_idx = co*Hk*Wk;
-                  // int segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
+                  // uint32_t kernel_idx = co*Hk*Wk;
+                  // uint32_t segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
                   // // Output grad tensor coordinates
                   // int ho_rf = hi - (Hk-1);
                   // int wo_rf = wi - (Wk-1);
                   // int receptive_field_idx = wo_rf + ho_rf*Wox + co*Hox*Wox;
 
                   // // IM2COl buffer coordinates
-                  // int i2c_inner_idx = wk + hk*Wk;
+                  // uint32_t i2c_inner_idx = wk + hk*Wk;
                   // // Output grad tensor coordinates
-                  // int out_inner_idx = wk + hk*Wox;
+                  // uint32_t out_inner_idx = wk + hk*Wox;
                   // // Padding condition
                   // int w_pad_cond = wk + wo_rf;
                   // int h_pad_cond = hk + ho_rf;
@@ -562,16 +562,16 @@ void pulp_im2col_fp32(void * void_args){
         if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
-        int padding = Lpad + Rpad + Upad + Dpad;
+        uint32_t padding = Lpad + Rpad + Upad + Dpad;
 
         if (padding == 0) {
 
-          for (int ho=start; ho<stop/*Htot*/; ho++) {
-            for (int wo=0; wo<Wtot/*Wtot*/; wo++) {
+          for (uint32_t ho=start; ho<stop/*Htot*/; ho++) {
+            for (uint32_t wo=0; wo<Wtot/*Wtot*/; wo++) {
               // Im2Col indices
-              int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+              uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
               // Input activation indices
-              int input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
+              uint32_t input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
 
               // DMA Copy structures
               pi_cl_dma_copy_2d_t dma_i2cfw;
@@ -596,12 +596,12 @@ void pulp_im2col_fp32(void * void_args){
 
           printf("\n[pulp_im2col_fp32.c:] Padding not implemented for HWC im2col with DMA!\n");
 
-          // for (int ho=start; ho<stop/*Htot*/; ho++) {
-          //   for (int wo=0; wo<Wtot/*Wtot*/; wo++) {
+          // for (uint32_t ho=start; ho<stop/*Htot*/; ho++) {
+          //   for (uint32_t wo=0; wo<Wtot/*Wtot*/; wo++) {
           //     // Im2Col indices
-          //     int segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
+          //     uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
           //     // Input activation indices
-          //     int input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
+          //     uint32_t input_idx = (wo*Wstr-Lpad)*Cin + (ho*Hstr-Upad)*Cin*Win;
 
           //     // DMA Copy structures
           //     pi_cl_dma_copy_2d_t dma_i2cfw;
@@ -626,19 +626,19 @@ void pulp_im2col_fp32(void * void_args){
       else // IN GRAD
       {
         // Set up variables for the in grad propagation
-        //Ho = (int) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        //Wo = (int) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
+        //Ho = (uint32_t) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+        //Wo = (uint32_t) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
 
-        int Hox = output->H;
-        int Wox = output->W;
+        uint32_t Hox = output->H;
+        uint32_t Wox = output->W;
         
         printf("\n[pulp_im2col_fp32:] HWC Im2Col for IN GRAD not implemented!!\n");
 
-        for (int hi=start; hi<stop; hi++) {
-          for (int wi=0; wi<Win; wi++) {
-            for (int hk=0; hk<Hk; hk++) {
-              for (int wk=0; wk<Wk; wk++) {
-                for (int co=0; co<Co; co++) {
+        for (uint32_t hi=start; hi<stop; hi++) {
+          for (uint32_t wi=0; wi<Win; wi++) {
+            for (uint32_t hk=0; hk<Hk; hk++) {
+              for (uint32_t wk=0; wk<Wk; wk++) {
+                for (uint32_t co=0; co<Co; co++) {
                                                         
                 }
               }
