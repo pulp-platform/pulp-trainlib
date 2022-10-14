@@ -162,8 +162,26 @@ static inline void train ()
     copy_args.from = transp_buffer;
     copy_args.to = l1_in;
     copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
-    #elif DATA_BITS == 16
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args);
 
+    #elif DATA_BITS == 16
+    struct transp_args_fp16 transp_args;
+    fp16 transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+    #if MOD == 0
+    transp_args.matrix = l1_in;
+    #else 
+    transp_args.matrix = l1_out;
+    #endif 
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.matrix = l1_in;
+    transp_args.N = Tin_C_l1;
+    transp_args.M = Tin_H_l1*Tin_W_l1;
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    struct copy_args_fp16 copy_args;
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_in;
+    copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
+    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
     #endif
     #endif
 

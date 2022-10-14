@@ -60,6 +60,7 @@ struct blob_fp16 {
  * @param stride_h sets the amount of vertical stride
  * @param DW if == 1, notifies that the convolution is a DepthWise
  * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
+ * @param HWC set to 1 if the im2col has to be performed with a HWC format (adjacent elements are channel elements instead of row elements of either the input or output matrix)
  */
 struct im2col_args_fp16
 {
@@ -78,6 +79,7 @@ struct im2col_args_fp16
   int stride_h;
   int DW;
   int USE_DMA;
+  int HWC;
 };
 
 /**

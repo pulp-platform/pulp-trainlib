@@ -109,6 +109,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [x] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
 - [x] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
 - [x] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32)
+- [x] CWH format for DepthWise and 2D Convolutions (FP32)
 - [x] Matmul test (FP32, FP16)
 - [x] Memory profiling tool for estimating the memory occupation of a given layer/tile
 - [x] Autotuner to profile tile/mm_optimization
