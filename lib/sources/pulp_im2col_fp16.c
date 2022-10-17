@@ -65,7 +65,7 @@ void pulp_im2col_fp16(void * void_args){
   Wo = Win - Wk + 1;
 
   // Set up im2col variables for padding and stride
-  uint32_t Htot, Wtot;
+  uint32_t Htot=0, Wtot=0;
   Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
   Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
@@ -93,7 +93,7 @@ void pulp_im2col_fp16(void * void_args){
     stop = start+blockSize > Hin ? Hin : start+blockSize;
   }
   #else
-  uint32_t start, stop; 
+  uint32_t start=0, stop=0; 
   if (HWC == 0 && mod == 0) {
     start = 0;
     stop = Cin;    
@@ -138,7 +138,7 @@ void pulp_im2col_fp16(void * void_args){
                 uint32_t kernel_idx = ci*Hk*Wk;
                 uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
                 // Input tensor coordinates
-                uint32_t receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+                uint32_t receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
                 for (uint32_t hk=0; hk<Hk; hk++) {
                   for (uint32_t wk=0; wk<(Wk & 0xfffffffe); wk+=2) {
                     // IM2COl buffer coordinate update
@@ -153,7 +153,9 @@ void pulp_im2col_fp16(void * void_args){
                     v2f16 *I2C = (v2f16 *) &i2c_buf[kernel_idx+segment_idx+i2c_inner_idx];
                     *I2C = im2col_fill;
                   }
-                  if (Wk & 0x00000001) {
+                }
+                if (Wk & 0x00000001) {
+                  for (uint32_t hk=0; hk<Hk; hk++) {
                     // IM2COl buffer coordinate update
                     uint32_t i2c_inner_idx = (Wk-1) + hk*Wk;
                     // Input tensor coordinate update
@@ -204,7 +206,9 @@ void pulp_im2col_fp16(void * void_args){
                     v2f16 *I2C = (v2f16 *) &i2c_buf[kernel_idx+segment_idx+i2c_inner_idx];
                     *I2C = im2col_fill;
                   }
-                  if (Wk & 0x00000001) {
+                }
+                if (Wk & 0x00000001) {
+                  for (uint32_t hk=0; hk<Hk; hk++) {
                     // IM2COl buffer coordinate update
                     uint32_t i2c_inner_idx = (Wk-1) + hk*Wk;
                     // Input tensor coordinate update
@@ -273,7 +277,9 @@ void pulp_im2col_fp16(void * void_args){
                   v2f16 *I2C = (v2f16 *) &i2c_buf[kernel_idx+segment_idx+i2c_inner_idx];
                   *I2C = im2col_fill;
                 }
-                if (Wk & 0x00000001) {
+              }
+              if (Wk & 0x00000001) {
+                for (uint32_t hk=0; hk<Hk; hk++) {
                   // IM2COl buffer coordinates
                   uint32_t i2c_inner_idx = (Wk-1) + hk*Wk;
                   // Output grad tensor coordinates
@@ -520,7 +526,11 @@ void pulp_im2col_fp16(void * void_args){
                     v2f16* I2C = (v2f16*) &i2c_buf[segment_idx+i2c_inner_idx];
                     *I2C = im2col_fill;
                   }
-                  if (Cin & 0x00000001) {
+                }
+              }
+              if (Cin & 0x00000001) {
+                for (uint32_t hk=0; hk<Hk; hk++) {
+                  for (uint32_t wk=0; wk<Wk; wk++) {
                     // Im2Col indices
                     uint32_t i2c_inner_idx = (Cin-1) + wk*Cin + hk*Cin*Wk;
                     // Input activation indices                    
