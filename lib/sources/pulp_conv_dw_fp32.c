@@ -24,42 +24,50 @@
 #include "pulp_conv_dw_fp32.h"
 #include "pulp_train_defines.h"
 
-void pulp_conv_dw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type) 
+//void pulp_conv_dw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type) 
+void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
 {
+  struct DepthWise_Conv_args * DW_args = (struct DepthWise_Conv_args *) DepthWise_Conv_args;
   struct matMul_DW_args matMul_args;
   struct im2col_args im2col_args;
 
   // Kernel sizes
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = DW_args->coeff->W;
+  int pH = DW_args->coeff->H;
   // helps avoiding multiple L2 acceses, when structures are stored in L2
 
-  float *coeffData = coeff->data;
-  float *outData = output->data;
-  float *inData = input->data;
+  float *coeffData = DW_args->coeff->data;
+  float *outData = DW_args->output->data;
+  float *inData = DW_args->input->data;
 
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_in = DW_args->input->W;
+  int H_in = DW_args->input->H;
+  int C_in = DW_args->input->C;
+  int W_out = DW_args->output->W;
+  int H_out = DW_args->output->H;
+  int C_out = DW_args->output->C;
+
+  int Lpad = DW_args->Lpad;
+  int Rpad = DW_args->Rpad;
+  int Upad = DW_args->Upad;
+  int Dpad = DW_args->Dpad;
+
+  float * i2c_buffer = DW_args->i2c_buffer;
+
+  int opt_matmul_type = DW_args->opt_matmul_type_fw;
 
   // Set im2col args
-  im2col_args.input = input;
-  im2col_args.c = coeff;
-  im2col_args.output = output;
-  im2col_args.pBuffer = i2c_buffer;
-  im2col_args.Lpad = Lpad;
-  im2col_args.Rpad = Rpad;
-  im2col_args.Upad = Upad;
-  im2col_args.Dpad = Dpad;
+  im2col_args.input = DW_args->input;
+  im2col_args.c = DW_args->coeff;
+  im2col_args.output = DW_args->output;
+  im2col_args.pBuffer = DW_args->i2c_buffer;
+  im2col_args.Lpad = DW_args->Lpad;
+  im2col_args.Rpad = DW_args->Rpad;
+  im2col_args.Upad = DW_args->Upad;
+  im2col_args.Dpad = DW_args->Dpad;
   im2col_args.mod = 0;
-  im2col_args.tile_start = 0;
-  im2col_args.tile_h = W_in;
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
-  im2col_args.DW = 1;
   im2col_args.USE_DMA = 0;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
@@ -102,55 +110,62 @@ void pulp_conv_dw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct bl
 
 
 
-void pulp_conv_dw_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig)
+//void pulp_conv_dw_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig)
+void pulp_conv_dw_fp32_bw_cl( void * DepthWise_Conv_args )
 {
-  pulp_conv_dw_fp32_bw_param_grads_cl(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_wg);
+  struct DepthWise_Conv_args * DW_args = (struct DepthWise_Conv_args *) DepthWise_Conv_args;
+  int skip_in_grad = DW_args->skip_in_grad;
+
+  pulp_conv_dw_fp32_bw_param_grads_cl(DepthWise_Conv_args); //(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_wg);
   if (skip_in_grad == 0)
   {
-    pulp_conv_dw_fp32_bw_input_grads_cl(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_ig);
+    pulp_conv_dw_fp32_bw_input_grads_cl(DepthWise_Conv_args); //(input, coeff, output, Lpad, Rpad, Upad, Dpad, i2c_buffer, opt_matmul_type_ig);
   }
 }
 
 
 
-void pulp_conv_dw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type)
+//void pulp_conv_dw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type)
+void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
 {
+  struct DepthWise_Conv_args * DW_args = (struct DepthWise_Conv_args *) DepthWise_Conv_args;
   struct matMul_DW_args matMul_args;
   struct im2col_args im2col_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = DW_args->input->W;
+  int H_in = DW_args->input->H;
+  int C_in = DW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = DW_args->coeff->W;
+  int pH = DW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = DW_args->output->W;
+  int H_out = DW_args->output->H;
+  int C_out = DW_args->output->C;
 
-  float * inData = input->data;
-  float * inDiff = input->diff;
-  float * coeffData = coeff->data;
-  float * coeffDiff = coeff->diff;
-  float * outDiff = output->diff;
-  float * outData = output->data;
+  float * inData = DW_args->input->data;
+  float * inDiff = DW_args->input->diff;
+  float * coeffData = DW_args->coeff->data;
+  float * coeffDiff = DW_args->coeff->diff;
+  float * outDiff = DW_args->output->diff;
+  float * outData = DW_args->output->data;
 
-  im2col_args.input = input; 
-  im2col_args.c = coeff;
-  im2col_args.output = output; 
-  im2col_args.pBuffer = i2c_buffer;
+  float * i2c_buffer = DW_args->i2c_buffer;
+
+  int opt_matmul_type = DW_args->opt_matmul_type_wg;
+
+  im2col_args.input = DW_args->input; 
+  im2col_args.c = DW_args->coeff;
+  im2col_args.output = DW_args->output; 
+  im2col_args.pBuffer = DW_args->i2c_buffer;
   im2col_args.Lpad = 0;
   im2col_args.Rpad = 0;
   im2col_args.Upad = 0;
   im2col_args.Dpad = 0;
   im2col_args.mod = 0;
-  im2col_args.tile_start = 0;
-  im2col_args.tile_h = W_out;
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
-  im2col_args.DW = 1;
   im2col_args.USE_DMA = 0;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
@@ -192,34 +207,40 @@ void pulp_conv_dw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coef
 
 
 
-void pulp_conv_dw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type)
+//void pulp_conv_dw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, float * i2c_buffer, int opt_matmul_type)
+void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
 {
+  struct DepthWise_Conv_args * DW_args = (struct DepthWise_Conv_args *) DepthWise_Conv_args;
   struct matMul_DW_args matMul_args;
   struct im2col_args im2col_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = DW_args->input->W;
+  int H_in = DW_args->input->H;
+  int C_in = DW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = DW_args->coeff->W;
+  int pH = DW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = DW_args->output->W;
+  int H_out = DW_args->output->H;
+  int C_out = DW_args->output->C;
 
-  float * inData = input->data;
-  float * inDiff = input->diff;
-  float * coeffData = coeff->data;
-  float * coeffDiff = coeff->diff;
-  float * outDiff = output->diff;
-  float * outData = output->data;
+  float * inData = DW_args->input->data;
+  float * inDiff = DW_args->input->diff;
+  float * coeffData = DW_args->coeff->data;
+  float * coeffDiff = DW_args->coeff->diff;
+  float * outDiff = DW_args->output->diff;
+  float * outData = DW_args->output->data;
+
+  float * i2c_buffer = DW_args->i2c_buffer;
+  
+  int opt_matmul_type = DW_args->opt_matmul_type_ig;
 
   // PREPARE im2col_buffer for ACTIV_GRAD
-  im2col_args.input = input;
-  im2col_args.c = coeff;
-  im2col_args.output = output;
+  im2col_args.input = DW_args->input;
+  im2col_args.c = DW_args->coeff;
+  im2col_args.output = DW_args->output;
   im2col_args.pBuffer = i2c_buffer;
   im2col_args.Lpad = 0; //Lpad;
   im2col_args.Rpad = 0; //Rpad;
@@ -228,10 +249,7 @@ void pulp_conv_dw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coef
   im2col_args.mod = 1;
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
-  im2col_args.DW = 1;
   im2col_args.USE_DMA = 0;
-  
-  //if (H_in == pH) im2col_args.pad = 2;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 

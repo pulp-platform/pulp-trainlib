@@ -53,9 +53,6 @@ void pulp_conv2d_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
     im2col_args.pBuffer = i2c_buffer;
     im2col_args.pad = pad;
     im2col_args.mod = 0;
-    im2col_args.tile_start = 0;
-    im2col_args.tile_h = pH*pW;
-    im2col_args.DW = 0;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
@@ -153,9 +150,6 @@ void pulp_conv2d_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
     im2col_args.pBuffer = i2c_buffer;
     im2col_args.pad = 0;
     im2col_args.mod = 0;
-    im2col_args.tile_start = 0;
-    im2col_args.tile_h = H_out;
-    im2col_args.DW = 0;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
@@ -226,7 +220,6 @@ void pulp_conv2d_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp
   im2col_args.pBuffer = i2c_buffer;
   im2col_args.pad = pW-1; //1;
   im2col_args.mod = 1;
-  im2col_args.DW = 0; 
 
   if (H_in == pH) im2col_args.pad = 2;
 

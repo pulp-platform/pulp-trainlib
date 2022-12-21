@@ -60,9 +60,6 @@ void pulp_conv2d_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blo
     im2col_args.mod = 0;
     im2col_args.stride_w = stride_w;
     im2col_args.stride_h = stride_h;
-    im2col_args.tile_start = 0;
-    im2col_args.tile_h = pH*pW;
-    im2col_args.DW = 0;
     im2col_args.USE_DMA = USE_DMA_IM2COL;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
@@ -195,9 +192,6 @@ void pulp_conv2d_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
     im2col_args.mod = 0;
     im2col_args.stride_w = stride_w;
     im2col_args.stride_h = stride_h;
-    im2col_args.tile_start = 0;
-    im2col_args.tile_h = H_out;
-    im2col_args.DW = 0;
     im2col_args.USE_DMA = USE_DMA_IM2COL;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
@@ -336,7 +330,6 @@ void pulp_conv2d_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff
     im2col_args.stride_h = 1;
     im2col_args.stride_w = 1;
     im2col_args.mod = 1;
-    im2col_args.DW = 0;
     im2col_args.USE_DMA = USE_DMA_IM2COL; 
 
     //if (H_in == pH) im2col_args.pad = 2;

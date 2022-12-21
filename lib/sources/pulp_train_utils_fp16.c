@@ -394,7 +394,7 @@ inline fp16 vfdotp(v2f16 a, v2f16 b) {
 
 // Packs 2 FP16 into v2f16
 inline v2f16 vfpack(fp16 a, fp16 b) {
-  v2f16 result;
+  v2f16 result = (v2f16) {0,0};
   //asm ("pv.pack.ah %0, %1, %2" : "=f" (result): "f" (a), "f" (b) : );
-  return 0; //result;
+  return result;
 }

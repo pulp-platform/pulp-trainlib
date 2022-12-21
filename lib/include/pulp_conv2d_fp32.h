@@ -18,6 +18,51 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+/**
+ * 2D Convolution layer configuration structure
+ */
+
+/**
+ * @brief Structure for 2D Convolution Training in FP32
+ * @param input input feature maps for the conv2d layer
+ * @param coeff weight matrix 
+ * @param output output feature maps for the conv2d layer 
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
+ * @param stride_w stride in input width
+ * @param stride_h stride in input height
+ * @param i2c_buffer pointer to the im2col buffer
+ * @param bt_buffer pointer to the blocktranspose buffer (to compute input gradients)
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
+ * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input and output gradient tensors need to be stored in L2, im2col_buffer in L1)
+ */
+struct Conv2D_args {
+	struct blob * input; 
+	struct blob * coeff;
+	struct blob * output; 
+	int Lpad;
+	int Rpad;
+	int Upad;
+	int Dpad;
+	int stride_h;
+	int stride_w;
+	float * i2c_buffer;
+	float * bt_buffer;
+	int skip_in_grad;
+	int opt_matmul_type_fw;
+	int opt_matmul_type_wg;
+	int opt_matmul_type_ig;
+	int USE_IM2COL;
+	int USE_DMA_IM2COL;
+};
+
+
+
 
 /**
  * Convolutional layer training functions, grouped into FW and BW
@@ -38,25 +83,11 @@
  * @param stride_w stride in input width
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
- * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input tensor needs to be stored in L2, im2col_buffer in L1)
  */
-void pulp_conv2d_fp32_fw_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	int stride_h,
-	int stride_w,
-	float * i2c_buffer,
-	int opt_matmul_type,
-	int USE_IM2COL,
-	int USE_DMA_IM2COL
-);
+void pulp_conv2d_fp32_fw_cl( void * Conv2D_args );
 
 
 // BACKWARD FUNCTIONS
@@ -79,24 +110,7 @@ void pulp_conv2d_fp32_fw_cl(
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input and output gradient tensors need to be stored in L2, im2col_buffer in L1)
  */
-void pulp_conv2d_fp32_bw_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	int stride_h,
-	int stride_w,
-	float * i2c_buffer,
-	float * bt_buffer,
-	int skip_in_grad,
-	int opt_matmul_type_wg,
-	int opt_matmul_type_ig,
-	int USE_IM2COL,
-	int USE_DMA_IM2COL
-);
+void pulp_conv2d_fp32_bw_cl( void * Conv2D_args );
 
 /**
  * @brief Backward pass function which computes weight's gradient only
@@ -110,25 +124,11 @@ void pulp_conv2d_fp32_bw_cl(
  * @param stride_w stride in input width
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
- * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input tensor needs to be stored in L2, im2col_buffer in L1)
  */
-void pulp_conv2d_fp32_bw_param_grads_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	int stride_h,
-	int stride_w,
-	float * i2c_buffer,
-	int opt_matmul_type,
-	int USE_IM2COL,
-	int USE_DMA_IM2COL
-);
+void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args );
 
 /**
  * @brief Backward pass function which computes input's gradient only
@@ -143,23 +143,8 @@ void pulp_conv2d_fp32_bw_param_grads_cl(
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
  * @param bt_buffer pointer to the blocktranspose buffer (to reshape the weights for the in grad step)
- * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (output gradient tensor needs to be stored in L2, im2col_buffer in L1)
  */
-void pulp_conv2d_fp32_bw_input_grads_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	int stride_h,
-	int stride_w,
-	float * i2c_buffer,
-	float * bt_buffer,
-	int opt_matmul_type,
-	int USE_IM2COL,
-	int USE_DMA_IM2COL
-);
+void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args );

@@ -20,6 +20,42 @@
 
 
 /**
+ * Depthwise layer configuration structure
+ */
+
+/**
+ * @brief Structure for Depthwise Convolution Training in FP32
+ * @param input input feauture maps for the depthwise layer
+ * @param coeff weight matrix 
+ * @param output output feature maps for the depthwise layer
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
+ * @param i2c_buffer pointer to im2col buffer
+ * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt) 
+ */
+struct DepthWise_Conv_args {
+	struct blob * input;
+	struct blob * coeff; 
+	struct blob * output; 
+	int Lpad;
+	int Rpad;
+	int Upad;
+	int Dpad;
+	float * i2c_buffer;
+	int skip_in_grad;
+	int opt_matmul_type_fw;
+	int opt_matmul_type_wg;
+	int opt_matmul_type_ig;
+};
+
+
+
+/**
  * Depthwise layer training functions, grouped into FW and BW
  */
 
@@ -36,19 +72,9 @@
  * @param Upad upper padding
  * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
- * @param opt_matmul_type number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
-void pulp_conv_dw_fp32_fw_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	float * i2c_buffer,
-	int opt_matmul_type
-);
+void pulp_conv_dw_fp32_fw_cl( void * DepthWise_Conv_args );
 
 
 // BACKWARD FUNCTIONS
@@ -67,19 +93,7 @@ void pulp_conv_dw_fp32_fw_cl(
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
-void pulp_conv_dw_fp32_bw_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	float * i2c_buffer,
-	int skip_in_grad,
-	int opt_matmul_type_wg,
-	int opt_matmul_type_ig
-);
+void pulp_conv_dw_fp32_bw_cl( void * DepthWise_Conv_args );
 
 /**
  * @brief Backward pass function which computes weight's gradient only
@@ -91,18 +105,9 @@ void pulp_conv_dw_fp32_bw_cl(
  * @param Upad upper padding
  * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  */
-void pulp_conv_dw_fp32_bw_param_grads_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	float * i2c_buffer,
-	int opt_matmul_type
-);
+void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args );
 
 /**
  * @brief Backward pass function which computes input's gradient only
@@ -114,15 +119,6 @@ void pulp_conv_dw_fp32_bw_param_grads_cl(
  * @param Upad upper padding
  * @param Dpad lower padding
  * @param i2c_buffer pointer to im2col buffer
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
-void pulp_conv_dw_fp32_bw_input_grads_cl(
-	struct blob * input, 
-	struct blob * coeff, 
-	struct blob * output, 
-	int Lpad,
-	int Rpad,
-	int Upad,
-	int Dpad,
-	float * i2c_buffer,
-	int opt_matmul_type
-);
+void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args );
