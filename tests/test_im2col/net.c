@@ -124,8 +124,6 @@ static inline void train ()
     im2col_args.stride_h = HSTR;
     im2col_args.stride_w = WSTR;
     im2col_args.mod = MOD;
-    im2col_args.tile_start = 0;
-    im2col_args.tile_h = Tin_H_l1;
     im2col_args.USE_DMA = DMA_ENABLE;
     im2col_args.HWC = HWC_format;
 

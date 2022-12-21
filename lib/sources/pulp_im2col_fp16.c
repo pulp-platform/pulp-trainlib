@@ -41,7 +41,6 @@ void pulp_im2col_fp16(void * void_args){
   uint8_t Upad = args->Upad;
   uint8_t Dpad = args->Dpad;
   uint8_t mod = args->mod;
-  uint8_t DW = args->DW;
   uint8_t Hstr = args->stride_h;
   uint8_t Wstr = args->stride_w;
   // Flag to activate the DMA version of the IM2COL
@@ -413,10 +412,6 @@ void pulp_im2col_fp16(void * void_args){
       }
       else // IN GRAD
       {
-        // Set up variables for the in grad propagation
-        //Ho = (Hin-Hk+Upad+Dpad+Hstr);
-        //Wo = (Win-Wk+Rpad+Lpad+Wstr);
-
         uint32_t Hox = output->H;
         uint32_t Wox = output->W;
         
@@ -585,10 +580,6 @@ void pulp_im2col_fp16(void * void_args){
       }
       else // IN GRAD
       {
-        // Set up variables for the in grad propagation
-        //Ho = (uint32_t) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        //Wo = (uint32_t) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
-
         uint32_t Hox = output->H;
         uint32_t Wox = output->W;
         
@@ -706,10 +697,6 @@ void pulp_im2col_fp16(void * void_args){
       }
       else // IN GRAD
       {
-        // Set up variables for the in grad propagation
-        //Ho = (uint32_t) (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        //Wo = (uint32_t) (Win-Wk+Rpad+Lpad+Wstr)/Wstr;
-
         uint32_t Hox = output->H;
         uint32_t Wox = output->W;
         

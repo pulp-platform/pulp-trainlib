@@ -54,13 +54,10 @@ struct blob {
  * @param Upad upper padding
  * @param Dpad lower padding
  * @param mod  0 stands for forward (im2col of the input feature map), 1 for backward (im2col and flip of output feature map)
- * @param tile_start  im2col starting element of current processed tile
- * @param tile_h  horizontal size of the tile
  * @param stride_w sets the amount of horizontal stride
  * @param stride_h sets the amount of vertical stride
- * @param DW if == 1, notifies that the convolution is a DepthWise
+ * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
- * @param HWC set to 1 if the im2col has to be performed with a HWC format (adjacent elements are channel elements instead of row elements of either the input or output matrix)
  */
 struct im2col_args
 {
@@ -73,13 +70,10 @@ struct im2col_args
   int Upad;
   int Dpad;
   int mod;
-  int tile_start;
-  int tile_h;
   int stride_w;
   int stride_h;
-  int DW;
-  int USE_DMA;
   int HWC;
+  int USE_DMA;
 };
 
 /**

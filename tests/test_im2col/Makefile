@@ -62,7 +62,4 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c
 
-#get_golden:
-#	python3.6 ./utils/GM.py --step ${STEP}
-
 include $(RULES_DIR)/pmsis_rules.mk
