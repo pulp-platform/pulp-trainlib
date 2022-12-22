@@ -19,25 +19,28 @@
 */ 
 
 #include "pulp_train_utils_fp32.h"
+#include "pulp_act_fp32.h"
 #include "math.h"
 
-void pulp_relu_fp32_fw_cl(struct blob * input, struct blob * output){
-
-  int dim = input->dim;
-  float* inData = input->data;
-  float* outData = output->data;
+void pulp_relu_fp32_fw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* outData = args->output->data;
 
   for (int i = 0; i < dim; i++) {
     outData[i] = inData[i] > 0 ? inData[i] : 0;
   }
 }
 
-void pulp_relu_fp32_bw_cl(struct blob * input, struct blob * output){
-
-  int dim = input->dim;
-  float* inData = input->data;
-  float* inDiff = input->diff;
-  float* outDiff = output->diff;
+void pulp_relu_fp32_bw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* inDiff = args->input->diff;
+  float* outDiff = args->output->diff;
 
   for (int i = 0; i < dim; i++) {
     inDiff[i] = inData[i] > 0 ? outDiff[i] : 0;
@@ -46,28 +49,30 @@ void pulp_relu_fp32_bw_cl(struct blob * input, struct blob * output){
 }
 
 
-void pulp_softmax_fp32_fw_cl(struct blob * input, struct blob * output){
-
-  int dim = input->dim;
-  float* inData = input->data;
-  float* outData = output->data;
+void pulp_softmax_fp32_fw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* outData = args->output->data;
   float sum = 0.0;
 
   for (int i = 0; i < dim; i++) {
-    sum += exp(inData[i]);
+    sum += expf(inData[i]);
   }
 
   for (int i = 0; i < dim; i++) {
-    outData[i] = exp(inData[i])/sum;
+    outData[i] = expf(inData[i])/sum;
   }
 }
 
-void pulp_softmax_fp32_bw_cl(struct blob * input, struct blob * output){
-
-  int dim = input->dim;
-  float* inDiff = input->diff;
-  float* outData = output->data;
-  float* outDiff = output->diff;
+void pulp_softmax_fp32_bw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inDiff = args->input->diff;
+  float* outData = args->output->data;
+  float* outDiff = args->output->diff;
   float sum = 0.0;
 
   for (int i = 0; i < dim; i++) {

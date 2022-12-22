@@ -24,12 +24,12 @@
 /**
  * @brief IM2COL with padding and stride
  * 
- * @param void_args 
+ * @param im2col_args 
  */
-void pulp_im2col_fp32(void * void_args){
+void pulp_im2col_fp32(void * im2col_args){
 
   // unpack args
-  struct im2col_args * args = (struct im2col_args *)void_args;
+  struct im2col_args * args = (struct im2col_args *) im2col_args;
   struct blob * input = args->input;
   struct blob * coeff = args->c;
   struct blob * output = args->output;
@@ -646,9 +646,9 @@ void pulp_im2col_fp32(void * void_args){
 
 
 
-void pulp_blocktransp_fp32 (void * void_args)
+void pulp_blocktransp_fp32 (void * blocktransp_args)
 {
-  struct blocktransp_args * args = (struct blocktransp_args *)void_args;
+  struct blocktransp_args * args = (struct blocktransp_args *) blocktransp_args;
   float * weights = args->weights;
   float * bt_weights = args->bt_weights;
   uint32_t Cin = args->Cin;

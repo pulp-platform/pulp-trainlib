@@ -23,18 +23,22 @@
 #include "pulp_linear_fp32.h"
 
 void pulp_linear_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type)
+void pulp_linear_fp32_fw_cl( void * Linear_args )
 {
-  float *coeffData = coeff->data;
-  float *outData = output->data;  
-  float *inputData = input->data;
+  struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
+  float *coeffData = FC_args->coeff->data;
+  float *outData = FC_args->output->data;  
+  float *inputData = FC_args->input->data;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_fw;
 
   struct matMul_args matMul_args;
 
   matMul_args.A = coeffData;
   matMul_args.B = inputData;
   matMul_args.C = outData;
-  matMul_args.N = output->dim;
-  matMul_args.K = input->dim;
+  matMul_args.N = FC_args->output->dim;
+  matMul_args.K = FC_args->input->dim;
   matMul_args.M = 1;
   matMul_args.trans_B = 0;
 
@@ -59,24 +63,32 @@ void pulp_linear_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blo
 }
 
 
-void pulp_linear_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
+//void pulp_linear_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
+void pulp_linear_fp32_bw_cl( void * Linear_args )
 {
-  pulp_linear_fp32_bw_param_grads_cl(input, coeff, output, opt_matmul_type_wg);
+  struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
+  int skip_in_grad = FC_args->skip_in_grad;
+
+  pulp_linear_fp32_bw_param_grads_cl(Linear_args); //(input, coeff, output, opt_matmul_type_wg);
   if (skip_in_grad == 0) 
   {
-    pulp_linear_fp32_bw_input_grads_cl(input, coeff, output, opt_matmul_type_ig);
+    pulp_linear_fp32_bw_input_grads_cl(Linear_args); //(input, coeff, output, opt_matmul_type_ig);
   }
 }
 
 
-void pulp_linear_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
+//void pulp_linear_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
+void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 {
-  float *coeffData = coeff->data;
-  float *inData = input->data;
-  float *outData = output->data;
-  float *coeffDiff = coeff->diff;
-  float *outDiff = output->diff;  
-  float *inDiff = input->diff;
+  struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
+  float *coeffData = FC_args->coeff->data;
+  float *inData = FC_args->input->data;
+  float *outData = FC_args->output->data;
+  float *coeffDiff = FC_args->coeff->diff;
+  float *outDiff = FC_args->output->diff;  
+  float *inDiff = FC_args->input->diff;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_wg;
 
   struct matMul_args matMul_args;
 
@@ -87,12 +99,12 @@ void pulp_linear_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
   printf("\n");
 #endif
 
-  matMul_args.A = output->diff;
-  matMul_args.B = input->data;
-  matMul_args.C = coeff->diff;
-  matMul_args.N = output->dim;
+  matMul_args.A = outDiff;
+  matMul_args.B = inData;
+  matMul_args.C = coeffDiff;
+  matMul_args.N = FC_args->output->dim;
   matMul_args.K = 1;
-  matMul_args.M = input->dim;
+  matMul_args.M = FC_args->input->dim;
   matMul_args.trans_B = 0;
 
   #ifndef OPTIMIZE
@@ -117,14 +129,18 @@ void pulp_linear_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff
 }
 
 
-void pulp_linear_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
+//void pulp_linear_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
+void pulp_linear_fp32_bw_input_grads( void * Linear_args )
 {
-  float *coeffData = coeff->data;
-  float *inData = input->data;
-  float *outData = output->data;
-  float *coeffDiff = coeff->diff;
-  float *outDiff = output->diff;  
-  float *inDiff = input->diff;
+  struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
+  float *coeffData = FC_args->coeff->data;
+  float *inData = FC_args->input->data;
+  float *outData = FC_args->output->data;
+  float *coeffDiff = FC_args->coeff->diff;
+  float *outDiff = FC_args->output->diff;  
+  float *inDiff = FC_args->input->diff;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_ig;
 
   struct matMul_args matMul_args;
 
@@ -135,12 +151,12 @@ void pulp_linear_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff
   printf("\n");
 #endif
 
-  matMul_args.A = output->diff;
+  matMul_args.A = outDiff;
   matMul_args.B = coeffData;
   matMul_args.C = inDiff;
   matMul_args.N = 1;
-  matMul_args.K = output->dim;
-  matMul_args.M = input->dim;
+  matMul_args.K = FC_args->output->dim;
+  matMul_args.M = FC_args->input->dim;
   matMul_args.trans_B = 0;
 
   #ifndef OPTIMIZE

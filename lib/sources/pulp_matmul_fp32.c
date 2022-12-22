@@ -28,9 +28,9 @@
  * NAIVE VERSIONS
  */
 
-void mm(void * void_args) {
+void mm(void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -120,9 +120,9 @@ void mm(void * void_args) {
 
 
 // Naive matmul with parallelism on M
-void mm_M(void * void_args) {
+void mm_M(void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -181,9 +181,9 @@ void mm_M(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw(void * void_args) {
+void mm_dw(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -245,9 +245,9 @@ void mm_dw(void * void_args) {
 
 
 
-void mm_dw_in_grad(void * void_args) {
+void mm_dw_in_grad(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -296,10 +296,10 @@ void mm_dw_in_grad(void * void_args) {
 
 
 
-void mm_conv2d_in_grad (void * void_args) 
+void mm_conv2d_in_grad (void * matMul_args) 
 {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -348,9 +348,9 @@ void mm_conv2d_in_grad (void * void_args)
 
 
 
-void naive_conv2d_fw_kernel_CHW (void * void_args) 
+void naive_conv2d_fw_kernel_CHW (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outData = args->C;
@@ -392,9 +392,9 @@ void naive_conv2d_fw_kernel_CHW (void * void_args)
 
 
 
-void naive_conv2d_param_grad_kernel_CHW (void * void_args) 
+void naive_conv2d_param_grad_kernel_CHW (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffDiff = args->B;
   float * __restrict__ outDiff = args->C;
@@ -433,9 +433,9 @@ void naive_conv2d_param_grad_kernel_CHW (void * void_args)
 
 
 
-void naive_conv2d_in_grad_kernel_CHW (void * void_args) 
+void naive_conv2d_in_grad_kernel_CHW (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
@@ -490,9 +490,9 @@ void naive_conv2d_in_grad_kernel_CHW (void * void_args)
  */
 
 // Naive mm with unrolling of 2
-void mm_u2 (void * void_args) {
+void mm_u2 (void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -569,9 +569,9 @@ void mm_u2 (void * void_args) {
 
 
 
-void mm_unroll_1x2 (void * void_args) 
+void mm_unroll_1x2 (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -667,9 +667,9 @@ void mm_unroll_1x2 (void * void_args)
 
 
 
-void mm_unroll_1x4 (void * void_args)
+void mm_unroll_1x4 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -783,9 +783,9 @@ void mm_unroll_1x4 (void * void_args)
 
 
 
-void mm_unroll_1x8 (void * void_args)
+void mm_unroll_1x8 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -923,10 +923,10 @@ void mm_unroll_1x8 (void * void_args)
 
 
 
-void mm_unroll_2x1 (void * void_args)
+void mm_unroll_2x1 (void * matMul_args)
 {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1038,10 +1038,10 @@ void mm_unroll_2x1 (void * void_args)
 
 
 
-void mm_unroll_4x1 (void * void_args)
+void mm_unroll_4x1 (void * matMul_args)
 {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1165,10 +1165,10 @@ void mm_unroll_4x1 (void * void_args)
 
 
 
-void mm_unroll_8x1 (void * void_args)
+void mm_unroll_8x1 (void * matMul_args)
 {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1316,9 +1316,9 @@ void mm_unroll_8x1 (void * void_args)
 
 
 
-void mm_unroll_2x2 (void * void_args)
+void mm_unroll_2x2 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1482,9 +1482,9 @@ void mm_unroll_2x2 (void * void_args)
 
 
 
-void mm_unroll_2x4 (void * void_args)
+void mm_unroll_2x4 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1687,9 +1687,9 @@ void mm_unroll_2x4 (void * void_args)
 
 
 
-void mm_unroll_4x2 (void * void_args)
+void mm_unroll_4x2 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -1902,9 +1902,9 @@ void mm_unroll_4x2 (void * void_args)
 
 
 
-void mm_unroll_4x4 (void * void_args)
+void mm_unroll_4x4 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2163,9 +2163,9 @@ void mm_unroll_4x4 (void * void_args)
 
 
 // Naive mm with unrolling of 2, parallelizes on M
-void mm_M_u2 (void * void_args) {
+void mm_M_u2 (void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2242,9 +2242,9 @@ void mm_M_u2 (void * void_args) {
 
 
 
-void mm_M_unroll_2x1 (void * void_args) 
+void mm_M_unroll_2x1 (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2343,9 +2343,9 @@ void mm_M_unroll_2x1 (void * void_args)
 
 
 
-void mm_M_unroll_4x1 (void * void_args) 
+void mm_M_unroll_4x1 (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2466,9 +2466,9 @@ void mm_M_unroll_4x1 (void * void_args)
 
 
 
-void mm_M_unroll_8x1 (void * void_args) 
+void mm_M_unroll_8x1 (void * matMul_args) 
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2621,9 +2621,9 @@ void mm_M_unroll_8x1 (void * void_args)
 
 
 
-void mm_M_unroll_1x2 (void * void_args) {
+void mm_M_unroll_1x2 (void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2738,9 +2738,9 @@ void mm_M_unroll_1x2 (void * void_args) {
 
 
 
-void mm_M_unroll_1x4 (void * void_args) {
+void mm_M_unroll_1x4 (void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -2861,9 +2861,9 @@ void mm_M_unroll_1x4 (void * void_args) {
 
 
 
-void mm_M_unroll_1x8 (void * void_args) {
+void mm_M_unroll_1x8 (void * matMul_args) {
 
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3014,9 +3014,9 @@ void mm_M_unroll_1x8 (void * void_args) {
 
 
 
-void mm_M_unroll_2x2 (void * void_args)
+void mm_M_unroll_2x2 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3183,9 +3183,9 @@ void mm_M_unroll_2x2 (void * void_args)
 
 
 
-void mm_M_unroll_4x2 (void * void_args)
+void mm_M_unroll_4x2 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3379,9 +3379,9 @@ void mm_M_unroll_4x2 (void * void_args)
 
 
 
-void mm_M_unroll_2x4 (void * void_args)
+void mm_M_unroll_2x4 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3589,9 +3589,9 @@ void mm_M_unroll_2x4 (void * void_args)
 
 
 
-void mm_M_unroll_4x4 (void * void_args)
+void mm_M_unroll_4x4 (void * matMul_args)
 {
-  struct matMul_args* args = (struct matMul_args *)void_args;
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3854,9 +3854,9 @@ void mm_M_unroll_4x4 (void * void_args)
 
 
 // Matmul for depthwise convolutions
-void mm_dw_u2(void * void_args) {
+void mm_dw_u2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3902,9 +3902,9 @@ void mm_dw_u2(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw_u3(void * void_args) {
+void mm_dw_u3(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -3957,9 +3957,9 @@ void mm_dw_u3(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw_unroll_1x2(void * void_args) {
+void mm_dw_unroll_1x2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4016,9 +4016,9 @@ void mm_dw_unroll_1x2(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw_unroll_1x4(void * void_args) {
+void mm_dw_unroll_1x4(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4085,9 +4085,9 @@ void mm_dw_unroll_1x4(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw_unroll_1x2_u2(void * void_args) {
+void mm_dw_unroll_1x2_u2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4157,9 +4157,9 @@ void mm_dw_unroll_1x2_u2(void * void_args) {
 
 
 // Matmul for depthwise convolutions
-void mm_dw_unroll_1x4_u2(void * void_args) {
+void mm_dw_unroll_1x4_u2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4243,10 +4243,10 @@ void mm_dw_unroll_1x4_u2(void * void_args) {
 
 
 // Matmul for dw input grad with unrolling of 2
-void mm_dw_in_grad_u2(void * void_args)
+void mm_dw_in_grad_u2(void * matMul_DW_args)
 {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4288,10 +4288,10 @@ void mm_dw_in_grad_u2(void * void_args)
 
 
 // Matmul for dw input grad with unrolling of 2
-void mm_dw_in_grad_u3(void * void_args)
+void mm_dw_in_grad_u3(void * matMul_DW_args)
 {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4339,9 +4339,9 @@ void mm_dw_in_grad_u3(void * void_args)
 
 
 
-void mm_dw_in_grad_unroll_1x2(void * void_args) {
+void mm_dw_in_grad_unroll_1x2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4406,9 +4406,9 @@ void mm_dw_in_grad_unroll_1x2(void * void_args) {
 
 
 
-void mm_dw_in_grad_unroll_1x4(void * void_args) {
+void mm_dw_in_grad_unroll_1x4(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4486,9 +4486,9 @@ void mm_dw_in_grad_unroll_1x4(void * void_args) {
 
 
 
-void mm_dw_in_grad_unroll_1x2_u2(void * void_args) {
+void mm_dw_in_grad_unroll_1x2_u2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;
@@ -4576,9 +4576,9 @@ void mm_dw_in_grad_unroll_1x2_u2(void * void_args) {
 
 
 
-void mm_dw_in_grad_unroll_1x4_u2(void * void_args) {
+void mm_dw_in_grad_unroll_1x4_u2(void * matMul_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)void_args;
+  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
   float * __restrict__ A = args->A;
   float * __restrict__ B = args->B;
   float * __restrict__ C = args->C;

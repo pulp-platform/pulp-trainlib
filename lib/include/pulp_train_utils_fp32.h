@@ -22,7 +22,7 @@
 #include "pulp_train_defines.h"
 
 /**
- * =====> STRUCTURES <=====
+ * =====> BACKEND STRUCTURES <=====
  */
 
 /**
@@ -42,6 +42,7 @@ struct blob {
    int H;
    int C;
 };
+
 
 /**
  * @brief Arguments for im2col function
@@ -76,17 +77,6 @@ struct im2col_args
   int USE_DMA;
 };
 
-/**
- * @brief Arguments for ReLU
- * @param compare input of the activation function
- * @param out output array for the activation
- * @param size size of the arrays to be processed
- **/
-struct relu_args {
-  float * compare;
-  float * out;
-  int size;
-};
 
 /**
  * @brief Arguments for pooling functions
@@ -106,12 +96,6 @@ struct pool_args {
   int Wstride;
 };
 
-struct softMax_args {
-  float * input;
-  float * output;
-  float * sum;
-  int size;
-};
 
 /**
  * @brief Parameters for optimizer fucntions for every single layer
@@ -122,6 +106,7 @@ struct optim_args {
   struct blob * weights;
   float learning_rate;
 };
+
 
 /**
  * @brief Transposes an array containing a matrix (of sizes N and M) into another target array

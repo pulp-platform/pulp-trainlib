@@ -24,8 +24,8 @@
 
 /**
  * @brief Gradient descent optimizer for a single layer. Use pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &args) to parallelize.
- * @param void_args pointer to optim_args structure (see pulp_train_utils_fp32.h) 
+ * @param optim_args pointer to optim_args structure (see pulp_train_utils_fp32.h) 
  */
 void pulp_gradient_descent_fp32(
-    void * void_args
+    void * optim_args
 );

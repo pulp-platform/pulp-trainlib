@@ -18,6 +18,23 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+/**
+ * Loss functions configuration structure
+ */
+
+/**
+ * @brief Structure to configure the activation functions
+ * @param output pointer to the blob structure of the output data to calculate the output gradient
+ * @param target current sample's label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ */
+struct loss_args {
+    struct blob * output;
+    float * target;
+    float * wr_loss;
+};
+
+
 
 /**
  * Loss functions
@@ -29,11 +46,7 @@
  * @param target output label
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
-void pulp_CrossEntropyLoss (
-    struct blob * output, 
-    float * target,
-    float * wr_loss
-);
+void pulp_CrossEntropyLoss( void * loss_args );
 
 /**
  * @brief Standard Mean Squared Error Loss function 
@@ -41,8 +54,4 @@ void pulp_CrossEntropyLoss (
  * @param target output label
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
-void pulp_MSELoss (
-    struct blob * output, 
-    float * target, 
-    float * wr_loss
-);
+void pulp_MSELoss( void * loss_args );

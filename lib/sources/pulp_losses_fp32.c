@@ -23,12 +23,13 @@
 #include "pulp_losses_fp32.h"
 
 
-void pulp_CrossEntropyLoss (struct blob * output, float * target, float * wr_loss)
+void pulp_CrossEntropyLoss ( void * loss_args )
 {
-  float * outData = output->data;
-  float * outDiff = output->diff;
-  int size = output->dim;
-
+  struct loss_args * args = (struct loss_args *) loss_args;
+  float * outData = args->output->data;
+  float * outDiff = args->output->diff;
+  float * target = args->target;
+  int size = args->output->dim;
 
   float loss = 0.0;
   for(int i=0; i<size; i++){
@@ -51,7 +52,8 @@ void pulp_CrossEntropyLoss (struct blob * output, float * target, float * wr_los
   #endif
   #endif  
 
-  *wr_loss = loss;
+  //*wr_loss = loss;
+  args->wr_loss = loss;
 
   for(int i=0; i<size; i++){
     outDiff[i] = (-target[i]+outData[i]);
@@ -63,11 +65,13 @@ void pulp_CrossEntropyLoss (struct blob * output, float * target, float * wr_los
 }
 
 
-void pulp_MSELoss (struct blob * output, float * target, float * wr_loss) 
+void pulp_MSELoss ( void * loss_args ) 
 {
-  float * outData = output->data;
-  float * outDiff = output->diff;
-  int size = output->dim;
+  struct loss_args * args = (struct loss_args *) loss_args;
+  float * outData = args->output->data;
+  float * outDiff = args->output->diff;
+  float * target = args->target;
+  int size = args->output->dim;
   int off = 0;
 
   float loss = 0.0;
@@ -97,7 +101,8 @@ void pulp_MSELoss (struct blob * output, float * target, float * wr_loss)
   #endif
   #endif  
 
-  *wr_loss = loss;
+  //*wr_loss = loss;
+  args->wr_loss = loss;
 
   for(int i=0; i<size; i++){
     outDiff[i] = meanval * 2.0f *(outData[i] - target[i]);

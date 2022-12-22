@@ -19,30 +19,38 @@
 */ 
 
 /**
+ * Activation functions configuration structure
+ */
+
+/**
+ * @brief Structure for activation functions
+ * @param input blob structure for the input data of the activation layer
+ * @param output blob structure for the output data of the activation layer
+ */
+struct act_args {
+    struct blob * input;
+    struct blob * output;
+};
+
+
+
+/**
  * Activation functions, both FW and BW
  **/
 
 /**
- * @brief Forward pass function.
+ * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.
  * @param input Input for relu.
  * @param output Output of relu.
 */
-void pulp_relu_fp32_fw_cl(
-    struct blob * input,
-    struct blob * output
-);
-
-
+void pulp_relu_fp32_fw_cl( void * act_args );
 
 /**
  * @brief Bakcward pass function.
  * @param input Input for relu.
  * @param output Output of relu.
 */
-void pulp_relu_fp32_bw_cl(
-    struct blob * input,
-    struct blob * output
-);
+void pulp_relu_fp32_bw_cl( void * act_args );
 
 
 
@@ -51,17 +59,11 @@ void pulp_relu_fp32_bw_cl(
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
-void pulp_softmax_fp32_fw_cl(
-    struct blob * input,
-    struct blob * output
-);
+void pulp_softmax_fp32_fw_cl( void * act_args );
 
 /**
  * @brief Bakcward pass function.
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
-void pulp_softmax_fp32_bw_cl(
-    struct blob * input,
-    struct blob * output
-);
+void pulp_softmax_fp32_bw_cl( void * act_args );

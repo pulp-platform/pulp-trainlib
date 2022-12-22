@@ -23,9 +23,9 @@
 #include "pulp_optimizers_fp32.h"
 
 
-void pulp_gradient_descent_fp32 (void * void_args) 
+void pulp_gradient_descent_fp32 (void * optim_args) 
 {
-    struct optim_args * args = (struct optim_args *) void_args;
+    struct optim_args * args = (struct optim_args *) optim_args;
     float * __restrict__ weights = args->weights->data; 
     float * __restrict__ weight_grad = args->weights->diff;
     const int wgt_size = args->weights->dim; 

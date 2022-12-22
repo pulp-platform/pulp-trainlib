@@ -24,21 +24,24 @@
 #include "pulp_train_defines.h"
 
 
-void pulp_conv_pw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) {
-
-  // kernel dimensions
+//void pulp_conv_pw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
+void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
+{
+  struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
   struct matMul_args matMul_args;
 
-  int pW = coeff->W;
-  int pH = coeff->H;
-  float *coeffData = coeff->data;
-  float *outData = output->data;
-  float *inData = input->data;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
+  float *coeffData = PW_args->coeff->data;
+  float *outData = PW_args->output->data;
+  float *inData = PW_args->input->data;
 
-  int W_in = input->W;
-  int H_in = input->H;
-  int Cin = input->C;
-  int Cout = output->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int Cin = PW_args->input->C;
+  int Cout = PW_args->output->C;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_fw;
 
   matMul_args.A = coeffData;
   matMul_args.B = inData;
@@ -76,45 +79,53 @@ void pulp_conv_pw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct bl
 
 
 
-void pulp_conv_pw_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
+//void pulp_conv_pw_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
+void pulp_conv_pw_fp32_bw_cl( void * PointWise_Conv_args )
 {
-  pulp_conv_pw_fp32_bw_param_grads_cl(input, coeff, output, pad, opt_matmul_type_wg);
+  struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
+  int skip_in_grad = PW_args->skip_in_grad;
+
+  pulp_conv_pw_fp32_bw_param_grads_cl(PointWise_Conv_args); //(input, coeff, output, pad, opt_matmul_type_wg);
   if (skip_in_grad == 0)
   {
-    pulp_conv_pw_fp32_bw_input_grads_cl(input, coeff, output, pad, opt_matmul_type_ig);
+    pulp_conv_pw_fp32_bw_input_grads_cl(PointWise_Conv_args); //(input, coeff, output, pad, opt_matmul_type_ig);
   }
 }
 
 
 
-void pulp_conv_pw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
+//void pulp_conv_pw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
+void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
 {
+  struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
   struct matMul_args matMul_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int C_in = PW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = PW_args->output->W;
+  int H_out = PW_args->output->H;
+  int C_out = PW_args->output->C;
 
   #ifdef DEBUG
   printf("OUTDIM %d %d %d ", W_in, H_in, C_in);
   #endif
 
-  float * inData = input->data;
-  float * inDiff = input->diff;
+  float * inData = PW_args->input->data;
+  float * inDiff = PW_args->input->diff;
 
-  float * coeffData = coeff->data;
-  float * coeffDiff = coeff->diff;
+  float * coeffData = PW_args->coeff->data;
+  float * coeffDiff = PW_args->coeff->diff;
 
-  float * outData = output->data;
-  float * outDiff = output->diff;
+  float * outData = PW_args->output->data;
+  float * outDiff = PW_args->output->diff;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_wg;
 
   // COMPUTE GRADIENT
   matMul_args.A = outDiff;
@@ -153,35 +164,38 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coef
 
 
 
-void pulp_conv_pw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
+//void pulp_conv_pw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
+void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
 {
-  // struct for coeffDiff calculation
+  struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
   struct matMul_args matMul_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int C_in = PW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = PW_args->output->W;
+  int H_out = PW_args->output->H;
+  int C_out = PW_args->output->C;
 
   #ifdef DEBUG
   printf("OUTDIM %d %d %d ", W_out, H_out, C_out);
   #endif
 
-  float * inData = input->data;
-  float * inDiff = input->diff;
+  float * inData = PW_args->input->data;
+  float * inDiff = PW_args->input->diff;
 
-  float * coeffData = coeff->data;
-  float * coeffDiff = coeff->diff;
+  float * coeffData = PW_args->coeff->data;
+  float * coeffDiff = PW_args->coeff->diff;
 
-  float * outData = output->data;
-  float * outDiff = output->diff;
+  float * outData = PW_args->output->data;
+  float * outDiff = PW_args->output->diff;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_ig;
 
   // COMPUTE ACTIV_GRAD
   matMul_args.A = coeffData; // transp ?
