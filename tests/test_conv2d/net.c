@@ -29,7 +29,10 @@
 // DATA DEFINITION
 
 // CONV2D
+PI_L1 float zero_init = 0.0f;
+PI_L1 struct Conv2D_args C2D_args;
 PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
+
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
@@ -45,6 +48,7 @@ PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 float bt_buffer[1];
 #endif
 
 #ifdef BACKWARD_ERROR   // PASS TO BE FIXED
@@ -64,6 +68,7 @@ PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 float bt_buffer[1];
 #endif
 
 
@@ -72,8 +77,8 @@ PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = INPUT[i];
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = 0.0f;
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  0.0f;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init;
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -103,6 +108,25 @@ static inline void connect_blobs(){
   layer1_wgt.W = Tker_W_l1;
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
+
+  C2D_args.input = &layer1_in;
+  C2D_args.coeff = &layer1_wgt;
+  C2D_args.output = &layer1_out;
+  C2D_args.Lpad = PAD_L;
+  C2D_args.Rpad = PAD_R;
+  C2D_args.Upad = PAD_U;
+  C2D_args.Dpad = PAD_D;
+  C2D_args.stride_h = STRIDE_H;
+  C2D_args.stride_w = STRIDE_W;
+  C2D_args.i2c_buffer = im2col_buffer;
+  C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_in_grad = 0;
+  C2D_args.HWC = HWC_LAYOUT;
+  C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_wg = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
+  C2D_args.USE_IM2COL = IM2COL;
+  C2D_args.USE_DMA_IM2COL = DMA;
 }
 
 static inline void compute_memory_occupation(){
@@ -152,8 +176,8 @@ static inline void print_data() {
 #ifdef BACKWARD_GRAD
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = INPUT[i]; 
-  for (int i=0; i<Tout_C_l1*Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                 l1_ker_diff[i] = 0.0f;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = 0.0f; 
+  for (int i=0; i<Tout_C_l1*Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                 l1_ker_diff[i] = zero_init;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i]; 
 }
 
@@ -178,6 +202,24 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  C2D_args.input = &layer1_in;
+  C2D_args.coeff = &layer1_wgt;
+  C2D_args.output = &layer1_out;
+  C2D_args.Lpad = PAD_L;
+  C2D_args.Rpad = PAD_R;
+  C2D_args.Upad = PAD_U;
+  C2D_args.Dpad = PAD_D;
+  C2D_args.stride_h = STRIDE_H;
+  C2D_args.stride_w = STRIDE_W;
+  C2D_args.i2c_buffer = im2col_buffer;
+  C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_in_grad = 0;
+  C2D_args.HWC = HWC_LAYOUT;
+  C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_wg = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
+  C2D_args.USE_IM2COL = IM2COL;
+  C2D_args.USE_DMA_IM2COL = DMA;
 }
 
 static inline void compute_memory_occupation(){
@@ -205,9 +247,9 @@ static inline void compute_memory_occupation(){
 
 #ifdef BACKWARD_ERROR
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = zero_init;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = 0.0f; 
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i]; //0.0f;
 }
 
@@ -239,6 +281,24 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  C2D_args.input = &layer1_in;
+  C2D_args.coeff = &layer1_wgt;
+  C2D_args.output = &layer1_out;
+  C2D_args.Lpad = PAD_L;
+  C2D_args.Rpad = PAD_R;
+  C2D_args.Upad = PAD_U;
+  C2D_args.Dpad = PAD_D;
+  C2D_args.stride_h = STRIDE_H;
+  C2D_args.stride_w = STRIDE_W;
+  C2D_args.i2c_buffer = im2col_buffer;
+  C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_in_grad = 0;
+  C2D_args.HWC = HWC_LAYOUT;
+  C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_wg = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
+  C2D_args.USE_IM2COL = IM2COL;
+  C2D_args.USE_DMA_IM2COL = DMA;
 }
 
 static inline void compute_memory_occupation(){
@@ -260,7 +320,7 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
+  pulp_conv2d_fp32_fw_cl(&C2D_args);
   #endif
 }
 
@@ -318,7 +378,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
+  pulp_conv2d_fp32_fw_cl(&C2D_args);
   #endif
 
   #ifdef PROF_FWD
@@ -332,11 +392,11 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_GRAD
-  pulp_conv2d_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, MATMUL_TYPE, IM2COL, DMA);
+  pulp_conv2d_fp32_bw_param_grads_cl(&C2D_args);
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_conv2d_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, PAD_L, PAD_R, PAD_U, PAD_D, STRIDE_H, STRIDE_W, im2col_buffer, bt_buffer, MATMUL_TYPE, IM2COL, DMA);
+  pulp_conv2d_fp32_bw_input_grads_cl(&C2D_args);
   #endif
 
   #ifdef PROF_BKWD

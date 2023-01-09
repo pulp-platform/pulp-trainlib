@@ -130,7 +130,7 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 
 
 //void pulp_linear_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
-void pulp_linear_fp32_bw_input_grads( void * Linear_args )
+void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
   float *coeffData = FC_args->coeff->data;

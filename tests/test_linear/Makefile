@@ -1,7 +1,7 @@
 APP = linear_test
 
 # User settings
-IN_CH?=64
+IN_CH?=16
 OUT_CH?=16
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'

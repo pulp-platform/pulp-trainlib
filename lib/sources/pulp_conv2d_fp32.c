@@ -52,6 +52,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 
     float * i2c_buffer = C2D_args->i2c_buffer;
 
+    int HWC_layout = C2D_args->HWC;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int USE_DMA = C2D_args->USE_DMA_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_fw;
@@ -76,6 +77,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
     im2col_args.stride_w = stride_w;
     im2col_args.stride_h = stride_h;
     im2col_args.USE_DMA = USE_DMA;
+    im2col_args.HWC = HWC_layout;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
@@ -209,6 +211,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
 
     float * i2c_buffer = C2D_args->i2c_buffer;
 
+    int HWC_layout = C2D_args->HWC;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int USE_DMA = C2D_args->USE_DMA_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_wg;
@@ -228,6 +231,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
     im2col_args.stride_w = stride_w;
     im2col_args.stride_h = stride_h;
     im2col_args.USE_DMA = USE_DMA;
+    im2col_args.HWC = HWC_layout;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
@@ -360,6 +364,7 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
   int Upad = C2D_args->Upad;
   int Dpad = C2D_args->Dpad;
 
+  int HWC_layout = C2D_args->HWC;
   int USE_IM2COL = C2D_args->USE_IM2COL;
   int USE_DMA = C2D_args->USE_DMA_IM2COL;
   int opt_matmul_type = C2D_args->opt_matmul_type_ig;
@@ -380,6 +385,7 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
     im2col_args.stride_w = 1;
     im2col_args.mod = 1;
     im2col_args.USE_DMA = USE_DMA; 
+    im2col_args.HWC = HWC_layout;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 

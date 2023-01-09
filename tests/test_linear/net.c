@@ -24,6 +24,7 @@
 // DATA DEFINITION
 
 // LINEAR
+PI_L1 struct Linear_args FC_args;
 PI_L1 struct blob layer0_in, layer0_wgt, layer0_out;
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
@@ -67,6 +68,14 @@ static inline void connect_blobs()
 
   layer0_out.data = l0_out;
   layer0_out.dim = Tout_l0;
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -111,6 +120,14 @@ static inline void connect_blobs()
 
   layer0_out.diff = l0_out_diff;
   layer0_out.dim = Tout_l0;  
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -155,6 +172,14 @@ static inline void connect_blobs()
 
   layer0_out.diff = l0_out_diff;
   layer0_out.dim = Tout_l0;  
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -185,7 +210,7 @@ static inline void compute_memory_occupation(){
 static inline void net_forward(){
   /**  FORWARD FC #1   **/
   #ifdef FORWARD
-  pulp_linear_fp32_fw_cl(&layer0_in, &layer0_wgt, &layer0_out, MATMUL_TYPE);
+  pulp_linear_fp32_fw_cl(&FC_args);
   #endif
 }
 
@@ -243,7 +268,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_linear_fp32_fw_cl(&layer0_in, &layer0_wgt, &layer0_out, MATMUL_TYPE);
+  pulp_linear_fp32_fw_cl(&FC_args);
   #endif
 
   #ifdef PROF_FWD
@@ -256,11 +281,11 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_linear_fp32_bw_input_grads_cl(&layer0_in, &layer0_wgt, &layer0_out, MATMUL_TYPE);
+  pulp_linear_fp32_bw_input_grads_cl(&FC_args);
   #endif
 
   #ifdef BACKWARD_GRAD
-  pulp_linear_fp32_bw_param_grads_cl(&layer0_in, &layer0_wgt, &layer0_out, MATMUL_TYPE);
+  pulp_linear_fp32_bw_param_grads_cl(&FC_args);
   #endif
 
   #ifdef PROF_BCKWD
