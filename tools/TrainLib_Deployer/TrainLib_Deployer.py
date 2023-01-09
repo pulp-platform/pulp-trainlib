@@ -40,7 +40,7 @@ import utils.DNN_Composer as composer
 
 # GENERAL PROPERTIES
 project_name = 'DNN'
-project_path = '../../Deployment_Tests/'
+project_path = '../../../../TrainLib_Examples/'
 proj_folder = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
@@ -52,85 +52,29 @@ loss_fn = "MSELoss"     # Name of PyTorch's loss function
 
 # NETWORK GRAPH
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
-layer_list      = [ 'conv2d', 'AvgPool',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   
-                    'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d', 
-                    'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d',
-                    'conv2d', 'conv2d',   'conv2d', 'conv2d',   'conv2d', 'conv2d', 
-                    'AvgPool', 'linear' ]
+layer_list      = [ 'conv2d', 'linear' ]
 # Layer properties
-in_ch_list      = [ 3, 64,   64, 64,   64, 64,   64, 64,
-                    64, 128,   128, 128,   128, 128,   128, 128, 
-                    128, 256,   256, 256,   256, 256,   256, 256,   256, 256,   256, 256,
-                    256, 512,   512, 512,   512, 512,  
-                    512, 2048 ]          # Linear: size of input vector
-out_ch_list     = [ 64, 64,  64, 64,   64, 64,   64, 64,
-                    128, 128,   128, 128,   128, 128,   128, 128,
-                    256, 256,   256, 256,   256, 256,   256, 256,   256, 256,   256, 256,
-                    512, 512,   512, 512,   512, 512,
-                    512, 512 ]          # Linear: size of output vector
-hk_list         = [ 7, 2,   3, 3,   3, 3,   3, 3,
-                    3, 3,   3, 3,   3, 3,   3, 3,
-                    3, 3,   3, 3,   3, 3,   3, 3,   3, 3,   3, 3,
-                    3, 3,   3, 3,   3, 3, 
-                    2, 1 ]                # Linear: =1
-wk_list         = [ 7, 2,   3, 3,   3, 3,   3, 3, 
-                    3, 3,   3, 3,   3, 3,   3, 3,
-                    3, 3,   3, 3,   3, 3,   3, 3,   3, 3,   3, 3,
-                    3, 3,   3, 3,   3, 3,   
-                    2, 1 ]                # Linear: =1
+in_ch_list      = [ 1, 1*8*8 ]             # Linear: size of input vector
+out_ch_list     = [ 1, 10 ]             # Linear: size of output vector
+hk_list         = [ 3, 1 ]             # Linear: =1
+wk_list         = [ 3, 1 ]             # Linear: =1
 # Input activations' properties
-hin_list        = [ 256, 128,   64, 64,   64, 64,   64, 64, 
-                    64, 32,   32, 32,   32, 32,   32, 32,
-                    32, 16,   16, 16,   16, 16,   16, 16,   16, 16,   16, 16,
-                    16, 8,   8, 8,   8, 8, 
-                    8, 1 ]               # Linear: =1
-win_list        = [ 256, 128,   64, 64,   64, 64,   64, 64, 
-                    64, 32,   32, 32,   32, 32,   32, 32,
-                    32, 16,   16, 16,   16, 16,   16, 16,   16, 16,   16, 16,
-                    16, 8,   8, 8,   8, 8, 
-                    8, 1 ]               # Linear: =1
+hin_list        = [ 8, 1 ]             # Linear: =1
+win_list        = [ 8, 1 ]             # Linear: =1
 # Convolutional strides
-h_str_list      = [ 2, 2,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1, 
-                    2, 1]             # Only for conv2d, maxpool, avgpool
-w_str_list      = [ 2, 2,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1,   1, 1,   1, 1,   1, 1, 
-                    2, 1,   1, 1,   1, 1,
-                    2, 1 ]             # Only for conv2d, maxpool, avgpool
+h_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
+w_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
 # Padding (bilateral, adds the specified padding to both image sides)
-h_pad_list      = [ 3, 0,   1, 1,   1, 1,   1, 1,
-                    1, 1,   1, 1,   1, 1,   1, 1, 
-                    1, 1,   1, 1,   1, 1,   1, 1,   1, 1,   1, 1,
-                    1, 1,   1, 1,   1, 1,  
-                    0, 0 ]             # Only for conv2d, DW
-w_pad_list      = [ 3, 0,   1, 1,   1, 1,   1, 1,
-                    1, 1,   1, 1,   1, 1,   1, 1, 
-                    1, 1,   1, 1,   1, 1,   1, 1,   1, 1,   1, 1, 
-                    1, 1,   1, 1,   1, 1, 
-                    0, 0 ]             # Only for conv2d, DW
+h_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
+w_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
-opt_mm_fw_list  = [ 0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0, 
-                    0, 0 ]
-opt_mm_wg_list  = [ 0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0, 
-                    0, 0 ]
-opt_mm_ig_list  = [ 0, 0,   0, 0,   0, 0,   0, 0,
-                    0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0,   0, 0,   0, 0,   0, 0, 
-                    0, 0,   0, 0,   0, 0, 
-                    0, 0 ]
+opt_mm_fw_list  = [ 0, 0 ]
+opt_mm_wg_list  = [ 0, 0 ]
+opt_mm_ig_list  = [ 0, 0 ]
 
 # EXECUTION PROPERTIES
 NUM_CORES = 8
-L1_SIZE_BYTES = 4*(2**30)
+L1_SIZE_BYTES = 128*(2**10)
 DATA_TYPE='FP32'            # Still FP32 only (future, also FP16/BF16)
 
 # OTHER PROPERTIES
