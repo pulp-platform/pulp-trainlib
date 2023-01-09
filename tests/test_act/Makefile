@@ -1,10 +1,10 @@
-APP = test_pooling
+APP = test_act
 
 # User settings
 # Standard matmul arguments
-IN_H?=16
-IN_W?=16
-IN_C?=8
+IN_H?=2
+IN_W?=2
+IN_C?=1
 VALUE?=0.5
 # General arguments
 NUM_CORES?=8

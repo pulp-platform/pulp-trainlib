@@ -77,6 +77,8 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
 
   for (int i = 0; i < dim; i++) {
     //inDiff[i] = outDiff[i];
-    printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
   }
+
+  // Fix using: https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function
+  printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
 }

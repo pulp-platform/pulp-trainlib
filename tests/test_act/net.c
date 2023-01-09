@@ -23,6 +23,8 @@
 #include "act_data.h"
 
 // Inout data
+PI_L1 struct act_args act_args;
+
 PI_L1 struct blob reluin_blob;
 PI_L1 struct blob reluout_blob;
 PI_L1 float reluout[OUT_SIZE];
@@ -91,12 +93,16 @@ void net_step () {
 
     printf("\n----- RELU RESULTS -----\n");
 
+    // Prepare ReLU struct
+    act_args.input = &reluin_blob;
+    act_args.output = &reluout_blob;
+
     #ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
     #endif
 
-    pulp_relu_fp32_fw_cl(&reluin_blob, &reluout_blob);
+    pulp_relu_fp32_fw_cl(&act_args);
     
     #ifdef PROF_NET
     STOP_STATS();
@@ -110,7 +116,7 @@ void net_step () {
     START_STATS();
     #endif
     
-    pulp_relu_fp32_bw_cl(&reluin_blob, &reluout_blob);
+    pulp_relu_fp32_bw_cl(&act_args);
 
     #ifdef PROF_NET
     STOP_STATS();
@@ -125,12 +131,16 @@ void net_step () {
 
     printf("\n----- SOFTMAX RESULTS -----\n");
 
+    // Prepare ReLU struct
+    act_args.input = &softmin_blob;
+    act_args.output = &softmout_blob;
+
     #ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
     #endif
 
-    pulp_softmax_fp32_fw_cl(&softmin_blob, &softmout_blob);
+    pulp_softmax_fp32_fw_cl(&act_args);
     
     #ifdef PROF_NET
     STOP_STATS();
@@ -144,7 +154,7 @@ void net_step () {
     START_STATS();
     #endif
     
-    pulp_softmax_fp32_bw_cl(&softmin_blob, &softmout_blob);
+    pulp_softmax_fp32_bw_cl(&act_args);
 
     #ifdef PROF_NET
     STOP_STATS();

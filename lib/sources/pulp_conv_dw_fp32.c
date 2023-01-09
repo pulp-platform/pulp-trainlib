@@ -34,7 +34,6 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   // Kernel sizes
   int pW = DW_args->coeff->W;
   int pH = DW_args->coeff->H;
-  // helps avoiding multiple L2 acceses, when structures are stored in L2
 
   float *coeffData = DW_args->coeff->data;
   float *outData = DW_args->output->data;
@@ -54,6 +53,7 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
 
   float * i2c_buffer = DW_args->i2c_buffer;
 
+  int input_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_fw;
 
   // Set im2col args
@@ -69,6 +69,7 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
   im2col_args.USE_DMA = 0;
+  im2col_args.HWC = input_layout;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
@@ -153,6 +154,7 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
 
   float * i2c_buffer = DW_args->i2c_buffer;
 
+  int input_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_wg;
 
   im2col_args.input = DW_args->input; 
@@ -167,6 +169,7 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
   im2col_args.USE_DMA = 0;
+  im2col_args.HWC = input_layout;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 
@@ -235,6 +238,7 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
 
   float * i2c_buffer = DW_args->i2c_buffer;
   
+  int output_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_ig;
 
   // PREPARE im2col_buffer for ACTIV_GRAD
@@ -250,6 +254,7 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
   im2col_args.stride_h = 1;
   im2col_args.stride_w = 1;
   im2col_args.USE_DMA = 0;
+  im2col_args.HWC = output_layout;
 
   pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
 

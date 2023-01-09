@@ -22,6 +22,7 @@ NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
+HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -46,6 +47,7 @@ APP_CFLAGS += -DPAD_D=$(PAD_D)
 APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
 APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
+APP_CFLAGS += -DHWC_LAYOUT=$(HWC_layout)
 APP_LDFLAGS += -lm
 
 

@@ -29,11 +29,14 @@
 #include "net.h"
 
 // DATA DEFINITION
+PI_L1 float zero_init = 0.0f;
 
-// SEPARABLE CONV
+// DEPTHWISE CONV
+PI_L1 struct DepthWise_Conv_args DW_args;
 PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
 
 // // POINTWISE CONV
+PI_L1 struct PointWise_Conv_args PW_args;
 PI_L1 struct blob layer2_in, layer2_wgt, layer2_out;
 
 // Memory occupation counter
@@ -88,8 +91,8 @@ PI_L1 float l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  0.0f;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init; 
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -119,6 +122,20 @@ static inline void connect_blobs(){
   layer1_wgt.W = Tker_W_l1;
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
+
+  DW_args.input = &layer1_in;
+  DW_args.coeff = &layer1_wgt;
+  DW_args.output = &layer1_out;
+  DW_args.Lpad = LPAD;
+  DW_args.Rpad = RPAD;
+  DW_args.Upad = UPAD;
+  DW_args.Dpad = DPAD;
+  DW_args.i2c_buffer = im2col_buffer_bw;
+  DW_args.skip_in_grad = 0;
+  DW_args.HWC = HWC_LAYOUT;
+  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  DW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
@@ -156,9 +173,9 @@ static inline void compute_memory_occupation() {
 #ifdef DW_BACKWARD_GRAD
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
-  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = 0.0f;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f;
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
+  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = zero_init;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init;
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -194,6 +211,19 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  DW_args.input = &layer1_in;
+  DW_args.coeff = &layer1_wgt;
+  DW_args.output = &layer1_out;
+  DW_args.Lpad = LPAD;
+  DW_args.Rpad = RPAD;
+  DW_args.Upad = UPAD;
+  DW_args.Dpad = DPAD;
+  DW_args.i2c_buffer = im2col_buffer_bw;
+  DW_args.skip_in_grad = 0;
+  DW_args.HWC = HWC_LAYOUT;
+  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  DW_args.opt_matmul_type_ig = MATMUL_TYPE;  
 }
 
 static inline void compute_memory_occupation() {
@@ -230,10 +260,10 @@ static inline void compute_memory_occupation() {
 
 #ifdef DW_BACKWARD_ERROR
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = zero_init;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init; 
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -264,6 +294,19 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  DW_args.input = &layer1_in;
+  DW_args.coeff = &layer1_wgt;
+  DW_args.output = &layer1_out;
+  DW_args.Lpad = LPAD;
+  DW_args.Rpad = RPAD;
+  DW_args.Upad = UPAD;
+  DW_args.Dpad = DPAD;
+  DW_args.i2c_buffer = im2col_buffer_bw;
+  DW_args.skip_in_grad = 0;
+  DW_args.HWC = HWC_LAYOUT;
+  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  DW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
@@ -301,9 +344,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_FORWARD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = 0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = zero_init;
   for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = 0.1f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out[i] =  0.0f;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -332,6 +375,14 @@ static inline void connect_blobs(){
   layer2_wgt.W = Tker_W_l2;
   layer2_wgt.H = Tker_H_l2;
   layer2_wgt.C = Tout_C_l2; //Tin_C_l2;
+
+  PW_args.input = &layer2_in;
+  PW_args.coeff = &layer2_wgt;
+  PW_args.output = &layer2_out;
+  PW_args.skip_in_grad = 0;
+  PW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  PW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  PW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
@@ -366,9 +417,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_BACKWARD_GRAD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = 0.4f;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker_diff[i] = 0.0f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = zero_init;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker_diff[i] = zero_init;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -402,6 +453,14 @@ static inline void connect_blobs(){
   layer2_wgt.W = Tker_W_l2;
   layer2_wgt.H = Tker_H_l2;
   layer2_wgt.C = Tin_C_l2;
+
+  PW_args.input = &layer2_in;
+  PW_args.coeff = &layer2_wgt;
+  PW_args.output = &layer2_out;
+  PW_args.skip_in_grad = 0;
+  PW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  PW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  PW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
@@ -436,9 +495,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_BACKWARD_ERROR
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in_diff[i] = zero_init;
   for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                           l2_ker[i] = 0.1f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  0.0f;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -468,6 +527,13 @@ static inline void connect_blobs(){
   layer2_wgt.H = Tker_H_l2;
   layer2_wgt.C = Tin_C_l2;
 
+  PW_args.input = &layer2_in;
+  PW_args.coeff = &layer2_wgt;
+  PW_args.output = &layer2_out;
+  PW_args.skip_in_grad = 0;
+  PW_args.opt_matmul_type_fw = MATMUL_TYPE;
+  PW_args.opt_matmul_type_wg = MATMUL_TYPE;
+  PW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
@@ -504,11 +570,11 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_fw_cl(&DW_args);
   #endif
 
   #ifdef PW_FORWARD
-  pulp_conv_pw_fp32_fw_cl(&layer1_out, &layer2_wgt, &layer2_out, Tpad_l2, MATMUL_TYPE);
+  pulp_conv_pw_fp32_fw_cl(&PW_args);
   #endif
 }
 
@@ -568,7 +634,7 @@ static inline void train(){
   #endif
 
   #ifdef DW_FORWARD
-  pulp_conv_dw_fp32_fw_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_fw_cl(&DW_args);
   #endif
 
   #ifdef PROF_DW_FWD
@@ -581,7 +647,7 @@ static inline void train(){
   #endif
 
   #ifdef PW_FORWARD
-  pulp_conv_pw_fp32_fw_cl(&layer2_in, &layer2_wgt, &layer2_out, Tpad_l2, MATMUL_TYPE);
+  pulp_conv_pw_fp32_fw_cl(&PW_args);
   #endif
 
   #ifdef PROF_PW_FWD
@@ -594,11 +660,11 @@ static inline void train(){
   #endif
 
   #ifdef PW_BACKWARD_GRAD
-  pulp_conv_pw_fp32_bw_param_grads_cl(&layer2_in, &layer2_wgt, &layer2_out, Tpad_l2, MATMUL_TYPE);
+  pulp_conv_pw_fp32_bw_param_grads_cl(&PW_args);
   #endif
 
   #ifdef PW_BACKWARD_ERROR
-  pulp_conv_pw_fp32_bw_input_grads_cl(&layer2_in, &layer2_wgt, &layer2_out, Tpad_l2, MATMUL_TYPE);
+  pulp_conv_pw_fp32_bw_input_grads_cl(&PW_args);
   #endif
 
   #ifdef PROF_PW_BKWD
@@ -611,11 +677,11 @@ static inline void train(){
   #endif
 
   #ifdef DW_BACKWARD_GRAD
-  pulp_conv_dw_fp32_bw_param_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_bw_param_grads_cl(&DW_args);
   #endif
 
   #ifdef DW_BACKWARD_ERROR
-  pulp_conv_dw_fp32_bw_input_grads_cl(&layer1_in, &layer1_wgt, &layer1_out, LPAD, RPAD, UPAD, DPAD, im2col_buffer_bw, MATMUL_TYPE);
+  pulp_conv_dw_fp32_bw_input_grads_cl(&DW_args);
   #endif
 
   #ifdef PROF_DW_BKWD

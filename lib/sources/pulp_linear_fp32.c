@@ -22,7 +22,7 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_linear_fp32.h"
 
-void pulp_linear_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type)
+// void pulp_linear_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type)
 void pulp_linear_fp32_fw_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
