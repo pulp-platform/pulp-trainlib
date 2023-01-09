@@ -29,6 +29,7 @@ void pulp_CrossEntropyLoss ( void * loss_args )
   float * outData = args->output->data;
   float * outDiff = args->output->diff;
   float * target = args->target;
+  float * wr_loss = args->wr_loss;
   int size = args->output->dim;
 
   float loss = 0.0;
@@ -52,8 +53,7 @@ void pulp_CrossEntropyLoss ( void * loss_args )
   #endif
   #endif  
 
-  //*wr_loss = loss;
-  args->wr_loss = &loss;
+  *wr_loss = loss;
 
   for(int i=0; i<size; i++){
     outDiff[i] = (-target[i]+outData[i]);
@@ -71,10 +71,11 @@ void pulp_MSELoss ( void * loss_args )
   float * outData = args->output->data;
   float * outDiff = args->output->diff;
   float * target = args->target;
+  float * wr_loss = args->wr_loss;
   int size = args->output->dim;
   int off = 0;
 
-  float loss = 0.0;
+  float loss = 0.0f;
   float meanval = 1.0f / size;
   
   #ifdef DEBUG
@@ -101,8 +102,7 @@ void pulp_MSELoss ( void * loss_args )
   #endif
   #endif  
 
-  //*wr_loss = loss;
-  args->wr_loss = &loss;
+  *wr_loss = loss;
 
   for(int i=0; i<size; i++){
     outDiff[i] = meanval * 2.0f *(outData[i] - target[i]);

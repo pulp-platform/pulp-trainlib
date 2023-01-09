@@ -28,6 +28,7 @@
 #endif
 
 #ifdef FLOAT32
+PI_L1 struct loss_args loss_args;
 PI_L1 float out[OUT_SIZE];
 PI_L1 float out_diff[OUT_SIZE];
 PI_L1 float loss = 0;
@@ -46,12 +47,22 @@ void prepare_data ()
     out_blob.data = out;
     out_blob.diff = out_diff;
     out_blob.dim = OUT_SIZE;
+
+    loss_args.output = &out_blob;
+    loss_args.target = LABEL;
+    loss_args.wr_loss = &loss;
 }
 
 
 void compute_loss ()
 {
-    pulp_MSELoss(&out_blob, LABEL, &loss);
+    #if LOSS_FN == MSE
+    pulp_MSELoss(&loss_args);
+    #elif LOSS_FN == CrossEntropy
+    pulp_CrossEntropyLoss(&loss_args);
+    #else 
+    printf("\nInvalid Loss Function selection!!\n");
+    #endif
 }
 
 

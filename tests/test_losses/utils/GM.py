@@ -32,24 +32,39 @@ import dump_utils as dump
 parser = argparse.ArgumentParser("Loss Functions test")
 parser.add_argument( '--out_size', type=int, default=16 )
 parser.add_argument( '--value', type=float, default=0.5 )
+parser.add_argument( '--loss_fn', type=str, default='MSE')
 
 args = parser.parse_args()
 
 out_size = args.out_size
 value = args.value
+loss_type = args.loss_fn
 
 # Fake output tensor
-output = torch.ones(out_size)
-with torch.no_grad():
-    for i in range(out_size):
-        output[i] += i*value
-# Fake label
-label = torch.ones(out_size)
+if loss_type == 'MSE':
+    output = torch.ones(out_size)
+    with torch.no_grad():
+        for i in range(out_size):
+            output[i] += i*value
+    # Fake label
+    label = torch.ones(out_size)
+
+elif loss_type == 'CrossEntropy':
+    output = torch.ones(1, out_size)
+    with torch.no_grad():
+        for i in range(out_size):
+            output[0][i] += i*value
+    # Fake label
+    label = torch.ones(1, out_size)
+
 
 output.requires_grad = True
 
 # Loss function
-loss_fn = nn.MSELoss()
+if loss_type == 'MSE':
+    loss_fn = nn.MSELoss()
+if loss_type == 'CrossEntropy':
+    loss_fn = nn.CrossEntropyLoss()
 
 loss = loss_fn(output, label)
 loss.backward()

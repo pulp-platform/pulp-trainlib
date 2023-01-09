@@ -4,6 +4,7 @@ APP = test_loss
 # Standard matmul arguments
 OUT_SIZE?=16
 VALUE?=0.5
+LOSS_FN?='MSE'		# Available options: 'MSE', 'CrossEntropy'
 # General arguments
 NUM_CORES?=1
 # End of user settings
@@ -19,6 +20,7 @@ APP_CFLAGS += -DCLUSTER -DFABRIC -O3 -g3
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DWGT_SIZE=$(OUT_SIZE)
+APP_CFLAGS += -DLOSS_FN=$(LOSS_FN)
 
 APP_LDFLAGS += -lm 
 
@@ -26,6 +28,6 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --out_size $(OUT_SIZE) --value $(VALUE)
+	python3.6 ./utils/GM.py --out_size $(OUT_SIZE) --value $(VALUE) --loss_fn $(LOSS_FN)
 
 include $(RULES_DIR)/pmsis_rules.mk

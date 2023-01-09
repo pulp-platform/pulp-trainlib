@@ -26,4 +26,8 @@
 #define UNMOUNT         0
 #define CID             0
 
+// Loss defines
+#define MSE 0
+#define CrossEntropy 1
+
 void net_step();
