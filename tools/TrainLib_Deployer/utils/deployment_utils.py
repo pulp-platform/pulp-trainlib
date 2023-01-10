@@ -492,22 +492,12 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("PI_L1 struct DepthWise_Conv_args l"+str(layer)+"_args;\n")
         elif layers_l[layer] == 'ReLU':
             f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
+        elif layers_l[layer] == 'MaxPool':
+            pass
+        elif layers_l[layer] == 'AvgPool':
+            pass
         else:
             print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
-
-    f.write("\n// Define kernel tensors\n")
-    for layer in range(len(layers_l)):
-        f.write("PI_L1 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-
-    f.write("\n// Define kernel grad tensors\n")
-    for layer in range(len(layers_l)):
-        f.write("PI_L1 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-
-    f.write("\n// Define I/O tensors\n")
-    for layer in range(len(layers_l)):
-        f.write("PI_L1 float l"+str(layer)+"_in[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
-        if (layer == len(layers_l)-1):
-            f.write("PI_L1 float l"+str(layer)+"_out[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
 
     pooling_exist = False
     for layer in range(len(layers_l)):
@@ -518,6 +508,27 @@ def GenerateNet(proj_folder_path, project_name,
         for layer in range(len(layers_l)):
             if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
                 f.write("PI_L1 struct pool_args l"+str(layer)+"_pool_args;\n")
+
+
+    f.write("\n// Define kernel tensors\n")
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+            f.write("PI_L1 float l"+str(layer)+"_ker[1];\n")
+        else:    
+            f.write("PI_L1 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+
+    f.write("\n// Define kernel grad tensors\n")
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+            f.write("PI_L1 float l"+str(layer)+"_ker_diff[1];\n")
+        else:    
+            f.write("PI_L1 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+
+    f.write("\n// Define I/O tensors\n")
+    for layer in range(len(layers_l)):
+        f.write("PI_L1 float l"+str(layer)+"_in[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+        if (layer == len(layers_l)-1):
+            f.write("PI_L1 float l"+str(layer)+"_out[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
 
 
     # Write IM2COL buffers
@@ -579,6 +590,10 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("PI_L1 float l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
 
 
+    f.write("\n// Loss function configuration structure\n")
+    f.write("PI_L1 struct loss_args loss_args;\n")
+
+
 
     f.write("\n\n\n/**\n * DNN BACKEND FUNCTIONS\n**/\n")
 
@@ -593,6 +608,8 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  // Layer "+str(layer)+"\n")
             if layers_l[layer] == 'DW':
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+            elif layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool':
+                f.write("  //   Pooling kernel (no parameters)\n")
             else:
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
@@ -697,6 +714,32 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
             exit()
 
+    f.write("\n  // Configure layer structures\n")
+    for layer in range(len(layers_l)):
+        f.write("  // Layer "+str(layer)+"\n")
+        if layer == 0:
+            skip_inputgrad = 0
+        else: 
+            skip_inputgrad = 1
+        # Write configuration templates
+        if layers_l[layer] == 'linear':
+            f.write(ntemp.linear_config_template(layer, skip_inputgrad))
+        elif layers_l[layer] == 'conv2d':
+            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad))
+        elif layers_l[layer] == 'PW':
+            f.write(ntemp.PW_config_template(layer, skip_inputgrad))
+        elif layers_l[layer] == 'DW':
+            f.write(ntemp.DW_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad))
+        elif layers_l[layer] == 'ReLU':
+            f.write(ntemp.ReLU_config_template(layer))
+        elif layers_l[layer] == 'MaxPool':
+            f.write("  //   Pooling layer (see next section)\n")
+        elif layers_l[layer] == 'AvgPool':
+            f.write("  //   Pooling layer (see next section)\n")
+        else:
+            print("[deployment_utils.GenerateNet] Undefined layer "+str(layer)+" (unable to write configuration structure)!!")
+
+
     pooling_exist = False
     for layer in range(len(layers_l)):
         if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
@@ -705,12 +748,13 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("\n  // Connect blobs to pooling structures\n")
         for layer in range(len(layers_l)):
             if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
-                f.write("l"+str(layer)+"_pool_args.input = &layer"+str(layer)+"_in;\n")
-                f.write("l"+str(layer)+"_pool_args.output = &layer"+str(layer)+"_out;\n")
-                f.write("l"+str(layer)+"_pool_args.Hker = Tker_H_l"+str(layer)+";\n")
-                f.write("l"+str(layer)+"_pool_args.Wker = Tker_W_l"+str(layer)+";\n")
-                f.write("l"+str(layer)+"_pool_args.Hstride = Tstr_H_l"+str(layer)+";\n")
-                f.write("l"+str(layer)+"_pool_args.Wstride = Tstr_W_l"+str(layer)+";\n")
+                f.write("  // Layer "+str(layer)+"\n")
+                f.write("  l"+str(layer)+"_pool_args.input = &layer"+str(layer)+"_in;\n")
+                f.write("  l"+str(layer)+"_pool_args.output = &layer"+str(layer)+"_out;\n")
+                f.write("  l"+str(layer)+"_pool_args.Hker = Tker_H_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_pool_args.Wker = Tker_W_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_pool_args.Hstride = Tstr_H_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_pool_args.Wstride = Tstr_W_l"+str(layer)+";\n")
     f.write("}\n\n")
 
 
@@ -720,11 +764,11 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_template_FW(layer))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_template_FW(layer, h_pad_l[layer], h_str_l[layer], w_str_l[layer]))
+            f.write(ntemp.conv2d_template_FW(layer))
         elif layers_l[layer] == 'DW':
-            f.write(ntemp.DW_template_FW(layer, h_pad_l[layer]))
+            f.write(ntemp.DW_template_FW(layer))
         elif layers_l[layer] == 'PW':
-            f.write(ntemp.PW_template_FW(layer, 0))
+            f.write(ntemp.PW_template_FW(layer))
         elif layers_l[layer] == 'ReLU':
             f.write(ntemp.ReLU_template_FW(layer))
         elif layers_l[layer] == 'AvgPool':
@@ -745,13 +789,13 @@ def GenerateNet(proj_folder_path, project_name,
         if lay == 0:
             skip_in_grad = 1
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, skip_in_grad))
+            f.write(ntemp.linear_template_BW(lay))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, 0, 1, 1, skip_in_grad))
+            f.write(ntemp.conv2d_template_BW(lay))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, 0, skip_in_grad))
+            f.write(ntemp.DW_template_BW(lay))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, 0, skip_in_grad))
+            f.write(ntemp.PW_template_BW(lay))
         elif layers_l[lay] == 'ReLU':
             f.write(ntemp.ReLU_template_BW(lay))
         elif layers_l[lay] == 'AvgPool':
@@ -768,7 +812,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void compute_loss()\n{\n")
 
     if loss_fn == "MSELoss":
-        f.write("  pulp_MSELoss(&layer"+str(len(layers_l)-1)+"_out, LABEL, &loss);\n")
+        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
+        f.write("  loss_args.target = LABEL;\n")
+        f.write("  loss_args.wr_loss = &loss;\n")
+        f.write("  pulp_MSELoss(&loss_args);\n")
+        #f.write("  pulp_MSELoss(&layer"+str(len(layers_l)-1)+"_out, LABEL, &loss);\n")
     else:
         print("[deployment_utils.GenerateNet]: Loss function not valid for PULP deployment!!")
         exit()
@@ -821,7 +869,7 @@ def GenerateNet(proj_folder_path, project_name,
 
 
 
-    f.write("\n\n\n/**\n * END-TO-END TRAINING\n**/\n")
+    f.write("\n\n\n/**\n * DNN MODEL TRAINING\n**/\n")
 
     f.write("\n// Call for a complete training step\n")
     f.write("void net_step()\n{\n")

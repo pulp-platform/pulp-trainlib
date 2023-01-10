@@ -19,6 +19,7 @@
 */ 
 
 #include "pulp_train_utils_fp32.h"
+#include "pulp_pooling_fp32.h"
 
 void pulp_avgpool_fp32_fw_cl(void * pool_args) {
 

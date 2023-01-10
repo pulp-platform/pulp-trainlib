@@ -79,25 +79,6 @@ struct im2col_args
 
 
 /**
- * @brief Arguments for pooling functions
- * @param input input blob for the function
- * @param output output blob for the function
- * @param Hker vertical size of the pooling kernel
- * @param Wker horizontal size of the pooling kernel
- * @param Hstride controls the vertical stride of the kernel
- * @param Wstride controls the horizontal stride of the kernel
- */
-struct pool_args {
-  struct blob * input;
-  struct blob * output;
-  int Hker;
-  int Wker;
-  int Hstride;
-  int Wstride;
-};
-
-
-/**
  * @brief Parameters for optimizer fucntions for every single layer
  * @param weights blob of the weights (with their gradient inside)
  * @param learning_rate the learning rate of the optimizer

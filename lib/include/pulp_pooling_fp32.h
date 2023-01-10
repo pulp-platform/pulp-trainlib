@@ -18,6 +18,28 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+/**
+ * Activation functions configuration structure
+ */
+
+/**
+ * @brief Structure for pooling functions
+ * @param input input blob for the function
+ * @param output output blob for the function
+ * @param Hker vertical size of the pooling kernel
+ * @param Wker horizontal size of the pooling kernel
+ * @param Hstride controls the vertical stride of the kernel
+ * @param Wstride controls the horizontal stride of the kernel
+ */
+struct pool_args {
+  struct blob * input;
+  struct blob * output;
+  int Hker;
+  int Wker;
+  int Hstride;
+  int Wstride;
+};
+
 
 /**
  * Pooling functions
@@ -25,24 +47,24 @@
 
 /**
  * @brief Forward pass function (parallelize with pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_fw_cl, &args);)
- * @param pool_args pointer to a struct pool_args structure (see pulp_train_utils_fpXX.h)
+ * @param pool_args pointer to a struct pool_args structure.
 */
 void pulp_avgpool_fp32_fw_cl(void * pool_args);
 
 /**
  * @brief Backward pass function (parallelize with pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &args);)
- * @param pool_args pointer to a struct pool_args structure (see pulp_train_utils_fpXX.h)
+ * @param pool_args pointer to a struct pool_args structure.
 */
 void pulp_avgpool_fp32_bw_cl(void * pool_args);
 
 /**
  * @brief Forward pass function (parallelize with pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_fw_cl, &args);)
- * @param pool_args pointer to a struct pool_args structure (see pulp_train_utils_fpXX.h)
+ * @param pool_args pointer to a struct pool_args structure.
 */
 void pulp_maxpool_fp32_fw_cl(void * pool_args);
 
 /**
  * @brief Backward pass function (parallelize with pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &args);)
- * @param pool_args pointer to a struct pool_args structure (see pulp_train_utils_fpXX.h)
+ * @param pool_args pointer to a struct pool_args structure.
 */
 void pulp_maxpool_fp32_bw_cl(void * pool_args);
