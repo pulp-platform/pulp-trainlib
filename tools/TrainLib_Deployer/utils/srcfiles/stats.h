@@ -19,7 +19,25 @@
 
 #ifdef BOARD
 
-// INSERT PROFILING FOR ANY BOARD TO BE USED
+#define INIT_STATS()  
+    unsigned long _cycles = 0; \
+    int id = 0;
+
+#define PRE_START_STATS()  \
+      pi_perf_conf((1<<PI_PERF_CYCLES)); 
+
+
+#define START_STATS()  \
+    pi_perf_stop(); \
+    pi_perf_reset(); \
+    pi_perf_start();
+
+#define STOP_STATS() \
+   pi_perf_stop(); \
+    _cycles   = pi_perf_read (PI_PERF_CYCLES); \
+    id = pi_core_id(); \
+    printf("\n"); \
+    printf("[%d] cycles = %lu\n", id, _cycles); 
 
 #else
 

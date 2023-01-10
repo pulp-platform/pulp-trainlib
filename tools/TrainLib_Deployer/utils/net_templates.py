@@ -96,3 +96,44 @@ def MaxPool_template_FW(layer_number):
 def MaxPool_template_BW(layer_number):
     template = "  pi_cl_team_fork(NUM_CORES, pulp_maxpool_fp32_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
     return template
+
+
+
+
+"""
+CONFIGURATION STRUCTURE TEMPLATES
+"""
+
+def linear_config_template(layer_number, skip_in_grad):
+    template = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
+    template = "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
+    template = "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template = "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
+    template = "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
+    template = "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
+    template = "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
+    return template
+
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad):
+    template = "  "
+    return template
+
+def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad):
+    template = "  "
+    return template
+
+def PW_config_template(layer_number, skip_in_grad):
+    template = "  "
+    return template
+
+def ReLU_config_template(layer_number):
+    template = "  "
+    return template
+
+def MaxPool_config_template(layer_number):
+    template = "  "
+    return template
+
+def AvgPool_config_template(layer_number):
+    template = "  "
+    return template

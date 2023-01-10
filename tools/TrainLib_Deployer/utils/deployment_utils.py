@@ -155,8 +155,8 @@ def InitProject(proj_folder_path):
     shutil.copytree(trainlib_src_folder, trainlib_dest_folder)
 
     f = open(proj_folder+'readme.txt', 'w')
-    f.write('To compile the application, run "make clean get_golden all run > log.txt".\n')
-    f.write('To modify the hyperparameters (learning rate, epochs, batch size still not implemented), \nact on the parameters inside "utils/GM.py".\n')
+    f.write('To compile the application, run "make clean get_golden all run > log.txt".\nIf running on a board (not GVSoC), add "APP_CFLAGS += -DBOARD" to the user section of the Makefile (profiling of cycles only).\n')
+    f.write('To modify the hyperparameters (learning rate, epochs, batch size still not implemented), \nedit the variables inside "utils/GM.py".\n')
     f.close()
 
     return
@@ -180,9 +180,9 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_T
     f.write('#APP_CFLAGS += -DDEBUG' + '\n')
     f.write('#APP_CFLAGS += -DOPTIMIZE' + '     # Selects nth matmul to optimize execution\n')
     for layer in range(len(layers_l)):
-        f.write('MATMUL_TYPE_FW_L'+str(layer)+'?='+str(opt_mm_fw_list[layer])+'         # Selects which optimized matmul to be used in FW (see mm_manager_list.txt or the MM_manager body to verify which one is called)' + '\n')
-        f.write('MATMUL_TYPE_WG_L'+str(layer)+'?='+str(opt_mm_wg_list[layer])+'         # Selects which optimized matmul to be used in WEIGHT GRAD (see mm_manager_list.txt or the MM_manager body to verify which one is called)' + '\n')
-        f.write('MATMUL_TYPE_IG_L'+str(layer)+'?='+str(opt_mm_ig_list[layer])+'         # Selects which optimized matmul to be used in IN GRAD (see mm_manager_list.txt or the MM_manager body to verify which one is called)' + '\n')
+        f.write('MATMUL_TYPE_FW_L'+str(layer)+'?='+str(opt_mm_fw_list[layer])+'         # Selects which optimized matmul to be used in FW (see mm_manager_list.txt or "MM_manager()" body to verify which one is called)' + '\n')
+        f.write('MATMUL_TYPE_WG_L'+str(layer)+'?='+str(opt_mm_wg_list[layer])+'         # Selects which optimized matmul to be used in WEIGHT GRAD (see mm_manager_list.txt or "MM_manager()" body to verify which one is called)' + '\n')
+        f.write('MATMUL_TYPE_IG_L'+str(layer)+'?='+str(opt_mm_ig_list[layer])+'         # Selects which optimized matmul to be used in IN GRAD (see mm_manager_list.txt or "MM_manager()" body to verify which one is called)' + '\n')
     f.write('# End of user settings\n\n')
 
     f.write('NUM_MATMULS?=24		# Available standard matmuls in the library' + '\n')
@@ -207,17 +207,21 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_T
     f.write('APP_CFLAGS += -DSTATS\n\n')
 
     f.write('# SOURCES\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_linear_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_dw_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c\n')
-    f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp32.c\n\n')
+    if DATA_TYPE == 'FP32':
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_linear_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_dw_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp32.c\n\n')
+    else:
+        print("[deployment_utils.GenerateMakefile] Data format not implemented!!\n")
+        exit()
 
     f.write('# RULES\n')
     f.write('get_golden:\n')
@@ -431,9 +435,10 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("// PULP Defines\n")
     f.write("#define STACK_SIZE      4096\n")
-    f.write("#define MOUNT           1\n")
-    f.write("#define UNMOUNT         0\n")
-    f.write("#define CID             0\n\n")
+    #f.write("#define MOUNT           1\n")
+    #f.write("#define UNMOUNT         0\n")
+    #f.write("#define CID             0\n")
+    f.write("\n")
 
     f.write("// Tolerance to check updated output\n")
     f.write("#define TOLERANCE 1e-12\n\n")
@@ -474,6 +479,21 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Define DNN blobs\n")
     for layer in range(len(layers_l)):
         f.write("PI_L1 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+
+    f.write("\n// Define DNN layer structures\n")
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'linear':
+            f.write("PI_L1 struct Linear_args l"+str(layer)+"_args;\n")
+        elif layers_l[layer] == 'conv2d':
+            f.write("PI_L1 struct Conv2D_args l"+str(layer)+"_args;\n")
+        elif layers_l[layer] == 'PW':
+            f.write("PI_L1 struct PointWise_Conv_args l"+str(layer)+"_args;\n")
+        elif layers_l[layer] == 'DW':
+            f.write("PI_L1 struct DepthWise_Conv_args l"+str(layer)+"_args;\n")
+        elif layers_l[layer] == 'ReLU':
+            f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
+        else:
+            print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
 
     f.write("\n// Define kernel tensors\n")
     for layer in range(len(layers_l)):

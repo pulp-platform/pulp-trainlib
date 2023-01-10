@@ -22,64 +22,64 @@ Authors: Davide Nadalini
 TrainLib Deployer: a tool to deploy DNN on-device training on MCUs
 
 Available DNN layer names:
-'linear' -> fully-connected layer
-'conv2d' -> 2d convolution layer
-'PW' -> pointwise convolution
-'DW' -> depthwise convolution
-'ReLU' -> ReLU activation
-'MaxPool' -> max pooling layer
-'AvgPool' - average pooling layer
+'linear'    -> fully-connected layer
+'conv2d'    -> 2d convolution layer
+'PW'        -> pointwise convolution
+'DW'        -> depthwise convolution
+'ReLU'      -> ReLU activation
+'MaxPool'   -> max pooling layer
+'AvgPool'   -> average pooling layer
 """
 
-import utils.DNN_Reader as reader
-import utils.DNN_Composer as composer
+import utils.DNN_Reader     as reader
+import utils.DNN_Composer   as composer
 
 # ---------------------
 # --- USER SETTINGS ---
 # ---------------------
 
 # GENERAL PROPERTIES
-project_name = 'DNN'
-project_path = '../../../../TrainLib_Examples/'
-proj_folder = project_path + project_name + '/'
+project_name    = 'DNN'
+project_path    = '../../../../TrainLib_Examples/'
+proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs = 1
-batch_size = 1          # BATCHING NOT IMPLEMENTED!!
-learning_rate = 0.5
-optimizer = "SGD"       # Name of PyTorch's optimizer
-loss_fn = "MSELoss"     # Name of PyTorch's loss function
+epochs          = 1
+batch_size      = 1                    # BATCHING NOT IMPLEMENTED!!
+learning_rate   = 0.5
+optimizer       = "SGD"                # Name of PyTorch's optimizer
+loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
 # NETWORK GRAPH
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
-layer_list      = [ 'conv2d', 'linear' ]
+layer_list      = [ 'conv2d', 'MaxPool', 'linear' ]
 # Layer properties
-in_ch_list      = [ 1, 1*8*8 ]             # Linear: size of input vector
-out_ch_list     = [ 1, 10 ]             # Linear: size of output vector
-hk_list         = [ 3, 1 ]             # Linear: =1
-wk_list         = [ 3, 1 ]             # Linear: =1
+in_ch_list      = [ 1, 4, 36 ]          # Linear: size of input vector
+out_ch_list     = [ 4, 4, 10 ]            # Linear: size of output vector
+hk_list         = [ 3, 1, 1 ]             # Linear: = 1
+wk_list         = [ 3, 1, 1 ]             # Linear: = 1
 # Input activations' properties
-hin_list        = [ 8, 1 ]             # Linear: =1
-win_list        = [ 8, 1 ]             # Linear: =1
+hin_list        = [ 8, 8, 1 ]             # Linear: = 1
+win_list        = [ 8, 8, 1 ]             # Linear: = 1
 # Convolutional strides
-h_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
-w_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
+h_str_list      = [ 1, 1, 1 ]             # Only for conv2d, maxpool, avgpool
+w_str_list      = [ 1, 1, 1 ]             # Only for conv2d, maxpool, avgpool
 # Padding (bilateral, adds the specified padding to both image sides)
-h_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
-w_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
+h_pad_list      = [ 0, 0, 0 ]             # Only for conv2d, DW
+w_pad_list      = [ 0, 0, 0 ]             # Only for conv2d, DW
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
-opt_mm_fw_list  = [ 0, 0 ]
-opt_mm_wg_list  = [ 0, 0 ]
-opt_mm_ig_list  = [ 0, 0 ]
+opt_mm_fw_list  = [ 0, 0, 0 ]
+opt_mm_wg_list  = [ 0, 0, 0 ]
+opt_mm_ig_list  = [ 0, 0, 0 ]
 
 # EXECUTION PROPERTIES
-NUM_CORES = 8
-L1_SIZE_BYTES = 128*(2**10)
-DATA_TYPE='FP32'            # Still FP32 only (future, also FP16/BF16)
+NUM_CORES       = 8
+L1_SIZE_BYTES   = 128*(2**10)
+DATA_TYPE       = 'FP32'               # Still FP32 only (future, also FP16/BF16)
 
 # OTHER PROPERTIES
 # Select if to read the network from an external source
-READ_ONNX = False       # NOT IMPLEMENTED!!
+READ_ONNX       = False                # NOT IMPLEMENTED!!
 
 # ---------------------------
 # --- END OF USER SETTING ---
