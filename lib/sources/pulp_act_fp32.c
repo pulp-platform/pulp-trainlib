@@ -44,7 +44,6 @@ void pulp_relu_fp32_bw_cl( void * act_args )
 
   for (int i = 0; i < dim; i++) {
     inDiff[i] = inData[i] > 0 ? outDiff[i] : 0;
-    //inDiff[i] = inData[i] > 0 ? 1 : 0;
   }
 }
 

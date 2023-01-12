@@ -304,6 +304,16 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("f.write('#define BATCH_SIZE '+str(batch_size)+'\\n')\n")
     f.write("f.close()\n\n")
 
+    # Create input data and label
+    f.write("\n# Simple input data \n")
+    if (layers_l[0] == 'linear'):
+        f.write("inp = torch.div(torch.ones(l0_in_ch), 100000)\n")
+    elif (layers_l[0] == 'conv2d' or layers_l[0] == 'DW' or layers_l[0] == 'PW'):
+        f.write("inp = torch.torch.div(torch.ones(batch_size, l0_in_ch, l0_hin, l0_win), 1000)\n")
+    # Throw error
+    else:
+        print("[deployment_utils.GenerateGM]: Input layer not valid!\n")
+        exit()
 
     # Generate DNN model
     f.write("class DNN(nn.Module):\n")
@@ -341,27 +351,16 @@ def GenerateGM(proj_folder_path, project_name,
         f.write("\n\t\tx = self.l"+str(layer)+"(x)")
     f.write("\n\t\treturn x\n")
 
-
-    # Create input data and label
-    f.write("\n# Dummy input and label\n")
-    if (layers_l[0] == 'linear'):
-        f.write("inp = torch.div(torch.ones(l0_in_ch), 100000)\n")
-    elif (layers_l[0] == 'conv2d' or layers_l[0] == 'DW' or layers_l[0] == 'PW'):
-        f.write("inp = torch.torch.div(torch.ones(batch_size, l0_in_ch, l0_hin, l0_win), 1000)\n")
-    # Throw error
-    else:
-        print("[deployment_utils.GenerateGM]: Input layer not valid!\n")
-        exit()
-
+    # f.write("\n# All-ones fake label \n")
     last_layer = len(layers_l) - 1
-    if (layers_l[-1] == 'linear' or layers_l[-1] == 'ReLU'):
-        f.write("label = torch.ones(l"+str(last_layer)+"_out_ch)\n")
-    elif (layers_l[0] == 'conv2d' or layers_l[0] == 'DW' or layers_l[0] == 'PW'):
-        f.write("label = torch.ones(batch_size, l"+str(last_layer)+"_out_ch, math.floor((l"+str(last_layer)+"_hin-l"+str(last_layer)+"_hk+2*l"+str(last_layer)+"_hpad+l"+str(last_layer)+"_hstr)/l"+str(last_layer)+"_hstr), math.floor((l"+str(last_layer)+"_win-l"+str(last_layer)+"_wk+2*l"+str(last_layer)+"_wpad+l"+str(last_layer)+"_wstr)/l"+str(last_layer)+"_wstr))\n")
-    # Throw error
-    else: 
-        print("[deployment_utils.GenerateGM]: Output layer not valid\n!")
-        exit()
+    # if (layers_l[-1] == 'linear' or layers_l[-1] == 'ReLU'):
+    #     f.write("label = torch.ones(l"+str(last_layer)+"_out_ch)\n")
+    # elif (layers_l[0] == 'conv2d' or layers_l[0] == 'DW' or layers_l[0] == 'PW'):
+    #     f.write("label = torch.ones(batch_size, l"+str(last_layer)+"_out_ch, math.floor((l"+str(last_layer)+"_hin-l"+str(last_layer)+"_hk+2*l"+str(last_layer)+"_hpad+l"+str(last_layer)+"_hstr)/l"+str(last_layer)+"_hstr), math.floor((l"+str(last_layer)+"_win-l"+str(last_layer)+"_wk+2*l"+str(last_layer)+"_wpad+l"+str(last_layer)+"_wstr)/l"+str(last_layer)+"_wstr))\n")
+    # # Throw error
+    # else: 
+    #     print("[deployment_utils.GenerateGM]: Output layer not valid\n!")
+    #     exit()
 
     # Initialize network
     f.write("\n# Initialize network\n")
@@ -369,6 +368,11 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("for p in net.parameters():\n")
     f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
     f.write("net.zero_grad()\n\n")
+
+    # Write all-ones sample label
+    f.write("\n# All-ones fake label \n")
+    f.write("output_test = net(inp)\n")
+    f.write("label = torch.ones_like(output_test)\n")
 
     # Write init weights to header file
     f.write("f = open('io_data.h', 'w')\n")
@@ -718,9 +722,9 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         f.write("  // Layer "+str(layer)+"\n")
         if layer == 0:
-            skip_inputgrad = 0
-        else: 
             skip_inputgrad = 1
+        else: 
+            skip_inputgrad = 0
         # Write configuration templates
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_config_template(layer, skip_inputgrad))

@@ -28,7 +28,7 @@ def linear_template(layer_number, chin, chout, bias):
 
 
 def conv2d_template(layer_number, chin, chout, hk, wk, hstr, wstr, hpad, wpad, bias):
-    template = "\t\tself.l"+str(layer_number)+" = nn.Conv2d(in_channels=l"+str(layer_number)+"_in_ch, out_channels=l"+str(layer_number)+"_in_ch, kernel_size=(l"+str(layer_number)+"_hk, l"+str(layer_number)+"_wk), padding=(l"+str(layer_number)+"_hpad, l"+str(layer_number)+"_wpad), stride=(l"+str(layer_number)+"_hstr, l"+str(layer_number)+"_wstr), bias="+str(bias)+")\n"
+    template = "\t\tself.l"+str(layer_number)+" = nn.Conv2d(in_channels=l"+str(layer_number)+"_in_ch, out_channels=l"+str(layer_number)+"_out_ch, kernel_size=(l"+str(layer_number)+"_hk, l"+str(layer_number)+"_wk), padding=(l"+str(layer_number)+"_hpad, l"+str(layer_number)+"_wpad), stride=(l"+str(layer_number)+"_hstr, l"+str(layer_number)+"_wstr), bias="+str(bias)+")\n"
     return template
 
 
