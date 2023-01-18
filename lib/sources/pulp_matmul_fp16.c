@@ -343,6 +343,138 @@ void mm_conv2d_in_grad_fp16 (void * void_args)
 
 
 
+void naive_conv2d_fw_kernel_CHW_fp16 (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inData = args->A;
+  fp16 * __restrict__ coeffData = args->B;
+  fp16 * __restrict__ outData = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t ho=0; ho<H_out; ho++) {
+      for (uint32_t wo=0; wo<W_out; wo++) {
+        //outData[wo+ho*W_out+co*H_out*W_out] = 0;
+        fp16 temp = 0;
+        // Receptive field
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
+              //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+              temp += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+            }
+          }
+        }
+        outData[wo+ho*W_out+co*H_out*W_out] = temp;
+      }
+    }
+  }
+
+}
+
+
+
+void naive_conv2d_param_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inData = args->A;
+  fp16 * __restrict__ coeffDiff = args->B;
+  fp16 * __restrict__ outDiff = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t hk=0; hk<pH; hk++) {
+      for (uint32_t wk=0; wk<pW; wk++) {
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          fp16 temp = 0;
+          for (uint32_t ho=0; ho<H_out; ho++) {
+            for (uint32_t wo=0; wo<W_out; wo++) {
+              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in];
+            }
+          }
+          coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
+        }
+      }
+    }
+  }
+  
+}
+
+
+
+void naive_conv2d_in_grad_kernel_CHW (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inDiff = args->A;
+  fp16 * __restrict__ coeffData = args->B;
+  fp16 * __restrict__ outDiff = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = H_in - pH + 1;
+  const uint32_t W_out = W_in - pW + 1;
+
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
+
+  for (uint32_t ci=0; ci<C_in; ci++) {
+    for (uint32_t hi=0; hi<H_in; hi++) {
+      for (uint32_t wi=0; wi<W_in; wi++) {
+        fp16 temp = 0;
+        for (uint32_t co=0; co<C_out; co++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
+              // Coefficient to be loaded
+              fp16 coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
+              // Padding conditions
+              int ho = hi + hk - (pH-1);
+              int wo = wi + wk - (pW-1);
+              // Compute in grad partial product
+              if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
+              else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
+            }
+          }
+        }
+        inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
+      }
+    }
+  }
+
+}
+
+
 
 
 

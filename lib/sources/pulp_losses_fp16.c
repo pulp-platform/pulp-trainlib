@@ -23,12 +23,14 @@
 #include "pulp_losses_fp16.h"
 
 
-void pulp_CrossEntropyLoss_fp16 (struct blob_fp16 * output, fp16 * target, fp16 * wr_loss)
+void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
 {
-  fp16 * outData = output->data;
-  fp16 * outDiff = output->diff;
-  int size = output->dim;
-
+  struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
+  fp16 * outData = args->output->data;
+  fp16 * outDiff = args->output->diff;
+  fp16 * target = args->target;
+  fp16 * wr_loss = args->wr_loss;
+  int size = args->output->dim;
 
   fp16 loss = 0.0;
   for(int i=0; i<size; i++){
@@ -63,11 +65,14 @@ void pulp_CrossEntropyLoss_fp16 (struct blob_fp16 * output, fp16 * target, fp16 
 }
 
 
-void pulp_MSELoss_fp16 (struct blob_fp16 * output, fp16 * target, fp16 * wr_loss) 
+void pulp_MSELoss_fp16 ( void * loss_args_fp16 ) 
 {
-  fp16 * outData = output->data;
-  fp16 * outDiff = output->diff;
-  int size = output->dim;
+  struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
+  fp16 * outData = args->output->data;
+  fp16 * outDiff = args->output->diff;
+  fp16 * target = args->target;
+  fp16 * wr_loss = args->wr_loss;
+  int size = args->output->dim;
   int off = 0;
 
   fp16 loss = 0.0;
