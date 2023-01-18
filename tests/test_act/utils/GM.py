@@ -35,6 +35,7 @@ parser.add_argument( '--in_h', type=int, default=16 )
 parser.add_argument( '--in_w', type=int, default=16 )
 parser.add_argument( '--in_c', type=int, default=8 )
 parser.add_argument( '--value', type=float, default=0.5 )
+parser.add_argument( '--data_type', type=str, default='FP32')
 
 args = parser.parse_args()
 
@@ -42,119 +43,252 @@ in_h = args.in_h
 in_w = args.in_w
 in_c = args.in_c
 value = args.value
-
-# Fake output tensor
-reluinput = torch.ones(in_c, in_h, in_w)
-softminput = torch.ones(in_c, in_h, in_w)
-with torch.no_grad():
-    for k in range(in_c):
-        for i in range(in_w):
-            for j in range(in_h):
-                reluinput[k, i, j] += (i+j+k)*value
-                softminput[k, i, j] += (i+j+k)*value
-# Fake label
-relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
-softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
-
-print("relulabel:")
-print(relulabel.size())
-print("softmlabel:")
-print(softmlabel.size())
-
-reluinput.requires_grad = True
-softminput.requires_grad = True
-
-# Loss function
-loss_fn = nn.MSELoss()
-
-# Pooling functions
-class ReLU (nn.Module):
-    def __init__(self):
-        super(ReLU, self).__init__()
-        self.relu = nn.ReLU()
-    def forward(self, x):
-        out = self.relu(x)
-        return out
-
-class SoftMax (nn.Module):
-    def __init__(self):
-        super(SoftMax, self).__init__()
-        self.softmax = nn.Softmax(dim=0)
-    def forward(self, x):
-        x = torch.flatten(x, start_dim=0, end_dim=-1)
-        out = self.softmax(x)
-        #out = F.softmax(x, dim=0)
-        return out
+data_type = args.data_type
 
 
-relu = ReLU()
-softmax = SoftMax()
 
-# Compute the output and the backward of both
-reluout = relu(reluinput)
-softmout = softmax(softminput)
+"""
+CASE 1: FP32 DATA
+"""
 
-reluout.retain_grad()
-softmout.retain_grad()
+if data_type == 'FP32':
 
-print("reluout: ")
-print(reluout.size())
-print("softmout: ")
-print(softmout.size())
+    # Fake output tensor
+    reluinput = torch.ones(in_c, in_h, in_w)
+    softminput = torch.ones(in_c, in_h, in_w)
+    with torch.no_grad():
+        for k in range(in_c):
+            for i in range(in_w):
+                for j in range(in_h):
+                    reluinput[k, i, j] += (i+j+k)*value
+                    softminput[k, i, j] += (i+j+k)*value
+    # Fake label
+    relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
+    softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
 
-reluloss = loss_fn(reluout, relulabel)
-softmloss = loss_fn(softmout, softmlabel)
+    print("relulabel:")
+    print(relulabel.size())
+    print("softmlabel:")
+    print(softmlabel.size())
 
-reluloss.backward()
-softmloss.backward()
+    reluinput.requires_grad = True
+    softminput.requires_grad = True
 
-print("\n*** RELU DATA ***")
-print("ReLU out is:")
-print(reluout)
-print("ReLU out grad is:")
-print(reluout.grad)
-print("ReLU in grad is:")
-print(reluinput.grad)
+    # Loss function
+    loss_fn = nn.MSELoss()
 
-print("\n*** SOFTMAX DATA ***")
-print("SoftMax out is:")
-print(softmout)
-print("SoftMax out grad is:")
-print(softmout.grad)
-print("SoftMax in grad is:")
-print(softminput.grad)
+    # Pooling functions
+    class ReLU (nn.Module):
+        def __init__(self):
+            super(ReLU, self).__init__()
+            self.relu = nn.ReLU()
+        def forward(self, x):
+            out = self.relu(x)
+            return out
 
-# Write setup to file
-f = open("init_defines.h", "w")
+    class SoftMax (nn.Module):
+        def __init__(self):
+            super(SoftMax, self).__init__()
+            self.softmax = nn.Softmax(dim=0)
+        def forward(self, x):
+            x = torch.flatten(x, start_dim=0, end_dim=-1)
+            out = self.softmax(x)
+            #out = F.softmax(x, dim=0)
+            return out
 
-f.write("// Layer sizes\n")
-f.write("#define Tin_C "+str(in_c)+"\n")
-f.write("#define Tin_H "+str(in_h)+"\n")
-f.write("#define Tin_W "+str(in_w)+"\n")
-f.write("#define Tout_H Tin_H\n")
-f.write("#define Tout_W Tin_W\n")
-f.write("#define Tout_C Tin_C\n")
 
-f.close()
+    relu = ReLU()
+    softmax = SoftMax()
 
-# Write data to file
-f = open("act_data.h", "w")
+    # Compute the output and the backward of both
+    reluout = relu(reluinput)
+    softmout = softmax(softminput)
 
-f.write("#define IN_SIZE "+str(in_c*in_h*in_w)+"\n")
-f.write("#define OUT_SIZE "+str(in_c*int(in_h)*int(in_w))+"\n")
+    reluout.retain_grad()
+    softmout.retain_grad()
 
-f.write("PI_L2 float RELULOSS = {"+str(reluloss.data.item())+"};\n")
-f.write("PI_L2 float RELUOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(reluout)+"};\n")
-f.write("PI_L2 float RELUOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(reluout.grad)+"};\n")
-f.write("PI_L1 float RELUIN[IN_SIZE] = {"+dump.tensor_to_string(reluinput)+"};\n")
-f.write("PI_L2 float RELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(reluinput.grad)+"};\n")
-f.write("PI_L1 float RELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(relulabel)+"};\n")
+    print("reluout: ")
+    print(reluout.size())
+    print("softmout: ")
+    print(softmout.size())
 
-f.write("PI_L2 float SOFTMLOSS = {"+str(softmloss.data.item())+"};\n")
-f.write("PI_L2 float SOFTMOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(softmout)+"};\n")
-f.write("PI_L2 float SOFTMOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(softmout.grad)+"};\n")
-f.write("PI_L1 float SOFTMIN[IN_SIZE] = {"+dump.tensor_to_string(softminput)+"};\n")
-f.write("PI_L2 float SOFTMIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(softminput.grad)+"};\n")
-f.write("PI_L1 float SOFTMLABEL[OUT_SIZE] = {"+dump.tensor_to_string(softmlabel)+"};\n")
+    reluloss = loss_fn(reluout, relulabel)
+    softmloss = loss_fn(softmout, softmlabel)
 
-f.close()
+    reluloss.backward()
+    softmloss.backward()
+
+    print("\n*** RELU DATA ***")
+    print("ReLU out is:")
+    print(reluout)
+    print("ReLU out grad is:")
+    print(reluout.grad)
+    print("ReLU in grad is:")
+    print(reluinput.grad)
+
+    print("\n*** SOFTMAX DATA ***")
+    print("SoftMax out is:")
+    print(softmout)
+    print("SoftMax out grad is:")
+    print(softmout.grad)
+    print("SoftMax in grad is:")
+    print(softminput.grad)
+
+    # Write setup to file
+    f = open("init_defines.h", "w")
+
+    f.write("// Layer sizes\n")
+    f.write("#define Tin_C "+str(in_c)+"\n")
+    f.write("#define Tin_H "+str(in_h)+"\n")
+    f.write("#define Tin_W "+str(in_w)+"\n")
+    f.write("#define Tout_H Tin_H\n")
+    f.write("#define Tout_W Tin_W\n")
+    f.write("#define Tout_C Tin_C\n")
+
+    f.close()
+
+    # Write data to file
+    f = open("act_data.h", "w")
+
+    f.write("#define IN_SIZE "+str(in_c*in_h*in_w)+"\n")
+    f.write("#define OUT_SIZE "+str(in_c*int(in_h)*int(in_w))+"\n")
+
+    f.write("PI_L2 float RELULOSS = {"+str(reluloss.data.item())+"};\n")
+    f.write("PI_L2 float RELUOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(reluout)+"};\n")
+    f.write("PI_L2 float RELUOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(reluout.grad)+"};\n")
+    f.write("PI_L1 float RELUIN[IN_SIZE] = {"+dump.tensor_to_string(reluinput)+"};\n")
+    f.write("PI_L2 float RELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(reluinput.grad)+"};\n")
+    f.write("PI_L1 float RELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(relulabel)+"};\n")
+
+    f.write("PI_L2 float SOFTMLOSS = {"+str(softmloss.data.item())+"};\n")
+    f.write("PI_L2 float SOFTMOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(softmout)+"};\n")
+    f.write("PI_L2 float SOFTMOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(softmout.grad)+"};\n")
+    f.write("PI_L1 float SOFTMIN[IN_SIZE] = {"+dump.tensor_to_string(softminput)+"};\n")
+    f.write("PI_L2 float SOFTMIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(softminput.grad)+"};\n")
+    f.write("PI_L1 float SOFTMLABEL[OUT_SIZE] = {"+dump.tensor_to_string(softmlabel)+"};\n")
+
+    f.close()
+
+
+
+"""
+CASE 2: FP16 DATA
+"""
+
+if data_type == 'FP16':
+
+    # Fake output tensor
+    reluinput = torch.ones(in_c, in_h, in_w)
+    softminput = torch.ones(in_c, in_h, in_w)
+    with torch.no_grad():
+        for k in range(in_c):
+            for i in range(in_w):
+                for j in range(in_h):
+                    reluinput[k, i, j] += (i+j+k)*value
+                    softminput[k, i, j] += (i+j+k)*value
+    # Fake label
+    relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
+    softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
+
+    print("relulabel:")
+    print(relulabel.size())
+    print("softmlabel:")
+    print(softmlabel.size())
+
+    reluinput.requires_grad = True
+    softminput.requires_grad = True
+
+    # Loss function
+    loss_fn = nn.MSELoss()
+
+    # Pooling functions
+    class ReLU (nn.Module):
+        def __init__(self):
+            super(ReLU, self).__init__()
+            self.relu = nn.ReLU()
+        def forward(self, x):
+            out = self.relu(x)
+            return out
+
+    class SoftMax (nn.Module):
+        def __init__(self):
+            super(SoftMax, self).__init__()
+            self.softmax = nn.Softmax(dim=0)
+        def forward(self, x):
+            x = torch.flatten(x, start_dim=0, end_dim=-1)
+            out = self.softmax(x)
+            #out = F.softmax(x, dim=0)
+            return out
+
+
+    relu = ReLU()
+    softmax = SoftMax()
+
+    # Compute the output and the backward of both
+    reluout = relu(reluinput)
+    softmout = softmax(softminput)
+
+    reluout.retain_grad()
+    softmout.retain_grad()
+
+    print("reluout: ")
+    print(reluout.size())
+    print("softmout: ")
+    print(softmout.size())
+
+    reluloss = loss_fn(reluout, relulabel)
+    softmloss = loss_fn(softmout, softmlabel)
+
+    reluloss.backward()
+    softmloss.backward()
+
+    print("\n*** RELU DATA ***")
+    print("ReLU out is:")
+    print(reluout)
+    print("ReLU out grad is:")
+    print(reluout.grad)
+    print("ReLU in grad is:")
+    print(reluinput.grad)
+
+    print("\n*** SOFTMAX DATA ***")
+    print("SoftMax out is:")
+    print(softmout)
+    print("SoftMax out grad is:")
+    print(softmout.grad)
+    print("SoftMax in grad is:")
+    print(softminput.grad)
+
+    # Write setup to file
+    f = open("init_defines.h", "w")
+
+    f.write("// Layer sizes\n")
+    f.write("#define Tin_C "+str(in_c)+"\n")
+    f.write("#define Tin_H "+str(in_h)+"\n")
+    f.write("#define Tin_W "+str(in_w)+"\n")
+    f.write("#define Tout_H Tin_H\n")
+    f.write("#define Tout_W Tin_W\n")
+    f.write("#define Tout_C Tin_C\n")
+
+    f.close()
+
+    # Write data to file
+    f = open("act_data.h", "w")
+
+    f.write("#define IN_SIZE "+str(in_c*in_h*in_w)+"\n")
+    f.write("#define OUT_SIZE "+str(in_c*int(in_h)*int(in_w))+"\n")
+
+    f.write("PI_L2 fp16 RELULOSS = {"+str(reluloss.data.item())+"};\n")
+    f.write("PI_L2 fp16 RELUOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(reluout.half())+"};\n")
+    f.write("PI_L2 fp16 RELUOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(reluout.grad.half())+"};\n")
+    f.write("PI_L1 fp16 RELUIN[IN_SIZE] = {"+dump.tensor_to_string(reluinput.half())+"};\n")
+    f.write("PI_L2 fp16 RELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(reluinput.grad.half())+"};\n")
+    f.write("PI_L1 fp16 RELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(relulabel.half())+"};\n")
+
+    f.write("PI_L2 fp16 SOFTMLOSS = {"+str(softmloss.data.item())+"};\n")
+    f.write("PI_L2 fp16 SOFTMOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(softmout.half())+"};\n")
+    f.write("PI_L2 fp16 SOFTMOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(softmout.grad.half())+"};\n")
+    f.write("PI_L1 fp16 SOFTMIN[IN_SIZE] = {"+dump.tensor_to_string(softminput.half())+"};\n")
+    f.write("PI_L2 fp16 SOFTMIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(softminput.grad.half())+"};\n")
+    f.write("PI_L1 fp16 SOFTMLABEL[OUT_SIZE] = {"+dump.tensor_to_string(softmlabel.half())+"};\n")
+
+    f.close()

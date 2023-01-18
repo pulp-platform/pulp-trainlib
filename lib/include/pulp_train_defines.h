@@ -27,7 +27,7 @@
  * @defgroup Data formats
  * @{
  */
-typedef float16alt fp16;                                    // Only bfloat16 present on VEGA
+typedef float16 fp16;                                    // Standard IEEE FP16 format
 typedef fp16 v2f16 __attribute__((vector_size (4)));        // Vectorized fp16 for SIMD
 /**
  * @}

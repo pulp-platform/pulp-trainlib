@@ -18,19 +18,20 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "pulp_train_defines.h"
 
 /**
  * Optimizer configuration structure
  */
 
 /**
- * @brief Structure for optimizers
+ * @brief Parameters for optimizer fucntions for every single layer
  * @param weights blob of the weights (with their gradient inside)
  * @param learning_rate the learning rate of the optimizer
  */
-struct optim_args {
-  struct blob * weights;
-  float learning_rate;
+struct optim_args_fp16 {
+  struct blob_fp16 * weights;
+  fp16 learning_rate;
 };
 
 
@@ -43,6 +44,6 @@ struct optim_args {
  * @brief Gradient descent optimizer for a single layer. Use pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &args) to parallelize.
  * @param optim_args pointer to optim_args structure (see pulp_train_utils_fp32.h) 
  */
-void pulp_gradient_descent_fp32(
+void pulp_gradient_descent_fp16(
     void * optim_args
 );

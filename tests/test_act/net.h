@@ -15,7 +15,8 @@
  */
 
 // User profiling flags
-#define FLOAT32
+#define FP32 32
+#define FP16 16
 // Tensor checksum definition
 #define CHECK_TOLERANCE 1e-12
 #define ERROR_TOLERANCE 1e-12

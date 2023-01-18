@@ -22,6 +22,7 @@
 #include "init_defines.h"
 #include "act_data.h"
 
+#if DATA_TYPE == FP32
 // Inout data
 PI_L1 struct act_args act_args;
 
@@ -36,6 +37,26 @@ PI_L1 struct blob softmout_blob;
 PI_L1 float softmout[OUT_SIZE];
 PI_L1 float softmout_grad[OUT_SIZE];
 PI_L1 float softmin_grad[IN_SIZE];
+
+#elif DATA_TYPE == FP16
+// Inout data
+PI_L1 struct act_args_fp16 act_args;
+
+PI_L1 struct blob_fp16 reluin_blob;
+PI_L1 struct blob_fp16 reluout_blob;
+PI_L1 fp16 reluout[OUT_SIZE];
+PI_L1 fp16 reluout_grad[OUT_SIZE];
+PI_L1 fp16 reluin_grad[IN_SIZE];
+
+PI_L1 struct blob_fp16 softmin_blob;
+PI_L1 struct blob_fp16 softmout_blob;
+PI_L1 fp16 softmout[OUT_SIZE];
+PI_L1 fp16 softmout_grad[OUT_SIZE];
+PI_L1 fp16 softmin_grad[IN_SIZE];
+
+#else
+
+#endif
 
 
 
@@ -102,29 +123,55 @@ void net_step () {
     START_STATS();
     #endif
 
+    #if DATA_TYPE == FP32
     pulp_relu_fp32_fw_cl(&act_args);
-    
+    #elif DATA_TYPE == FP16
+    pulp_relu_fp16_fw_cl(&act_args);
+    #else 
+
+    #endif
+
+
     #ifdef PROF_NET
     STOP_STATS();
     #endif
 
     printf("\nChecking output..\n");
+    #if DATA_TYPE == FP32
     verify_tensor(reluout, RELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(reluout, RELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #else 
+
+    #endif
+
 
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
     START_STATS();
     #endif
     
+    #if DATA_TYPE == FP32
     pulp_relu_fp32_bw_cl(&act_args);
+    #elif DATA_TYPE == FP16
+    pulp_relu_fp16_bw_cl(&act_args);
+    #else
+
+    #endif
+
 
     #ifdef PROF_NET
     STOP_STATS();
     #endif
 
     printf("\nChecking in grad..\n");
+    #if DATA_TYPE == FP32
     verify_tensor(reluin_grad, RELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(reluin_grad, RELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #else 
 
+    #endif
 
 
 
@@ -140,29 +187,55 @@ void net_step () {
     START_STATS();
     #endif
 
+    #if DATA_TYPE == FP32
     pulp_softmax_fp32_fw_cl(&act_args);
+    #elif DATA_TYPE == FP16
+    pulp_softmax_fp16_fw_cl(&act_args);
+    #else
+
+    #endif
     
+
     #ifdef PROF_NET
     STOP_STATS();
     #endif
 
     printf("\nChecking output..\n");
+    #if DATA_TYPE == FP32
     verify_tensor(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #else
+
+    #endif
+
 
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
     START_STATS();
     #endif
     
+    #if DATA_TYPE == FP32
     pulp_softmax_fp32_bw_cl(&act_args);
+    #elif DATA_TYPE == FP16
+    pulp_softmax_fp16_bw_cl(&act_args);
+    #else
+
+    #endif
+
 
     #ifdef PROF_NET
     STOP_STATS();
     #endif
 
     printf("\nChecking in grad..\n");
+    #if DATA_TYPE == FP32
     verify_tensor(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #else 
 
+    #endif
 
 
     return;

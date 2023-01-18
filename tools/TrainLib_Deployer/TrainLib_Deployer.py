@@ -39,7 +39,7 @@ import utils.DNN_Composer   as composer
 # ---------------------
 
 # GENERAL PROPERTIES
-project_name    = 'Conv2D_ReLU_2'
+project_name    = 'CONV2D_DW_PW_LIN'
 project_path    = '../../../../TrainLib_Examples/'
 proj_folder     = project_path + project_name + '/'
 
@@ -52,25 +52,25 @@ loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
 # NETWORK GRAPH
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
-layer_list      = [ 'conv2d', 'ReLU' ]
+layer_list      = [ 'conv2d', 'ReLU', 'DW', 'PW', 'ReLU', 'linear' ]
 # Layer properties
-in_ch_list      = [ 1, 1 ]          # Linear: size of input vector
-out_ch_list     = [ 1, 1 ]            # Linear: size of output vector
-hk_list         = [ 3, 1 ]             # Linear: = 1
-wk_list         = [ 3, 1 ]             # Linear: = 1
+in_ch_list      = [ 1, 4, 4, 4, 4, 4*2*2 ]          # Linear: size of input vector
+out_ch_list     = [ 4, 4, 4, 4, 4, 2]            # Linear: size of output vector
+hk_list         = [ 3, 1, 3, 1, 1, 1 ]             # Linear: = 1
+wk_list         = [ 3, 1, 3, 1, 1, 1 ]             # Linear: = 1
 # Input activations' properties
-hin_list        = [ 4, 2 ]             # Linear: = 1
-win_list        = [ 4, 2 ]             # Linear: = 1
+hin_list        = [ 6, 4, 4, 2, 2, 1 ]             # Linear: = 1
+win_list        = [ 6, 4, 4, 2, 2, 1 ]             # Linear: = 1
 # Convolutional strides
-h_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
-w_str_list      = [ 1, 1 ]             # Only for conv2d, maxpool, avgpool
+h_str_list      = [ 1, 1, 1, 1, 1, 1 ]             # Only for conv2d, maxpool, avgpool
+w_str_list      = [ 1, 1, 1, 1, 1, 1 ]             # Only for conv2d, maxpool, avgpool
 # Padding (bilateral, adds the specified padding to both image sides)
-h_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
-w_pad_list      = [ 0, 0 ]             # Only for conv2d, DW
+h_pad_list      = [ 0, 0, 0, 0, 0, 0 ]             # Only for conv2d, DW
+w_pad_list      = [ 0, 0, 0, 0, 0, 0 ]             # Only for conv2d, DW
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
-opt_mm_fw_list  = [ 0, 0 ]
-opt_mm_wg_list  = [ 0, 0 ]
-opt_mm_ig_list  = [ 0, 0 ]
+opt_mm_fw_list  = [ 0, 0, 0, 0, 0, 0 ]
+opt_mm_wg_list  = [ 0, 0, 0, 0, 0, 0 ]
+opt_mm_ig_list  = [ 0, 0, 0, 0, 0, 0 ]
 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8

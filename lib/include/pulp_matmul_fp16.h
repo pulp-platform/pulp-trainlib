@@ -64,6 +64,30 @@ void mm_conv2d_in_grad_fp16(
     void * void_args
 );
 
+/**
+ * @brief Naive conv2d kernel for forward propagation (CWH format)
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_fw_kernel_CHW_fp16(
+    void * matMul_args
+);
+
+/**
+ * @brief Naive conv2d kernel for the computation of the weight gradient (CHW format)
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_param_grad_kernel_CHW_fp16(
+    void * matMul_args
+);
+
+/**
+ * @brief Naive conv2d kernel for the computation of the input gradient (CHW format)
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_in_grad_kernel_CHW_fp16(
+    void * matMul_args
+);
+
 
 
 

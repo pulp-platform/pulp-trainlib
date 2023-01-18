@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+
 /**
  * Fully-Connected layer configuration structure
  */

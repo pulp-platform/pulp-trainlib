@@ -22,7 +22,7 @@
 #include "pulp_train_defines.h"
 
 /**
- * =====> STRUCTURES <=====
+ * =====> BACKEND STRUCTURES <=====
  */
 
 /**
@@ -74,34 +74,6 @@ struct im2col_args_fp16
   int stride_h;
   int HWC;
   int USE_DMA;
-};
-
-/**
- * @brief Arguments for ReLU
- * @param compare input of the activation function
- * @param out output array for the activation
- * @param size size of the arrays to be processed
- **/
-struct relu_args_fp16 {
-  fp16 * compare;
-  fp16 * out;
-  int size;
-};
-
-
-struct maxPool_args_fp16 {
-  struct blob_fp16 * top;
-  struct blob_fp16 * bottom;
-  unsigned int * inMap;
-  fp16 * tempBuffer;
-};
-
-
-struct softMax_args_fp16 {
-  fp16 * input;
-  fp16 * output;
-  fp16 * sum;
-  int size;
 };
 
 /**

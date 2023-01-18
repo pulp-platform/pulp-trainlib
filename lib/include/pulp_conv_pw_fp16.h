@@ -20,6 +20,32 @@
 
 
 /**
+ * Depthwise layer configuration structure
+ */
+
+/**
+ * @brief Structure for Pointwise Convolution Training in FP32
+ * @param input input feauture maps for the pointwise layer
+ * @param coeff weight matrix 
+ * @param output output feature maps for the pointwise layer 
+ * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ */
+struct PointWise_Conv_args_fp16 {
+	struct blob_fp16 * input; 
+	struct blob_fp16 * coeff;
+	struct blob_fp16 * output; 
+	int skip_in_grad;
+	int opt_matmul_type_fw;
+	int opt_matmul_type_wg;
+	int opt_matmul_type_ig;
+};
+
+
+
+/**
  * Pointwise layer training functions, grouped into FW and BW
  */
 
@@ -31,14 +57,9 @@
  * @param input input feauture maps for the pointwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer
- * @param pad layer padding
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
-void pulp_conv_pw_fp16_fw_cl(
-	struct blob_fp16 * input, 
-	struct blob_fp16 * coeff, 
-	struct blob_fp16 * output, 
-	int pad
-);
+void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 );
 
 
 // BACKWARD FUNCTIONS
@@ -48,39 +69,26 @@ void pulp_conv_pw_fp16_fw_cl(
  * @param input input feauture maps for the pointwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer 
- * @param pad layer padding
+ * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
-void pulp_conv_pw_fp16_bw_cl(
-	struct blob_fp16 * input, 
-	struct blob_fp16 * coeff, 
-	struct blob_fp16 * output, 
-	int pad
-);
+void pulp_conv_pw_fp16_bw_cl( void * PointWise_Conv_args_fp16 );
 
 /**
  * @brief Backward pass function which computes weight's gradient only
  * @param input input feauture maps for the pointwise layer
  * @param coeff weight matrix 
- * @param output output feature maps for the pointwise layer 
- * @param pad layer padding
+ * @param output output feature maps for the pointwise layer
+ * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
-void pulp_conv_pw_fp16_bw_param_grads_cl(
-	struct blob_fp16 * input, 
-	struct blob_fp16 * coeff, 
-	struct blob_fp16 * output, 
-	int pad
-);
+void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 );
 
 /**
  * @brief Backward pass function which computes input's gradient only
  * @param input input feauture maps for the pointwise layer
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer 
- * @param pad layer padding
+ * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
-void pulp_conv_pw_fp16_bw_input_grads_cl(
-	struct blob_fp16 * input, 
-	struct blob_fp16 * coeff, 
-	struct blob_fp16 * output, 
-	int pad
-);
+void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 );

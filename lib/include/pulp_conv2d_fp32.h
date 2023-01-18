@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+
 /**
  * 2D Convolution layer configuration structure
  */

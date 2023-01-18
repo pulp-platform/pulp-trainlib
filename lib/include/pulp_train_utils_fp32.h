@@ -79,17 +79,6 @@ struct im2col_args
 
 
 /**
- * @brief Parameters for optimizer fucntions for every single layer
- * @param weights blob of the weights (with their gradient inside)
- * @param learning_rate the learning rate of the optimizer
- */
-struct optim_args {
-  struct blob * weights;
-  float learning_rate;
-};
-
-
-/**
  * @brief Transposes an array containing a matrix (of sizes N and M) into another target array
  * @param matrix Matrix to be transposed
  * @param transp_matrix Output tranposed matrix
