@@ -24,21 +24,23 @@
 #include "pulp_train_defines.h"
 
 
-void pulp_conv_pw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad) {
-
-  // kernel dimensions
+void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
+{
+  struct PointWise_Conv_args_fp16 * PW_args = (struct PointWise_Conv_args_fp16 *) PointWise_Conv_args_fp16;
   struct matMul_args_fp16 matMul_args;
 
-  int pW = coeff->W;
-  int pH = coeff->H;
-  fp16 *coeffData = coeff->data;
-  fp16 *outData = output->data;
-  fp16 *inData = input->data;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
+  fp16 *coeffData = PW_args->coeff->data;
+  fp16 *outData = PW_args->output->data;
+  fp16 *inData = PW_args->input->data;
 
-  int W_in = input->W;
-  int H_in = input->H;
-  int Cin = input->C;
-  int Cout = output->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int Cin = PW_args->input->C;
+  int Cout = PW_args->output->C;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_fw;
 
   matMul_args.A = coeffData;
   matMul_args.B = inData;
@@ -55,7 +57,7 @@ void pulp_conv_pw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff,
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_PW_CONV;
   man_args.step_type = STEP_FW;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 
@@ -76,42 +78,51 @@ void pulp_conv_pw_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff,
 
 
 
-void pulp_conv_pw_fp16_bw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad) 
+void pulp_conv_pw_fp16_bw_cl( void * PointWise_Conv_args_fp16 )
 {
-  pulp_conv_pw_fp16_bw_param_grads_cl(input, coeff, output, pad);
-  pulp_conv_pw_fp16_bw_input_grads_cl(input, coeff, output, pad);
+  struct PointWise_Conv_args_fp16 * PW_args = (struct PointWise_Conv_args_fp16 *) PointWise_Conv_args_fp16;
+  int skip_in_grad = PW_args->skip_in_grad;
+
+  pulp_conv_pw_fp16_bw_param_grads_cl(PointWise_Conv_args_fp16); 
+  if (skip_in_grad == 0)
+  {
+    pulp_conv_pw_fp16_bw_input_grads_cl(PointWise_Conv_args_fp16); 
+  }
 }
 
 
 
-void pulp_conv_pw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad) 
+void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 )
 {
+  struct PointWise_Conv_args_fp16 * PW_args = (struct PointWise_Conv_args_fp16 *) PointWise_Conv_args_fp16;
   struct matMul_args_fp16 matMul_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int C_in = PW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = PW_args->output->W;
+  int H_out = PW_args->output->H;
+  int C_out = PW_args->output->C;
 
   #ifdef DEBUG
   printf("OUTDIM %d %d %d ", W_in, H_in, C_in);
   #endif
 
-  fp16 * inData = input->data;
-  fp16 * inDiff = input->diff;
+  fp16 * inData = PW_args->input->data;
+  fp16 * inDiff = PW_args->input->diff;
 
-  fp16 * coeffData = coeff->data;
-  fp16 * coeffDiff = coeff->diff;
+  fp16 * coeffData = PW_args->coeff->data;
+  fp16 * coeffDiff = PW_args->coeff->diff;
 
-  fp16 * outData = output->data;
-  fp16 * outDiff = output->diff;
+  fp16 * outData = PW_args->output->data;
+  fp16 * outDiff = PW_args->output->diff;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_wg;
 
   // COMPUTE GRADIENT
   matMul_args.A = outDiff;
@@ -129,7 +140,7 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_f
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_PW_CONV;
   man_args.step_type = STEP_WGT_GRAD;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 
@@ -150,35 +161,37 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_f
 
 
 
-void pulp_conv_pw_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad) 
+void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 )
 {
-  // struct for coeffDiff calculation
+  struct PointWise_Conv_args_fp16 * PW_args = (struct PointWise_Conv_args_fp16 *) PointWise_Conv_args_fp16;
   struct matMul_args_fp16 matMul_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = PW_args->input->W;
+  int H_in = PW_args->input->H;
+  int C_in = PW_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = PW_args->coeff->W;
+  int pH = PW_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = PW_args->output->W;
+  int H_out = PW_args->output->H;
+  int C_out = PW_args->output->C;
 
   #ifdef DEBUG
   printf("OUTDIM %d %d %d ", W_out, H_out, C_out);
   #endif
 
-  fp16 * inData = input->data;
-  fp16 * inDiff = input->diff;
+  fp16 * inData = PW_args->input->data;
+  fp16 * inDiff = PW_args->input->diff;
 
-  fp16 * coeffData = coeff->data;
-  fp16 * coeffDiff = coeff->diff;
+  fp16 * coeffData = PW_args->coeff->data;
+  fp16 * coeffDiff = PW_args->coeff->diff;
 
-  fp16 * outData = output->data;
-  fp16 * outDiff = output->diff;
+  fp16 * outData = PW_args->output->data;
+  fp16 * outDiff = PW_args->output->diff;
+
+  int opt_matmul_type = PW_args->opt_matmul_type_ig;
 
   // COMPUTE ACTIV_GRAD
   matMul_args.A = coeffData; // transp ?
@@ -196,7 +209,7 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_f
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_PW_CONV;
   man_args.step_type = STEP_IN_GRAD;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 

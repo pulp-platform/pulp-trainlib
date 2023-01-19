@@ -24,7 +24,6 @@
 #include "pulp_train_defines.h"
 
 
-//void pulp_conv_pw_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
 void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
 {
   struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
@@ -79,22 +78,20 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
 
 
 
-//void pulp_conv_pw_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
 void pulp_conv_pw_fp32_bw_cl( void * PointWise_Conv_args )
 {
   struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
   int skip_in_grad = PW_args->skip_in_grad;
 
-  pulp_conv_pw_fp32_bw_param_grads_cl(PointWise_Conv_args); //(input, coeff, output, pad, opt_matmul_type_wg);
+  pulp_conv_pw_fp32_bw_param_grads_cl(PointWise_Conv_args); 
   if (skip_in_grad == 0)
   {
-    pulp_conv_pw_fp32_bw_input_grads_cl(PointWise_Conv_args); //(input, coeff, output, pad, opt_matmul_type_ig);
+    pulp_conv_pw_fp32_bw_input_grads_cl(PointWise_Conv_args); 
   }
 }
 
 
 
-//void pulp_conv_pw_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
 void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
 {
   struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
@@ -164,7 +161,6 @@ void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
 
 
 
-//void pulp_conv_pw_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int pad, int opt_matmul_type) 
 void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
 {
   struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;

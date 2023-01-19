@@ -23,36 +23,60 @@
 #include "pulp_im2col_fp16.h"
 #include "pulp_conv2d_fp16.h"
 
-void pulp_conv2d_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer)
+void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
 {
+    struct Conv2D_args_fp16 * C2D_args = (struct Conv2D_args_fp16 *) Conv2D_args_fp16;
     struct matMul_args_fp16 matMul_args;
     struct im2col_args_fp16 im2col_args;
 
-    int pW = coeff->W;
-    int pH = coeff->H;
-    fp16 *coeffData = coeff->data;
-    fp16 *outData = output->data;
-    fp16 *inData = input->data;
+    int pW = C2D_args->coeff->W;
+    int pH = C2D_args->coeff->H;
+    fp16 *coeffData = C2D_args->coeff->data;
+    fp16 *outData = C2D_args->output->data;
+    fp16 *inData = C2D_args->input->data;
 
-    int W_in = input->W;
-    int H_in = input->H;
-    int W_out = output->W;
-    int H_out = output->H;
-    int C_in = input->C;
-    int C_out = output->C;
+    int W_in = C2D_args->input->W;
+    int H_in = C2D_args->input->H;
+    int W_out = C2D_args->output->W;
+    int H_out = C2D_args->output->H;
+    int C_in = C2D_args->input->C;
+    int C_out = C2D_args->output->C;
+
+    int stride_w = C2D_args->stride_w;
+    int stride_h = C2D_args->stride_h;
+    int Lpad = C2D_args->Lpad;
+    int Rpad = C2D_args->Rpad;
+    int Upad = C2D_args->Upad;
+    int Dpad = C2D_args->Dpad;
+
+    fp16 * i2c_buffer = C2D_args->i2c_buffer;
+
+    int HWC_layout = C2D_args->HWC;
+    int USE_IM2COL = C2D_args->USE_IM2COL;
+    int USE_DMA = C2D_args->USE_DMA_IM2COL;
+    int opt_matmul_type = C2D_args->opt_matmul_type_fw;
 
     #ifdef DEBUG
     int in_size = input->dim;
     int ker_size = coeff->dim;
     #endif
 
+  if (USE_IM2COL == 1) {
+
     // im2col on the input data
-    im2col_args.input = input;
-    im2col_args.c = coeff;
-    im2col_args.output = output;
+    im2col_args.input = C2D_args->input;
+    im2col_args.c = C2D_args->coeff;
+    im2col_args.output = C2D_args->output;
     im2col_args.pBuffer = i2c_buffer;
-    im2col_args.pad = pad;
+    im2col_args.Lpad = Lpad;
+    im2col_args.Rpad = Rpad;
+    im2col_args.Upad = Upad;
+    im2col_args.Dpad = Dpad;
     im2col_args.mod = 0;
+    im2col_args.stride_w = stride_w;
+    im2col_args.stride_h = stride_h;
+    im2col_args.USE_DMA = USE_DMA;
+    im2col_args.HWC = HWC_layout;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
@@ -81,7 +105,7 @@ void pulp_conv2d_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
     matMul_args.C = outData;
     matMul_args.N = C_out;
     matMul_args.K = pW*pH*C_in;
-    matMul_args.M = (W_in-pW+1)*(H_in-pH+1);
+    matMul_args.M = (W_in-pW+stride_w+Lpad+Rpad)/stride_w*(H_in-pH+stride_h+Upad+Dpad)/stride_h;
     matMul_args.trans_B = 1;
 
     #ifndef OPTIMIZE
@@ -91,9 +115,33 @@ void pulp_conv2d_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
     man_args.mm_args = &matMul_args;
     man_args.layer_type = LAYER_CONV2D;
     man_args.step_type = STEP_FW;
-    man_args.matmul_type = MATMUL_TYPE;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
     #endif
+
+  }
+
+  // Use naive kernel
+  else if (USE_IM2COL == 0) {
+
+    matMul_args.A = inData;
+    matMul_args.B = coeffData;
+    matMul_args.C = outData;
+    matMul_args.H = H_in;
+    matMul_args.W = W_in;
+    matMul_args.pCin = C_in;
+    matMul_args.pCout = C_out;
+    matMul_args.pH = pH;
+    matMul_args.pW = pW;
+
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_fp16, &matMul_args);
+    
+  }
+
+  // ERROR IN SELECTING IM2COL
+  else {
+    printf("[pulp_conv2d_fp16_fw_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+  }
 
     #ifdef DEBUG
     // to PRINT outData orderly
@@ -112,44 +160,75 @@ void pulp_conv2d_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
 
 
 
-void pulp_conv2d_fp16_bw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer, fp16 * bt_buffer)
+void pulp_conv2d_fp16_bw_cl( void * Conv2D_args_fp16 )
 {
-    pulp_conv2d_fp16_bw_param_grads_cl(input, coeff, output, pad, i2c_buffer);
-    pulp_conv2d_fp16_bw_input_grads_cl(input, coeff, output, pad, i2c_buffer, bt_buffer);
+    struct Conv2D_args_fp16 * C2D_args = (struct Conv2D_args_fp16 *) Conv2D_args_fp16;
+    int skip_in_grad = C2D_args->skip_in_grad;
+
+    pulp_conv2d_fp16_bw_param_grads_cl(Conv2D_args_fp16); 
+    if (skip_in_grad == 0)
+    {
+      pulp_conv2d_fp16_bw_input_grads_cl(Conv2D_args_fp16); 
+    }
 }
 
 
 
-void pulp_conv2d_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer)
+void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
 {
+    struct Conv2D_args_fp16 * C2D_args = (struct Conv2D_args_fp16 *) Conv2D_args_fp16;
     struct matMul_args_fp16 matMul_args;
     struct im2col_args_fp16 im2col_args;
 
     //input dimensions
-    int W_in = input->W;
-    int H_in = input->H;
-    int C_in = input->C;
+    int W_in = C2D_args->input->W;
+    int H_in = C2D_args->input->H;
+    int C_in = C2D_args->input->C;
     //kernel dimensions
-    int pW = coeff->W;
-    int pH = coeff->H;
+    int pW = C2D_args->coeff->W;
+    int pH = C2D_args->coeff->H;
     //output dimensions
-    int W_out = output->W;
-    int H_out = output->H;
-    int C_out = output->C;
+    int W_out = C2D_args->output->W;
+    int H_out = C2D_args->output->H;
+    int C_out = C2D_args->output->C;
 
-    fp16 * inData = input->data;
-    fp16 * inDiff = input->diff;
-    fp16 * coeffData = coeff->data;
-    fp16 * coeffDiff = coeff->diff;
-    fp16 * outDiff = output->diff;
-    fp16 * outData = output->data;
+    fp16 * inData = C2D_args->input->data;
+    fp16 * inDiff = C2D_args->input->diff;
+    fp16 * coeffData = C2D_args->coeff->data;
+    fp16 * coeffDiff = C2D_args->coeff->diff;
+    fp16 * outDiff = C2D_args->output->diff;
+    fp16 * outData = C2D_args->output->data;
 
-    im2col_args.input = input;
-    im2col_args.c = coeff;
-    im2col_args.output = output;
+    int stride_w = C2D_args->stride_w;
+    int stride_h = C2D_args->stride_h;
+    int Lpad = C2D_args->Lpad;
+    int Rpad = C2D_args->Rpad;
+    int Upad = C2D_args->Upad;
+    int Dpad = C2D_args->Dpad;
+
+    fp16 * i2c_buffer = C2D_args->i2c_buffer;
+
+    int HWC_layout = C2D_args->HWC;
+    int USE_IM2COL = C2D_args->USE_IM2COL;
+    int USE_DMA = C2D_args->USE_DMA_IM2COL;
+    int opt_matmul_type = C2D_args->opt_matmul_type_wg;
+    
+
+  if (USE_IM2COL == 1) {
+
+    im2col_args.input = C2D_args->input;
+    im2col_args.c = C2D_args->coeff;
+    im2col_args.output = C2D_args->output;
     im2col_args.pBuffer = i2c_buffer;
-    im2col_args.pad = 0;
+    im2col_args.Lpad = 0;
+    im2col_args.Rpad = 0;
+    im2col_args.Upad = 0;
+    im2col_args.Dpad = 0;
     im2col_args.mod = 0;
+    im2col_args.stride_w = stride_w;
+    im2col_args.stride_h = stride_h;
+    im2col_args.USE_DMA = USE_DMA;
+    im2col_args.HWC = HWC_layout;
 
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
@@ -168,9 +247,66 @@ void pulp_conv2d_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
     man_args.mm_args = &matMul_args;
     man_args.layer_type = LAYER_CONV2D;
     man_args.step_type = STEP_WGT_GRAD;
-    man_args.matmul_type = MATMUL_TYPE;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
     #endif
+
+  }
+
+  else if (USE_IM2COL == 0) {
+
+    matMul_args.A = inData;
+    matMul_args.B = coeffDiff;
+    matMul_args.C = outDiff;
+    matMul_args.H = H_in;
+    matMul_args.W = W_in;
+    matMul_args.pCin = C_in;
+    matMul_args.pCout = C_out;
+    matMul_args.pH = pH;
+    matMul_args.pW = pW;
+
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_fp16, &matMul_args);
+
+  }
+
+  else {
+    printf("[pulp_conv2d_fp16_bw_param_grads_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+  }
+    
+
+  #ifdef DEBUG
+  printf("\nBackward outDiff data (size: %d, address: %x):\n", C_out*W_out*H_out, outDiff);
+  for(int index=0; index<C_out*W_out*H_out; index++) {
+    if(!(index%(W_out))) printf("\n");
+    if(!(index%(H_out*W_out))) printf("\n");
+    printf("%f ", outDiff[index]);
+  }
+  printf("\n");
+
+  printf("\nWeights (size: %d, address: %x):\n", pW*pH*C_out*C_in, coeffData);
+  for(int index=0; index<pW*pH*C_out*C_in; index++) {
+    if(!(index%(pW))) printf("\n");
+    if(!(index%(pW*pH))) printf("\n");
+    printf("%f ", coeffData[index]);
+  }
+  printf("\n");
+
+  printf("\nBackward i2c buffer (size: %d, address: %x):\n", pW*pH*C_out*H_in*W_in, i2c_buffer);
+  for(int index=0; index<pW*pH*C_in*H_in*W_in; index++) {
+    if(!(index%(pW*pH))) printf("\n");
+    if(!(index%(pW*pH*C_in))) printf("\n");
+    printf("%f ", i2c_buffer[index]);
+  }
+  printf("\n");
+
+  printf("\nBackward gradDiff (size: %d, address: %x):\n", pW*pH*C_out*C_in, coeffDiff);
+  for(int index=0; index<pW*pH*C_out*C_in; index++) {
+    if(!(index%(pW))) printf("\n");
+    if(!(index%(pW*pH))) printf("\n");
+    printf("%f ", inDiff[index]);
+  }
+  printf("\n\n");
+  #endif
 
   #ifdef DEBUG
   printf("COEFF GRADIENT CONV2D LAYER \n\n");
@@ -189,52 +325,84 @@ void pulp_conv2d_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
 
 
 
-void pulp_conv2d_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output, int pad, fp16 * i2c_buffer, fp16 * bt_buffer)
+void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
 {
+  struct Conv2D_args_fp16 * C2D_args = (struct Conv2D_args_fp16 *) Conv2D_args_fp16;
   struct matMul_args_fp16 matMul_args;
   struct im2col_args_fp16 im2col_args;
 
   //input dimensions
-  int W_in = input->W;
-  int H_in = input->H;
-  int C_in = input->C;
+  int W_in = C2D_args->input->W;
+  int H_in = C2D_args->input->H;
+  int C_in = C2D_args->input->C;
   //kernel dimensions
-  int pW = coeff->W;
-  int pH = coeff->H;
+  int pW = C2D_args->coeff->W;
+  int pH = C2D_args->coeff->H;
   //output dimensions
-  int W_out = output->W;
-  int H_out = output->H;
-  int C_out = output->C;
+  int W_out = C2D_args->output->W;
+  int H_out = C2D_args->output->H;
+  int C_out = C2D_args->output->C;
 
-  fp16 * inData = input->data;
-  fp16 * inDiff = input->diff;
-  fp16 * coeffData = coeff->data;
-  fp16 * coeffDiff = coeff->diff;
-  fp16 * outDiff = output->diff;
-  fp16 * outData = output->data;
+  fp16 * inData = C2D_args->input->data;
+  fp16 * inDiff = C2D_args->input->diff;
+  fp16 * coeffData = C2D_args->coeff->data;
+  fp16 * coeffDiff = C2D_args->coeff->diff;
+  fp16 * outDiff = C2D_args->output->diff;
+  fp16 * outData = C2D_args->output->data;
 
-  // PREPARE im2col_buffer for ACTIV_GRAD
-  im2col_args.input = input;
-  im2col_args.c = coeff;
-  im2col_args.output = output;
-  im2col_args.pBuffer = i2c_buffer;
-  im2col_args.pad = pW-1; //1;
-  im2col_args.mod = 1;
+  fp16 * i2c_buffer = C2D_args->i2c_buffer;
+  fp16 * temp_bt = C2D_args->bt_buffer;
 
-  if (H_in == pH) im2col_args.pad = 2;
+  int stride_w = C2D_args->stride_w;
+  int stride_h = C2D_args->stride_h;
+  int Lpad = C2D_args->Lpad;
+  int Rpad = C2D_args->Rpad;
+  int Upad = C2D_args->Upad;
+  int Dpad = C2D_args->Dpad;
 
-  pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
+  int HWC_layout = C2D_args->HWC;
+  int USE_IM2COL = C2D_args->USE_IM2COL;
+  int USE_DMA = C2D_args->USE_DMA_IM2COL;
+  int opt_matmul_type = C2D_args->opt_matmul_type_ig;
 
-  // Iterate to accumulate over adjacent receptive fields
-//for (int rec_field = 0; rec_field < H_in*W_in; rec_field++)
-//{
-    matMul_args.A = coeffData;
+
+  if (USE_IM2COL == 1) {
+
+    // PREPARE im2col_buffer for ACTIV_GRAD
+    im2col_args.input = C2D_args->input;
+    im2col_args.c = C2D_args->coeff;
+    im2col_args.output = C2D_args->output;
+    im2col_args.pBuffer = i2c_buffer;
+    im2col_args.Lpad = 0; //pW-1;
+    im2col_args.Rpad = 0; //pW-1;
+    im2col_args.Upad = 0; //pH-1;
+    im2col_args.Dpad = 0; //pH-1;
+    im2col_args.stride_h = 1;
+    im2col_args.stride_w = 1;
+    im2col_args.mod = 1;
+    im2col_args.USE_DMA = USE_DMA; 
+    im2col_args.HWC = HWC_layout;
+
+    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
+
+    // Blocktranspose weights
+    struct blocktransp_args_fp16 bt_args;
+    bt_args.weights = coeffData;
+    bt_args.bt_weights = temp_bt;
+    bt_args.Cout = C_out;
+    bt_args.Cin = C_in;
+    bt_args.Hk = pH;
+    bt_args.Wk = pW;
+
+    matMul_args.A = temp_bt; //coeffData;
     matMul_args.B = i2c_buffer;
     matMul_args.C = inDiff;
     matMul_args.N = C_in;
-    matMul_args.K = pW*pH*C_out; //pW*pH;
+    matMul_args.K = pW*pH*C_out;
     matMul_args.M = W_in*H_in;
     matMul_args.trans_B = 1;
+
+    pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp16, &bt_args);
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
@@ -243,30 +411,65 @@ void pulp_conv2d_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp
     man_args.mm_args = &matMul_args;
     man_args.layer_type = LAYER_CONV2D;
     man_args.step_type = STEP_IN_GRAD;
-    man_args.matmul_type = MATMUL_TYPE;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
     #endif
-//}
 
-    #ifdef DEBUG
-    printf("\nBackward outDiff data (size: %d, address: %x):\n", output->dim, outDiff);
-    for(int index=0; index<output->dim; index++) {
-      printf("%f ", outDiff[index]);
-    }
-    printf("\n");
+  }
 
-    printf("\nForward i2c buffer (size: %d, address: %x):\n", pW*pH*C_in*H_out*W_out, i2c_buffer);
-    for(int index=0; index<pW*pH*C_in*H_out*W_out; index++) {
-      printf("%f ", i2c_buffer[index]);
-    }
-    printf("\n");
+  else if (USE_IM2COL == 0) {
 
-    printf("\nBackward inDiff (size: %d, address: %x):\n", input->dim, inDiff);
-    for(int index=0; index<input->dim; index++) {
-      printf("%f ", inDiff[index]);
-    }
-    printf("\n\n");
-    #endif
+    matMul_args.A = inDiff;
+    matMul_args.B = coeffData;
+    matMul_args.C = outDiff;
+    matMul_args.H = H_in;
+    matMul_args.W = W_in;
+    matMul_args.pCin = C_in;
+    matMul_args.pCout = C_out;
+    matMul_args.pH = pH;
+    matMul_args.pW = pW;
+
+    pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_fp16, &matMul_args);
+
+  }
+
+  else {
+    printf("[pulp_conv2d_fp16_bw_input_grads_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
+  }  
+
+  #ifdef DEBUG
+  printf("\nBackward outDiff data (size: %d, address: %x):\n", C_out*W_out*H_out, outDiff);
+  for(int index=0; index<C_out*W_out*H_out; index++) {
+    if(!(index%(W_out))) printf("\n");
+    if(!(index%(H_out*W_out))) printf("\n");
+    printf("%f ", outDiff[index]);
+  }
+  printf("\n");
+
+  printf("\nWeights (size: %d, address: %x):\n", pW*pH*C_out*C_in, coeffData);
+  for(int index=0; index<pW*pH*C_out*C_in; index++) {
+    if(!(index%(pW))) printf("\n");
+    if(!(index%(pW*pH))) printf("\n");
+    printf("%f ", coeffData[index]);
+  }
+  printf("\n");
+
+  printf("\nBackward i2c buffer (size: %d, address: %x):\n", pW*pH*C_out*H_in*W_in, i2c_buffer);
+  for(int index=0; index<pW*pH*C_in*H_in*W_in; index++) {
+    if(!(index%(pW*pH))) printf("\n");
+    if(!(index%(pW*pH*C_in))) printf("\n");
+    printf("%f ", i2c_buffer[index]);
+  }
+  printf("\n");
+
+  printf("\nBackward inDiff (size: %d, address: %x):\n", C_in*H_in*W_in, inDiff);
+  for(int index=0; index<C_in*H_in*W_in; index++) {
+    if(!(index%(W_in))) printf("\n");
+    if(!(index%(W_in*H_in))) printf("\n");
+    printf("%f ", inDiff[index]);
+  }
+  printf("\n\n");
+  #endif
 
 
   #ifdef DEBUG

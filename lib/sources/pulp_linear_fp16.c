@@ -22,19 +22,22 @@
 #include "pulp_matmul_fp16.h"
 #include "pulp_linear_fp16.h"
 
-void pulp_linear_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output)
+void pulp_linear_fp16_fw_cl( void * Linear_args_fp16 )
 {
-  fp16 *coeffData = coeff->data;
-  fp16 *outData = output->data;  
-  fp16 *inputData = input->data;
+  struct Linear_args_fp16 * FC_args = (struct Linear_args_fp16 *) Linear_args_fp16;
+  fp16 *coeffData = FC_args->coeff->data;
+  fp16 *outData = FC_args->output->data;  
+  fp16 *inputData = FC_args->input->data;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_fw;
 
   struct matMul_args_fp16 matMul_args;
 
   matMul_args.A = coeffData;
   matMul_args.B = inputData;
   matMul_args.C = outData;
-  matMul_args.N = output->dim;
-  matMul_args.K = input->dim;
+  matMul_args.N = FC_args->output->dim;
+  matMul_args.K = FC_args->input->dim;
   matMul_args.M = 1;
   matMul_args.trans_B = 0;
 
@@ -45,7 +48,7 @@ void pulp_linear_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_LINEAR;
   man_args.step_type = STEP_FW;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 
@@ -59,21 +62,30 @@ void pulp_linear_fp16_fw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, 
 }
 
 
-void pulp_linear_fp16_bw_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output) 
+void pulp_linear_fp16_bw_cl( void * Linear_args_fp16 )
 {
-  pulp_linear_fp16_bw_param_grads_cl(input, coeff, output);
-  pulp_linear_fp16_bw_input_grads_cl(input, coeff, output);
+  struct Linear_args_fp16 * FC_args = (struct Linear_args_fp16 *) Linear_args_fp16;
+  int skip_in_grad = FC_args->skip_in_grad;
+
+  pulp_linear_fp16_bw_param_grads_cl(Linear_args_fp16);
+  if (skip_in_grad == 0) 
+  {
+    pulp_linear_fp16_bw_input_grads_cl(Linear_args_fp16); 
+  }
 }
 
 
-void pulp_linear_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output) 
+void pulp_linear_fp16_bw_param_grads_cl( void * Linear_args_fp16 )
 {
-  fp16 *coeffData = coeff->data;
-  fp16 *inData = input->data;
-  fp16 *outData = output->data;
-  fp16 *coeffDiff = coeff->diff;
-  fp16 *outDiff = output->diff;  
-  fp16 *inDiff = input->diff;
+  struct Linear_args_fp16 * FC_args = (struct Linear_args_fp16 *) Linear_args_fp16;
+  fp16 *coeffData = FC_args->coeff->data;
+  fp16 *inData = FC_args->input->data;
+  fp16 *outData = FC_args->output->data;
+  fp16 *coeffDiff = FC_args->coeff->diff;
+  fp16 *outDiff = FC_args->output->diff;  
+  fp16 *inDiff = FC_args->input->diff;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_wg;
 
   struct matMul_args_fp16 matMul_args;
 
@@ -84,12 +96,12 @@ void pulp_linear_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
   printf("\n");
 #endif
 
-  matMul_args.A = output->diff;
-  matMul_args.B = input->data;
-  matMul_args.C = coeff->diff;
-  matMul_args.N = output->dim;
+  matMul_args.A = outDiff;
+  matMul_args.B = inData;
+  matMul_args.C = coeffDiff;
+  matMul_args.N = FC_args->output->dim;
   matMul_args.K = 1;
-  matMul_args.M = input->dim;
+  matMul_args.M = FC_args->input->dim;
   matMul_args.trans_B = 0;
 
   #ifndef OPTIMIZE
@@ -99,7 +111,7 @@ void pulp_linear_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_LINEAR;
   man_args.step_type = STEP_WGT_GRAD;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 
@@ -114,14 +126,17 @@ void pulp_linear_fp16_bw_param_grads_cl(struct blob_fp16 * input, struct blob_fp
 }
 
 
-void pulp_linear_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp16 * coeff, struct blob_fp16 * output) 
+void pulp_linear_fp16_bw_input_grads_cl( void * Linear_args_fp16 )
 {
-  fp16 *coeffData = coeff->data;
-  fp16 *inData = input->data;
-  fp16 *outData = output->data;
-  fp16 *coeffDiff = coeff->diff;
-  fp16 *outDiff = output->diff;  
-  fp16 *inDiff = input->diff;
+  struct Linear_args_fp16 * FC_args = (struct Linear_args_fp16 *) Linear_args_fp16;
+  fp16 *coeffData = FC_args->coeff->data;
+  fp16 *inData = FC_args->input->data;
+  fp16 *outData = FC_args->output->data;
+  fp16 *coeffDiff = FC_args->coeff->diff;
+  fp16 *outDiff = FC_args->output->diff;  
+  fp16 *inDiff = FC_args->input->diff;
+
+  int opt_matmul_type = FC_args->opt_matmul_type_ig;
 
   struct matMul_args_fp16 matMul_args;
 
@@ -132,12 +147,12 @@ void pulp_linear_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp
   printf("\n");
 #endif
 
-  matMul_args.A = output->diff;
+  matMul_args.A = outDiff;
   matMul_args.B = coeffData;
   matMul_args.C = inDiff;
   matMul_args.N = 1;
-  matMul_args.K = output->dim;
-  matMul_args.M = input->dim;
+  matMul_args.K = FC_args->output->dim;
+  matMul_args.M = FC_args->input->dim;
   matMul_args.trans_B = 0;
 
   #ifndef OPTIMIZE
@@ -147,7 +162,7 @@ void pulp_linear_fp16_bw_input_grads_cl(struct blob_fp16 * input, struct blob_fp
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_LINEAR;
   man_args.step_type = STEP_IN_GRAD;
-  man_args.matmul_type = MATMUL_TYPE;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
   #endif
 

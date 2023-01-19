@@ -22,7 +22,6 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_linear_fp32.h"
 
-// void pulp_linear_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type)
 void pulp_linear_fp32_fw_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
@@ -63,21 +62,19 @@ void pulp_linear_fp32_fw_cl( void * Linear_args )
 }
 
 
-//void pulp_linear_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig) 
 void pulp_linear_fp32_bw_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
   int skip_in_grad = FC_args->skip_in_grad;
 
-  pulp_linear_fp32_bw_param_grads_cl(Linear_args); //(input, coeff, output, opt_matmul_type_wg);
+  pulp_linear_fp32_bw_param_grads_cl(Linear_args);
   if (skip_in_grad == 0) 
   {
-    pulp_linear_fp32_bw_input_grads_cl(Linear_args); //(input, coeff, output, opt_matmul_type_ig);
+    pulp_linear_fp32_bw_input_grads_cl(Linear_args); 
   }
 }
 
 
-//void pulp_linear_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
 void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
@@ -129,7 +126,6 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 }
 
 
-//void pulp_linear_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int opt_matmul_type) 
 void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;

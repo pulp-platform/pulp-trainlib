@@ -23,7 +23,6 @@
 #include "pulp_im2col_fp32.h"
 #include "pulp_conv2d_fp32.h"
 
-//void pulp_conv2d_fp32_fw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, int stride_h, int stride_w, float * i2c_buffer, int opt_matmul_type, int USE_IM2COL, int USE_DMA_IM2COL)
 void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 {
     struct Conv2D_args * C2D_args = (struct Conv2D_args *) Conv2D_args;
@@ -161,22 +160,20 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 
 
 
-//void pulp_conv2d_fp32_bw_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, int stride_h, int stride_w, float * i2c_buffer, float * bt_buffer, int skip_in_grad, int opt_matmul_type_wg, int opt_matmul_type_ig, int USE_IM2COL, int USE_DMA_IM2COL)
 void pulp_conv2d_fp32_bw_cl( void * Conv2D_args )
 {
     struct Conv2D_args * C2D_args = (struct Conv2D_args *) Conv2D_args;
     int skip_in_grad = C2D_args->skip_in_grad;
 
-    pulp_conv2d_fp32_bw_param_grads_cl(Conv2D_args); //(input, coeff, output, Lpad, Rpad, Upad, Dpad, stride_h, stride_w, i2c_buffer, opt_matmul_type_wg, USE_IM2COL, USE_DMA_IM2COL);
+    pulp_conv2d_fp32_bw_param_grads_cl(Conv2D_args); 
     if (skip_in_grad == 0)
     {
-      pulp_conv2d_fp32_bw_input_grads_cl(Conv2D_args); //(input, coeff, output, Lpad, Rpad, Upad, Dpad, stride_h, stride_w, i2c_buffer, bt_buffer, opt_matmul_type_ig, USE_IM2COL, USE_DMA_IM2COL);
+      pulp_conv2d_fp32_bw_input_grads_cl(Conv2D_args); 
     }
 }
 
 
 
-//void pulp_conv2d_fp32_bw_param_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, int stride_h, int stride_w, float * i2c_buffer, int opt_matmul_type, int USE_IM2COL, int USE_DMA_IM2COL)
 void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
 {
     struct Conv2D_args * C2D_args = (struct Conv2D_args *) Conv2D_args;
@@ -328,7 +325,6 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
 
 
 
-//void pulp_conv2d_fp32_bw_input_grads_cl(struct blob * input, struct blob * coeff, struct blob * output, int Lpad,	int Rpad,	int Upad,	int Dpad, int stride_h, int stride_w, float * i2c_buffer, float * bt_buffer, int opt_matmul_type, int USE_IM2COL, int USE_DMA_IM2COL)
 void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
 {
   struct Conv2D_args * C2D_args = (struct Conv2D_args *) Conv2D_args;
