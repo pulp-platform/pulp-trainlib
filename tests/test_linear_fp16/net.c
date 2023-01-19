@@ -24,10 +24,13 @@
 // DATA DEFINITION
 
 // LINEAR
+PI_L1 struct Linear_args_fp16 FC_args;
 PI_L1 struct blob_fp16 layer0_in, layer0_wgt, layer0_out;
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
+
+PI_L1 fp16 zero_init = 0.0f;
 
 #ifdef FORWARD
 PI_L1 fp16 l0_in[Tin_l0];
@@ -54,7 +57,7 @@ static inline void tensor_init()
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
   for (int i=0; i<Tker_l0; i++)       l0_ker[i] = L0_WEIGHTS_params[i];
-  for (int i=0; i<Tout_l0; i++)       l0_out[i] = 0.0f; 
+  for (int i=0; i<Tout_l0; i++)       l0_out[i] = zero_init; 
 }
 
 static inline void connect_blobs() 
@@ -67,6 +70,14 @@ static inline void connect_blobs()
 
   layer0_out.data = l0_out;
   layer0_out.dim = Tout_l0;
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -96,7 +107,7 @@ static inline void compute_memory_occupation(){
 #ifdef BACKWARD_ERROR
 static inline void tensor_init() 
 {
-  for (int i=0; i<Tin_l0; i++)        l0_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_l0; i++)        l0_in_diff[i] = zero_init;
   for (int i=0; i<Tker_l0; i++)       l0_ker[i] = L0_WEIGHTS_params[i];
   for (int i=0; i<Tout_l0; i++)       l0_out_diff[i] = L0_OUT_GRAD[i]; 
 }
@@ -111,6 +122,14 @@ static inline void connect_blobs()
 
   layer0_out.diff = l0_out_diff;
   layer0_out.dim = Tout_l0;  
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -141,7 +160,7 @@ static inline void compute_memory_occupation(){
 static inline void tensor_init() 
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
-  for (int i=0; i<Tker_l0; i++)       l0_ker_diff[i] = 0.0f;
+  for (int i=0; i<Tker_l0; i++)       l0_ker_diff[i] = zero_init;
   for (int i=0; i<Tout_l0; i++)       l0_out_diff[i] = L0_OUT_GRAD[i];   
 }
 
@@ -155,6 +174,14 @@ static inline void connect_blobs()
 
   layer0_out.diff = l0_out_diff;
   layer0_out.dim = Tout_l0;  
+
+  FC_args.input = &layer0_in;
+  FC_args.coeff = &layer0_wgt;
+  FC_args.output = &layer0_out;
+  FC_args.skip_in_grad = 0;
+  FC_args.opt_matmul_type_fw = MATMUL_TYPE;
+  FC_args.opt_matmul_type_wg = MATMUL_TYPE;
+  FC_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -185,7 +212,7 @@ static inline void compute_memory_occupation(){
 static inline void net_forward(){
   /**  FORWARD FC #1   **/
   #ifdef FORWARD
-  pulp_linear_fp16_fw_cl(&layer0_in, &layer0_wgt, &layer0_out);
+  pulp_linear_fp16_fw_cl(&FC_args);
   #endif
 }
 
@@ -243,7 +270,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_linear_fp16_fw_cl(&layer0_in, &layer0_wgt, &layer0_out);
+  pulp_linear_fp16_fw_cl(&FC_args);
   #endif
 
   #ifdef PROF_FWD
@@ -256,11 +283,11 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_linear_fp16_bw_input_grads_cl(&layer0_in, &layer0_wgt, &layer0_out);
+  pulp_linear_fp16_bw_input_grads_cl(&FC_args);
   #endif
 
   #ifdef BACKWARD_GRAD
-  pulp_linear_fp16_bw_param_grads_cl(&layer0_in, &layer0_wgt, &layer0_out);
+  pulp_linear_fp16_bw_param_grads_cl(&FC_args);
   #endif
 
   #ifdef PROF_BCKWD

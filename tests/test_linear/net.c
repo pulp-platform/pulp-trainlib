@@ -30,6 +30,8 @@ PI_L1 struct blob layer0_in, layer0_wgt, layer0_out;
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
 
+PI_L1 float zero_init = 0.0f;
+
 #ifdef FORWARD
 PI_L1 float l0_in[Tin_l0];
 PI_L1 float l0_ker[Tker_l0];
@@ -55,7 +57,7 @@ static inline void tensor_init()
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
   for (int i=0; i<Tker_l0; i++)       l0_ker[i] = L0_WEIGHTS_params[i];
-  for (int i=0; i<Tout_l0; i++)       l0_out[i] = 0.0f; 
+  for (int i=0; i<Tout_l0; i++)       l0_out[i] = zero_init; 
 }
 
 static inline void connect_blobs() 
@@ -105,7 +107,7 @@ static inline void compute_memory_occupation(){
 #ifdef BACKWARD_ERROR
 static inline void tensor_init() 
 {
-  for (int i=0; i<Tin_l0; i++)        l0_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_l0; i++)        l0_in_diff[i] = zero_init;
   for (int i=0; i<Tker_l0; i++)       l0_ker[i] = L0_WEIGHTS_params[i];
   for (int i=0; i<Tout_l0; i++)       l0_out_diff[i] = L0_OUT_GRAD[i]; 
 }
@@ -158,7 +160,7 @@ static inline void compute_memory_occupation(){
 static inline void tensor_init() 
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
-  for (int i=0; i<Tker_l0; i++)       l0_ker_diff[i] = 0.0f;
+  for (int i=0; i<Tker_l0; i++)       l0_ker_diff[i] = zero_init;
   for (int i=0; i<Tout_l0; i++)       l0_out_diff[i] = L0_OUT_GRAD[i];   
 }
 
