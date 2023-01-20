@@ -26,6 +26,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import argparse
 import dump_utils as dump
+import math
 
 parser = argparse.ArgumentParser("2D Convolution - Layer Test")
 parser.add_argument( '--image_width', type=int, default=7)
@@ -36,6 +37,10 @@ parser.add_argument( '--ch_in', type=int, default=8 )
 parser.add_argument( '--weight', type=float, default=0.1)
 parser.add_argument( '--ch_out', type=int, default=8 )
 parser.add_argument( '--step', default='FORWARD') # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
+parser.add_argument( '--h_pad', type=int, default=0)
+parser.add_argument( '--w_pad', type=int, default=0)
+parser.add_argument( '--h_str', type=int, default=1)
+parser.add_argument( '--w_str', type=int, default=1)
 
 args = parser.parse_args()
 
@@ -47,6 +52,10 @@ out_ch = args.ch_out
 image_width = args.image_width
 image_height = args.image_height
 step = args.step
+hpad = args.h_pad
+wpad = args.w_pad
+hstr = args.h_str
+wstr = args.w_str
 
 f = open("init-defines.h", "w")
 f.write('#define Tker_H_l1 '+str(ker_h)+'\n')
@@ -56,6 +65,11 @@ f.write('#define weight_init '+str(weight_init)+'\n')
 f.write('#define Tin_H_l1 '+str(image_height)+'\n')
 f.write('#define Tin_W_l1 '+str(image_width)+'\n')
 f.write('#define Tout_C_l1 '+str(out_ch)+'\n')
+f.write('#define Tpad_H_l1 '+str(hpad)+'\n')
+f.write('#define Tpad_W_l1 '+str(wpad)+'\n')
+f.write('#define Tstr_H_l1 '+str(hstr)+'\n')
+f.write('#define Tstr_W_l1 '+str(wstr)+'\n')
+
 f.close()
 
 f = open("step-check.h", "w")
@@ -63,10 +77,15 @@ f.write('#define '+args.step+'\n')
 f.close()
 
 
+# Output size 
+out_size_h = math.floor((image_height-ker_h+2*hpad+hstr)/hstr)
+out_size_w = math.floor((image_width-ker_w+2*wpad+wstr)/wstr)
+
+
 class myNet(nn.Module):
   def __init__(self):
     super().__init__()
-    self.conv = nn.Conv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=(ker_h, ker_w))
+    self.conv = nn.Conv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=(ker_h, ker_w), padding=(hpad, wpad), stride=(hstr, wstr))
 
   def forward(self, x):
     return self.conv(x)
@@ -158,7 +177,7 @@ for cin in range(in_ch):
 inp.requires_grad = True
 
 
-label = torch.ones(1, out_ch, image_height-ker_h+1, image_width-ker_w+1)
+label = torch.ones(1, out_ch, out_size_h, out_size_w)
 
 
 # Write input image

@@ -43,13 +43,12 @@
 #include "pulp_train_utils_fp16.h"
 // FP16 primitives
 #include "pulp_act_fp16.h"
-
-/*
-#include "pulp_matmul_fp16.h"
+#include "pulp_conv_dw_fp16.h"
+#include "pulp_conv_pw_fp16.h"
+#include "pulp_conv2d_fp16.h"
 #include "pulp_im2col_fp16.h"
 #include "pulp_linear_fp16.h"
-#include "pulp_conv2d_fp16.h"
-#include "pulp_conv_pw_fp16.h"
-#include "pulp_conv_dw_fp16.h"
 #include "pulp_losses_fp16.h"
-*/
+#include "pulp_matmul_fp16.h"
+#include "pulp_optimizers_fp16.h"
+#include "pulp_pooling_fp16.h"

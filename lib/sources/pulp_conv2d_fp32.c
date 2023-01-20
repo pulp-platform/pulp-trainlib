@@ -57,8 +57,8 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
     int opt_matmul_type = C2D_args->opt_matmul_type_fw;
 
     #ifdef DEBUG
-    int in_size = input->dim;
-    int ker_size = coeff->dim;
+    int in_size = C2D_args->input->dim;
+    int ker_size = C2D_args->coeff->dim;
     #endif
 
   if (USE_IM2COL == 1) {

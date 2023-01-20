@@ -253,7 +253,7 @@ int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
         if ( ABS(tensor_out[i]-tensor_ref[i]) > CHECK_TOLERANCE ) {
             if (error_flag == 0) printf("\n");
             printf("Error at index: %d   (Ideal = %.16f [HEX: %#x]  vs  Actual = %.16f [HEX: %#x])\n", i, 
-                tensor_ref[i], *(unsigned int*) &tensor_ref[i], tensor_out[i], *(unsigned int*) &tensor_out[i]);
+                tensor_ref[i], *(uint16_t*) &tensor_ref[i], tensor_out[i], *(uint16_t*) &tensor_out[i]);
             error_flag = 1;
         }
     }

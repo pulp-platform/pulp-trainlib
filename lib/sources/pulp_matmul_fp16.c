@@ -428,7 +428,7 @@ void naive_conv2d_param_grad_kernel_CHW_fp16 (void * matMul_args_fp16)
 
 
 
-void naive_conv2d_in_grad_kernel_CHW (void * matMul_args_fp16) 
+void naive_conv2d_in_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
 {
   struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
   fp16 * __restrict__ inDiff = args->A;

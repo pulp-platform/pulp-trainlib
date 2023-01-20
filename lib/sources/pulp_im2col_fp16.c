@@ -734,11 +734,13 @@ void pulp_im2col_fp16(void * void_args){
 
 
 
+#ifndef OPTIMIZE_BT
+//#define OPTIMIZE_BT
+#endif
 
-
-void pulp_blocktransp_fp16 (void * void_args)
+void pulp_blocktransp_fp16 (void * void_args_fp16)
 {
-  struct blocktransp_args_fp16 * args = (struct blocktransp_args_fp16 *)void_args;
+  struct blocktransp_args_fp16 * args = (struct blocktransp_args_fp16 *)void_args_fp16;
   fp16 * weights = args->weights;
   fp16 * bt_weights = args->bt_weights;
   uint32_t Cin = args->Cin;
@@ -752,6 +754,7 @@ void pulp_blocktransp_fp16 (void * void_args)
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > Cout ? Cout : start+blockSize;
 
+  #ifdef OPTIMIZE_BT
   // Block tranposition
   for (uint32_t k=start; k<stop; k++) {
     for (uint32_t c=0; c<Cin; c++) {
@@ -767,4 +770,18 @@ void pulp_blocktransp_fp16 (void * void_args)
       }
     }
   } 
+  #else 
+  for (uint32_t k=start; k<stop; k++)
+  {
+    for (uint32_t c=0; c<Cin; c++)
+    {
+      for (uint32_t i=0; i<Hk*Wk; i++)
+      {
+        // OTHER MATRIX
+        //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
+        bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+      }
+    }
+  } 
+  #endif
 }

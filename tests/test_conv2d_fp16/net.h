@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "pulp_train_defines.h"
 #include "step-check.h"
 
 // User profiling flags
@@ -47,8 +48,8 @@
 
 // Support functions
 static inline void forward();
-static inline void compare_tensors(float *A, float *B, int length);
-int check_tensor(float * tensor_out, float * tensor_ref, int size);
+static inline void compare_tensors(fp16 *A, fp16 *B, int length);
+int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size);
 static inline void train();
 // Main function
 void net_step ();
