@@ -71,6 +71,8 @@ w_pad_list      = [ 0, 0, 0, 0, 0, 0 ]             # Only for conv2d, DW
 opt_mm_fw_list  = [ 0, 0, 0, 0, 0, 0 ]
 opt_mm_wg_list  = [ 0, 0, 0, 0, 0, 0 ]
 opt_mm_ig_list  = [ 0, 0, 0, 0, 0, 0 ]
+# Data type list for layer-by-layer deployment (mixed precision)
+data_type_list  = ['FP32', 'FP32', 'FP32', 'FP16', 'FP16', 'FP16']
 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
@@ -104,7 +106,7 @@ else:
     # Check if the network training fits L1
     memocc = composer.DNN_Size_Checker(layer_list, in_ch_list, out_ch_list, hk_list, wk_list, hin_list, win_list, 
                                 h_str_list, w_str_list, h_pad_list, w_pad_list,
-                                DATA_TYPE, L1_SIZE_BYTES)
+                                data_type_list, L1_SIZE_BYTES)
 
     print("DNN memory occupation: {} bytes of {} available L1 bytes ({}%).".format(memocc, L1_SIZE_BYTES, (memocc/L1_SIZE_BYTES)*100))
 
@@ -113,7 +115,7 @@ else:
                             layer_list, in_ch_list, out_ch_list, hk_list, wk_list, 
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
                             epochs, batch_size, learning_rate, optimizer, loss_fn,
-                            NUM_CORES, DATA_TYPE, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list)
+                            NUM_CORES, data_type_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list)
 
     print("PULP project generation successful!")
 

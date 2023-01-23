@@ -26,7 +26,7 @@ memory
 """
 
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list, w_pad_list,
-                        DATA_TYPE, avail_mem_bytes):
+                        data_type_l, avail_mem_bytes):
 
     total_memory_occupation_bytes = 0
 
@@ -34,11 +34,11 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         is_last_layer = False
         if layer == len(layers_l) - 1:
             is_last_layer = True
-        total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], DATA_TYPE, is_last_layer)
+        total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], data_type_l[layer], is_last_layer)
 
     mem_im2col = 0
     idx_im2col = 0
-    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, DATA_TYPE)
+    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l)
 
     total_memory_occupation_bytes += mem_im2col
 
@@ -47,7 +47,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
     mem_blocktransp = 0
     idx_blocktransp = 0
-    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, DATA_TYPE)
+    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l)
 
     total_memory_occupation_bytes += mem_blocktransp
 
@@ -69,24 +69,26 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, DATA_TYPE, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list):
+                  NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
 
     # Generate Makefile
-    utils.GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_TYPE, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list)
+    utils.GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list)
 
     # Generate Golden Model
     utils.GenerateGM(proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
-                        epochs, batch_size, learning_rate, optimizer, loss_fn)
+                        epochs, batch_size, learning_rate, optimizer, loss_fn,
+                        data_type_l)
 
     # Generate the net.c and net.h files to run the training in L1 (for now)
     utils.GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn)
+                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                data_type_l)
 
     return

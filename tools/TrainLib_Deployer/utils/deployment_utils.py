@@ -52,6 +52,8 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     byte_size = 4
     if DATA_TYPE == 'FP32':
         byte_size = 4
+    elif DATA_TYPE == 'FP16':
+        byte_size = 2
     else:
         print("[deployment_utils.compute_wgt_act_memocc_bytes]: Invalid data type!!")
         exit()
@@ -76,20 +78,23 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     return memocc_bytes
 
 
-def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, DATA_TYPE):
+def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l):
 
     memocc_bytes = 0
 
-    byte_size = 4
-    if DATA_TYPE == 'FP32':
-        byte_size = 4
-    else:
-        print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type!!")
-        exit()
-   
     max_im2col_size = 0
     max_im2col_index = 0
     for layer in range(len(layers_l)):
+        # Check layer data type
+        byte_size = 4
+        if data_type_l[layer] == 'FP32':
+            byte_size = 4
+        elif data_type_l[layer] == 'FP16':
+            byte_size = 2
+        else:
+            print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer"+str{layer}+"!!")
+            exit()        
+        # Find max im2col size
         if layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW':
             im2col_size = 0
             size_FW = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1) * byte_size
@@ -109,13 +114,15 @@ def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, 
     return memocc_bytes, max_im2col_index
 
 
-def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, DATA_TYPE):
+def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l):
 
     memocc_bytes = 0
     
     byte_size = 4
-    if DATA_TYPE == 'FP32':
+    if data_type_l[layer] == 'FP32':
         byte_size = 4
+    elif data_type_l[layer] == 'FP16':
+        byte_size = 2
     else:
         print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type!!")
         exit()
@@ -123,6 +130,16 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
     max_bt_size = 0
     max_bt_index = 0
     for layer in range(len(layers_l)):
+        # Check layer data type
+        byte_size = 4
+        if data_type_l[layer] == 'FP32':
+            byte_size = 4
+        elif data_type_l[layer] == 'FP16':
+            byte_size = 2
+        else:
+            print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type @Layer"+str(layer)+"!!")
+            exit()
+        # Find max blocktransp size
         if layers_l[layer] == 'conv2d' and layer > 0:
             bt_size = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * out_ch_l[layer] * byte_size
             if bt_size > max_bt_size:
@@ -166,7 +183,7 @@ def InitProject(proj_folder_path):
 
 
 # Generates the Makefile
-def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_TYPE, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list):
+def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list):
 
     proj_folder = proj_folder_path
     makefile_name = proj_folder + 'Makefile'
@@ -206,8 +223,16 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_T
     f.write('# STATISTICS\n')
     f.write('APP_CFLAGS += -DSTATS\n\n')
 
+    check_FP32 = False
+    check_FP16 = False
+    for layer in range(len(layers_l)):
+        if data_type_l[layer] == 'FP32':
+            check_FP32 = True
+        elif data_type_l[layer] == 'FP16':
+            check_FP16 = True
+
     f.write('# SOURCES\n')
-    if DATA_TYPE == 'FP32':
+    if check_FP32 == True:
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c\n')
@@ -219,6 +244,18 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_T
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp32.c\n\n')
+    elif check_FP16 == True:
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_linear_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_dw_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp16.c\n')
+        f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp16.c\n\n')        
     else:
         print("[deployment_utils.GenerateMakefile] Data format not implemented!!\n")
         exit()
@@ -243,7 +280,8 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, DATA_T
 def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn):
+                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                data_type_l):
 
     f = open(proj_folder_path+'utils/GM.py', 'w')
 
@@ -432,7 +470,8 @@ def GenerateGM(proj_folder_path, project_name,
 def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn):
+                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                data_type_l):
 
     # Generate net.h
     f = open(proj_folder_path+'net.h', 'w')
