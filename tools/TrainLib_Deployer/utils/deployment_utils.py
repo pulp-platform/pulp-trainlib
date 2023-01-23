@@ -353,6 +353,10 @@ def GenerateGM(proj_folder_path, project_name,
         print("[deployment_utils.GenerateGM]: Input layer not valid!\n")
         exit()
 
+    # Set input layer to half() in case of FP16
+    if data_type_l[0] == 'FP16':
+        f.write("inp = inp.half()\n")
+
     # Generate DNN model
     f.write("class DNN(nn.Module):\n")
     f.write("\tdef __init__(self):\n")
@@ -361,21 +365,21 @@ def GenerateGM(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Layers
         if layers_l[layer] == "linear":
-            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False"))
+            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False", data_type_l[layer]))
         elif layers_l[layer] == "conv2d":
-            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False"))
+            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", data_type_l[layer]))
         elif layers_l[layer] == "DW":
-            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False"))
+            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", data_type_l[layer]))
         elif layers_l[layer] == "PW":
-            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False"))
+            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False", data_type_l[layer]))
         # Activations
         elif layers_l[layer] == "ReLU":
-            f.write(Gtemp.ReLU_template(layer))
+            f.write(Gtemp.ReLU_template(layer, data_type_l[layer]))
         # Pooling
         elif layers_l[layer] == "MaxPool":
-            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer]))
+            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], data_type_l[layer]))
         elif layers_l[layer] == "AvgPool":
-            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer]))
+            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], data_type_l[layer]))
         # Throw error
         else:
             print("[deployment_utils.GenerateGM]: Layer {} not recognized!!\n".format(layer))
@@ -385,20 +389,12 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("\tdef forward(self, x):")
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'linear':
+            # If precision varies, cast the input to the correct format
             f.write("\n\t\tx = torch.reshape(x, (-1,))")
         f.write("\n\t\tx = self.l"+str(layer)+"(x)")
     f.write("\n\t\treturn x\n")
 
-    # f.write("\n# All-ones fake label \n")
     last_layer = len(layers_l) - 1
-    # if (layers_l[-1] == 'linear' or layers_l[-1] == 'ReLU'):
-    #     f.write("label = torch.ones(l"+str(last_layer)+"_out_ch)\n")
-    # elif (layers_l[0] == 'conv2d' or layers_l[0] == 'DW' or layers_l[0] == 'PW'):
-    #     f.write("label = torch.ones(batch_size, l"+str(last_layer)+"_out_ch, math.floor((l"+str(last_layer)+"_hin-l"+str(last_layer)+"_hk+2*l"+str(last_layer)+"_hpad+l"+str(last_layer)+"_hstr)/l"+str(last_layer)+"_hstr), math.floor((l"+str(last_layer)+"_win-l"+str(last_layer)+"_wk+2*l"+str(last_layer)+"_wpad+l"+str(last_layer)+"_wstr)/l"+str(last_layer)+"_wstr))\n")
-    # # Throw error
-    # else: 
-    #     print("[deployment_utils.GenerateGM]: Output layer not valid\n!")
-    #     exit()
 
     # Initialize network
     f.write("\n# Initialize network\n")

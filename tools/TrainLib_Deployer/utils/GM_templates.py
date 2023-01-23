@@ -22,22 +22,28 @@ Authors: Davide Nadalini
 LAYER TEMPLATES
 """
 
-def linear_template(layer_number, chin, chout, bias):
-    template = "\t\tself.l"+str(layer_number)+" = nn.Linear(in_features=l"+str(layer_number)+"_in_ch, out_features=l"+str(layer_number)+"_out_ch, bias="+str(bias)+")\n"
+def linear_template(layer_number, chin, chout, bias, data_type):
+    if data_type == 'FP32':
+        template = "\t\tself.l"+str(layer_number)+" = nn.Linear(in_features=l"+str(layer_number)+"_in_ch, out_features=l"+str(layer_number)+"_out_ch, bias="+str(bias)+")\n"
+    elif data_type == 'FP16':
+        template = "\t\tself.l"+str(layer_number)+" = nn.Linear(in_features=l"+str(layer_number)+"_in_ch, out_features=l"+str(layer_number)+"_out_ch, bias="+str(bias)+").half()\n"
+    else:
+        print("[GM_templates.linear_template] Invalid data type!!")
+        exit()
     return template
 
 
-def conv2d_template(layer_number, chin, chout, hk, wk, hstr, wstr, hpad, wpad, bias):
+def conv2d_template(layer_number, chin, chout, hk, wk, hstr, wstr, hpad, wpad, bias, data_type):
     template = "\t\tself.l"+str(layer_number)+" = nn.Conv2d(in_channels=l"+str(layer_number)+"_in_ch, out_channels=l"+str(layer_number)+"_out_ch, kernel_size=(l"+str(layer_number)+"_hk, l"+str(layer_number)+"_wk), padding=(l"+str(layer_number)+"_hpad, l"+str(layer_number)+"_wpad), stride=(l"+str(layer_number)+"_hstr, l"+str(layer_number)+"_wstr), bias="+str(bias)+")\n"
     return template
 
 
-def DW_template(layer_number, ch_io, hk, wk, hstr, wstr, hpad, wpad, bias):
+def DW_template(layer_number, ch_io, hk, wk, hstr, wstr, hpad, wpad, bias, data_type):
     template = "\t\tself.l"+str(layer_number)+" = nn.Conv2d(in_channels=l"+str(layer_number)+"_in_ch, out_channels=l"+str(layer_number)+"_in_ch, kernel_size=(l"+str(layer_number)+"_hk, l"+str(layer_number)+"_wk), stride = 1, groups=l"+str(layer_number)+"_in_ch, bias="+str(bias)+")\n"
     return template
 
 
-def PW_template(layer_number, chin, chout, bias):
+def PW_template(layer_number, chin, chout, bias, data_type):
     template = "\t\tself.l"+str(layer_number)+" = nn.Conv2d(in_channels=l"+str(layer_number)+"_in_ch, out_channels=l"+str(layer_number)+"_out_ch, kernel_size=1, stride=1, bias="+str(bias)+")\n"
     return template
 
@@ -47,7 +53,7 @@ def PW_template(layer_number, chin, chout, bias):
 ACTIVATIONS TEMPLATES
 """
 
-def ReLU_template(layer):
+def ReLU_template(layer, data_type):
     template = "\t\tself.l"+str(layer)+" = nn.ReLU()\n"
     return template
 
@@ -57,10 +63,10 @@ def ReLU_template(layer):
 POOLING TEMPLATES
 """
 
-def MaxPool_template(layer, hk, wk, hstr, wstr):
+def MaxPool_template(layer, hk, wk, hstr, wstr, data_type):
     template ="\t\tself.l"+str(layer)+" = nn.MaxPool2d(kernel_size=(l"+str(layer)+"_hk, l"+str(layer)+"_wk), stride=(l"+str(layer)+"_hstr, l"+str(layer)+"_wstr))\n"
     return template
 
-def AvgPool_template(layer, hk, wk, hstr, wstr):
+def AvgPool_template(layer, hk, wk, hstr, wstr, data_type):
     template ="\t\tself.l"+str(layer)+" = nn.AvgPool2d(kernel_size=(l"+str(layer)+"_hk, l"+str(layer)+"_wk), stride=(l"+str(layer)+"_hstr, l"+str(layer)+"_wstr))\n"
     return template
