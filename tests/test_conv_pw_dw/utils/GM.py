@@ -38,11 +38,9 @@ parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
 parser.add_argument( '--pad_h', type=int, default='0')
 parser.add_argument( '--pad_w', type=int, default='0')
-parser.add_argument( '--bypass_size_automation', type=int, default=0)
 
 args = parser.parse_args()
 
-bypass = args.bypass_size_automation
 ker1 = 2
 ker2_w = args.ker_width
 ker2_h = args.ker_height
@@ -57,15 +55,6 @@ pad_h = args.pad_h
 pad_w = args.pad_w
 step = args.step
 
-if (bypass == 0):
-  # Select number of channels depending on DW or PW
-  if step=='DW_FORWARD' or step=='DW_BACKWARD_ERROR' or step=='DW_BACKWARD_GRAD':
-    dw_channel = 128
-  elif step=='PW_FORWARD' or step=='PW_BACKWARD_ERROR' or step=='PW_BACKWARD_GRAD':
-    dw_channel = 512
-  else:
-    print("Invalid step!")
-    exit()
 
 f = open("init-defines.h", "w")
 f.write('#define Tker_H_l1 '+str(ker2_h)+'\n')
@@ -86,7 +75,7 @@ class myNet(nn.Module):
   def __init__(self):
     super().__init__()
     self.convDW0 = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=ker1,  stride = 1, groups=dw_channel)
-    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel) #, padding=(pad_h, pad_w))
+    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel, padding=(pad_h, pad_w))
     self.convPW = nn.Conv2d(dw_channel, pw_channel, 1, stride = 1)
 
   def forward(self, x):

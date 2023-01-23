@@ -35,12 +35,12 @@ parser.add_argument( '--ch_in_dw', type=int, default=128 )
 parser.add_argument( '--weight', type=float, default=0.1)
 parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
-parser.add_argument( '--bypass_size_automation', type=int, default=0)
 parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data needs to be bfloat16 (no fp16 on that target)
+parser.add_argument( '--pad_h', type=int, default='0')
+parser.add_argument( '--pad_w', type=int, default='0')
 
 args = parser.parse_args()
 
-bypass = args.bypass_size_automation
 ker1 = 2
 ker2_w = args.ker_width
 ker2_h = args.ker_height
@@ -52,18 +52,10 @@ input_h = args.image_height+ker1-1
 image_width = args.image_width
 image_height = args.image_height
 step = args.step
+pad_h = args.pad_h
+pad_w = args.pad_w
 bf16_format = args.bf16_format
 
-
-if (bypass == 0):
-  # Select number of channels depending on DW or PW
-  if step=='DW_FORWARD' or step=='DW_BACKWARD_ERROR' or step=='DW_BACKWARD_GRAD':
-    dw_channel = 128
-  elif step=='PW_FORWARD' or step=='PW_BACKWARD_ERROR' or step=='PW_BACKWARD_GRAD':
-    dw_channel = 512
-  else:
-    print("Invalid step!")
-    exit()
 
 f = open("init-defines.h", "w")
 f.write('#define Tker_H_l1 '+str(ker2_h)+'\n')
@@ -84,7 +76,7 @@ class myNet(nn.Module):
   def __init__(self):
     super().__init__()
     self.convDW0 = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=ker1,  stride = 1, groups=dw_channel)
-    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel)
+    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel, padding=(pad_h, pad_w))
     self.convPW = nn.Conv2d(dw_channel, pw_channel, 1, stride = 1)
 
   def forward(self, x):
@@ -265,10 +257,10 @@ gradsDW = net.convPW.register_forward_hook(hook_fn5)
 
 if bf16_format == 1:
   inp = torch.ones(1, dw_channel, input_h, input_w).bfloat16()
-  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1), input_w-(ker1-1)-(ker2_w-1)).bfloat16()
+  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).bfloat16()
 else: 
   inp = torch.ones(1, dw_channel, input_h, input_w).half()
-  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1), input_w-(ker1-1)-(ker2_w-1)).half()  
+  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).half()  
 
 # Prepare weight tensors for init
 print("Shape of DW kernel:")

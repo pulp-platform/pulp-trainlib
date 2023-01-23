@@ -1,9 +1,9 @@
 APP = im2col_fp32
 
 # User settings
-DATA_BITS?=32				# 32=FP32, 16=FP16
+DATA_BITS?=16				# 32=FP32, 16=FP16
 NUM_CORES?=8
-MOD?=0 						# 0=Forward/WeightGrad, 1=InGrad
+MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
 DMA_ENABLE?=0				# Use Cluster DMA to move data or not
 HWC_format?=0				# CHW (=0) or HWC (=1) data format for the im2col
 # Layer padding and stride
@@ -14,12 +14,12 @@ DPAD?=0
 HSTR?=1
 WSTR?=1
 # Layer sizes
-Tin_H_l1?=8
-Tin_W_l1?=8
-Tin_C_l1?=8
-Tker_W_l1?=3
-Tout_C_l1?=8
-#APP_CFLAGS += -DPRINT_OUTPUT
+Tin_H_l1?=3
+Tin_W_l1?=3
+Tin_C_l1?=1
+Tker_W_l1?=2
+Tout_C_l1?=1
+APP_CFLAGS += -DPRINT_OUTPUT
 # End of user settings
 
 TRAIN_LIB=../../lib
