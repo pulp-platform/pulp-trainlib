@@ -20,6 +20,7 @@ Authors: Davide Nadalini
 
 import os
 import shutil
+import math
 
 from torch import mm
 import utils.GM_templates as Gtemp
@@ -92,7 +93,7 @@ def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, 
         elif data_type_l[layer] == 'FP16':
             byte_size = 2
         else:
-            print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer"+str{layer}+"!!")
+            print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
             exit()        
         # Find max im2col size
         if layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW':
@@ -118,14 +119,14 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
 
     memocc_bytes = 0
     
-    byte_size = 4
-    if data_type_l[layer] == 'FP32':
-        byte_size = 4
-    elif data_type_l[layer] == 'FP16':
-        byte_size = 2
-    else:
-        print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type!!")
-        exit()
+    # byte_size = 4
+    # if data_type_l[layer] == 'FP32':
+    #     byte_size = 4
+    # elif data_type_l[layer] == 'FP16':
+    #     byte_size = 2
+    # else:
+    #     print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type!!")
+    #     exit()
 
     max_bt_size = 0
     max_bt_index = 0
@@ -137,7 +138,7 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
         elif data_type_l[layer] == 'FP16':
             byte_size = 2
         else:
-            print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type @Layer"+str(layer)+"!!")
+            print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
             exit()
         # Find max blocktransp size
         if layers_l[layer] == 'conv2d' and layer > 0:
@@ -388,9 +389,17 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("\n")
     f.write("\tdef forward(self, x):")
     for layer in range(len(layers_l)):
+        # Vectorize inputs in case of linear layer
         if layers_l[layer] == 'linear':
-            # If precision varies, cast the input to the correct format
             f.write("\n\t\tx = torch.reshape(x, (-1,))")
+        # Set data format for each layer
+        if layer == 0 and data_type_l[layer] == 'FP16':
+            f.write("\n\t\tx = x.half()")
+        elif data_type_l[layer] == 'FP32' and data_type_l[layer-1] != data_type_l[layer]:
+            f.write("\n\t\tx = x.float()")
+        elif data_type_l[layer] == 'FP16' and data_type_l[layer-1] != data_type_l[layer]:
+            f.write("\n\t\tx = x.half()")
+        # Forward layers
         f.write("\n\t\tx = self.l"+str(layer)+"(x)")
     f.write("\n\t\treturn x\n")
 
@@ -414,10 +423,22 @@ def GenerateGM(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         if (layers_l[layer] != 'ReLU' and layers_l[layer] != 'MaxPool' and layers_l[layer] != 'AvgPool'):
             f.write("f.write('#define WGT_SIZE_L"+str(layer)+" '+str(l"+str(layer)+"_in_ch*l"+str(layer)+"_out_ch*l"+str(layer)+"_hk*l"+str(layer)+"_wk)+'\\n')\n")
-            f.write("f.write('PI_L2 float init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"] = {'+dump.tensor_to_string(net.l"+str(layer)+".weight.data)+'};\\n')\n")
+            if data_type_l[layer] == 'FP32':
+                f.write("f.write('PI_L2 float init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"] = {'+dump.tensor_to_string(net.l"+str(layer)+".weight.data)+'};\\n')\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("f.write('PI_L2 fp16 init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"] = {'+dump.tensor_to_string(net.l"+str(layer)+".weight.data)+'};\\n')\n")
+            else:
+                print("[deployment_utils.GenerateGM] Error in data type definition! (weight init)")
+                exit()
         else:
             f.write("f.write('#define WGT_SIZE_L"+str(layer)+" '+str(l"+str(layer)+"_in_ch*l"+str(layer)+"_out_ch*l"+str(layer)+"_hk*l"+str(layer)+"_wk)+'\\n')\n")
-            f.write("f.write('PI_L2 float init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"];\\n')\n")
+            if data_type_l[layer] == 'FP32':
+                f.write("f.write('PI_L2 float init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"];\\n')\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("f.write('PI_L2 fp16 init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"];\\n')\n")
+            else:
+                print("[deployment_utils.GenerateGM] Error in data type definition! (weight init - empty ones)")
+                exit()
     f.write("f.close()\n\n")
 
     # Define optimizer
@@ -447,11 +468,24 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("f = open('io_data.h', 'a')\n")
     f.write("f.write('// Input and Output data\\n')\n")
     f.write("f.write('#define IN_SIZE "+str(in_ch_l[0]*win_l[0]*hin_l[0])+"\\n')\n")
-    f.write("f.write('PI_L1 float INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\\n')\n")
+    # Fake input data definition
+    if data_type_l[0] == 'FP32':
+        f.write("f.write('PI_L1 float INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\\n')\n")
+    elif data_type_l[0] == 'FP16':
+        f.write("f.write('PI_L1 fp16 INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\\n')\n")
+    else:
+        print("[deployment_utils.GenerateGM] Invalid input data size!")
     f.write("out_size = (int(math.floor(l"+str(last_layer)+"_hin-l"+str(last_layer)+"_hk+2*l"+str(last_layer)+"_hpad+l"+str(last_layer)+"_hstr)/l"+str(last_layer)+"_hstr)) * (int(math.floor(l"+str(last_layer)+"_win-l"+str(last_layer)+"_wk+2*l"+str(last_layer)+"_wpad+l"+str(last_layer)+"_wstr)/l"+str(last_layer)+"_wstr)) * l"+str(last_layer)+"_out_ch\n") 
     f.write("f.write('#define OUT_SIZE '+str(out_size)+'\\n')\n")
-    f.write("f.write('PI_L2 float REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\\n')\n")
-    f.write("f.write('PI_L1 float LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\\n')\n")
+    # Fake output data and label definition
+    if data_type_l[-1] == 'FP32':
+        f.write("f.write('PI_L2 float REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\\n')\n")
+        f.write("f.write('PI_L1 float LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\\n')\n")
+    elif data_type_l[-1] == 'FP16':
+        f.write("f.write('PI_L2 fp16 REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\\n')\n")
+        f.write("f.write('PI_L1 fp16 LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\\n')\n")    
+    else:
+        print("[deployment_utils.GenerateGM] Invalid output data size!")
     f.write("f.close()\n")
 
     f.close()
@@ -474,9 +508,6 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("// PULP Defines\n")
     f.write("#define STACK_SIZE      4096\n")
-    #f.write("#define MOUNT           1\n")
-    #f.write("#define UNMOUNT         0\n")
-    #f.write("#define CID             0\n")
     f.write("\n")
 
     f.write("// Tolerance to check updated output\n")
@@ -513,30 +544,68 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n\n\n/**\n * DATA\n**/\n")
 
     f.write("\n// Define loss\n")
-    f.write("PI_L1 float loss = 0;\n")
+    if data_type_l[-1] == 'FP32':
+        f.write("PI_L1 float loss = 0;\n")
+    elif data_type_l[-1] == 'FP16':
+        f.write("PI_L1 fp16 loss = 0;\n")
+    else:
+        print("[deployment_utils.GenerateNet] Invalid last layer data type!")
+        exit()
+
 
     f.write("\n// Define DNN blobs\n")
     for layer in range(len(layers_l)):
-        f.write("PI_L1 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+        if data_type_l[layer] == 'FP32':
+            f.write("PI_L1 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+        elif data_type_l[layer] == 'FP16':
+            f.write("PI_L1 struct blob_fp16 layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for blob definition @Layer{}!".format(layer))
+            exit()
+
 
     f.write("\n// Define DNN layer structures\n")
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'linear':
-            f.write("PI_L1 struct Linear_args l"+str(layer)+"_args;\n")
-        elif layers_l[layer] == 'conv2d':
-            f.write("PI_L1 struct Conv2D_args l"+str(layer)+"_args;\n")
-        elif layers_l[layer] == 'PW':
-            f.write("PI_L1 struct PointWise_Conv_args l"+str(layer)+"_args;\n")
-        elif layers_l[layer] == 'DW':
-            f.write("PI_L1 struct DepthWise_Conv_args l"+str(layer)+"_args;\n")
-        elif layers_l[layer] == 'ReLU':
-            f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
-        elif layers_l[layer] == 'MaxPool':
-            pass
-        elif layers_l[layer] == 'AvgPool':
-            pass
+        # Define FP32 structure
+        if data_type_l[layer] == 'FP32':
+            if layers_l[layer] == 'linear':
+                f.write("PI_L1 struct Linear_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'conv2d':
+                f.write("PI_L1 struct Conv2D_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'PW':
+                f.write("PI_L1 struct PointWise_Conv_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'DW':
+                f.write("PI_L1 struct DepthWise_Conv_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'ReLU':
+                f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'MaxPool':
+                pass
+            elif layers_l[layer] == 'AvgPool':
+                pass
+            else:
+                print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
+        # Define FP16 structure
+        elif data_type_l[layer] == 'FP16':
+            if layers_l[layer] == 'linear':
+                f.write("PI_L1 struct Linear_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'conv2d':
+                f.write("PI_L1 struct Conv2D_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'PW':
+                f.write("PI_L1 struct PointWise_Conv_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'DW':
+                f.write("PI_L1 struct DepthWise_Conv_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'ReLU':
+                f.write("PI_L1 struct act_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'MaxPool':
+                pass
+            elif layers_l[layer] == 'AvgPool':
+                pass
+            else:
+                print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
+        # Invalid data type
         else:
-            print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
+            print("[deployment_utils.GenerateNet] Invalid data type for structure initialization @Layer{}!".format(layer))
+
 
     pooling_exist = False
     for layer in range(len(layers_l)):
@@ -546,28 +615,69 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("\n// Define Pooling Structures\n")
         for layer in range(len(layers_l)):
             if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
-                f.write("PI_L1 struct pool_args l"+str(layer)+"_pool_args;\n")
+                if data_type_l[layer] == 'FP32':
+                    f.write("PI_L1 struct pool_args l"+str(layer)+"_pool_args;\n")
+                elif data_type_l[layer] == 'FP16':
+                    f.write("PI_L1 struct pool_args_fp16 l"+str(layer)+"_pool_args;\n")
+                else:
+                    print("[deployment_utils.GenerateNet] Invalid data type for pooling initialization @Layer{}!".format(layer))
+                    exit()
 
 
     f.write("\n// Define kernel tensors\n")
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
-            f.write("PI_L1 float l"+str(layer)+"_ker[1];\n")
-        else:    
-            f.write("PI_L1 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Define FP32 tensors
+        if data_type_l[layer] == 'FP32':
+            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                f.write("PI_L1 float l"+str(layer)+"_ker[1];\n")
+            else:    
+                f.write("PI_L1 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Define FP16 tensors
+        elif data_type_l[layer] == 'FP16':
+            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                f.write("PI_L1 fp16 l"+str(layer)+"_ker[1];\n")
+            else:    
+                f.write("PI_L1 fp16 l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Data type error
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for kernel definition @Layer{}!".format(layer))
+            exit()
 
     f.write("\n// Define kernel grad tensors\n")
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
-            f.write("PI_L1 float l"+str(layer)+"_ker_diff[1];\n")
-        else:    
-            f.write("PI_L1 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Define FP32 tensors
+        if data_type_l[layer] == 'FP32':
+            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                f.write("PI_L1 float l"+str(layer)+"_ker_diff[1];\n")
+            else:    
+                f.write("PI_L1 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Define FP16 tensors
+        elif data_type_l[layer] == 'FP16':
+            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                f.write("PI_L1 fp16 l"+str(layer)+"_ker_diff[1];\n")
+            else:    
+                f.write("PI_L1 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+        # Data type error
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for kernel grad definition @Layer{}!".format(layer))
+            exit()
 
     f.write("\n// Define I/O tensors\n")
     for layer in range(len(layers_l)):
-        f.write("PI_L1 float l"+str(layer)+"_in[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
-        if (layer == len(layers_l)-1):
-            f.write("PI_L1 float l"+str(layer)+"_out[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Define FP32 tensors
+        if data_type_l[layer] == 'FP32':
+            f.write("PI_L1 float l"+str(layer)+"_in[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+            if (layer == len(layers_l)-1):
+                f.write("PI_L1 float l"+str(layer)+"_out[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Define FP16 tensors
+        elif data_type_l[layer] == 'FP16':
+            f.write("PI_L1 fp16 l"+str(layer)+"_in[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+            if (layer == len(layers_l)-1):
+                f.write("PI_L1 fp16 l"+str(layer)+"_out[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Data type error
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for I/O definition @Layer{}!".format(layer))
+            exit()
 
 
     # Write IM2COL buffers
@@ -575,29 +685,49 @@ def GenerateNet(proj_folder_path, project_name,
     im2col_type = 'FW'  # 'FW' or 'BW'
     im2col_max_memocc = 0
     im2col_layer_index = 0
+    im2col_byte_length = 0
+    im2col_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW':
+            if data_type_l[layer] == 'FP32':
+                im2col_byte_length = 4
+            elif data_type_l[layer] == 'FP16':
+                im2col_byte_length = 2
             im2col_flag = True
             i2c_mem = 0
-            i2c_FW = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1)
-            i2c_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer]
+            #i2c_FW = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1) * im2col_byte_length
+            i2c_FW = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * math.floor((hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer]) * math.floor((win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer]) * im2col_byte_length
+            i2c_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer] * im2col_byte_length
             if i2c_FW > i2c_BW:
                 i2c_mem = i2c_FW
                 im2col_type = 'FW'
             else:
                 i2c_mem = i2c_BW
                 im2col_type = 'BW'
-            #i2c_mem = in_ch_l[layer] * out_ch_l[layer] * hk_l[layer] * wk_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1)
             if i2c_mem > im2col_max_memocc:
                 im2col_max_memocc = i2c_mem
                 im2col_layer_index = layer
+                im2col_max_data_type = data_type_l[layer]
     if im2col_flag == True:
         if im2col_type == 'FW':
             f.write("\n// Define IM2COL buffer for all the convolutions\n")
-            f.write("PI_L1 float im2col_buffer[Tin_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tout_H_l"+str(im2col_layer_index)+"*Tout_W_l"+str(im2col_layer_index)+"];\n")
+            if im2col_max_data_type == 'FP32':
+                f.write("PI_L1 float im2col_buffer[Tin_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tout_H_l"+str(im2col_layer_index)+"*Tout_W_l"+str(im2col_layer_index)+"];\n")
+            elif im2col_max_data_type == 'FP16':
+                f.write("PI_L1 fp16 im2col_buffer[Tin_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tout_H_l"+str(im2col_layer_index)+"*Tout_W_l"+str(im2col_layer_index)+"];\n")
+            else:
+                print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
+                exit()
         else:
             f.write("\n// Define IM2COL buffer for all the convolutions\n")
-            f.write("PI_L1 float im2col_buffer[Tout_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tin_H_l"+str(im2col_layer_index)+"*Tin_W_l"+str(im2col_layer_index)+"];\n")
+            if im2col_max_data_type == 'FP32':
+                f.write("PI_L1 float im2col_buffer[Tout_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tin_H_l"+str(im2col_layer_index)+"*Tin_W_l"+str(im2col_layer_index)+"];\n")
+            elif im2col_max_data_type == 'FP16':
+                f.write("PI_L1 fp16 im2col_buffer[Tout_C_l"+str(im2col_layer_index)+"*Tker_H_l"+str(im2col_layer_index)+"*Tker_W_l"+str(im2col_layer_index)+"*Tin_H_l"+str(im2col_layer_index)+"*Tin_W_l"+str(im2col_layer_index)+"];\n")
+            else:
+                print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
+                exit()
+
 
     # Write conv2d in grad blocktranspose buffer
     bt_flag = False
