@@ -459,22 +459,53 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
-  for (uint32_t co=start; co<stop; co++) {
-    for (uint32_t hk=0; hk<pH; hk++) {
-      for (uint32_t wk=0; wk<pW; wk++) {
-        for (uint32_t ci=0; ci<C_in; ci++) {
-          float temp = 0;
-          for (uint32_t ho=0; ho<H_out; ho++) {
-            for (uint32_t wo=0; wo<W_out; wo++) {
-              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in];
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  if (padding == 0) {
+    for (uint32_t co=start; co<stop; co++) {
+      for (uint32_t hk=0; hk<pH; hk++) {
+        for (uint32_t wk=0; wk<pW; wk++) {
+          for (uint32_t ci=0; ci<C_in; ci++) {
+            float temp = 0;
+            for (uint32_t ho=0; ho<H_out; ho++) {
+              for (uint32_t wo=0; wo<W_out; wo++) {
+                temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in];
+              }
             }
+            coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
           }
-          coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
         }
       }
     }
   }
-  
+  else {
+    for (uint32_t co=start; co<stop; co++) {
+      for (uint32_t hk=0; hk<pH; hk++) {
+        for (uint32_t wk=0; wk<pW; wk++) {
+          for (uint32_t ci=0; ci<C_in; ci++) {
+            float temp = 0;
+            for (uint32_t ho=0; ho<H_out; ho++) {
+              for (uint32_t wo=0; wo<W_out; wo++) {
+                // Padding conditions
+                int h_padded = h_str*ho + hk - Upad;
+                int w_padded = w_str*wo + wk - Lpad;
+                // Insert zeros
+                if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out+pH-Dpad) || (w_padded > W_out+pW-Rpad)) {
+                  temp += 0;
+                }
+                else {
+                  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[w_padded+(h_padded)*W_in+ci*H_in*W_in];
+                  // temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in];
+                }
+              }
+            }
+            coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
+          }
+        }
+      }
+    }
+  }
+
 }
 
 
