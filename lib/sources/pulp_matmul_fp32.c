@@ -376,22 +376,53 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
-  for (uint32_t co=start; co<stop; co++) {
-    for (uint32_t ho=0; ho<H_out; ho++) {
-      for (uint32_t wo=0; wo<W_out; wo++) {
-        //outData[wo+ho*W_out+co*H_out*W_out] = 0;
-        float temp = 0;
-        // Receptive field
-        for (uint32_t ci=0; ci<C_in; ci++) {
-          for (uint32_t hk=0; hk<pH; hk++) {
-            for (uint32_t wk=0; wk<pW; wk++) {
-              //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-              temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  if (padding == 0) {
+    for (uint32_t co=start; co<stop; co++) {
+      for (uint32_t ho=0; ho<H_out; ho++) {
+        for (uint32_t wo=0; wo<W_out; wo++) {
+          float temp = 0;
+          // Receptive field
+          for (uint32_t ci=0; ci<C_in; ci++) {
+            for (uint32_t hk=0; hk<pH; hk++) {
+              for (uint32_t wk=0; wk<pW; wk++) {
+                temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+              }
             }
           }
+          outData[wo+ho*W_out+co*H_out*W_out] = temp;
+          //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
         }
-        outData[wo+ho*W_out+co*H_out*W_out] = temp;
-        //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
+      }
+    } 
+  }
+  else {
+    for (uint32_t co=start; co<stop; co++) {
+      for (uint32_t ho=0; ho<H_out; ho++) {
+        for (uint32_t wo=0; wo<W_out; wo++) {
+          float temp = 0;
+          // Receptive field
+          for (uint32_t ci=0; ci<C_in; ci++) {
+            for (uint32_t hk=0; hk<pH; hk++) {
+              for (uint32_t wk=0; wk<pW; wk++) {
+                // Padding conditions
+                int h_padded = h_str*ho + hk - Upad;
+                int w_padded = w_str*wo + wk - Lpad;
+                // Insert zeros
+                if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out+pH-Dpad) || (w_padded > W_out+pW-Rpad)) {
+                  temp += 0;
+                }
+                else { 
+                  temp += inData[w_padded+(h_padded)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+                  //temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+                }
+              }
+            }
+          }
+          outData[wo+ho*W_out+co*H_out*W_out] = temp;
+          //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
+        }
       }
     }
   }
@@ -469,8 +500,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   uint32_t Upad = args->Upad;
   uint32_t Dpad = args->Dpad;
 
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
+  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
 
   const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
@@ -483,14 +514,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
         for (uint32_t co=0; co<C_out; co++) {
           for (uint32_t hk=0; hk<pH; hk++) {
             for (uint32_t wk=0; wk<pW; wk++) {
-              // Coefficient to be loaded
-              float coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
-              // Padding conditions
-              int ho = hi + hk - (pH-1);
-              int wo = wi + wk - (pW-1);
-              // Compute in grad partial product
-              if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
-              else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
+              // Coeff to be loaded
+
             }
           }
         }
@@ -498,6 +523,30 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
       }
     }
   }
+
+  // OLD VERSION WITH NO STRIDE AND PADDING
+  // for (uint32_t ci=0; ci<C_in; ci++) {
+  //   for (uint32_t hi=0; hi<H_in; hi++) {
+  //     for (uint32_t wi=0; wi<W_in; wi++) {
+  //       float temp = 0;
+  //       for (uint32_t co=0; co<C_out; co++) {
+  //         for (uint32_t hk=0; hk<pH; hk++) {
+  //           for (uint32_t wk=0; wk<pW; wk++) {
+  //             // Coefficient to be loaded
+  //             float coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
+  //             // Padding conditions
+  //             int ho = hi + hk - (pH-1);
+  //             int wo = wi + wk - (pW-1);
+  //             // Compute in grad partial product
+  //             if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
+  //             else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
+  //           }
+  //         }
+  //       }
+  //       inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
+  //     }
+  //   }
+  // }
 
 }
 
