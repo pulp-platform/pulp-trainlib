@@ -29,8 +29,8 @@
 // Net sizes
 
 // CONV2D
-#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+PAD_U+PAD_D+STRIDE_H)/STRIDE_H
-#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+PAD_L+PAD_R+STRIDE_W)/STRIDE_W
+#define Tout_H_l1   ((Tin_H_l1-Tker_H_l1+PAD_U+PAD_D)/STRIDE_H + 1)
+#define Tout_W_l1   ((Tin_W_l1-Tker_W_l1+PAD_L+PAD_R)/STRIDE_W + 1)
 
 // Tensor checksum definition
 #define CHECK_TOLERANCE 1e-7

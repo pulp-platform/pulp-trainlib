@@ -369,8 +369,8 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
   uint32_t Upad = args->Upad;
   uint32_t Dpad = args->Dpad;
 
-  const uint32_t H_out = (H_in - pH + Upad + Dpad + h_str)/h_str;
-  const uint32_t W_out = (W_in - pW + Lpad + Rpad + w_str)/w_str;
+  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
 
   const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
@@ -391,7 +391,7 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
           }
         }
         outData[wo+ho*W_out+co*H_out*W_out] = temp;
-        printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
+        //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
       }
     }
   }
@@ -421,8 +421,8 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   uint32_t Upad = args->Upad;
   uint32_t Dpad = args->Dpad;
 
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
+  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
 
   const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
