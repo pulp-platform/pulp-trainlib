@@ -149,6 +149,12 @@ struct set_to_value_args {
  * @param pH for Conv2D in grad: kernel height
  * @param pCin for Conv2D in grad: kernel in channels
  * @param pCout for Conv2D in grad: kernel out channels (number of blocks of filters with pCin channels each)
+ * @param stride_w sets the amount of horizontal stride
+ * @param stride_h sets the amount of vertical stride
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  */
 struct matMul_args {
   float * __restrict__ A;
@@ -165,6 +171,12 @@ struct matMul_args {
   int pH;
   int pCin;
   int pCout;
+  int stride_h;
+  int stride_w;
+  int Lpad;
+  int Rpad;
+  int Upad;
+  int Dpad;
 };
 
 /**

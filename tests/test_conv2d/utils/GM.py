@@ -232,3 +232,8 @@ loss = criterion(out, label)
 net.zero_grad()
 
 loss.backward()
+
+
+print("\n\nInput Size: [{}, {}, {}]".format(in_ch, image_height, image_width))
+print("Kernel Size: [{}, {}, {}, {}]".format(out_ch, in_ch, ker_h, ker_w))
+print("Out Size: [{}, {}, {}]\n\n".format(out_ch, out_size_h, out_size_w))

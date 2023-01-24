@@ -362,8 +362,15 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
   const uint32_t C_in = args->pCin;
   const uint32_t C_out = args->pCout;
 
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - pH + Upad + Dpad + h_str)/h_str;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad + w_str)/w_str;
 
   const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
@@ -379,11 +386,12 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
           for (uint32_t hk=0; hk<pH; hk++) {
             for (uint32_t wk=0; wk<pW; wk++) {
               //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-              temp += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+              temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
             }
           }
         }
         outData[wo+ho*W_out+co*H_out*W_out] = temp;
+        printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
       }
     }
   }
@@ -406,6 +414,13 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   const uint32_t C_in = args->pCin;
   const uint32_t C_out = args->pCout;
 
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
   const uint32_t H_out = H_in - pH + 1;
   const uint32_t W_out = W_in - pW + 1;
 
@@ -420,7 +435,7 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
           float temp = 0;
           for (uint32_t ho=0; ho<H_out; ho++) {
             for (uint32_t wo=0; wo<W_out; wo++) {
-              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in];
+              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in];
             }
           }
           coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
@@ -446,6 +461,13 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t pH = args->pH;
   const uint32_t C_in = args->pCin;
   const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
 
   const uint32_t H_out = H_in - pH + 1;
   const uint32_t W_out = W_in - pW + 1;

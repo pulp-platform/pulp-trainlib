@@ -5,22 +5,22 @@ IMAGE_H?=6
 IMAGE_W?=6
 KER_H?=3
 KER_W?=3
-IN_CH?=2
+IN_CH?=1
 OUT_CH?=1
 PAD_L?=0
 PAD_R?=0
 PAD_U?=0
 PAD_D?=0
-STRIDE_H?=1
-STRIDE_W?=1
+STRIDE_H?=2
+STRIDE_W?=2
 NUM_CORES?=8
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=3
+MATMUL_TYPE?=0
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
-IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
+IM2COL?=0			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
 HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # End of user settings

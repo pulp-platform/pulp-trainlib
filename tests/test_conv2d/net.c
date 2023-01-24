@@ -409,11 +409,13 @@ static inline void train(){
   compare_tensors(l1_out, OUTPUT, Tout_H_l1*Tout_W_l1*Tout_C_l1);
   check_tensor(l1_out, OUTPUT, Tout_H_l1*Tout_W_l1*Tout_C_l1);
   // TEST
-  printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer1_in, &layer1_wgt, &layer1_out);
+  printf("\nOUT SIZES: [%d, %d, %d]\n", Tout_C_l1, Tout_H_l1, Tout_W_l1);
+  //printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer1_in, &layer1_wgt, &layer1_out);
   for (int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
     if (!(index%Tout_H_l1)) printf("\n");
     printf("%f ", l1_out[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef BACKWARD_GRAD
