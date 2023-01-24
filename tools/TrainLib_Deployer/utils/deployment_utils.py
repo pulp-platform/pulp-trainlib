@@ -728,11 +728,11 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
                 exit()
 
-
     # Write conv2d in grad blocktranspose buffer
     bt_flag = False
     bt_max_memocc = 0
     bt_layer_index = 0
+    bt_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'conv2d' and layer == 0:
             bt_flag = True
@@ -743,26 +743,49 @@ def GenerateNet(proj_folder_path, project_name,
             if bt_mem > bt_max_memocc:
                 bt_max_memocc = bt_mem
                 bt_layer_index = layer
+                bt_max_data_type = data_type_l[layer]
     if bt_flag == True:
         f.write("\n// Define block transposition buffer for all conv2d layers\n")
         if bt_layer_index == 0:
             f.write("PI_L1 float bt_buffer[1];")
         elif bt_layer_index > 0:
-            f.write("PI_L1 float bt_buffer[Tin_C_l"+str(bt_layer_index)+"*Tout_C_l"+str(bt_layer_index)+"*Tker_H_l"+str(bt_layer_index)+"*Tker_W_l"+str(bt_layer_index)+"];\n")
-
+            if bt_max_data_type == 'FP32':
+                f.write("PI_L1 float bt_buffer[Tin_C_l"+str(bt_layer_index)+"*Tout_C_l"+str(bt_layer_index)+"*Tker_H_l"+str(bt_layer_index)+"*Tker_W_l"+str(bt_layer_index)+"];\n")
+            elif bt_max_data_type == 'FP16':
+                f.write("PI_L1 fp16 bt_buffer[Tin_C_l"+str(bt_layer_index)+"*Tout_C_l"+str(bt_layer_index)+"*Tker_H_l"+str(bt_layer_index)+"*Tker_W_l"+str(bt_layer_index)+"];\n")
+            else:
+                print("[deployment_utils.GenerateNet] Invalid data type for blocktranspose!")
+                exit()
 
     f.write("\n// Define error propagation tensors\n")
     for layer in range(len(layers_l)):
-        if layer > 0:
-            f.write("PI_L1 float l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
-        if (layer == len(layers_l)-1):
-            f.write("PI_L1 float l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Define FP32 tensors
+        if data_type_l[layer] == 'FP32':
+            if layer > 0:
+                f.write("PI_L1 float l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+            if (layer == len(layers_l)-1):
+                f.write("PI_L1 float l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Define FP16 tensors
+        elif data_type_l[layer] == 'FP16':
+            if layer > 0:
+                f.write("PI_L1 fp16 l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+            if (layer == len(layers_l)-1):
+                f.write("PI_L1 fp16 l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+        # Data type error
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for input grad definition @Layer{}!".format(layer))
+            exit()        
 
 
     f.write("\n// Loss function configuration structure\n")
-    f.write("PI_L1 struct loss_args loss_args;\n")
-
-
+    if data_type_l[-1] == 'FP32':
+        f.write("PI_L1 struct loss_args loss_args;\n")
+    elif data_type_l[-1] == 'FP16':
+        f.write("PI_L1 struct loss_args_fp16 loss_args;\n")
+    else:
+        print("[deployment_utils.GenerateNet] Invalid data type for loss definition!")
+        exit()
+        
 
     f.write("\n\n\n/**\n * DNN BACKEND FUNCTIONS\n**/\n")
 
