@@ -539,6 +539,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
+  printf("\nIN: [%d, %d, %d], OUT: [%d, %d, %d]\n", C_in, H_in, W_in, C_out, H_out, W_out);
+
   for (uint32_t ci=0; ci<C_in; ci++) {
     for (uint32_t hi=0; hi<H_in; hi++) {
       for (uint32_t wi=0; wi<W_in; wi++) {
@@ -547,10 +549,10 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
           for (uint32_t hk=0; hk<pH; hk++) {
             for (uint32_t wk=0; wk<pW; wk++) {
               // Padding conditions
-              int h_padded = hi + hk - (pH-1);
-              int w_padded = wi + wk - (pW-1);
+              int h_padded = hi + hk - (pH-1-Upad);
+              int w_padded = wi + wk - (pW-1-Lpad);
               // Kernel dilation (backward of stride)
-              if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out - (pH-2)) || (w_padded > W_out - (pW-2))) {
+              if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out - (pH-2-Dpad)) || (w_padded > W_out - (pW-2-Rpad))) {
                 temp += 0;
                 //printf("[%d, %d, %d] PAD\n", co, hk, wk);
               }
@@ -566,30 +568,6 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
       }
     }
   }
-
-  // OLD VERSION WITH NO STRIDE AND PADDING
-  // for (uint32_t ci=0; ci<C_in; ci++) {
-  //   for (uint32_t hi=0; hi<H_in; hi++) {
-  //     for (uint32_t wi=0; wi<W_in; wi++) {
-  //       float temp = 0;
-  //       for (uint32_t co=0; co<C_out; co++) {
-  //         for (uint32_t hk=0; hk<pH; hk++) {
-  //           for (uint32_t wk=0; wk<pW; wk++) {
-  //             // Coefficient to be loaded
-  //             float coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
-  //             // Padding conditions
-  //             int ho = hi + hk - (pH-1);
-  //             int wo = wi + wk - (pW-1);
-  //             // Compute in grad partial product
-  //             if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
-  //             else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
-  //           }
-  //         }
-  //       }
-  //       inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
-  //     }
-  //   }
-  // }
 
 }
 
