@@ -533,6 +533,7 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
 
   const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
   const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+  const uint32_t pHW = pH*pW-1;
 
   const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
@@ -545,12 +546,23 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
         for (uint32_t co=0; co<C_out; co++) {
           for (uint32_t hk=0; hk<pH; hk++) {
             for (uint32_t wk=0; wk<pW; wk++) {
-              // Coeff to be loaded
-
+              // Padding conditions
+              int h_padded = hi + hk - (pH-1);
+              int w_padded = wi + wk - (pW-1);
+              // Kernel dilation (backward of stride)
+              if (0) { //((h_padded < 0) || (w_padded < 0) || (h_padded > H_out) || (w_padded > W_out)) {
+                temp += 0;
+                printf("[%d, %d, %d] PAD\n", co, hk, wk);
+              }
+              // Compute partial product
+              else {
+                temp += coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in] * outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out];
+                printf("[%d, %d, %d] coeffData[%d] = %f,   outDiff[%d] = %f\n", co, hk, wk, (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in, coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in], w_padded + (h_padded)*W_out + co*H_out*W_out, outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out]);
+              }
             }
           }
         }
-        inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
+        inDiff[wi+hi*W_in+ci*H_in*W_in] = temp;
       }
     }
   }

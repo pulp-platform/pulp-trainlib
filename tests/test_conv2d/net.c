@@ -430,6 +430,7 @@ static inline void train(){
    if (!(index%Tker_H_l1)) printf("\n");
    printf("%f ", l1_ker_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef BACKWARD_ERROR
@@ -442,6 +443,7 @@ static inline void train(){
     if (!(index%Tin_H_l1)) printf("\n");
     printf("%f ", l1_in_diff[index]);
   }
+  printf("\n");
   #endif
 }
 

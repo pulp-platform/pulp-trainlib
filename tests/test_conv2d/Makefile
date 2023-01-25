@@ -1,15 +1,15 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=8
-IMAGE_W?=8
+IMAGE_H?=5
+IMAGE_W?=5
 KER_H?=3
 KER_W?=3
 IN_CH?=1
 OUT_CH?=1
-PAD_L?=1
+PAD_L?=0
 PAD_R?=0
-PAD_U?=1
+PAD_U?=0
 PAD_D?=0
 STRIDE_H?=2
 STRIDE_W?=2
