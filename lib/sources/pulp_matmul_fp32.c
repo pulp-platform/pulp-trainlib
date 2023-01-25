@@ -550,14 +550,14 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
               int h_padded = hi + hk - (pH-1);
               int w_padded = wi + wk - (pW-1);
               // Kernel dilation (backward of stride)
-              if (0) { //((h_padded < 0) || (w_padded < 0) || (h_padded > H_out) || (w_padded > W_out)) {
+              if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out - (pH-2)) || (w_padded > W_out - (pW-2))) {
                 temp += 0;
-                printf("[%d, %d, %d] PAD\n", co, hk, wk);
+                //printf("[%d, %d, %d] PAD\n", co, hk, wk);
               }
               // Compute partial product
               else {
                 temp += coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in] * outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out];
-                printf("[%d, %d, %d] coeffData[%d] = %f,   outDiff[%d] = %f\n", co, hk, wk, (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in, coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in], w_padded + (h_padded)*W_out + co*H_out*W_out, outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out]);
+                //printf("[%d, %d, %d] coeffData[%d] = %f,   outDiff[%d] = %f\n", co, hk, wk, (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in, coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in], w_padded + (h_padded)*W_out + co*H_out*W_out, outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out]);
               }
             }
           }
