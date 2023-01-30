@@ -31,7 +31,7 @@ import utils.net_templates as ntemp
 DNN Size Checker backend functions
 """
 
-def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, hin, win, DATA_TYPE, is_last_layer):
+def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, hin, win, h_pad, w_pad, h_str, w_str, DATA_TYPE, is_last_layer):
 
     memocc_bytes = 0
 
@@ -59,13 +59,17 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
         print("[deployment_utils.compute_wgt_act_memocc_bytes]: Invalid data type!!")
         exit()
 
+    # Output H and W
+    hout = math.floor( (hin-hk+2*h_pad+h_str)/h_str )
+    wout = math.floor( (win-wk+2*w_pad+w_str)/w_str )
+
     # FORWARD
     # Input act
     memocc_bytes += chin * hin * win * byte_size
     # Weights
     memocc_bytes += chin * chout * hk * wk * byte_size * wgt_present
     # Out act
-    memocc_bytes += chout * (hin-hk+1) * (win-wk+1) * byte_size * output_separate_occupation
+    memocc_bytes += chout * hout * wout * byte_size * output_separate_occupation
 
     # BACKWARD
     # Input act grad
@@ -73,13 +77,13 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     # Weight grad
     memocc_bytes += chin * chout * hk * wk * byte_size * wgt_present
     # Output grad
-    memocc_bytes += chout * (hin-hk+1) * (win-wk+1) * byte_size * output_separate_occupation
+    memocc_bytes += chout * hout * wout * byte_size * output_separate_occupation
 
 
     return memocc_bytes
 
 
-def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l):
+def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_l, w_pad_l, h_str_l, w_str_l, data_type_l):
 
     memocc_bytes = 0
 
@@ -94,17 +98,19 @@ def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, 
             byte_size = 2
         else:
             print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
-            exit()        
+            exit()      
+        # Output H and W
+        hout = math.floor( (hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer] )
+        wout = math.floor( (win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer] )
         # Find max im2col size
         if layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW':
             im2col_size = 0
-            size_FW = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1) * byte_size
+            size_FW = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * hout * wout * byte_size
             size_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer] * byte_size
             if size_FW > size_BW:
                 im2col_size = size_FW
             else:
                 im2col_size = size_BW
-            #im2col_size = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * in_ch_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1) * byte_size
             if im2col_size > max_im2col_size:
                 max_im2col_size = im2col_size
                 max_im2col_index = layer
@@ -115,18 +121,49 @@ def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, 
     return memocc_bytes, max_im2col_index
 
 
+def compute_cast_buffer_memocc_bytes (layers_l, chin_l, chout_l, hk_l, wk_l, hin_l, win_l, h_pad_l, w_pad_l, h_str_l, w_str_l, data_type_l):
+
+    memocc_bytes = 0
+
+    # Find the largest activation size (buffer for temporary casts)
+    act_inout = 'Input'
+    curr_in_act_size = 0
+    curr_out_act_size = 0
+    curr_max_act_size = 0
+    max_act_size = 0
+    max_act_index = 0
+    for layer in range(len(layers_l)):
+        # Check layer data type
+        byte_size = 4
+        if data_type_l[layer] == 'FP32':
+            byte_size = 4
+        elif data_type_l[layer] == 'FP16':
+            byte_size = 2
+        else:
+            print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
+            exit()    
+        # Output H and W
+        hout = math.floor( (hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer] )
+        wout = math.floor( (win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer] )
+        # Find current sizes
+        curr_in_act_size = chin_l[layer] * hin_l[layer] * win_l[layer] * byte_size
+        curr_out_act_size = chout_l[layer] * hout * wout * byte_size
+        if curr_in_act_size > curr_out_act_size:
+            curr_max_act_size = curr_in_act_size
+        else:
+            curr_max_act_size = curr_out_act_size
+        if curr_max_act_size > max_act_size:
+            max_act_size = curr_max_act_size
+            max_act_index = layer
+            if curr_out_act_size > curr_in_act_size:
+                act_inout = 'Output'
+
+    return memocc_bytes, max_act_index, act_inout
+
+
 def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l):
 
     memocc_bytes = 0
-    
-    # byte_size = 4
-    # if data_type_l[layer] == 'FP32':
-    #     byte_size = 4
-    # elif data_type_l[layer] == 'FP16':
-    #     byte_size = 2
-    # else:
-    #     print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type!!")
-    #     exit()
 
     max_bt_size = 0
     max_bt_index = 0
