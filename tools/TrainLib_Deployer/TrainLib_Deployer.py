@@ -55,7 +55,7 @@ loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 layer_list      = [ 'conv2d', 'ReLU', 'DW', 'PW', 'ReLU', 'linear' ]
 # Layer properties
 in_ch_list      = [ 1, 4, 4, 4, 4, 4*2*2 ]          # Linear: size of input vector
-out_ch_list     = [ 4, 4, 4, 4, 4, 2]            # Linear: size of output vector
+out_ch_list     = [ 4, 4, 4, 4, 4, 2 ]            # Linear: size of output vector
 hk_list         = [ 3, 1, 3, 1, 1, 1 ]             # Linear: = 1
 wk_list         = [ 3, 1, 3, 1, 1, 1 ]             # Linear: = 1
 # Input activations' properties
@@ -81,7 +81,7 @@ DATA_TYPE       = 'FP32'               # Still FP32 only (future, also FP16/BF16
 
 # OTHER PROPERTIES
 # Select if to read the network from an external source
-READ_ONNX       = False                # NOT IMPLEMENTED!!
+READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
 
 # ---------------------------
 # --- END OF USER SETTING ---
@@ -95,7 +95,7 @@ BACKEND
 """
 
 # Call the DNN Reader and then the DNN Composer 
-if READ_ONNX :
+if READ_MODEL_ARCH :
     pass
 
 

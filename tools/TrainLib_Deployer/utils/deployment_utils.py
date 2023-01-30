@@ -915,15 +915,15 @@ def GenerateNet(proj_folder_path, project_name,
             skip_inputgrad = 0
         # Write configuration templates
         if layers_l[layer] == 'linear':
-            f.write(ntemp.linear_config_template(layer, skip_inputgrad))
+            f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad))
+            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'PW':
-            f.write(ntemp.PW_config_template(layer, skip_inputgrad))
+            f.write(ntemp.PW_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'DW':
-            f.write(ntemp.DW_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad))
+            f.write(ntemp.DW_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'ReLU':
-            f.write(ntemp.ReLU_config_template(layer))
+            f.write(ntemp.ReLU_config_template(layer, data_type_l[layer]))
         elif layers_l[layer] == 'MaxPool':
             f.write("  //   Pooling layer (see next section)\n")
         elif layers_l[layer] == 'AvgPool':
@@ -954,19 +954,19 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void forward()\n{\n")
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'linear':
-            f.write(ntemp.linear_template_FW(layer))
+            f.write(ntemp.linear_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_template_FW(layer))
+            f.write(ntemp.conv2d_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'DW':
-            f.write(ntemp.DW_template_FW(layer))
+            f.write(ntemp.DW_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'PW':
-            f.write(ntemp.PW_template_FW(layer))
+            f.write(ntemp.PW_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'ReLU':
-            f.write(ntemp.ReLU_template_FW(layer))
+            f.write(ntemp.ReLU_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'AvgPool':
-            f.write(ntemp.AvgPool_template_FW(layer))
+            f.write(ntemp.AvgPool_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'MaxPool':
-            f.write(ntemp.MaxPool_template_FW(layer))
+            f.write(ntemp.MaxPool_template_FW(layer, data_type_l[layer]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
@@ -981,19 +981,19 @@ def GenerateNet(proj_folder_path, project_name,
         if lay == 0:
             skip_in_grad = 1
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay))
+            f.write(ntemp.linear_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay))
+            f.write(ntemp.conv2d_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay))
+            f.write(ntemp.DW_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay))
+            f.write(ntemp.PW_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'ReLU':
-            f.write(ntemp.ReLU_template_BW(lay))
+            f.write(ntemp.ReLU_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'AvgPool':
-            f.write(ntemp.AvgPool_template_BW(lay))
+            f.write(ntemp.AvgPool_template_BW(lay, data_type_l[layer]))
         elif layers_l[lay] == 'MaxPool':
-            f.write(ntemp.MaxPool_template_BW(lay))
+            f.write(ntemp.MaxPool_template_BW(lay, data_type_l[layer]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
@@ -1007,8 +1007,13 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
         f.write("  loss_args.target = LABEL;\n")
         f.write("  loss_args.wr_loss = &loss;\n")
-        f.write("  pulp_MSELoss(&loss_args);\n")
-        #f.write("  pulp_MSELoss(&layer"+str(len(layers_l)-1)+"_out, LABEL, &loss);\n")
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_MSELoss(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_MSELoss_fp16(&loss_args);\n")
+        else:
+            print("[deplyment_utils.GenerateNet]: Invalid loss type!")
+            exit()
     else:
         print("[deployment_utils.GenerateNet]: Loss function not valid for PULP deployment!!")
         exit()
@@ -1025,7 +1030,12 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  opt_l"+str(layer)+".weights = &layer"+str(layer)+"_wgt;\n")
             f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
             if optimizer == "SGD":
-                f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
+                if data_type_l[layer] == 'FP32':
+                    f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
+                elif data_type_l[layer] == 'FP16':
+                    f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp16, &opt_l"+str(layer)+");\n")
+                else:
+                    print("[deployment_utils.GenerateNet]: Invalid data type for gradient descent @Layer{}!".format(layer))
             else:
                 print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
                 exit()
@@ -1053,7 +1063,13 @@ def GenerateNet(proj_folder_path, project_name,
 
     output_index = len(layers_l) - 1
     f.write("  int integrity_check = 0;\n")
-    f.write("  integrity_check = verify_tensor(l"+str(output_index)+"_out, REFERENCE_OUTPUT, Tout_C_l"+str(output_index)+"*Tout_H_l"+str(output_index)+"*Tout_W_l"+str(output_index)+", TOLERANCE);\n")
+    if data_type_l[output_index] == 'FP32':
+        f.write("  integrity_check = verify_tensor(l"+str(output_index)+"_out, REFERENCE_OUTPUT, Tout_C_l"+str(output_index)+"*Tout_H_l"+str(output_index)+"*Tout_W_l"+str(output_index)+", TOLERANCE);\n")
+    elif data_type_l[output_index] == 'FP16':
+        f.write("  integrity_check = verify_tensor_fp16(l"+str(output_index)+"_out, REFERENCE_OUTPUT, Tout_C_l"+str(output_index)+"*Tout_H_l"+str(output_index)+"*Tout_W_l"+str(output_index)+", TOLERANCE);\n")
+    else:
+        print("[deployment_utils.GenerateNet]: Invalid inference verification data type!!")
+        exit()
     f.write("  if (integrity_check > 0)\n")
     f.write("    printf(\"\\n*** UPDATED OUTPUT NOT MATCHING GOLDEN MODEL ***\\n\");\n")
 

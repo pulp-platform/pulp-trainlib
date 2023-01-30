@@ -508,7 +508,7 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
 
 }
 
-
+//#define DEBUG_NAIVE
 
 void naive_conv2d_in_grad_kernel_CHW (void * matMul_args) 
 {
@@ -539,7 +539,7 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
-  printf("\nIN: [%d, %d, %d], OUT: [%d, %d, %d]\n", C_in, H_in, W_in, C_out, H_out, W_out);
+  if (pi_core_id() == 0) printf("\nIN: [%d, %d, %d], OUT: [%d, %d, %d]\n\n", C_in, H_in, W_in, C_out, H_out, W_out);
 
   for (uint32_t ci=0; ci<C_in; ci++) {
     for (uint32_t hi=0; hi<H_in; hi++) {
@@ -549,22 +549,31 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
           for (uint32_t hk=0; hk<pH; hk++) {
             for (uint32_t wk=0; wk<pW; wk++) {
               // Padding conditions
-              int h_padded = hi + hk - (pH-1-Upad);
-              int w_padded = wi + wk - (pW-1-Lpad);
+              int outdiff_idx = wi + wk - (pW-1) + (hi + hk - (pH-1))*W_out;
+              int h_padded = hi + hk - (pH-1);
+              int w_padded = wi + wk - (pW-1);
+              printf("h_padded = %d, w_padded = %d\n", h_padded, w_padded);
               // Kernel dilation (backward of stride)
               if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out - (pH-2-Dpad)) || (w_padded > W_out - (pW-2-Rpad))) {
                 temp += 0;
-                //printf("[%d, %d, %d] PAD\n", co, hk, wk);
+                #ifdef DEBUG_NAIVE
+                  printf("IN: [%d, %d, %d], KER: [%d, %d, %d]   PAD\n", ci, hi, wi, co, hk, wk);
+                #endif
               }
               // Compute partial product
               else {
                 temp += coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in] * outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out];
-                //printf("[%d, %d, %d] coeffData[%d] = %f,   outDiff[%d] = %f\n", co, hk, wk, (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in, coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in], w_padded + (h_padded)*W_out + co*H_out*W_out, outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out]);
+                #ifdef DEBUG_NAIVE
+                  printf("IN: [%d, %d, %d], KER: [%d, %d, %d]   coeffData[%d] = %f,   outDiff[%d] = %f\n", ci, hi, wi, co, hk, wk, (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in, coeffData[(pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in], w_padded + (h_padded)*W_out + co*H_out*W_out, outDiff[w_padded + (h_padded)*W_out + co*H_out*W_out]);
+                #endif
               }
             }
           }
         }
         inDiff[wi+hi*W_in+ci*H_in*W_in] = temp;
+        #ifdef DEBUG_NAIVE
+          printf("--- INDIFF: [%d, %d, %d] = %f ---\n", ci, hi, wi, inDiff[wi+hi*W_in+ci*H_in*W_in]);
+        #endif
       }
     }
   }
