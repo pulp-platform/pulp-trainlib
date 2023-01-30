@@ -135,6 +135,18 @@ struct set_to_value_args {
 };
 
 /**
+ * @brief Arguments for the cast_fp16_tensor_to_fp32 function
+ * @param source pointer to a fp16 tensor to be cast in float 
+ * @param destination pointer to the cast buffer
+ * @param size number of elements of the tensor to be cast
+ */
+struct cast_16t32_args {
+  fp16 * source;
+  float * destination;
+  int size;
+}
+
+/**
  * @brief Arguments for standard matrix multiplication C=A*B (A=N*K, B=K*M, result is C=N*M)
  * @param A  pointer to input matrix A
  * @param B  pointer to input matrix B
@@ -249,6 +261,12 @@ void copy (void * void_args);
  * @param (void * ) (struct set_to_value_args void_args)
  */
 void set_to_value (void * void_args);
+
+/**
+ * @brief Cast a FP16 tensor to FP32. Set up the arguments by using a "struct cast_16t32_args" structure. Use pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &args) to parallelize.
+ * @param (void *) (struct cast_16t32_args cast_args)
+ */
+void cast_fp16_tensor_to_fp32 (void * cast_16t32_args);
 
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager, &args) to parallelize.

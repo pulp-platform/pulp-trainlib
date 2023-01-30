@@ -104,6 +104,19 @@ void set_to_value_fp16 (void * void_args)
 }
 
 
+void cast_fp32_tensor_to_fp16 (void * cast_32t16_args) 
+{
+  struct cast_16t32_args args = *((struct cast_16t32_args *)void_args);
+  int blockSize = (args.size+NUM_CORES-1) / NUM_CORES;
+  int start = pi_core_id()*blockSize;
+  int stop = start+blockSize > args.size ? args.size : start+blockSize;
+
+  for (int=start; i<stop; i++) {
+    args.destination[i] = (fp16) args.source[i];
+  }
+}
+
+
 
 void mm_manager_fp16 (void * void_args) 
 {
