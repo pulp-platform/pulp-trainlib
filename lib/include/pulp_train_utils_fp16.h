@@ -141,7 +141,7 @@ struct cast_32t16_args {
   float * source;
   fp16 * destination;
   int size;
-}
+};
 
 /**
  * @brief Arguments for standard matrix multiplication C=A*B (A=N*K, B=K*M, result is C=N*M)
