@@ -109,7 +109,7 @@ void set_to_value (void * void_args)
 
 void cast_fp16_tensor_to_fp32 (void * cast_16t32_args) 
 {
-  struct cast_16t32_args args = *((struct cast_16t32_args *)void_args);
+  struct cast_16t32_args args = *((struct cast_16t32_args *)cast_16t32_args);
   int blockSize = (args.size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > args.size ? args.size : start+blockSize;
