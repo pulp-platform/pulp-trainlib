@@ -111,7 +111,7 @@ void cast_fp32_tensor_to_fp16 (void * cast_32t16_args)
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > args.size ? args.size : start+blockSize;
 
-  for (int=start; i<stop; i++) {
+  for (int i=start; i<stop; i++) {
     args.destination[i] = (fp16) args.source[i];
   }
 }
