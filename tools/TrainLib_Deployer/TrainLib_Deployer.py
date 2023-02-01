@@ -77,7 +77,6 @@ data_type_list  = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 60*(2**10)
-DATA_TYPE       = 'FP32'               # Still FP32 only (future, also FP16/BF16)
 
 # OTHER PROPERTIES
 # Select if to read the network from an external source

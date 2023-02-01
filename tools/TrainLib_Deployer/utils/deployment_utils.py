@@ -732,7 +732,6 @@ def GenerateNet(proj_folder_path, project_name,
                 im2col_byte_length = 2
             im2col_flag = True
             i2c_mem = 0
-            #i2c_FW = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * (hin_l[layer]-hk_l[layer]+1) * (win_l[layer]-wk_l[layer]+1) * im2col_byte_length
             i2c_FW = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * math.floor((hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer]) * math.floor((win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer]) * im2col_byte_length
             i2c_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer] * im2col_byte_length
             if i2c_FW > i2c_BW:
@@ -794,6 +793,7 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet] Invalid data type for blocktranspose!")
                 exit()
 
+    # Define tensors to backpropagate the output error
     f.write("\n// Define error propagation tensors\n")
     for layer in range(len(layers_l)):
         # Define FP32 tensors
@@ -812,6 +812,44 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for input grad definition @Layer{}!".format(layer))
             exit()        
+
+    # Define buffer for mixed precision propagation
+    fp32_present = False
+    fp16_present = False
+    curr_cast_in_size = 0
+    curr_cast_out_size = 0
+    curr_max_size = 0
+    max_cast_buffer_size = 0
+    max_cast_buffer_type = 'FP32'
+    for layer in range(len(layers_l)):
+        # Output size for current layer
+        h_out = math.floor((hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer])
+        w_out = math.floor((win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer])
+        # Define cast buffer if needed
+        if data_type_l[layer] == 'FP32':
+            fp32_present = True
+        elif data_type_l[layer] == 'FP16':
+            fp16_present = True
+        curr_cast_in_size = in_ch_l[layer] * hin_l[layer] * win_l[layer]
+        curr_cast_out_size = out_ch_l[layer] * h_out * w_out
+        if curr_cast_in_size > curr_cast_out_size:
+            curr_max_size = curr_cast_in_size
+        else:
+            curr_max_size = curr_cast_out_size
+        if curr_max_size > max_cast_buffer_size:
+            max_cast_buffer_size = curr_max_size
+            max_cast_buffer_type = data_type_l[layer]
+    # Allocate buffer
+    if fp32_present and fp16_present:
+        f.write("\n// Define cast buffer to manage mixed precision\n")
+        if max_cast_buffer_type == 'FP32':
+            f.write("PI_L1 float cast_buffer["+str(max_cast_buffer_size)+"];\n")
+        elif max_cast_buffer_type == 'FP16':
+            f.write("PI_L1 fp16 cast_buffer["+str(max_cast_buffer_size)+"];\n")
+        else:
+            print("[deployment_utils.GenerateNet]: Invalid data type for mixed precision buffer!")
+            exit() 
+
 
 
     f.write("\n// Loss function configuration structure\n")
