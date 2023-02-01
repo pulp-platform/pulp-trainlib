@@ -75,7 +75,7 @@ def ReLU_template(layer, data_type):
     if data_type == 'FP32':
         template = "\t\tself.l"+str(layer)+" = nn.ReLU()\n"
     elif data_type == 'FP16':
-        template = "\t\tself.l"+str(layer)+" = nn.ReLU().half()\n"
+        template = "\t\tself.l"+str(layer)+" = nn.ReLU()\n"
     else:
         print("[GM_templates.ReLU_template] Invalid data type!!")
         exit() 

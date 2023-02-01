@@ -287,7 +287,7 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp32.c\n\n')
-    elif check_FP16 == True:
+    if check_FP16 == True:
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c\n')
@@ -441,9 +441,17 @@ def GenerateGM(proj_folder_path, project_name,
             f.write("\n\t\tx = x.float()")
         elif data_type_l[layer] == 'FP16' and data_type_l[layer-1] != data_type_l[layer]:
             f.write("\n\t\tx = x.half()")
-        # Forward layers
-        f.write("\n\t\tx = self.l"+str(layer)+"(x)")
+        # Forward layers 
+        # (ReLU works with FP32 only)
+        if layers_l[layer] == 'ReLU' and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
+            f.write("\n\t\tx = self.l"+str(layer)+"(x.float()).half()")
+        # Last layer
+        elif layer == len(layers_l)-1:
+            f.write("\n\t\tx = self.l"+str(layer)+"(x).float()")
+        else:
+            f.write("\n\t\tx = self.l"+str(layer)+"(x)")
     f.write("\n\t\treturn x\n")
+    print("[deployment_utils.GenerateNet]: Setting last layer's output to float for PyTorch compatibility with loss function backward (future fix).")
 
     last_layer = len(layers_l) - 1
 
