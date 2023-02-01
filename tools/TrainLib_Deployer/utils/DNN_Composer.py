@@ -60,8 +60,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     mem_cast_buffer, idx_max_act, max_act_inout = utils.compute_cast_buffer_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_list, w_pad_list, h_str_list, w_str_list, data_type_l)
     total_memory_occupation_bytes += mem_cast_buffer
 
-    if mem_cast_buffer > 0:
-        print("Max activation size of {} @layer {} ({})".format(mem_cast_buffer, idx_max_act, max_act_inout))
+    #if mem_cast_buffer > 0:
+    print("Additional {} bytes allocated for mixed precision management (size @layer {}, {})".format(mem_cast_buffer, idx_max_act, max_act_inout))
 
     if total_memory_occupation_bytes > avail_mem_bytes:
         print("[DNN_Size_Checker]: DNN overflows PULP L1 memory!!\nExpected occupation: {} bytes vs {} available L1 ({}%)!".format(total_memory_occupation_bytes, avail_mem_bytes, (total_memory_occupation_bytes/avail_mem_bytes)*100))

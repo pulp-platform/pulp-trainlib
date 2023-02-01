@@ -127,6 +127,7 @@ def compute_cast_buffer_memocc_bytes (layers_l, chin_l, chout_l, hk_l, wk_l, hin
 
     # Find the largest activation size (buffer for temporary casts)
     act_inout = 'Input'
+    previous_type = data_type_l[0]
     curr_in_act_size = 0
     curr_out_act_size = 0
     curr_max_act_size = 0
@@ -145,18 +146,22 @@ def compute_cast_buffer_memocc_bytes (layers_l, chin_l, chout_l, hk_l, wk_l, hin
         # Output H and W
         hout = math.floor( (hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer] )
         wout = math.floor( (win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer] )
-        # Find current sizes
-        curr_in_act_size = chin_l[layer] * hin_l[layer] * win_l[layer] * byte_size
-        curr_out_act_size = chout_l[layer] * hout * wout * byte_size
-        if curr_in_act_size > curr_out_act_size:
-            curr_max_act_size = curr_in_act_size
-        else:
-            curr_max_act_size = curr_out_act_size
-        if curr_max_act_size > max_act_size:
-            max_act_size = curr_max_act_size
-            max_act_index = layer
-            if curr_out_act_size > curr_in_act_size:
+        # Find mixed precision
+        if data_type_l[layer] != previous_type:
+            # Find current sizes
+            curr_in_act_size = chin_l[layer] * hin_l[layer] * win_l[layer] * byte_size
+            curr_out_act_size = chout_l[layer] * hout * wout * byte_size
+            if curr_in_act_size > curr_out_act_size:
+                curr_max_act_size = curr_in_act_size
+                act_inout = 'Input'
+            else:
+                curr_max_act_size = curr_out_act_size
                 act_inout = 'Output'
+            if curr_max_act_size > max_act_size:
+                max_act_size = curr_max_act_size
+                max_act_index = layer
+
+    memocc_bytes = max_act_size
 
     return memocc_bytes, max_act_index, act_inout
 
@@ -814,38 +819,50 @@ def GenerateNet(proj_folder_path, project_name,
             exit()        
 
     # Define buffer for mixed precision propagation
-    fp32_present = False
-    fp16_present = False
+    previous_type = data_type_l[0]
+    is_mixed_precision = False
     curr_cast_in_size = 0
     curr_cast_out_size = 0
     curr_max_size = 0
+    is_max_input = False
+    max_cast_buffer_index = 0
     max_cast_buffer_size = 0
     max_cast_buffer_type = 'FP32'
     for layer in range(len(layers_l)):
         # Output size for current layer
         h_out = math.floor((hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer])
         w_out = math.floor((win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer])
-        # Define cast buffer if needed
-        if data_type_l[layer] == 'FP32':
-            fp32_present = True
-        elif data_type_l[layer] == 'FP16':
-            fp16_present = True
-        curr_cast_in_size = in_ch_l[layer] * hin_l[layer] * win_l[layer]
-        curr_cast_out_size = out_ch_l[layer] * h_out * w_out
-        if curr_cast_in_size > curr_cast_out_size:
-            curr_max_size = curr_cast_in_size
-        else:
-            curr_max_size = curr_cast_out_size
-        if curr_max_size > max_cast_buffer_size:
-            max_cast_buffer_size = curr_max_size
-            max_cast_buffer_type = data_type_l[layer]
+        # Find if there are mixed types
+        if data_type_l[layer] != previous_type:
+            is_mixed_precision = True
+            # Find biggest size
+            curr_cast_in_size = in_ch_l[layer] * hin_l[layer] * win_l[layer]
+            curr_cast_out_size = out_ch_l[layer] * h_out * w_out
+            if curr_cast_in_size > curr_cast_out_size:
+                curr_max_size = curr_cast_in_size
+                is_max_input = True
+            else:
+                curr_max_size = curr_cast_out_size
+                is_max_input = False
+            if curr_max_size > max_cast_buffer_size:
+                max_cast_buffer_size = curr_max_size
+                max_cast_buffer_type = data_type_l[layer]
+                max_cast_buffer_index = layer
+        previous_type = data_type_l[layer]
+
     # Allocate buffer
-    if fp32_present and fp16_present:
-        f.write("\n// Define cast buffer to manage mixed precision\n")
+    if is_mixed_precision:
+        f.write("\n// Define cast buffer to manage mixed precision (size="+str(max_cast_buffer_size)+")\n")
         if max_cast_buffer_type == 'FP32':
-            f.write("PI_L1 float cast_buffer["+str(max_cast_buffer_size)+"];\n")
+            if is_max_input:
+                f.write("PI_L1 float cast_buffer[Tin_C_l"+str(max_cast_buffer_index)+" * Tin_H_l"+str(max_cast_buffer_index)+" * Tin_W_l"+str(max_cast_buffer_index)+"];\n")
+            else:
+                f.write("PI_L1 float cast_buffer[Tout_C_l"+str(max_cast_buffer_index)+" * Tout_H_l"+str(max_cast_buffer_index)+" * Tout_W_l"+str(max_cast_buffer_index)+"];\n")
         elif max_cast_buffer_type == 'FP16':
-            f.write("PI_L1 fp16 cast_buffer["+str(max_cast_buffer_size)+"];\n")
+            if is_max_input:
+                f.write("PI_L1 fp16 cast_buffer[Tin_C_l"+str(max_cast_buffer_index)+" * Tin_H_l"+str(max_cast_buffer_index)+" * Tin_W_l"+str(max_cast_buffer_index)+"];\n")
+            else:
+                f.write("PI_L1 fp16 cast_buffer[Tout_C_l"+str(max_cast_buffer_index)+" * Tout_H_l"+str(max_cast_buffer_index)+" * Tout_W_l"+str(max_cast_buffer_index)+"];\n")
         else:
             print("[deployment_utils.GenerateNet]: Invalid data type for mixed precision buffer!")
             exit() 
