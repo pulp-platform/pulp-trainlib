@@ -1171,7 +1171,12 @@ def GenerateNet(proj_folder_path, project_name,
 
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'linear' or layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW' or layers_l[layer] == 'PW':
-            f.write("  struct optim_args opt_l"+str(layer)+";\n")
+            if data_type_l[layer] == 'FP32':
+                f.write("  struct optim_args opt_l"+str(layer)+";\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("  struct optim_args_fp16 opt_l"+str(layer)+";\n")
+            else:
+                print("[deployment_utils.GenerateNet]: Invalid data type for optimizer structure generation @layer{}!".format(layer))  
             f.write("  opt_l"+str(layer)+".weights = &layer"+str(layer)+"_wgt;\n")
             f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
             if optimizer == "SGD":
