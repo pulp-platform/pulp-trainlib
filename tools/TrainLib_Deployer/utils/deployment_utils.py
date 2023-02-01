@@ -903,8 +903,19 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
             exit()
 
+    # Mixed precision check
+    C_data_type = 'float'
     f.write("\n  // Connect tensors to blobs\n")
     for layer in range(len(layers_l)):
+        # Find data type for each layer
+        if data_type_l[layer] == 'FP32':
+            C_data_type = 'float'
+        elif data_type_l[layer] == 'FP16':
+            C_data_type = 'fp16'
+        else:
+            print("[deployment_utils.GenerateNet]: Invalid data type for structure assignment @layer{}!".format(layer))
+            exit()
+        # DNN is 1 layer long
         if len(layers_l) == 1:
             f.write("  layer"+str(layer)+"_in.data = l0_in;\n")
             f.write("  layer"+str(layer)+"_in.dim = Tin_C_l0*Tin_H_l0*Tin_W_l0;\n")
@@ -926,6 +937,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_out.C = Tout_C_l0;\n")
             f.write("  layer"+str(layer)+"_out.H = Tout_H_l0;\n")
             f.write("  layer"+str(layer)+"_out.W = Tout_W_l0;\n")
+        # First layer connection
         elif layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
@@ -942,12 +954,19 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
-            f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
-            f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
+            # Assign to cast_buffer in case data type changes
+            if data_type_l[layer] != data_type_l[layer+1]:
+                f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) cast_buffer;\n")
+                f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
+            else:
+                f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
+                f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")     
+            # End of assignment       
             f.write("  layer"+str(layer)+"_out.dim = Tin_C_l"+str(layer+1)+"*Tin_H_l"+str(layer+1)+"*Tin_W_l"+str(layer+1)+";\n")
             f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
+        # Hidden layers
         elif layer > 0 and layer < len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
@@ -965,12 +984,19 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
-            f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
-            f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
+            # Assign to cast_buffer in case data type changes
+            if data_type_l[layer] != data_type_l[layer+1]:
+                f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) cast_buffer;\n")
+                f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
+            else:
+                f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
+                f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")     
+            # End of assignment     
             f.write("  layer"+str(layer)+"_out.dim = Tin_C_l"+str(layer+1)+"*Tin_H_l"+str(layer+1)+"*Tin_W_l"+str(layer+1)+";\n")
             f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
+        # Last layer
         elif layer == len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
@@ -1044,7 +1070,9 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
+
     for layer in range(len(layers_l)):
+        # Generate layer template
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
@@ -1062,6 +1090,14 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
+        # Insert casting operator for data type variation
+        if layer < len(layers_l)-1 and data_type_l[layer] != data_type_l[layer+1]:
+            if data_type_l[layer] == 'FP32' and data_type_l[layer+1] == 'FP16':
+                f.write(ntemp.cast_fp32_to_fp16_template(layer, "FW", data_type_l[layer]))
+            elif data_type_l[layer] == 'FP16' and data_type_l[layer+1] == 'FP32':
+                f.write(ntemp.cast_fp16_to_fp32_template(layer, "FW", data_type_l[layer]))
+            else:
+                print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[layer], data_type_l[layer+1], layer))
     f.write("}\n")
 
 
@@ -1069,26 +1105,35 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void backward()\n{\n")
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
+        # Generate backward layer template
         skip_in_grad = 0
         if lay == 0:
             skip_in_grad = 1
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.linear_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.DW_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.PW_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'ReLU':
-            f.write(ntemp.ReLU_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'AvgPool':
-            f.write(ntemp.AvgPool_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.AvgPool_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'MaxPool':
-            f.write(ntemp.MaxPool_template_BW(lay, data_type_l[layer]))
+            f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
+        # Insert casting operator for data type variation
+        if lay < len(layers_l)-1 and lay > 0 and data_type_l[lay] != data_type_l[lay-1]:
+            if data_type_l[lay] == 'FP32' and data_type_l[lay-1] == 'FP16':
+                f.write(ntemp.cast_fp32_to_fp16_template(lay, "BW", data_type_l[lay]))
+            elif data_type_l[lay] == 'FP16' and data_type_l[lay-1] == 'FP32':
+                f.write(ntemp.cast_fp16_to_fp32_template(lay, "BW", data_type_l[lay]))
+            else:
+                print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[lay], data_type_l[lay-1], lay))
     f.write("}\n")
 
 

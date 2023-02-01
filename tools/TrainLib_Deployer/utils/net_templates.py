@@ -182,6 +182,50 @@ def MaxPool_template_BW(layer_number, DATA_TYPE):
     return template
 
 
+"""
+TYPE CHANGE TEMPLATES
+"""
+
+def cast_fp32_to_fp16_template (layer_number, STEP, DATA_TYPE):
+    if STEP == 'FW':
+        template =  "  // Propagate FP32 layer "+str(layer_number)+" to FP16\n"
+        template += "  struct cast_32t16_args cast_l"+str(layer_number)+"_args;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = (float*) cast_buffer;\n"
+        template += "  cast_l"+str(layer_number)+"_args.destination = l"+str(layer_number+1)+"_in;\n"  
+        template += "  pi_cl_team_fork(NUM_CORES, cast_fp32_tensor_to_fp16, &cast_l"+str(layer_number)+"_args);\n"
+        template += "  // End of casting\n"
+    elif STEP == 'BW':
+        template =  "  // Propagate FP32 layer "+str(layer_number)+" back to FP16\n"
+        template += "  struct cast_32t16_args cast_l"+str(layer_number)+"_args;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = l"+str(layer_number)+"_in;\n"
+        template += "  cast_l"+str(layer_number)+"_args.destination = (fp16*) cast_buffer;\n"  
+        template += "  pi_cl_team_fork(NUM_CORES, cast_fp32_tensor_to_fp16, &cast_l"+str(layer_number)+"_args);\n"
+        template += "  // End of casting\n"
+    else:
+        print("[net_templates.cast_fp32_to_fp16_template]: Invalid training step for template generation @layer{}!".format(layer_number))
+    return template
+
+def cast_fp16_to_fp32_template (layer_number, STEP, DATA_TYPE):
+    if STEP == 'FW':
+        template =  "  // Propagate FP16 layer "+str(layer_number)+" to FP32\n"
+        template += "  struct cast_16t32_args cast_l"+str(layer_number)+"_args;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = (fp16*) cast_buffer;\n"
+        template += "  cast_l"+str(layer_number)+"_args.destination = l"+str(layer_number+1)+"_in;\n"  
+        template += "  pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &cast_l"+str(layer_number)+"_args);\n"
+        template += "  // End of casting\n"
+    elif STEP == 'BW':
+        template =  "  // Propagate FP16 layer "+str(layer_number)+" back to FP32\n"
+        template += "  struct cast_16t32_args cast_l"+str(layer_number)+"_args;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = l"+str(layer_number)+"_in;\n"
+        template += "  cast_l"+str(layer_number)+"_args.destination = (float*) cast_buffer;\n"  
+        template += "  pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &cast_l"+str(layer_number)+"_args);\n"
+        template += "  // End of casting\n"
+    else:
+        print("[net_templates.cast_fp32_to_fp16_template]: Invalid training step for template generation @layer{}!".format(layer_number))
+    return template
+
+
+
 
 
 """
