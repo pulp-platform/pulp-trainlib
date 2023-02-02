@@ -299,9 +299,9 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_optimizers_fp16.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp16.c\n')
         f.write('APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_pooling_fp16.c\n\n')        
-    else:
-        print("[deployment_utils.GenerateMakefile] Data format not implemented!!\n")
-        exit()
+    # if (check_FP16 and check_FP32) == False:
+    #     print("[deployment_utils.GenerateMakefile] Data format not implemented!!\n")
+    #     exit()
 
     f.write('# RULES\n')
     f.write('get_golden:\n')
@@ -325,6 +325,14 @@ def GenerateGM(proj_folder_path, project_name,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l):
+
+    # Print DNN structure
+    print("---------- DNN ARCHITECTURE ----------")
+    for layer in range(len(layers_l)):
+        h_out = math.floor((hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer])
+        w_out = math.floor((win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer])
+        print("Layer {}: {} {}, in=[{}, {}, {}], wgt=[{}, {}, {}, {}], out=[{}, {}, {}]".format(layer, data_type_l[layer], layers_l[layer], in_ch_l[layer], hin_l[layer], win_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], in_ch_l[layer], out_ch_l[layer], h_out, w_out))
+    print("--------------------------------------")
 
     f = open(proj_folder_path+'utils/GM.py', 'w')
 
@@ -854,7 +862,7 @@ def GenerateNet(proj_folder_path, project_name,
                 is_max_input = False
             if curr_max_size > max_cast_buffer_size:
                 max_cast_buffer_size = curr_max_size
-                max_cast_buffer_type = data_type_l[layer]
+                max_cast_buffer_type = data_type_l[layer-1]
                 max_cast_buffer_index = layer
         previous_type = data_type_l[layer]
 
