@@ -72,7 +72,7 @@ opt_mm_fw_list  = [ 0, 0, 0, 0, 0, 0 ]
 opt_mm_wg_list  = [ 0, 0, 0, 0, 0, 0 ]
 opt_mm_ig_list  = [ 0, 0, 0, 0, 0, 0 ]
 # Data type list for layer-by-layer deployment (mixed precision)
-data_type_list  = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
+data_type_list  = ['FP32', 'FP32', 'FP32', 'FP32', 'FP16', 'FP16']
 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
