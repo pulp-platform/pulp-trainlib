@@ -25,7 +25,7 @@ APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=6	# When profiling with multiple matmul algorithms
 NUM_SIZES?=3	# When profiling multiple sizes of the network
-#APP_CFLAGS += -DCHECK_PRINT
+APP_CFLAGS += -DCHECK_PRINT
 # End of user settings
 
 TRAIN_LIB=../../lib

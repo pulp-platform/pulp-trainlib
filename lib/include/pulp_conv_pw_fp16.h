@@ -18,6 +18,7 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#include "pulp_train_defines.h"
 
 /**
  * Depthwise layer configuration structure
@@ -32,6 +33,7 @@
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param transp_buffer buffer for the momentary transposition of input/weights/output gradient (according to the step)
  */
 struct PointWise_Conv_args_fp16 {
 	struct blob_fp16 * input; 
@@ -41,6 +43,7 @@ struct PointWise_Conv_args_fp16 {
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
 	int opt_matmul_type_ig;
+	fp16 * transp_buffer;
 };
 
 
@@ -58,6 +61,7 @@ struct PointWise_Conv_args_fp16 {
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param transp_buffer buffer for the momentary transposition of the input
  */
 void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 );
 
@@ -72,6 +76,7 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 );
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param transp_buffer buffer for the momentary transposition of weights/output gradient
  */
 void pulp_conv_pw_fp16_bw_cl( void * PointWise_Conv_args_fp16 );
 
@@ -90,5 +95,6 @@ void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 );
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer 
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param transp_buffer buffer for the momentary transposition of weights and output gradient
  */
 void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 );

@@ -255,11 +255,27 @@ gradsDW = net.convDW.register_forward_hook(hook_fn4)
 gradsPW = net.convPW.register_backward_hook(hook_fn3)
 gradsDW = net.convPW.register_forward_hook(hook_fn5)
 
+simple_input = False
+
 if bf16_format == 1:
-  inp = torch.ones(1, dw_channel, input_h, input_w).bfloat16()
+  if simple_input:
+    inp = torch.ones(1, dw_channel, input_h, input_w).bfloat16()
+  else:
+    inp = torch.div(torch.ones(1, dw_channel, input_h, input_w), 1000).bfloat16()
+    for cin in range(dw_channel):
+      for hi in range(input_h):
+        for wi in range(input_w):
+          inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
   label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).bfloat16()
 else: 
-  inp = torch.ones(1, dw_channel, input_h, input_w).half()
+  if simple_input:
+    inp = torch.ones(1, dw_channel, input_h, input_w).half()
+  else:
+    inp = torch.div(torch.ones(1, dw_channel, input_h, input_w), 1000).half()
+    for cin in range(dw_channel):
+      for hi in range(input_h):
+        for wi in range(input_w):
+          inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
   label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).half()  
 
 # Prepare weight tensors for init

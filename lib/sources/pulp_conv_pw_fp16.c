@@ -41,7 +41,11 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   int Cout = PW_args->output->C;
 
   int opt_matmul_type = PW_args->opt_matmul_type_fw;
+  fp16 * transp_buffer = PW_args->transp_buffer;
 
+  #define OPT_PW
+  #ifndef OPT_PW
+  // NON-OPTIMIZED
   matMul_args.A = coeffData;
   matMul_args.B = inData;
   matMul_args.C = outData;
@@ -59,6 +63,38 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   man_args.step_type = STEP_FW;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+  #endif
+
+  #else
+
+  // OPTIMIZED
+  // Transpose the input
+  struct transp_args_fp16 tr_args;
+  tr_args.matrix = inData;
+  tr_args.transp_matrix = transp_buffer;
+  tr_args.N = Cin;
+  tr_args.M = H_in*W_in;
+  pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+  // Perform forward
+  matMul_args.A = coeffData;
+  matMul_args.B = transp_buffer; //inData;
+  matMul_args.C = outData;
+  matMul_args.N = Cout;
+  matMul_args.M = H_in*W_in;
+  matMul_args.K = Cin;
+  matMul_args.trans_B = 1;
+
+  #ifndef OPTIMIZE
+  pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
+  #else
+  struct mm_manager_args_fp16 man_args;
+  man_args.mm_args = &matMul_args;
+  man_args.layer_type = LAYER_PW_CONV;
+  man_args.step_type = STEP_FW;
+  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+  pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+  #endif
+
   #endif
 
   #ifdef DEBUG

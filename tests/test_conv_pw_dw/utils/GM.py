@@ -251,7 +251,7 @@ gradsDW = net.convDW.register_forward_hook(hook_fn4)
 gradsPW = net.convPW.register_backward_hook(hook_fn3)
 gradsDW = net.convPW.register_forward_hook(hook_fn5)
 
-simple_input = True
+simple_input = False
 
 if simple_input:
   inp = torch.ones(1, dw_channel, input_h, input_w)

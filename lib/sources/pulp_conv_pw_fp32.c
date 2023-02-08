@@ -47,7 +47,7 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
   matMul_args.C = outData;
   matMul_args.N = Cout;
   matMul_args.M = H_in*W_in;
-  matMul_args.K = pW*pH*Cin;
+  matMul_args.K = Cin;
   matMul_args.trans_B = 0;
 
   #ifndef OPTIMIZE
@@ -199,7 +199,7 @@ void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
   matMul_args.C = inDiff;
   matMul_args.N = C_in;
   matMul_args.M = W_out*H_out;
-  matMul_args.K = pW*pH*C_out;
+  matMul_args.K = C_out;
   matMul_args.trans_B = 0;
   
   #ifndef OPTIMIZE
