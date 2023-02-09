@@ -266,7 +266,13 @@ if bf16_format == 1:
       for hi in range(input_h):
         for wi in range(input_w):
           inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
-  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).bfloat16()
+  h_out = input_h-(ker1-1)-(ker2_h-1)+2*pad_h
+  w_out = input_w-(ker1-1)-(ker2_w-1)+2*pad_w
+  label = torch.ones(1, pw_channel, h_out, w_out).bfloat16()  
+  for i in range(pw_channel):
+    for j in range(h_out):
+      for k in range(w_out):
+        label[0, i, j, k] += 0.01 * (i+j+k)
 else: 
   if simple_input:
     inp = torch.ones(1, dw_channel, input_h, input_w).half()
@@ -276,7 +282,13 @@ else:
       for hi in range(input_h):
         for wi in range(input_w):
           inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
-  label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1)+2*pad_h, input_w-(ker1-1)-(ker2_w-1)+2*pad_w).half()  
+  h_out = input_h-(ker1-1)-(ker2_h-1)+2*pad_h
+  w_out = input_w-(ker1-1)-(ker2_w-1)+2*pad_w
+  label = torch.ones(1, pw_channel, h_out, w_out).half()  
+  for i in range(pw_channel):
+    for j in range(h_out):
+      for k in range(w_out):
+        label[0, i, j, k] += 0.01 * (i+j+k)
 
 # Prepare weight tensors for init
 print("Shape of DW kernel:")

@@ -79,6 +79,7 @@ PI_L1 fp16 tr_buff[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 PI_L1 fp16 l2_in_diff[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 PI_L1 fp16 l2_ker[Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2];
 PI_L1 fp16 l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
+PI_L1 fp16 tr_buff[Tin_C_l2*Tout_C_l2+Tout_H_l2*Tout_W_l2*Tout_C_l2];
 #endif
 
 #ifdef PW_BACKWARD_GRAD
@@ -537,6 +538,7 @@ static inline void connect_blobs(){
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
   PW_args.opt_matmul_type_ig = MATMUL_TYPE;
+  PW_args.transp_buffer = tr_buff;
 }
 
 static inline void compute_memory_occupation() {
