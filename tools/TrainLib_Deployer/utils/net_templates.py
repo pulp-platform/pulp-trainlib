@@ -301,6 +301,13 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    if DATA_TYPE == 'FP32':
+        template += "  l"+str(layer_number)+"_args.transpose_buffer = (float*) bt_buffer;\n"
+    elif DATA_TYPE == 'FP16':
+        template += "  l"+str(layer_number)+"_args.transpose_buffer = (fp16*) bt_buffer;\n"
+    else:
+        print("[net_templates.PW_config_template]: Invalid data type!")
+        exit()
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"

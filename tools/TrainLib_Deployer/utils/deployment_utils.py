@@ -183,7 +183,7 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
             print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
             exit()
         # Find max blocktransp size
-        if layers_l[layer] == 'conv2d' and layer > 0:
+        if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
             bt_size = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * out_ch_l[layer] * byte_size
             if bt_size > max_bt_size:
                 max_bt_size = bt_size
@@ -785,16 +785,16 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
                 exit()
 
-    # Write conv2d in grad blocktranspose buffer
+    # Write in grad transposition / blocktranspose buffer
     bt_flag = False
     bt_max_memocc = 0
     bt_layer_index = 0
     bt_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'conv2d' and layer == 0:
+        if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer == 0:
             bt_flag = True
             bt_layer_index = 0
-        elif layers_l[layer] == 'conv2d' and layer > 0:
+        elif (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
             bt_flag = True
             bt_mem = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * out_ch_l[layer]
             if bt_mem > bt_max_memocc:
@@ -802,7 +802,7 @@ def GenerateNet(proj_folder_path, project_name,
                 bt_layer_index = layer
                 bt_max_data_type = data_type_l[layer]
     if bt_flag == True:
-        f.write("\n// Define block transposition buffer for all conv2d layers\n")
+        f.write("\n// Define transposition / block transposition buffer for all conv2d and PW layers\n")
         if bt_layer_index == 0:
             f.write("PI_L1 float bt_buffer[1];")
         elif bt_layer_index > 0:

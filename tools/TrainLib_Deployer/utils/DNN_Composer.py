@@ -46,14 +46,14 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     if mem_im2col > 0:
         print("Max IM2COL size of {} bytes @layer {}".format(mem_im2col, idx_im2col))
 
-    # Compute blocktranspose memory occupation 
+    # Compute transpose and blocktranspose memory occupation 
     mem_blocktransp = 0
     idx_blocktransp = 0
     mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l)
     total_memory_occupation_bytes += mem_blocktransp
 
     if mem_blocktransp > 0:
-        print("Max conv2d block transposition buffer size of {} @layer {}".format(mem_blocktransp, idx_blocktransp))
+        print("Max transposition / block transposition buffer size of {} @layer {}".format(mem_blocktransp, idx_blocktransp))
 
     # Compute additional mixed precision buffer memory occupation
     mem_cast_buffer = 0
