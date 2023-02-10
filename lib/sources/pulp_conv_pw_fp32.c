@@ -192,9 +192,18 @@ void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
   float * outDiff = PW_args->output->diff;
 
   int opt_matmul_type = PW_args->opt_matmul_type_ig;
+  float * tr_buffer = PW_args->transpose_buffer;
+
+  // Transpose weights
+  struct transp_args tr_args;
+  tr_args.matrix = coeffData;
+  tr_args.transp_matrix = tr_buffer;
+  tr_args.N = C_out;
+  tr_args.M = C_in;
+  pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
 
   // COMPUTE ACTIV_GRAD
-  matMul_args.A = coeffData; // transp ?
+  matMul_args.A = tr_buffer; // coeffData; // transp ?
   matMul_args.B = outDiff;
   matMul_args.C = inDiff;
   matMul_args.N = C_in;
