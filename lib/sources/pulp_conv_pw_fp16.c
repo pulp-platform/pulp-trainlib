@@ -41,7 +41,7 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   int Cout = PW_args->output->C;
 
   int opt_matmul_type = PW_args->opt_matmul_type_fw;
-  fp16 * transp_buffer = PW_args->transp_buffer;
+  fp16 * transp_buffer = PW_args->transpose_buffer;
 
   int HWC = PW_args->HWC;
 
@@ -253,7 +253,7 @@ void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 )
   fp16 * outDiff = PW_args->output->diff;
 
   int opt_matmul_type = PW_args->opt_matmul_type_ig;
-  fp16 * transp_buffer = PW_args->transp_buffer;
+  fp16 * transp_buffer = PW_args->transpose_buffer;
 
   int HWC = PW_args->HWC;
 

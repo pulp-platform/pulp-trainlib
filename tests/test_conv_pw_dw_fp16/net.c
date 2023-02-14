@@ -386,7 +386,7 @@ static inline void connect_blobs(){
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
   PW_args.opt_matmul_type_ig = MATMUL_TYPE;
-  PW_args.transp_buffer = tr_buff;
+  PW_args.transpose_buffer = tr_buff;
   PW_args.HWC = HWC_LAYOUT;
 }
 
@@ -540,7 +540,7 @@ static inline void connect_blobs(){
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
   PW_args.opt_matmul_type_ig = MATMUL_TYPE;
-  PW_args.transp_buffer = tr_buff;
+  PW_args.transpose_buffer = tr_buff;
   PW_args.HWC = HWC_LAYOUT;
 }
 

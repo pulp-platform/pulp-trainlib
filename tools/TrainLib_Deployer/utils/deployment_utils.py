@@ -408,6 +408,10 @@ def GenerateGM(proj_folder_path, project_name,
     if data_type_l[0] == 'FP16':
         f.write("inp = inp.half()\n")
 
+
+    '''
+    --------------------------------- MIXED PRECISION NON-WORKING - GENERATES A NON-WORKING DNN IN PYTORCH --------------------------------- 
+
     # Generate DNN model
     f.write("class DNN(nn.Module):\n")
     f.write("\tdef __init__(self):\n")
@@ -460,6 +464,68 @@ def GenerateGM(proj_folder_path, project_name,
             f.write("\n\t\tx = self.l"+str(layer)+"(x)")
     f.write("\n\t\treturn x\n")
     print("[deployment_utils.GenerateNet]: Setting last layer's output to float for PyTorch compatibility with loss function backward (future fix).")
+    '''
+
+
+    '''
+    --------------------------------- WORKAROUND - FAKE FP16 FOR ALL DNN --------------------------------- 
+    '''
+    # Generate DNN model
+    f.write("class DNN(nn.Module):\n")
+    f.write("\tdef __init__(self):\n")
+    f.write("\t\tsuper().__init__()\n")
+    # Create neural network model
+    for layer in range(len(layers_l)):
+        # Layers
+        if layers_l[layer] == "linear":
+            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False", 'FP32'))
+        elif layers_l[layer] == "conv2d":
+            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", 'FP32'))
+        elif layers_l[layer] == "DW":
+            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", 'FP32'))
+        elif layers_l[layer] == "PW":
+            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False", 'FP32'))
+        # Activations
+        elif layers_l[layer] == "ReLU":
+            f.write(Gtemp.ReLU_template(layer, 'FP32'))
+        # Pooling
+        elif layers_l[layer] == "MaxPool":
+            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], 'FP32'))
+        elif layers_l[layer] == "AvgPool":
+            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], 'FP32'))
+        # Throw error
+        else:
+            print("[deployment_utils.GenerateGM]: Layer {} not recognized!!\n".format(layer))
+            exit()
+    # Create Forward
+    f.write("\n")
+    f.write("\tdef forward(self, x):")
+    for layer in range(len(layers_l)):
+        # Vectorize inputs in case of linear layer
+        if layers_l[layer] == 'linear':
+            f.write("\n\t\tx = torch.reshape(x, (-1,))")
+        # Set data format for each layer
+        if layer == 0 and data_type_l[layer] == 'FP16':
+            f.write("\n\t\tx = x.float()")
+        elif data_type_l[layer] == 'FP32' and data_type_l[layer-1] != data_type_l[layer]:
+            f.write("\n\t\tx = x.float()")
+        elif data_type_l[layer] == 'FP16' and data_type_l[layer-1] != data_type_l[layer]:
+            f.write("\n\t\tx = x.float()")
+        # Forward layers 
+        # (ReLU works with FP32 only)
+        if layers_l[layer] == 'ReLU' and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
+            f.write("\n\t\tx = self.l"+str(layer)+"(x)")
+        # Last layer
+        elif layer == len(layers_l)-1:
+            f.write("\n\t\tx = self.l"+str(layer)+"(x).float()")
+        else:
+            f.write("\n\t\tx = self.l"+str(layer)+"(x)")
+    f.write("\n\t\treturn x\n")
+    print("[deployment_utils.GenerateNet]: Setting last layer's output to float for PyTorch compatibility with loss function backward (future fix).")
+
+    '''
+    ---------------------------------   END OF WORKAROUND --------------------------------- 
+    '''
 
     last_layer = len(layers_l) - 1
 
