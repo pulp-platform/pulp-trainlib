@@ -33,6 +33,7 @@
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param HWC parameter to set HWC (=1) or CHW (=0) primitive for the PointWise Convolution
  */
 struct PointWise_Conv_args {
 	struct blob * input; 
@@ -43,6 +44,7 @@ struct PointWise_Conv_args {
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
 	int opt_matmul_type_ig;
+	int HWC;
 };
 
 
@@ -60,6 +62,7 @@ struct PointWise_Conv_args {
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param HWC parameter to set HWC (=1) or CHW (=0) primitive for the PointWise Convolution
  */
 void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args );
 
@@ -75,6 +78,7 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args );
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param HWC parameter to set HWC (=1) or CHW (=0) primitive for the PointWise Convolution
  */
 void pulp_conv_pw_fp32_bw_cl( void * PointWise_Conv_args );
 
@@ -84,6 +88,7 @@ void pulp_conv_pw_fp32_bw_cl( void * PointWise_Conv_args );
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param HWC parameter to set HWC (=1) or CHW (=0) primitive for the PointWise Convolution
  */
 void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args );
 
@@ -94,5 +99,6 @@ void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args );
  * @param output output feature maps for the pointwise layer 
  * @param transpose_buffer buffer to transpose weights in the input grad step
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param HWC parameter to set HWC (=1) or CHW (=0) primitive for the PointWise Convolution
  */
 void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args );

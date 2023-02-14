@@ -43,62 +43,73 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   int opt_matmul_type = PW_args->opt_matmul_type_fw;
   fp16 * transp_buffer = PW_args->transp_buffer;
 
-  #ifndef OPT_PW_FW
-  #define OPT_PW_FW
-  #endif
+  int HWC = PW_args->HWC;
 
   #ifndef OPT_PW_FW
-  // NON-OPTIMIZED
-  matMul_args.A = coeffData;
-  matMul_args.B = inData;
-  matMul_args.C = outData;
-  matMul_args.N = Cout;
-  matMul_args.M = H_in*W_in;
-  matMul_args.K = pW*pH*Cin;
-  matMul_args.trans_B = 0;
-
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-  #else
-  struct mm_manager_args_fp16 man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_PW_CONV;
-  man_args.step_type = STEP_FW;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+  //#define OPT_PW_FW
   #endif
 
-  #else
+  // CHW format for both input and output
+  if (HWC == 0) 
+  {
+    #ifndef OPT_PW_FW
+    // NON-OPTIMIZED
+    matMul_args.A = coeffData;
+    matMul_args.B = inData;
+    matMul_args.C = outData;
+    matMul_args.N = Cout;
+    matMul_args.M = H_in*W_in;
+    matMul_args.K = pW*pH*Cin;
+    matMul_args.trans_B = 0;
 
-  // OPTIMIZED
-  // Transpose the input
-  struct transp_args_fp16 tr_args;
-  tr_args.matrix = inData;
-  tr_args.transp_matrix = transp_buffer;
-  tr_args.N = Cin;
-  tr_args.M = H_in*W_in;
-  pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
-  // Perform forward
-  matMul_args.A = coeffData;
-  matMul_args.B = transp_buffer; //inData;
-  matMul_args.C = outData;
-  matMul_args.N = Cout;
-  matMul_args.M = H_in*W_in;
-  matMul_args.K = Cin;
-  matMul_args.trans_B = 1;
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
+    #else
+    struct mm_manager_args_fp16 man_args;
+    man_args.mm_args = &matMul_args;
+    man_args.layer_type = LAYER_PW_CONV;
+    man_args.step_type = STEP_FW;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+    #endif
 
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-  #else
-  struct mm_manager_args_fp16 man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_PW_CONV;
-  man_args.step_type = STEP_FW;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-  #endif
+    #else
 
-  #endif
+    // OPTIMIZED
+    // Transpose the input
+    struct transp_args_fp16 tr_args;
+    tr_args.matrix = inData;
+    tr_args.transp_matrix = transp_buffer;
+    tr_args.N = Cin;
+    tr_args.M = H_in*W_in;
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+    // Perform forward
+    matMul_args.A = coeffData;
+    matMul_args.B = transp_buffer; //inData;
+    matMul_args.C = outData;
+    matMul_args.N = Cout;
+    matMul_args.M = H_in*W_in;
+    matMul_args.K = Cin;
+    matMul_args.trans_B = 1;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
+    #else
+    struct mm_manager_args_fp16 man_args;
+    man_args.mm_args = &matMul_args;
+    man_args.layer_type = LAYER_PW_CONV;
+    man_args.step_type = STEP_FW;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+    #endif
+
+    #endif
+  }
+  // HWC format for both input and output
+  else if (HWC == 1) 
+  {
+    printf("\nHWC format not implemented for FP16 PointWise Convolution!\n");
+  }
 
   #ifdef DEBUG
   printf("FORWARD PW LAYER \n\n");
@@ -163,25 +174,36 @@ void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 )
 
   int opt_matmul_type = PW_args->opt_matmul_type_wg;
 
-  // COMPUTE GRADIENT
-  matMul_args.A = outDiff;
-  matMul_args.B = inData;  // transpose this
-  matMul_args.C = coeffDiff;
-  matMul_args.N = C_out;
-  matMul_args.M = C_in;
-  matMul_args.K = W_out*H_out;
-  matMul_args.trans_B = 1;
+  int HWC = PW_args->HWC;
 
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-  #else
-  struct mm_manager_args_fp16 man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_PW_CONV;
-  man_args.step_type = STEP_WGT_GRAD;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-  #endif
+  // CHW format for both input and output
+  if (HWC == 0)
+  {
+    // COMPUTE GRADIENT
+    matMul_args.A = outDiff;
+    matMul_args.B = inData;  // transpose this
+    matMul_args.C = coeffDiff;
+    matMul_args.N = C_out;
+    matMul_args.M = C_in;
+    matMul_args.K = W_out*H_out;
+    matMul_args.trans_B = 1;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
+    #else
+    struct mm_manager_args_fp16 man_args;
+    man_args.mm_args = &matMul_args;
+    man_args.layer_type = LAYER_PW_CONV;
+    man_args.step_type = STEP_WGT_GRAD;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+    #endif
+  }
+  // HWC format for both input and output
+  else if (HWC == 1) 
+  {
+    printf("\nHWC format not implemented for FP16 PointWise Convolution!\n");
+  }
 
   #ifdef DEBUG
   printf("%d %d %d %d\n\n", pW,pH,C_in,C_out);
@@ -233,75 +255,43 @@ void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 )
   int opt_matmul_type = PW_args->opt_matmul_type_ig;
   fp16 * transp_buffer = PW_args->transp_buffer;
 
-  #ifndef OPT_PW_IG
-  //#define OPT_PW_IG
-  #endif
+  int HWC = PW_args->HWC;
 
-  #ifndef OPT_PW_IG
-
-  // NON-OPTIMIZED
-  struct transp_args_fp16 tr_args;
-  // Transpose weights in the first part of the buffer
-  tr_args.matrix = coeffData;
-  tr_args.transp_matrix = transp_buffer;
-  tr_args.N = C_out;
-  tr_args.M = C_in;
-  pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
-  matMul_args.A = transp_buffer; // coeffData; // transp ?
-  matMul_args.B = outDiff;
-  matMul_args.C = inDiff;
-  matMul_args.N = C_in;
-  matMul_args.M = W_in*H_in;
-  matMul_args.K = pW*pH*C_out;
-  matMul_args.trans_B = 0;
-  
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-  #else
-  struct mm_manager_args_fp16 man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_PW_CONV;
-  man_args.step_type = STEP_IN_GRAD;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-  #endif
-
-  #else
-
-  // // OPTIMIZED
-  // struct transp_args_fp16 tr_args;
-  // // Transpose weights in the first part of the buffer
-  // tr_args.matrix = coeffData;
-  // tr_args.transp_matrix = transp_buffer;
-  // tr_args.N = C_out;
-  // tr_args.M = C_in;
-  // pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
-  // tr_args.matrix = outDiff;
-  // tr_args.transp_matrix = &(*(transp_buffer + C_in*C_out));
-  // tr_args.N = C_out;
-  // tr_args.M = W_out*H_out;
-  // pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
-  // // Compute input gradient
-  // matMul_args.A = transp_buffer; // coeffData;
-  // matMul_args.B = &(*(transp_buffer + C_in*C_out)); // outDiff;
-  // matMul_args.C = inDiff;
-  // matMul_args.N = C_in;
-  // matMul_args.M = W_in*H_in;
-  // matMul_args.K = C_out;
-  // matMul_args.trans_B = 1;
-  
-  // #ifndef OPTIMIZE
-  // pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-  // #else
-  // struct mm_manager_args_fp16 man_args;
-  // man_args.mm_args = &matMul_args;
-  // man_args.layer_type = LAYER_PW_CONV;
-  // man_args.step_type = STEP_IN_GRAD;
-  // man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  // pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-  // #endif
-
-  #endif
+  // CHW format for both input and output
+  if (HWC == 0) 
+  {
+    // NON-OPTIMIZED CHW
+    struct transp_args_fp16 tr_args;
+    // Transpose weights in the first part of the buffer
+    tr_args.matrix = coeffData;
+    tr_args.transp_matrix = transp_buffer;
+    tr_args.N = C_out;
+    tr_args.M = C_in;
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+    matMul_args.A = transp_buffer; // coeffData; // transp ?
+    matMul_args.B = outDiff;
+    matMul_args.C = inDiff;
+    matMul_args.N = C_in;
+    matMul_args.M = W_in*H_in;
+    matMul_args.K = pW*pH*C_out;
+    matMul_args.trans_B = 0;
+    
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
+    #else
+    struct mm_manager_args_fp16 man_args;
+    man_args.mm_args = &matMul_args;
+    man_args.layer_type = LAYER_PW_CONV;
+    man_args.step_type = STEP_IN_GRAD;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
+    #endif
+  }
+  // HWC format for both input and output
+  else if (HWC == 1) 
+  {
+    printf("\nHWC format not implemented for FP16 PointWise Convolution!\n");
+  }
 
   #ifdef DEBUG
   // to PRINT outDiff orderly

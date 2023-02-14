@@ -312,6 +312,7 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
+    template += "  l"+str(layer_number)+"_args.HWC = 0;\n"
     return template
 
 def ReLU_config_template(layer_number, DATA_TYPE):
