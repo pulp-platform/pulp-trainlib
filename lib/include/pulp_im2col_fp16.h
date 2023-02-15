@@ -24,12 +24,27 @@
  */
 
 /**
- * @brief Function to perform im2col on convolutions. Use pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &args) to parallelize.
+ * @brief Function to perform im2row on convolutions. Use pi_cl_team_fork(NUM_CORES, pulp_im2row_fp16, &args) to parallelize.
+ * @param im2col_args pointer to im2col_args structure (see pulp_train_utils_fp16.h)
+ */ 
+void pulp_im2row_fp16 (
+	void * im2col_args_fp16
+);
+
+/**
+ * @brief Function to perform im2col on convolutions. Use pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &args) to parallelize.
  * @param im2col_args pointer to im2col_args structure (see pulp_train_utils_fp16.h)
  */ 
 void pulp_im2col_fp16 (
 	void * im2col_args_fp16
 );
+
+
+
+
+/**
+ * Other Reshape Functions
+ */
 
 /**
  * @brief Performs block transposition for Conv2D IN GRAD computation (so to perform it with standard matmul kernels). Use pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp32, &args) to parallelize.

@@ -78,7 +78,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
     im2col_args.USE_DMA = USE_DMA;
     im2col_args.HWC = HWC_layout;
 
-    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
     #ifdef DEBUG
     printf("\nForward input data (size: %d, address: %x):\n", in_size, inData);
@@ -237,7 +237,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
     im2col_args.USE_DMA = USE_DMA;
     im2col_args.HWC = HWC_layout;
 
-    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
     matMul_args.A = outDiff;
     matMul_args.B = i2c_buffer;
@@ -397,7 +397,7 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
     im2col_args.USE_DMA = USE_DMA; 
     im2col_args.HWC = HWC_layout;
 
-    pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
     // Blocktranspose weights
     struct blocktransp_args bt_args;
