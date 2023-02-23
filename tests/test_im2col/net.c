@@ -224,9 +224,9 @@ static inline void train ()
     {
         //if (!(idx%Tker_H_l1)) printf("\n");
         #if IM2ROW == 0
-        if (!(idx%(Tker_H_l1*Tker_W_l1*Tin_C_l1))) printf("\n");
-        #else
         if (!(idx%(Tout_H_l1*Tout_W_l1))) printf("\n");
+        #else
+        if (!(idx%(Tker_H_l1*Tker_W_l1*Tin_C_l1))) printf("\n");
         #endif
         printf("%f ", im2col_buffer[idx]);
 
