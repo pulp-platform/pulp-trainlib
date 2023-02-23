@@ -37,8 +37,12 @@ PULP-TrainLib is the first open-source training library for RISC-V-based multico
 
 ## PULP-TrainLib's AutoTuner
 
+PULP-TrainLib optimizes the core computational kernel of DNN training primitives - the Matrix Multiplication (or MM) - with various unrolling and parallelization schemes. To select the best optimization for a given training step and tile size, PULP-TrainLib provides an Autotuner, which exhaustively searches for the fastest kernel among the [library of available optimized MM kernels](lib/include/pulp_matmul_fp32.h).
+
+
 ## The TrainLib Deployer
 
+The development of C code for running On-Device Learning can be a time-consuming process. To make deployment easier, PULP-TrainLib provides TrainLib Deployer, a code generation tool which creates all the necessary files to run DNN training on PULP. The TrainLib Deployer includes a tool to optimize the memory occupation of DNN tensors, reusing all the possible C arrays in order to limit the overheads on MCU memory. 
 
 
 # Repository overview
