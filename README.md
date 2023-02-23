@@ -109,23 +109,16 @@ PULP-TrainLib's repository is organized with these branches:
 - [x] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
 - [x] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
 - [x] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32)
-- [x] CWH format for DepthWise and 2D Convolutions (FP32)
-- [x] Matmul test (FP32, FP16)
-- [x] Memory profiling tool for estimating the memory occupation of a given layer/tile
-- [x] Autotuner to profile tile/mm_optimization
-- [X] padding operators for each primitive (asymmetrical padding)
-- [x] stride operators for conv2d and DW
+- [x] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32)
+- [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad)
+- [ ] Padding operators for DepthWise and 2D Convolution (Input Grad)
+- [ ] HWC data layout for DepthWise, PointWise and 2D Convolutions (FP32)
+- [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
-- [ ] Dependency of the tensor sizes on padding and stride in TrainLib Deployer (fix the computation of memory occupation in the internal function of the deployer)
-- [ ] DW, PW, Conv2D and all other primitives in FP16 (they need to be updated in the same way as FP32, which has the latest version)
-- [ ] Conv2D test in FP16
 - [ ] fp16 mm_dw SIMD kernels
-- [ ] sporadic bugs in "mm_M_.." matmuls and "mm_u2" in FP32 (mostly on leftovers)
-- [ ] fp16 DepthWise and PointWise test
-- [ ] functions that take "mm_manager_list" files as inputs, other than mm_manager
+- [ ] Unfixed sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
-- [ ] im2col with DMA verification and performance debugging
-- [ ] MOD==1 and padding in HWC version of both FP32 and FP16 im2col + complete im2col test with HWC feature
+- [ ] Working im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
 
 
 # References
