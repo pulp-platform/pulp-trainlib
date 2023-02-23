@@ -70,7 +70,7 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   im2col_args.USE_DMA = 0;
   im2col_args.HWC = input_layout;
 
-  pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+  pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
   matMul_args.A = coeffData;
   matMul_args.B = i2c_buffer;
@@ -168,7 +168,7 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
   im2col_args.USE_DMA = 0;
   im2col_args.HWC = input_layout;
 
-  pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+  pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
   // COMPUTE GRADIENT
   matMul_args.A = outDiff;
@@ -252,7 +252,7 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
   im2col_args.USE_DMA = 0;
   im2col_args.HWC = output_layout;
 
-  pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+  pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
   #ifdef DEBUG
   printf("\nim2col buffer:\n");

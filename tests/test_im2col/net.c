@@ -188,9 +188,17 @@ static inline void train ()
     #endif
 
     #if DATA_BITS == 32
+    #if IM2ROW == 0
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp32, &im2col_args);
+    #else
+    pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
+    #endif
     #elif DATA_BITS == 16
+    #if IM2ROW == 0
     pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
+    #else 
+    pi_cl_team_fork(NUM_CORES, pulp_im2row_fp16, &im2col_args);
+    #endif
     #endif
 
     #ifdef PROF_NET
@@ -215,7 +223,11 @@ static inline void train ()
     for (int idx=0; idx<i2c_check_size; idx++)
     {
         //if (!(idx%Tker_H_l1)) printf("\n");
-        if (!(idx%(Tker_H_l1*Tker_W_l1))) printf("\n");
+        #if IM2ROW == 0
+        if (!(idx%(Tker_H_l1*Tker_W_l1*Tin_C_l1))) printf("\n");
+        #else
+        if (!(idx%(Tout_H_l1*Tout_W_l1))) printf("\n");
+        #endif
         printf("%f ", im2col_buffer[idx]);
 
         if (idx==i2c_b_size-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");
@@ -238,7 +250,11 @@ static inline void train ()
     for (int idx=0; idx<i2c_check_size; idx++)
     {
         //if (!(idx%Tker_H_l1)) printf("\n");
-        if (!(idx%((Tker_H_l1)*(Tker_W_l1)))) printf("\n");
+        #if IM2ROW == 0
+        if (!(idx%((Tin_H_l1)*(Tin_W_l1)))) printf("\n");
+        #else 
+        if (!(idx%((Tker_H_l1)*(Tker_W_l1)*Tout_C_l1))) printf("\n");
+        #endif
         printf("%f ", im2col_buffer_bw[idx]);
 
         if (idx==i2c_b_size_bw-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");

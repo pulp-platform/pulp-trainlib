@@ -39,7 +39,7 @@ import utils.DNN_Composer   as composer
 # ---------------------
 
 # GENERAL PROPERTIES
-project_name    = 'CONV2D_DW_PW_LIN'
+project_name    = 'Test_CNN'
 project_path    = '../../../../TrainLib_Examples/'
 proj_folder     = project_path + project_name + '/'
 

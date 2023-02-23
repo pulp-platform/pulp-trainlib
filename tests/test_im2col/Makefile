@@ -1,8 +1,9 @@
 APP = im2col_fp32
 
 # User settings
-DATA_BITS?=16				# 32=FP32, 16=FP16
+DATA_BITS?=32				# 32=FP32, 16=FP16
 NUM_CORES?=8
+IM2ROW?=0					# 0=Im2Col, 1=Im2Row
 MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
 DMA_ENABLE?=0				# Use Cluster DMA to move data or not
 HWC_format?=0				# CHW (=0) or HWC (=1) data format for the im2col
@@ -16,9 +17,9 @@ WSTR?=1
 # Layer sizes
 Tin_H_l1?=3
 Tin_W_l1?=3
-Tin_C_l1?=1
+Tin_C_l1?=2
 Tker_W_l1?=2
-Tout_C_l1?=1
+Tout_C_l1?=2
 APP_CFLAGS += -DPRINT_OUTPUT
 # End of user settings
 
@@ -47,6 +48,7 @@ APP_CFLAGS += -DTin_C_l1=$(Tin_C_l1)
 APP_CFLAGS += -DTker_W_l1=$(Tker_W_l1)
 APP_CFLAGS += -DTout_C_l1=$(Tout_C_l1)
 APP_CFLAGS += -DHWC_format=$(HWC_format)
+APP_CFLAGS += -DIM2ROW=$(IM2ROW)
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -mhwloopalign
 APP_LDFLAGS += -lm
