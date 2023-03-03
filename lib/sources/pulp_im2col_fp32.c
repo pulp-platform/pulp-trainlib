@@ -497,8 +497,6 @@ void pulp_im2row_fp32(void * im2col_args){
       {
         uint32_t Hox = output->H;
         uint32_t Wox = output->W;
-        
-        //printf("\n[pulp_im2col_fp32:] HWC Im2Col for IN GRAD not implemented!!\n");
 
         for (uint32_t hi=start/*0*/; hi<stop/*Hin*/; hi++) {
           for (uint32_t wi=0; wi<Win; wi++) {
@@ -521,10 +519,7 @@ void pulp_im2row_fp32(void * im2col_args){
                     uint32_t i2c_inner_idx = co;  
 
                     // Fill with zeroes  
-                    i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0.0f;   
-
-                    printf("(PAD) i2c_buf[%d] = %f\t\tkernel_idx=%d, segment_idx=%d, i2c_inner_idx=%d\n", 
-                          kernel_idx+segment_idx+i2c_inner_idx, i2c_buf[kernel_idx+segment_idx+i2c_inner_idx], kernel_idx, segment_idx, i2c_inner_idx);             
+                    i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0.0f;             
                   }
                 }
                 else {
@@ -541,11 +536,6 @@ void pulp_im2row_fp32(void * im2col_args){
 
                     // Fill IM2COL buffer
                     i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
-
-                    printf("i2c_buf[%d] = %f   (outDiff[%d] = %f)\t\tkernel_idx=%d, segment_idx=%d, i2c_inner_idx=%d\n", 
-                          kernel_idx+segment_idx+i2c_inner_idx, i2c_buf[kernel_idx+segment_idx+i2c_inner_idx], 
-                          receptive_field_idx+out_inner_idx, output->diff[receptive_field_idx+out_inner_idx],
-                          kernel_idx, segment_idx, i2c_inner_idx); 
                   }
                                            
                 }
@@ -959,38 +949,47 @@ void pulp_im2col_fp32(void * im2col_args){
       {
         uint32_t Hox = output->H;
         uint32_t Wox = output->W;
-        
-        printf("\n[pulp_im2col_fp32:] HWC Im2Col for IN GRAD not implemented!!\n");
 
-        for (uint32_t hi=0; hi<Hin; hi++) {
+        for (uint32_t hi=start/*0*/; hi<stop/*Hin*/; hi++) {
           for (uint32_t wi=0; wi<Win; wi++) {
+            // Padding variables
+            int ho_rf = hi - (Hk-1);
+            int wo_rf = wi - (Wk-1);
+
             for (uint32_t hk=0; hk<Hk; hk++) {
               for (uint32_t wk=0; wk<Wk; wk++) {
-                for (uint32_t co=0; co<Co; co++) {
-                  // // IM2COL buffer coordinates
-                  // uint32_t kernel_idx = co*Hk*Wk;
-                  // uint32_t segment_idx = wi*Hk*Wk*Co + hi*Hk*Wk*Co*Win;
-                  // // Output grad tensor coordinates
-                  // int ho_rf = hi - (Hk-1);
-                  // int wo_rf = wi - (Wk-1);
-                  // int receptive_field_idx = wo_rf + ho_rf*Wox + co*Hox*Wox;
+                // Padding conditions
+                int w_pad_cond = wk + wo_rf;
+                int h_pad_cond = hk + ho_rf;    
 
-                  // // IM2COl buffer coordinates
-                  // uint32_t i2c_inner_idx = wk + hk*Wk;
-                  // // Output grad tensor coordinates
-                  // uint32_t out_inner_idx = wk + hk*Wox;
-                  // // Padding condition
-                  // int w_pad_cond = wk + wo_rf;
-                  // int h_pad_cond = hk + ho_rf;
+                // Set padding loop
+                if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=(int)Hox) || (w_pad_cond>=(int)Wox)) {
+                  for (uint32_t co=0; co<Co; co++) {
+                    // IM2COL buffer coordinates
+                    uint32_t segment_idx = wi + hi*Win;
+                    uint32_t kernel_idx = wk*Co*Hin*Win + hk*Co*Hin*Win*Wk;
+                    uint32_t i2c_inner_idx = co*Hin*Win;  
 
-                  // if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=Hox) || (w_pad_cond>=Wox)) {
-                  //   // Padding
-                  //   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
-                  // }
-                  // else {
-                  //   // Fill IM2COL buffer
-                  //   i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
-                  // }                                             
+                    // Fill with zeroes  
+                    i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0.0f;             
+                  }
+                }
+                else {
+                  // Non-padded iteration
+                  for (uint32_t co=0; co<Co; co++) {
+                    // OutDiff coordinates
+                    int receptive_field_idx = (wo_rf+wk)*Co + (ho_rf+hk)*Co*Wox;
+                    uint32_t out_inner_idx = co;
+
+                    // IM2COL buffer coordinates
+                    uint32_t segment_idx = wi + hi*Win;
+                    uint32_t kernel_idx = wk*Co*Hin*Win + hk*Co*Hin*Win*Wk;
+                    uint32_t i2c_inner_idx = co*Hin*Win;
+
+                    // Fill IM2COL buffer
+                    i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = output->diff[receptive_field_idx+out_inner_idx];
+                  }
+                                           
                 }
               }
             }
