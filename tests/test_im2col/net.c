@@ -145,14 +145,10 @@ static inline void train ()
     // Transpose input matrix to HWC
     #if DATA_BITS == 32
     struct transp_args transp_args;
-    float transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
     #if MOD == 0
+    float transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
     transp_args.matrix = l1_in;
-    #else 
-    transp_args.matrix = l1_out;
-    #endif 
     transp_args.transp_matrix = transp_buffer;
-    transp_args.matrix = l1_in;
     transp_args.N = Tin_C_l1;
     transp_args.M = Tin_H_l1*Tin_W_l1;
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
@@ -161,15 +157,25 @@ static inline void train ()
     copy_args.to = l1_in;
     copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
     pi_cl_team_fork(NUM_CORES, copy, &copy_args);
+    #else 
+    float transp_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+    transp_args.matrix = l1_out;
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.N = Tout_C_l1;
+    transp_args.M = Tout_H_l1*Tout_W_l1;
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    struct copy_args copy_args;
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_out;
+    copy_args.size = Tout_H_l1*Tout_W_l1*Tout_C_l1;
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args);
+    #endif 
+
 
     #elif DATA_BITS == 16
     struct transp_args_fp16 transp_args;
-    fp16 transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
     #if MOD == 0
-    transp_args.matrix = l1_in;
-    #else 
-    transp_args.matrix = l1_out;
-    #endif 
+    fp16 transp_buffer[Tin_H_l1*Tin_W_l1*Tin_C_l1];
     transp_args.transp_matrix = transp_buffer;
     transp_args.matrix = l1_in;
     transp_args.N = Tin_C_l1;
@@ -180,6 +186,20 @@ static inline void train ()
     copy_args.to = l1_in;
     copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
     pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    #else 
+    fp16 transp_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.matrix = l1_out;
+    transp_args.N = Tout_C_l1;
+    transp_args.M = Tout_H_l1*Tout_W_l1;
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    struct copy_args_fp16 copy_args;
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_out;
+    copy_args.size = Tout_H_l1*Tout_W_l1*Tout_C_l1;
+    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    #endif 
+
     #endif
     #endif
 
@@ -210,7 +230,7 @@ static inline void train ()
     #if HWC_format == 0
     // FORWARD
     #if MOD==0
-    printf("\n\nInput:\n");
+    printf("\n\nCHW Reference Input:\n");
     for (int idx=0; idx<Tin_H_l1*Tin_W_l1*Tin_C_l1; idx++)
     {
         if (!(idx%Tin_H_l1)) printf("\n");
@@ -237,7 +257,7 @@ static inline void train ()
 
     // BACKWARD
     #else 
-    printf("\n\nOuput:\n");
+    printf("\n\nCHW Reference Ouput:\n");
     for (int idx=0; idx<Tout_H_l1*Tout_W_l1*Tout_C_l1; idx++)
     {
         if (!(idx%Tout_H_l1)) printf("\n");
@@ -263,14 +283,35 @@ static inline void train ()
     #endif
     #endif
 
+
+
     #if HWC_format == 1
     // FORWARD
     #if MOD==0
-    printf("\n\nInput:\n");
+    printf("\n\nCHW Reference Input:\n");
+    // Transpose again to CHW to better visualize
+    transp_args.matrix = l1_in;
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.M = Tin_C_l1;
+    transp_args.N = Tin_H_l1*Tin_W_l1;
+    #if DATA_BITS == 32
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    #elif DATA_BITS == 16
+    pi_cl_team_fork(NUM_CORES, transpose_fo16, &transp_args);
+    #endif
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_in;
+    copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
+    #if DATA_BITS == 32
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args);
+    #elif DATA_BITS == 1
+    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    #endif
+
     for (int idx=0; idx<Tin_H_l1*Tin_W_l1*Tin_C_l1; idx++)
     {
-        if (!(idx%Tin_C_l1)) printf("\n");
-        if (!(idx%(Tin_C_l1*Tin_H_l1))) printf("\n");
+        if (!(idx%Tin_H_l1)) printf("\n");
+        if (!(idx%(Tin_H_l1*Tin_W_l1))) printf("\n");
         printf("%f ", l1_in[idx]);
     }
     printf("\n\n");
@@ -278,7 +319,11 @@ static inline void train ()
     printf("\n\nIm2col buffer:\n");
     for (int idx=0; idx<i2c_check_size; idx++)
     {
+        #if IM2ROW == 0
+        if (!(idx%(Tin_H_l1*Tin_W_l1))) printf("\n");
+        #else 
         if (!(idx%(Tin_C_l1*Tker_H_l1*Tker_W_l1))) printf("\n");
+        #endif
         printf("%f ", im2col_buffer[idx]);
 
         if (idx==i2c_b_size-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");
@@ -288,7 +333,26 @@ static inline void train ()
 
     // BACKWARD
     #else 
-    printf("\n\nOuput:\n");
+    printf("\n\nCHW Reference Ouput:\n");
+    // Transpose again to CHW to better visualize
+    transp_args.matrix = l1_out;
+    transp_args.transp_matrix = transp_buffer;
+    transp_args.M = Tout_C_l1;
+    transp_args.N = Tout_H_l1*Tout_W_l1;
+    #if DATA_BITS == 32
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    #elif DATA_BITS == 16
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    #endif
+    copy_args.from = transp_buffer;
+    copy_args.to = l1_out;
+    copy_args.size = Tout_H_l1*Tout_W_l1*Tout_C_l1;
+    #if DATA_BITS == 32
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args);
+    #elif DATA_BITS == 16
+    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    #endif
+
     for (int idx=0; idx<Tout_H_l1*Tout_W_l1*Tout_C_l1; idx++)
     {
         if (!(idx%Tout_H_l1)) printf("\n");
@@ -300,8 +364,11 @@ static inline void train ()
     printf("\n\nIm2col buffer:\n");
     for (int idx=0; idx<i2c_check_size; idx++)
     {
-        //if (!(idx%Tker_H_l1)) printf("\n");
-        if (!(idx%((Tker_H_l1)*(Tker_W_l1)))) printf("\n");
+        #if IM2ROW == 0
+        if (!(idx%((Tin_H_l1)*(Tin_W_l1)))) printf("\n");
+        #else 
+        if (!(idx%((Tker_H_l1)*(Tker_W_l1)*Tout_C_l1))) printf("\n");
+        #endif
         printf("%f ", im2col_buffer_bw[idx]);
 
         if (idx==i2c_b_size_bw-1) printf("\n\nError: Leftovers (Overflowing elements):\n\n");
