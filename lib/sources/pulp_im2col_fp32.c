@@ -960,7 +960,7 @@ void pulp_im2col_fp32(void * im2col_args){
               for (uint32_t wk=0; wk<Wk; wk++) {
                 // Padding conditions
                 int w_pad_cond = wk + wo_rf;
-                int h_pad_cond = hk + ho_rf;    
+                int h_pad_cond = hk + ho_rf;  
 
                 // Set padding loop
                 if ((h_pad_cond<0) || (w_pad_cond<0) || (h_pad_cond>=(int)Hox) || (w_pad_cond>=(int)Wox)) {

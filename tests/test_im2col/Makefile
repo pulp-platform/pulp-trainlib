@@ -6,7 +6,7 @@ NUM_CORES?=8
 IM2ROW?=0					# 0=Im2Col, 1=Im2Row
 MOD?=1 						# 0=Forward/WeightGrad, 1=InGrad
 DMA_ENABLE?=0				# Use Cluster DMA to move data or not
-HWC_format?=1				# CHW (=0) or HWC (=1) data format for the im2col
+HWC_format?=0				# CHW (=0) or HWC (=1) data format for the im2col
 # Layer padding and stride
 LPAD?=0
 RPAD?=0

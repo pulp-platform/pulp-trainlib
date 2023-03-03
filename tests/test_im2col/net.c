@@ -297,15 +297,16 @@ static inline void train ()
     #if DATA_BITS == 32
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
     #elif DATA_BITS == 16
-    pi_cl_team_fork(NUM_CORES, transpose_fo16, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
     #endif
     copy_args.from = transp_buffer;
     copy_args.to = l1_in;
     copy_args.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
     #if DATA_BITS == 32
     pi_cl_team_fork(NUM_CORES, copy, &copy_args);
-    #elif DATA_BITS == 1
+    #elif DATA_BITS == 16
     pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    printf("\n>>> POSSIBLE VISUALIZATION BUGS IN THE INPUT DATA, DOUBLE CHECK WITH FP32 RESULTS, IM2COL/IM2ROW MAY BE CORRECT <<<\n");
     #endif
 
     for (int idx=0; idx<Tin_H_l1*Tin_W_l1*Tin_C_l1; idx++)
@@ -351,6 +352,7 @@ static inline void train ()
     pi_cl_team_fork(NUM_CORES, copy, &copy_args);
     #elif DATA_BITS == 16
     pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args);
+    printf("\n>>> POSSIBLE VISUALIZATION BUGS IN THE INPUT DATA, DOUBLE CHECK WITH FP32 RESULTS, IM2COL/IM2ROW MAY BE CORRECT <<<\n");
     #endif
 
     for (int idx=0; idx<Tout_H_l1*Tout_W_l1*Tout_C_l1; idx++)
