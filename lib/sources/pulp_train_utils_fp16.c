@@ -119,7 +119,7 @@ void cast_fp32_tensor_to_fp16 (void * cast_32t16_args)
 
 
 
-void HWC_to_CHW_fp16 (void * layout_args_fp16) 
+void HWC_to_CHW_fp16 (void * layout_args) 
 {
     struct layout_args_fp16 * args = (struct layout_args_fp16 *) layout_args;
     fp16 * data = args->tensor->data;
@@ -164,7 +164,7 @@ void HWC_to_CHW_fp16 (void * layout_args_fp16)
 
 
 
-void CHW_to_HWC_fp16 (void * layout_args_fp16) 
+void CHW_to_HWC_fp16 (void * layout_args) 
 {
     struct layout_args_fp16 * args = (struct layout_args_fp16 *) layout_args;
     fp16 * data = args->tensor->data;
