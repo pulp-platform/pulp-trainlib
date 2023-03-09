@@ -118,6 +118,97 @@ void cast_fp32_tensor_to_fp16 (void * cast_32t16_args)
 
 
 
+
+void HWC_to_CHW_fp16 (void * layout_args_fp16) 
+{
+    struct layout_args_fp16 * args = (struct layout_args_fp16 *) layout_args;
+    fp16 * data = args->tensor->data;
+    fp16 * grad = args->tensor->diff;
+    uint16_t C = args->tensor->C;
+    uint16_t H = args->tensor->H;
+    uint16_t W = args->tensor->W;
+    fp16 * buff = args->transp_buffer;
+    uint8_t transpose_data = args->transpose_data;
+    uint8_t transpose_grad = args->transpose_grad;
+
+    struct transp_args_fp16 tr_args;
+    struct copy_args_fp16 cpy_args;
+
+    if (transpose_data == 1) {
+        // Transpose data
+        tr_args.matrix = data;
+        tr_args.transp_matrix = buff;
+        tr_args.N = H*W;
+        tr_args.M = C;
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = data;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);
+    }
+
+    if (transpose_grad == 1) {
+        // Transpose grad
+        tr_args.matrix = grad;
+        tr_args.transp_matrix = buff;
+        tr_args.N = H*W;
+        tr_args.M = C;
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = grad;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);    
+    }
+}
+
+
+
+
+void CHW_to_HWC_fp16 (void * layout_args_fp16) 
+{
+    struct layout_args_fp16 * args = (struct layout_args_fp16 *) layout_args;
+    fp16 * data = args->tensor->data;
+    fp16 * grad = args->tensor->diff;
+    uint16_t C = args->tensor->C;
+    uint16_t H = args->tensor->H;
+    uint16_t W = args->tensor->W;
+    fp16 * buff = args->transp_buffer;
+    uint8_t transpose_data = args->transpose_data;
+    uint8_t transpose_grad = args->transpose_grad;
+
+    struct transp_args_fp16 tr_args;
+    struct copy_args_fp16 cpy_args;
+
+    if (transpose_data == 1) {
+        // Transpose data
+        tr_args.matrix = data;
+        tr_args.transp_matrix = buff;
+        tr_args.N = C;
+        tr_args.M = H*W;
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = data;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);
+    }
+
+    if (transpose_grad == 1) {
+        // Transpose grad
+        tr_args.matrix = grad;
+        tr_args.transp_matrix = buff;
+        tr_args.N = C;
+        tr_args.M = H*W;
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = grad;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);    
+    }
+}
+
+
+
+
 void mm_manager_fp16 (void * void_args) 
 {
     struct mm_manager_args_fp16* args = (struct mm_manager_args_fp16 *) void_args;

@@ -92,6 +92,19 @@ struct transp_args {
   int M;
 };
 
+/**
+ * @brief Args used to change the data layout of a tensor (CHW to HWC or vice versa)
+ * @param tensor tensor whose layout needs to be changed
+ * @param transp_buffer buffer of the size of the tensor's data/gradient to be used to change the format
+ * @param transpose_data set this to 1 if you need to change the layout of tensor's data
+ * @param transpose_grad set this to 1 if you need to change the layout of tensor's grad
+ */
+struct layout_args {
+  struct blob * tensor;
+  float * transp_buffer;
+  int transpose_data;
+  int transpose_grad;
+};
 
 /**
  * @brief Arguments for pulp_blocktransp_fp32 to block-transpose a weight matrix (for conv2d in grad)
@@ -267,6 +280,18 @@ void set_to_value (void * void_args);
  * @param (void *) (struct cast_16t32_args cast_args)
  */
 void cast_fp16_tensor_to_fp32 (void * cast_16t32_args);
+
+/**
+ * @brief Transforms the data layout of data/grad of a given tensor to CHW from HWC
+ * @param layout_args (void *) (struct layout_args layout_args) 
+ */
+void HWC_to_CHW (void * layout_args);
+
+/**
+ * @brief Transforms the data layout of data/grad of a given tensor to HWC from CHW
+ * @param layout_args (void *) (struct layout_args layout_args) 
+ */
+void CHW_to_HWC (void * layout_args);
 
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager, &args) to parallelize.

@@ -91,6 +91,20 @@ struct transp_args_fp16 {
 };
 
 /**
+ * @brief Args used to change the data layout of a tensor (CHW to HWC or vice versa)
+ * @param tensor tensor whose layout needs to be changed
+ * @param transp_buffer buffer of the size of the tensor's data/gradient to be used to change the format
+ * @param transpose_data set this to 1 if you need to change the layout of tensor's data
+ * @param transpose_grad set this to 1 if you need to change the layout of tensor's grad
+ */
+struct layout_args_fp16 {
+  struct blob_fp16 * tensor;
+  fp16 * transp_buffer;
+  int transpose_data;
+  int transpose_grad;
+};
+
+/**
  * @brief Arguments for pulp_blocktransp_fp16 to block-transpose a weight matrix (for conv2d in grad)
  * @param weights weights to be transposed 
  * @param Cin input channels of the convolutional layer
@@ -251,6 +265,18 @@ void set_to_value_fp16 (void * void_args);
  * @param (void *) (struct cast_32t16_args cast_args)
  */
 void cast_fp32_tensor_to_fp16 (void * cast_32t16_args);
+
+/**
+ * @brief Transforms the data layout of data/grad of a given tensor to CHW from HWC
+ * @param layout_args (void *) (struct layout_args_fp16 layout_args) 
+ */
+void HWC_to_CHW_fp16 (void * layout_args);
+
+/**
+ * @brief Transforms the data layout of data/grad of a given tensor to HWC from CHW
+ * @param layout_args (void *) (struct layout_args_fp16 layout_args) 
+ */
+void CHW_to_HWC_fp16 (void * layout_args);
 
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &args) to parallelize.

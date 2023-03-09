@@ -122,6 +122,95 @@ void cast_fp16_tensor_to_fp32 (void * cast_16t32_args)
 
 
 
+void HWC_to_CHW (void * layout_args) 
+{
+    struct layout_args * args = (struct layout_args *) layout_args;
+    float * data = args->tensor->data;
+    float * grad = args->tensor->diff;
+    uint16_t C = args->tensor->C;
+    uint16_t H = args->tensor->H;
+    uint16_t W = args->tensor->W;
+    float * buff = args->transp_buffer;
+    uint8_t transpose_data = args->transpose_data;
+    uint8_t transpose_grad = args->transpose_grad;
+
+    struct transp_args tr_args;
+    struct copy_args cpy_args;
+
+    if (transpose_data == 1) {
+        // Transpose data
+        tr_args.matrix = data;
+        tr_args.transp_matrix = buff;
+        tr_args.N = H*W;
+        tr_args.M = C;
+        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = data;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy, &cpy_args);
+    }
+
+    if (transpose_grad == 1) {
+        // Transpose grad
+        tr_args.matrix = grad;
+        tr_args.transp_matrix = buff;
+        tr_args.N = H*W;
+        tr_args.M = C;
+        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = grad;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy, &cpy_args);    
+    }
+}
+
+
+
+
+void CHW_to_HWC (void * layout_args) 
+{
+    struct layout_args * args = (struct layout_args *) layout_args;
+    float * data = args->tensor->data;
+    float * grad = args->tensor->diff;
+    uint16_t C = args->tensor->C;
+    uint16_t H = args->tensor->H;
+    uint16_t W = args->tensor->W;
+    float * buff = args->transp_buffer;
+    uint8_t transpose_data = args->transpose_data;
+    uint8_t transpose_grad = args->transpose_grad;
+
+    struct transp_args tr_args;
+    struct copy_args cpy_args;
+
+    if (transpose_data == 1) {
+        // Transpose data
+        tr_args.matrix = data;
+        tr_args.transp_matrix = buff;
+        tr_args.N = C;
+        tr_args.M = H*W;
+        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = data;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy, &cpy_args);
+    }
+
+    if (transpose_grad == 1)  {
+        // Transpose grad
+        tr_args.matrix = grad;
+        tr_args.transp_matrix = buff;
+        tr_args.N = C;
+        tr_args.M = H*W;
+        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        cpy_args.from = buff;
+        cpy_args.to = grad;
+        cpy_args.size = C*H*W;
+        pi_cl_team_fork(NUM_CORES, copy, &cpy_args);    
+    }
+}
+
+
+
 
 /**
  * Choose the correct matmul for the chosen layer.
