@@ -42,6 +42,7 @@ parser.add_argument( '--h_pad', type=int, default=0)
 parser.add_argument( '--w_pad', type=int, default=0)
 parser.add_argument( '--h_str', type=int, default=1)
 parser.add_argument( '--w_str', type=int, default=1)
+parser.add_argument( '--HWC', type=int, default=0)
 
 args = parser.parse_args()
 
@@ -59,6 +60,7 @@ hpad = args.h_pad
 wpad = args.w_pad
 hstr = args.h_str
 wstr = args.w_str
+HWC_layout = args.HWC
 
 f = open("init-defines.h", "w")
 f.write('#define Tker_H_l1 '+str(ker_h)+'\n')
@@ -115,9 +117,15 @@ def hook_fn1(m, i, o):
         input_grad = grad
 
         f.write("#define G_IN_SIZE "+str(input_grad.numel())+ '\n')
-        print("IN GRAD:")
+        print("\n>>>>> INPUT GRAD: <<<<<")
         print(input_grad)
-        f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
+        if HWC_layout == 0:
+          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
+        elif HWC_layout == 1:
+          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad.permute(0,3,1,2))+ "};\n")
+        else:
+          print("[utils/GM.py] Invalid data layout!!")
+          exit()
 
       if cont==1:
         weight_grad = grad
@@ -131,16 +139,28 @@ def hook_fn1(m, i, o):
       print("None found for Gradient (input)")
 
 
-  print("------------Output Grad------------")
   for grad in o:
     try:
       output_grad = grad
       f.write('#define G_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
+      print("\n>>>>> OUTPUT GRAD: <<<<<")
       print(output_grad)
       if step=='BACKWARD_GRAD' or step=='BACKWARD_ERROR':
-          f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          if HWC_layout == 0:
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          elif HWC_layout == 1:
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
+          else:
+            print("[utils/GM.py] Invalid data layout!!")
+            exit()
       else:
-          f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          if HWC_layout == 0:
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          elif HWC_layout == 1:
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
+          else:
+            print("[utils/GM.py] Invalid data layout!!")
+            exit()
 
     except AttributeError:
       print ("None found for Gradient (output)")
@@ -151,22 +171,28 @@ def hook_fn1(m, i, o):
 
 def hook_fn2(m, i, o):
 
-     cont = 0
-     input_grad = []
-     weight_grad = []
-     output_grad = []
-     f = open("conv2d-output.h", "w")
+      cont = 0
+      input_grad = []
+      weight_grad = []
+      output_data = []
+      f = open("conv2d-output.h", "w")
 
-     print("------------Output------------")
-     for grad in o:
-       try:
-         output_grad = grad
-         f.write('#define OUTPUT_SIZE '+str(output_grad.numel())+'\n')
-         print(output_grad)
-         f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-       except AttributeError:
-         print ("None found for Gradient")
-     f.close()
+      for data in o:
+        try:
+          output_data = data
+          f.write('#define OUTPUT_SIZE '+str(output_data.numel())+'\n')
+          print("\n>>>>> OUTPUT DATA: <<<<<")
+          print(output_data)
+          if HWC_layout == 0:
+            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data)+'};\n')
+          elif HWC_layout == 1:
+            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data.permute(1,2,0))+'};\n')
+          else:
+            print("[utils/GM.py] Invalid data layout!!")
+            exit()
+        except AttributeError:
+          print ("None found for Gradient")
+      f.close()
 
 
 
@@ -184,14 +210,26 @@ else:
 
 
 # Write input image
-print("------------Input image------------")
 f = open("input-image.h", "w")
 f.write("#define INPUT_SIZE "+str(inp.numel())+'\n')
+print("\n>>>>>> INPUT DATA: <<<<<")
 print(inp)
 if step=='FORWARD':
-  f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  if HWC_layout == 0:
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  elif HWC_layout == 1:
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp.permute(0,2,3,1))+'};\n')
+  else:
+    print("[utils/GM.py] Invalid data layout!!")
+    exit()
 else:
-  f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  if HWC_layout == 0:
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  elif HWC_layout == 1:
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp.permute(0,2,3,1))+'};\n')
+  else:
+    print("[utils/GM.py] Invalid data layout!!")
+    exit()
 f.close()
 
 # Prepare weight tensors for init
@@ -237,3 +275,15 @@ loss = criterion(out.float(), label.float())
 net.zero_grad()
 
 loss.backward()
+
+if HWC_layout == 0:
+  print("\n\nInput Size: [{}, {}, {}]".format(in_ch, image_height, image_width))
+  print("Kernel Size: [{}, {}, {}, {}]".format(out_ch, in_ch, ker_h, ker_w))
+  print("Out Size: [{}, {}, {}]\n\n".format(out_ch, out_size_h, out_size_w))
+elif HWC_layout == 1:
+  print("\n\nInput Size: [{}, {}, {}]".format(image_height, image_width, in_ch))
+  print("Kernel Size: [{}, {}, {}, {}]".format(out_ch, ker_h, ker_w, in_ch))
+  print("Out Size: [{}, {}, {}]\n\n".format(out_size_h, out_size_w, out_ch)) 
+else:
+  print("[utils/GM.py] Invalid data layout!!")
+  exit()

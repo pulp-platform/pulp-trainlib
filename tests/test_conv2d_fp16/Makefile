@@ -61,7 +61,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 
 get_golden:
-	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W}
+	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_layout}
 
 profile_all_optim:
 	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH}

@@ -110,16 +110,18 @@ PULP-TrainLib's repository is organized with these branches:
 
 # Available features status log
 
-- [x] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
-- [x] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32)
-- [x] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32)
-- [x] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32)
-- [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad)
-- [ ] Padding operators for DepthWise and 2D Convolution (Input Grad)
+- [X] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
+- [X] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
+- [X] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32, FP16)
+- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
+- [X] ReLU activation function (FP32, FP16)
+- [X] Gradient Descent optimizer (FP32, FP16)
+- [X] Max and Average Pooling (FP32, FP16)
+- [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad, FP32 and FP16)
+- [ ] Padding operators for DepthWise and 2D Convolution (Input Grad, FP32 and FP16)
 - [ ] HWC data layout for DepthWise, PointWise and 2D Convolutions (FP32)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
-- [ ] fp16 mm_dw SIMD kernels
 - [ ] Unfixed sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - [ ] Working im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
