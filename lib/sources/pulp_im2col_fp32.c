@@ -1026,6 +1026,7 @@ void pulp_blocktransp_fp32 (void * blocktransp_args)
   uint32_t Cout = args->Cout;
   uint32_t Hk = args->Hk;
   uint32_t Wk = args->Wk;
+  uint8_t HWC = args->HWC;
 
   uint32_t HW = Hk*Wk;
 
@@ -1033,19 +1034,40 @@ void pulp_blocktransp_fp32 (void * blocktransp_args)
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > Cout ? Cout : start+blockSize;
 
-  // Block tranposition
-  // for (uint32_t k=0; k<Cout; k++)
-  for (uint32_t k=start; k<stop; k++)
-  {
-    for (uint32_t c=0; c<Cin; c++)
+  // USE CHW LAYOUT
+  if (HWC == 0) {
+    // Block tranposition
+    // for (uint32_t k=0; k<Cout; k++)
+    for (uint32_t k=start; k<stop; k++)
     {
-      for (uint32_t i=0; i<Hk*Wk; i++)
+      for (uint32_t c=0; c<Cin; c++)
       {
-        // OTHER MATRIX
-        //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
-        bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+        for (uint32_t i=0; i<Hk*Wk; i++)
+        {
+          // OTHER MATRIX
+          //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
+          bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+        }
+      }
+    } 
+  }
+
+  // USE HWC LAYOUT
+  else if (HWC == 1) {
+    for (uint32_t co=0; co<Cout; co++) {
+      for (uint32_t hk=0; hk<Hk; hk++) {
+        for (uint32_t wk=0; wk<Wk; wk++) {
+          for (uint32_t ci=0; ci<Cin; ci++) {
+            bt_weight[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + wk*Cin + hk*Cin*Wk + co*Cin*Hk*Wk];
+          }
+        }
       }
     }
-  } 
+  }
+
+  // LAYOUT ERROR
+  else {
+    printf("[pulp_blocktransp_fp32.c] Invalid data layout (not 0 or 1)!!\n");
+  }
 }
 

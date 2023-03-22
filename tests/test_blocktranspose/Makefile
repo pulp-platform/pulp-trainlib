@@ -6,6 +6,7 @@ CH_IN?=1
 CH_OUT?=16
 HK?=3
 WK?=3
+HWC_LAY?=0		# =0 use CHW layout, =1 use HWC layout for the weights
 #APP_CFLAGS += -DPRINT_MATS
 # End of user code
 
@@ -25,6 +26,7 @@ APP_CFLAGS += -DTin_Cout=$(CH_OUT)
 APP_CFLAGS += -DTin_Cin=$(CH_IN)
 APP_CFLAGS += -DTin_Hk=$(HK)
 APP_CFLAGS += -DTin_Wk=$(WK)
+APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAY)
 APP_LDFLAGS += -lm
 
 # STATISTICS

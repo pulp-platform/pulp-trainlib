@@ -888,6 +888,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   uint32_t Cout = args->Cout;
   uint32_t Hk = args->Hk;
   uint32_t Wk = args->Wk;
+  uint8_t HWC = args->HWC;
 
   uint32_t HW = Hk*Wk;
 
@@ -895,34 +896,67 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > Cout ? Cout : start+blockSize;
 
-  #ifdef OPTIMIZE_BT
-  // Block tranposition
-  for (uint32_t k=start; k<stop; k++) {
-    for (uint32_t c=0; c<Cin; c++) {
-      for (uint32_t i=0; i<(HW & 0xfffffffe); i+=2) {
-        v2f16 wgt_elems = (v2f16) {0, 0};
-        wgt_elems = *((v2f16 *) &weights[(HW-1-i-1)+c*HW+k*Cin*HW]);
-        wgt_elems = (v2f16)(__builtin_shuffle(wgt_elems, (v2s){1,0}));
-        v2f16 *BUF = (v2f16 *) &bt_weights[i+k*HW+c*Cout*HW];
-        *BUF = wgt_elems;
+  // USE CHW LAYOUT
+  if (HWC == 0) {
+    #ifdef OPTIMIZE_BT
+    // Block tranposition
+    for (uint32_t k=start; k<stop; k++) {
+      for (uint32_t c=0; c<Cin; c++) {
+        for (uint32_t i=0; i<(HW & 0xfffffffe); i+=2) {
+          v2f16 wgt_elems = (v2f16) {0, 0};
+          wgt_elems = *((v2f16 *) &weights[(HW-1-i-1)+c*HW+k*Cin*HW]);
+          wgt_elems = (v2f16)(__builtin_shuffle(wgt_elems, (v2s){1,0}));
+          v2f16 *BUF = (v2f16 *) &bt_weights[i+k*HW+c*Cout*HW];
+          *BUF = wgt_elems;
+        }
+        if (HW & 0x00000001) {
+          bt_weights[(HW-1)+k*HW+c*Cout*HW] = weights[c*HW+k*Cin*HW];
+        }
       }
-      if (HW & 0x00000001) {
-        bt_weights[(HW-1)+k*HW+c*Cout*HW] = weights[c*HW+k*Cin*HW];
-      }
-    }
-  } 
-  #else 
-  for (uint32_t k=start; k<stop; k++)
-  {
-    for (uint32_t c=0; c<Cin; c++)
+    } 
+    #else 
+    for (uint32_t k=start; k<stop; k++)
     {
-      for (uint32_t i=0; i<Hk*Wk; i++)
+      for (uint32_t c=0; c<Cin; c++)
       {
-        // OTHER MATRIX
-        //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
-        bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+        for (uint32_t i=0; i<Hk*Wk; i++)
+        {
+          // OTHER MATRIX
+          //bt_weights[i+k*HW+c*Cout*HW] = weights[i+c*HW+k*Cin*HW];
+          bt_weights[i+k*HW+c*Cout*HW] = weights[(HW-1-i)+c*HW+k*Cin*HW];
+        }
+      }
+    } 
+    #endif
+  }
+
+  // USE HWC LAYOUT
+  else if (HWC == 1) {
+    #ifdef OPTIMIZE_BT
+    for (uint32_t co=0; co<Cout; co++) {
+      for (uint32_t hk=0; hk<Hk; hk++) {
+        for (uint32_t wk=0; wk<Wk; wk++) {
+          for (uint32_t ci=0; ci<Cin; ci++) {
+            bt_weight[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + wk*Cin + hk*Cin*Wk + co*Cin*Hk*Wk];
+          }
+        }
       }
     }
-  } 
-  #endif
+    #else
+    for (uint32_t co=0; co<Cout; co++) {
+      for (uint32_t hk=0; hk<Hk; hk++) {
+        for (uint32_t wk=0; wk<Wk; wk++) {
+          for (uint32_t ci=0; ci<Cin; ci++) {
+            bt_weight[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + wk*Cin + hk*Cin*Wk + co*Cin*Hk*Wk];
+          }
+        }
+      }
+    }
+    #endif
+  }
+
+  // LAYOUT ERROR
+  else {
+    printf("[pulp_blocktransp_fp16.c] Invalid data layout (not 0 or 1)!!\n");
+  }
 }

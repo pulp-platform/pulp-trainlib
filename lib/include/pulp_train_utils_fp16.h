@@ -111,6 +111,7 @@ struct layout_args_fp16 {
  * @param Cout output channels of the convolutional layer
  * @param Hk height of the convolutional kernel
  * @param Wk width of the convolutional kernel
+ * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  */
 struct blocktransp_args_fp16 {
   fp16 * weights;
@@ -119,6 +120,7 @@ struct blocktransp_args_fp16 {
   int Cout;
   int Hk;
   int Wk;
+  int HWC;
 };
 
 /**
