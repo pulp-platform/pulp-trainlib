@@ -455,6 +455,7 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
       bt_args.Cin = C_in;
       bt_args.Hk = pH;
       bt_args.Wk = pW;
+      bt_args.HWC = HWC_layout;
 
       matMul_args.A = temp_bt; //coeffData;
       matMul_args.B = i2c_buffer;
@@ -507,6 +508,7 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
       bt_args.Cin = C_in;
       bt_args.Hk = pH;
       bt_args.Wk = pW;
+      bt_args.HWC = HWC_layout;
 
       matMul_args.A = i2c_buffer; 
       matMul_args.B = temp_bt; //coeffData;

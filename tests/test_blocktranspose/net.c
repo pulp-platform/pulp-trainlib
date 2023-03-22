@@ -40,8 +40,10 @@ void net_step ()
     args.Cin = Tin_Cin;
     args.Hk = Tin_Hk;
     args.Wk = Tin_Wk;
+    args.HWC = HWC_LAYOUT;
 
     #ifdef PRINT_MATS
+    #if HWC_LAYOUT == 0
     printf("\nHello, starting block transposition in FP32!\n");
     printf("\nINPUT MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
@@ -50,6 +52,16 @@ void net_step ()
         if (!(i%(Tin_Hk*Tin_Wk*Tin_Cin))) printf("\n");
         printf("%f ", IN_MATRIX_FP32[i]);
     }
+    #else
+    printf("\nHello, starting block transposition in FP32!\n");
+    printf("\nINPUT MATRIX:\n");
+    for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
+    {
+        if (!(i%(Tin_Cin))) printf("  ");
+        if (!(i%(Tin_Hk*Tin_Wk*Tin_Cin))) printf("\n");
+        printf("%f ", IN_MATRIX_FP32[i]);
+    }    
+    #endif
     #endif
     printf("\n\nFP32 Stats:\n");
 
@@ -64,6 +76,7 @@ void net_step ()
     #endif
 
     #ifdef PRINT_MATS
+    #if HWC_LAYOUT == 0
     printf("\nTRANSPOSED MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
     {
@@ -72,6 +85,16 @@ void net_step ()
         printf("%f ", BT_MATRIX_FP32[i]);
     }
     printf("\n\n");
+    #else
+    printf("\nTRANSPOSED MATRIX:\n");
+    for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
+    {
+        if (!(i%(Tin_Hk*Tin_Wk))) printf("  ");
+        if (!(i%(Tin_Hk*Tin_Wk*Tin_Cout))) printf("\n");
+        printf("%f ", BT_MATRIX_FP32[i]);
+    }
+    printf("\n\n");    
+    #endif
     #endif
 
 
@@ -85,8 +108,10 @@ void net_step ()
     args_fp16.Cin = Tin_Cin;
     args_fp16.Hk = Tin_Hk;
     args_fp16.Wk = Tin_Wk;
+    args_fp16.HWC = HWC_LAYOUT;
 
     #ifdef PRINT_MATS
+    #if HWC_LAYOUT == 0
     printf("\nHello, starting transposition in FP16!\n");
     printf("\nINPUT MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
@@ -95,6 +120,16 @@ void net_step ()
         if (!(i%(Tin_Hk*Tin_Wk*Tin_Cin))) printf("\n");
         printf("%f ", IN_MATRIX_FP16[i]);
     }
+    #else
+    printf("\nHello, starting transposition in FP16!\n");
+    printf("\nINPUT MATRIX:\n");
+    for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
+    {
+        if (!(i%(Tin_Cin))) printf("  ");
+        if (!(i%(Tin_Hk*Tin_Wk*Tin_Cin))) printf("\n");
+        printf("%f ", IN_MATRIX_FP16[i]);
+    }    
+    #endif
     #endif
     printf("\n\nFP16 Stats:\n");
 
@@ -109,6 +144,7 @@ void net_step ()
     #endif
 
     #ifdef PRINT_MATS
+    #if HWC_LAYOUT
     printf("\nTRANSPOSED MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
     {
@@ -117,6 +153,16 @@ void net_step ()
         printf("%f ", BT_MATRIX_FP16[i]);
     }
     printf("\n\n");
+    #else
+    printf("\nTRANSPOSED MATRIX:\n");
+    for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
+    {
+        if (!(i%(Tin_Hk*Tin_Wk))) printf("  ");
+        if (!(i%(Tin_Hk*Tin_Wk*Tin_Cout))) printf("\n");
+        printf("%f ", BT_MATRIX_FP16[i]);
+    }
+    printf("\n\n");    
+    #endif
     #endif    
     
     return;

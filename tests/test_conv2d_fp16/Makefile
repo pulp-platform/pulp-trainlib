@@ -22,7 +22,7 @@ NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
-HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
+HWC_LAYOUT?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -47,7 +47,7 @@ APP_CFLAGS += -DPAD_D=$(PAD_D)
 APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
 APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
-APP_CFLAGS += -DHWC_LAYOUT=$(HWC_layout)
+APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAYOUT)
 APP_LDFLAGS += -lm
 
 
@@ -61,7 +61,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 
 get_golden:
-	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_layout}
+	python3.6 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_LAYOUT}
 
 profile_all_optim:
 	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH}

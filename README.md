@@ -122,9 +122,17 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] HWC data layout for DepthWise, PointWise and 2D Convolutions (FP32)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
-- [ ] Unfixed sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
-- [ ] AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
-- [ ] Working im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
+- [ ] RNN training primitives (FP32, FP16)
+- [ ] Multihead Self Attention training primitives (FP32, FP16)
+
+# Known bugs / issues (open for contributions)
+
+- FP32 HWC Conv2D primitives
+- FP16 HWC Conv2D primitives (Input Grad)
+- AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
+- Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
+- Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
+
 
 
 # References

@@ -888,7 +888,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   uint32_t Cout = args->Cout;
   uint32_t Hk = args->Hk;
   uint32_t Wk = args->Wk;
-  uint8_t HWC = args->HWC;
+  uint8_t HWC_layout = args->HWC;
 
   uint32_t HW = Hk*Wk;
 
@@ -897,7 +897,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   uint32_t stop = start+blockSize > Cout ? Cout : start+blockSize;
 
   // USE CHW LAYOUT
-  if (HWC == 0) {
+  if (HWC_layout == 0) {
     #ifdef OPTIMIZE_BT
     // Block tranposition
     for (uint32_t k=start; k<stop; k++) {
@@ -931,13 +931,13 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   }
 
   // USE HWC LAYOUT
-  else if (HWC == 1) {
+  else if (HWC_layout == 1) {
     #ifdef OPTIMIZE_BT
     for (uint32_t co=0; co<Cout; co++) {
       for (uint32_t hk=0; hk<Hk; hk++) {
         for (uint32_t wk=0; wk<Wk; wk++) {
           for (uint32_t ci=0; ci<Cin; ci++) {
-            bt_weight[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + wk*Cin + hk*Cin*Wk + co*Cin*Hk*Wk];
+            bt_weights[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Cin*Wk + co*Cin*Hk*Wk];
           }
         }
       }
@@ -947,7 +947,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
       for (uint32_t hk=0; hk<Hk; hk++) {
         for (uint32_t wk=0; wk<Wk; wk++) {
           for (uint32_t ci=0; ci<Cin; ci++) {
-            bt_weight[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + wk*Cin + hk*Cin*Wk + co*Cin*Hk*Wk];
+            bt_weights[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Cin*Wk + co*Cin*Hk*Wk];
           }
         }
       }

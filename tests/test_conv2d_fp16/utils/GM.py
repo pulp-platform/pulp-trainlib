@@ -131,8 +131,13 @@ def hook_fn1(m, i, o):
         weight_grad = grad
         f.write('#define G_WGT_SIZE '+str(weight_grad.numel())+'\n')
         print(weight_grad)
-        f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
-
+        if HWC_layout == 0:
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
+        elif HWC_layout == 1:
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,3,1,2))+'};\n')
+        else:
+          print("[utils/GM.py] Invalid data layout!!")
+          exit()
       cont += 1
 
     except AttributeError:
@@ -266,7 +271,13 @@ with torch.no_grad():
 f = open("init-defines.h", 'a')
 f.write("\n\n// Weight initialization\n")
 f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
-f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
+if HWC_layout == 0:
+  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
+elif HWC_layout == 1:
+  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data.permute(0,3,1,2))+'};\n')
+else:
+  print("[utils/GM.py] Invalid data layout!!")
+  exit()
 f.close()
 
 criterion = nn.MSELoss()
