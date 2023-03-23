@@ -134,7 +134,7 @@ def hook_fn1(m, i, o):
         if HWC_layout == 0:
           f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
         elif HWC_layout == 1:
-          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,3,1,2))+'};\n')
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -274,7 +274,7 @@ f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 if HWC_layout == 0:
   f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
 elif HWC_layout == 1:
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data.permute(0,3,1,2))+'};\n')
+  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data.permute(0,2,3,1))+'};\n')
 else:
   print("[utils/GM.py] Invalid data layout!!")
   exit()
@@ -288,13 +288,15 @@ net.zero_grad()
 loss.backward()
 
 if HWC_layout == 0:
-  print("\n\nInput Size: [{}, {}, {}]".format(in_ch, image_height, image_width))
-  print("Kernel Size: [{}, {}, {}, {}]".format(out_ch, in_ch, ker_h, ker_w))
-  print("Out Size: [{}, {}, {}]\n\n".format(out_ch, out_size_h, out_size_w))
+  print("\n\nCHW data layout:")
+  print("Input Size: [{}, {}, {}] \t\t(GM CHW Data: {})".format(in_ch, image_height, image_width, inp.size()))
+  print("Kernel Size: [{}, {}, {}, {}] \t(GM CHW Data: {})".format(out_ch, in_ch, ker_h, ker_w, net.conv.weight.data.size()))
+  print("Out Size: [{}, {}, {}] \t\t(GM CHW Data: {})\n\n".format(out_ch, out_size_h, out_size_w, out.size()))
 elif HWC_layout == 1:
-  print("\n\nInput Size: [{}, {}, {}]".format(image_height, image_width, in_ch))
-  print("Kernel Size: [{}, {}, {}, {}]".format(out_ch, ker_h, ker_w, in_ch))
-  print("Out Size: [{}, {}, {}]\n\n".format(out_size_h, out_size_w, out_ch)) 
+  print("\n\nHWC data layout:")
+  print("Input Size: [{}, {}, {}] \t\t(GM CHW Data: {})".format(image_height, image_width, in_ch, inp.size()))
+  print("Kernel Size: [{}, {}, {}, {}] \t(GM CHW Data: {})".format(out_ch, ker_h, ker_w, in_ch, net.conv.weight.data.size()))
+  print("Out Size: [{}, {}, {}] \t\t(GM CHW Data: {})\n\n".format(out_size_h, out_size_w, out_ch, out.size())) 
 else:
   print("[utils/GM.py] Invalid data layout!!")
   exit()

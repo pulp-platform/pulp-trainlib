@@ -1,11 +1,11 @@
 APP = conv2d_fp16
 
 # User settings
-IMAGE_H?=6
-IMAGE_W?=6
+IMAGE_H?=7
+IMAGE_W?=7
 KER_H?=3
 KER_W?=3
-IN_CH?=1
+IN_CH?=4
 OUT_CH?=8
 PAD_L?=0
 PAD_R?=0

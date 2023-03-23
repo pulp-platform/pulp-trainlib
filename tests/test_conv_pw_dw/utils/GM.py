@@ -245,7 +245,12 @@ def hook_fn5(m, i, o):
     f.close()
 
 
-gradsDW = net.convDW0.register_forward_hook(hook_fn2)
+def hook_fn6(m, i, o):
+   pass
+
+
+gradsDW0 = net.convDW0.register_forward_hook(hook_fn2)
+gradsDW0 = net.convDW0.register_backward_hook(hook_fn6)
 gradsDW = net.convDW.register_backward_hook(hook_fn1)
 gradsDW = net.convDW.register_forward_hook(hook_fn4)
 gradsPW = net.convPW.register_backward_hook(hook_fn3)
