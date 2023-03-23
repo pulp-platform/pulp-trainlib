@@ -106,6 +106,24 @@ void set_to_value (void * void_args)
 
 
 
+void vect_sum (void * vect_sum_args)
+{
+  struct vect_sum_args * args = (struct vect_sum_args*) vect_sum_args;
+  float * op_1 = args->op_1;
+  float * op_2 = args->op_2;
+  float * dest = args->dest;
+  int size = args->size;
+
+  int blockSize = (size+NUM_CORES-1) / NUM_CORES;
+  int start = pi_core_id()*blockSize;
+  int stop = start+blockSize > size ? size : start+blockSize;
+
+  for (int i=start; i<stop; i++) {
+      dest[i] = op_1[i] + op_2[i];
+  }   
+}
+
+
 
 void cast_fp16_tensor_to_fp32 (void * cast_16t32_args) 
 {

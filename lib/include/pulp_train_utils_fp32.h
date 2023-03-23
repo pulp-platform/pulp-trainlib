@@ -150,6 +150,20 @@ struct set_to_value_args {
 };
 
 /**
+ * @brief Arguments for the vect_copy function (sums two arrays)
+ * @param op_1 first array to be summed of size "size"
+ * @param op_2 second array to be summed of size "size"
+ * @param dest third array which contains op_1 + op_2
+ * @param size size of all the arrays
+ */
+struct vect_sum_args {
+  float * op_1;
+  float * op_2;
+  float * dest;
+  int size;
+};
+
+/**
  * @brief Arguments for the cast_fp16_tensor_to_fp32 function
  * @param source pointer to a fp16 tensor to be cast in float 
  * @param destination pointer to the cast buffer
@@ -276,6 +290,12 @@ void copy (void * void_args);
  * @param (void * ) (struct set_to_value_args void_args)
  */
 void set_to_value (void * void_args);
+
+/**
+ * @brief Sums two arrays of size "size" into a third one. Set up the arguments by using a "struct vect_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vect_sum, &args) to parallelize.
+ * @param vect_sum_args (void *) (struct vect_sum_args vect_sum_args)
+ */
+void vect_sum (void * vect_sum_args);
 
 /**
  * @brief Cast a FP16 tensor to FP32. Set up the arguments by using a "struct cast_16t32_args" structure. Use pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &args) to parallelize.

@@ -138,6 +138,8 @@ PULP-TrainLib's repository is organized with these branches:
 
 # Available features status log
 
+> Note: checked are complete, unchecked are ongoing
+
 - [X] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32, FP16)
@@ -152,6 +154,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
 - [ ] RNN training primitives (FP32, FP16)
 - [ ] Multihead Self Attention training primitives (FP32, FP16)
+- [ ] Residual connection
 
 # Known bugs / issues (open for contributions)
 
@@ -160,6 +163,8 @@ PULP-TrainLib's repository is organized with these branches:
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
+- Missing test for residual connections
+- Missing integration for both residual connections and RNN / MHSE in TrainLib_Deployer
 
 
 # Contributors

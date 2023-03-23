@@ -38,6 +38,7 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_optimizers_fp32.h"
 #include "pulp_pooling_fp32.h"
+#include "pulp_residual_fp32.h"
 
 // FP16 structures
 #include "pulp_train_utils_fp16.h"
@@ -52,3 +53,4 @@
 #include "pulp_matmul_fp16.h"
 #include "pulp_optimizers_fp16.h"
 #include "pulp_pooling_fp16.h"
+#include "pulp_residual_fp16.h"
