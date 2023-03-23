@@ -32,7 +32,7 @@ inside `autotuner.py`
 To launch multiple parallel threads, first run:
 
 ```
-python3.6 treegen.py
+python treegen.py
 ```
 
 Then, launch:

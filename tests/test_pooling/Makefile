@@ -48,6 +48,6 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --in_c $(IN_C) --in_h $(IN_H) --in_w $(IN_W) --ker_h $(KER_H) --ker_w $(KER_W) --stride_h $(H_STR) --stride_w $(W_STR) --value $(VALUE)
+	python ./utils/GM.py --in_c $(IN_C) --in_h $(IN_H) --in_w $(IN_W) --ker_h $(KER_H) --ker_w $(KER_W) --stride_h $(H_STR) --stride_w $(W_STR) --value $(VALUE)
 
 include $(RULES_DIR)/pmsis_rules.mk

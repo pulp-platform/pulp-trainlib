@@ -28,6 +28,6 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --out_size $(OUT_SIZE) --value $(VALUE) --loss_fn $(LOSS_FN)
+	python ./utils/GM.py --out_size $(OUT_SIZE) --value $(VALUE) --loss_fn $(LOSS_FN)
 
 include $(RULES_DIR)/pmsis_rules.mk

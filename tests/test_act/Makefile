@@ -36,6 +36,6 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --in_c $(IN_C) --in_h $(IN_H) --in_w $(IN_W) --value $(VALUE) --data_type $(DATA_TYPE)
+	python ./utils/GM.py --in_c $(IN_C) --in_h $(IN_H) --in_w $(IN_W) --value $(VALUE) --data_type $(DATA_TYPE)
 
 include $(RULES_DIR)/pmsis_rules.mk

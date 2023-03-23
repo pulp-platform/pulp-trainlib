@@ -32,9 +32,9 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --mid_size $(MID_CH) --type $(DATA_TYPE) --init_value_div $(DIVIDER) --transpose $(TRANSP) 
+	python utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --mid_size $(MID_CH) --type $(DATA_TYPE) --init_value_div $(DIVIDER) --transpose $(TRANSP) 
 
 profile_fastest:
-	python3.6 utils/profile_fastest.py
+	python utils/profile_fastest.py
 
 include $(RULES_DIR)/pmsis_rules.mk

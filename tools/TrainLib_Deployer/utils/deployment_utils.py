@@ -305,7 +305,7 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
 
     f.write('# RULES\n')
     f.write('get_golden:\n')
-    f.write('\tpython3.6 ./utils/GM.py\n')
+    f.write('\tpython ./utils/GM.py\n')
     f.write('\n')
 
     f.write('include $(RULES_DIR)/pmsis_rules.mk\n')
