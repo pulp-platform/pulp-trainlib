@@ -285,7 +285,7 @@ if WRITE_YML_FILE == True:
             yml_f.write("    path: .\n")
             yml_f.write("    command: make C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             make_f.write("C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}:\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
-            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_conv_pw_dw && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
+            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_conv_pw_dw_fp32 && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             if step=='FW':
                 step_int = "DW_FORWARD"
             elif step=='WGT_G':
@@ -301,7 +301,7 @@ if WRITE_YML_FILE == True:
             yml_f.write("    path: .\n")
             yml_f.write("    command: make C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             make_f.write("C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}:\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
-            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_conv_pw_dw && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
+            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/_fp32 && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             if step=='FW':
                 step_int = "PW_FORWARD"
             elif step=='WGT_G':
@@ -359,7 +359,7 @@ if WRITE_YML_FILE == True:
             yml_f.write("    path: .\n")
             yml_f.write("    command: make C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             make_f.write("C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}:\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
-            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_linear && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
+            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_linear_fp32 && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             if step=='FW':
                 step_int = "FORWARD"
             elif step=='WGT_G':
@@ -399,7 +399,7 @@ if WRITE_YML_FILE == True:
             yml_f.write("    path: .\n")
             yml_f.write("    command: make C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             make_f.write("C_TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}:\n".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
-            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_conv2d && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
+            make_f.write("\tcd ./TIL{}_PASS{}_CORES{}_IN{}_{}_{}_OUT_{}_{}_{}/tests/test_conv2d_fp32 && ".format(idx, step, num_cores, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx]))
             if step=='FW':
                 step_int = "FORWARD"
             elif step=='WGT_G':
@@ -446,7 +446,7 @@ return_folder = "../../tools"
 if FIND_FASTEST_MATMUL == True:
     # Launch simulations on GVSOC to test the tiling schemes
     if layer_type == 'DW' or layer_type == 'PW':
-        os.chdir(test_base_folder+"test_conv_pw_dw")
+        os.chdir(test_base_folder+"test_conv_pw_dw_fp32")
 
         # DEPTHWISE ------------------------------------------------------------------------------------------------------------------------------------
         if layer_type == 'DW':
@@ -540,7 +540,7 @@ if FIND_FASTEST_MATMUL == True:
 
     # LINEAR ------------------------------------------------------------------------------------------------------------------------------------------------------------
     if layer_type == 'LINEAR':
-        os.chdir(test_base_folder+"test_linear")
+        os.chdir(test_base_folder+"test_linear_fp32")
 
         if IGNORE_FW == False:
             # Lists for output data
@@ -587,7 +587,7 @@ if FIND_FASTEST_MATMUL == True:
 
     # CONV2D ----------------------------------------------------------------------------------------------------------------------------------------------------
     if layer_type == 'CONV2D':
-        os.chdir(test_base_folder+"test_conv2d")
+        os.chdir(test_base_folder+"test_conv2d_fp32")
 
         if IGNORE_FW == False:
             # Lists for output data

@@ -50,7 +50,7 @@ learning_rate   = 0.5
 optimizer       = "SGD"                # Name of PyTorch's optimizer
 loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
-# NETWORK GRAPH
+# ------- NETWORK GRAPH --------
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
 layer_list      = [ 'conv2d', 'ReLU', 'DW', 'PW', 'ReLU', 'linear' ]
 # Layer properties
@@ -73,6 +73,7 @@ opt_mm_wg_list  = [ 0, 0, 0, 0, 0, 0 ]
 opt_mm_ig_list  = [ 0, 0, 0, 0, 0, 0 ]
 # Data type list for layer-by-layer deployment (mixed precision)
 data_type_list  = ['FP32', 'FP32', 'FP32', 'FP32', 'FP16', 'FP16']
+# ----- END OF NETWORK GRAPH -----
 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
