@@ -47,8 +47,8 @@ void pulp_im2col_fp32 (
  */
 
 /**
- * @brief Performs block transposition for Conv2D IN GRAD computation (so to perform it with standard matmul kernels). Use pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp32, &args) to parallelize.
- * @param blocktransp_args pointer to struct blocktransp_args
+ * @brief Performs block transposition for Conv2D IN GRAD computation (so to perform it with standard matmul kernels). Input weight matrix is supposed to have (Cout) rows and (Hk*Wk*Cin) columns. Use pi_cl_team_fork(NUM_CORES, pulp_blocktransp_fp32, &args) to parallelize.
+ * @param blocktransp_args pointer to struct blocktransp_args 
  */
 void pulp_blocktransp_fp32 (
 	void * blocktransp_args	
