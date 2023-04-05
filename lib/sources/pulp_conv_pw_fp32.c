@@ -153,6 +153,8 @@ void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
   float * outData = PW_args->output->data;
   float * outDiff = PW_args->output->diff;
 
+  float * tr_buff = PW_args->transpose_buffer;
+
   int opt_matmul_type = PW_args->opt_matmul_type_wg;
 
   int HWC = PW_args->HWC;
@@ -183,14 +185,21 @@ void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
   // HWC format for both input and output
   else if (HWC == 1) 
   {
+    // Transpose inData!
+    struct transp_args tr_args;
+    tr_args.matrix = inData;
+    tr_args.transp_matrix = tr_buff;
+    tr_args.M = H_in*W_in;
+    tr_args.N = C_in;
+    pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
     // COMPUTE GRADIENT
-    matMul_args.A = inData;
+    matMul_args.A = tr_buff; //inData;
     matMul_args.B = outDiff; 
     matMul_args.C = coeffDiff;
-    matMul_args.N = W_out*H_out; 
-    matMul_args.M = C_out;
-    matMul_args.K = C_in; 
-    matMul_args.trans_B = 1;
+    matMul_args.N = C_in; //W_out*H_out; 
+    matMul_args.M = C_out; //C_out;
+    matMul_args.K = W_out*H_out; //C_in; 
+    matMul_args.trans_B = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
