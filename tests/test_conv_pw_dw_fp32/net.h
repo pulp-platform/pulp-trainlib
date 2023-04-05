@@ -37,22 +37,10 @@
 // Net sizes
 
 // DEPTHWISE CONV
-#define Tout_H_l1   (Tin_H_l1-Tker_H_l1+1+UPAD+DPAD)
-#define Tout_W_l1   (Tin_W_l1-Tker_W_l1+1+LPAD+RPAD)
-#define Tout_C_l1   (Tin_C_l1)
-#define Tpad_l1     (0)
 #define stride_l1   (1)
 #define stride_l1_steps (Tin_H_l1-Tker_H_l1+1)
 
 // POINTWISE CONV
-#define Tin_H_l2    (Tin_H_l1-Tker_H_l1+1)
-#define Tin_W_l2    (Tin_W_l1-Tker_W_l1+1)
-#define Tin_C_l2    (Tout_C_l1)
-#define Tker_H_l2   (1)
-#define Tker_W_l2   (1)
-#define Tout_H_l2   (Tin_H_l1-Tker_H_l1+1)
-#define Tout_W_l2   (Tin_W_l1-Tker_W_l1+1)
-#define Tpad_l2     (0)
 #define stride_l2   (1)
 #define stride_l2_steps (Tin_H_l1-Tker_H_l1+1)
 

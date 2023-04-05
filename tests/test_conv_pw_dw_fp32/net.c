@@ -346,7 +346,7 @@ static inline void compute_memory_occupation() {
 #ifdef PW_FORWARD
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = zero_init;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = 0.1f;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = PW_WEIGHTS[i];
   for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out[i] =  zero_init;
 }
 
@@ -499,7 +499,7 @@ static inline void compute_memory_occupation() {
 #ifdef PW_BACKWARD_ERROR
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in_diff[i] = zero_init;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                           l2_ker[i] = 0.1f;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = PW_WEIGHTS[i];
   for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  zero_init;
 }
 

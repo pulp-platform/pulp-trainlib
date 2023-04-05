@@ -59,12 +59,24 @@ HWC_lay = args.HWC_layout
 
 
 f = open("init-defines.h", "w")
+f.write('// DepthWise Convolution shapes\n')
 f.write('#define Tker_H_l1 '+str(ker2_h)+'\n')
 f.write('#define Tker_W_l1 '+str(ker2_w)+'\n')
 f.write('#define Tin_C_l1 '+str(dw_channel)+'\n')
-f.write('#define weight_init '+str(weight_init)+'\n')
 f.write('#define Tin_W_l1 '+str(image_width)+'\n')
 f.write('#define Tin_H_l1 '+str(image_height)+'\n')
+f.write('#define Tout_C_l1 Tin_C_l1\n')
+f.write('#define Tpad_H_l1 '+str(pad_h)+'\n')
+f.write('#define Tpad_W_l1 '+str(pad_w)+'\n')
+f.write('// PointWise Convolution shapes\n')
+f.write('#define weight_init '+str(weight_init)+'\n')
+f.write('#define Tker_H_l2 1\n')
+f.write('#define Tker_W_l2 1\n')
+f.write('#define Tin_H_l2 (Tin_H_l1-Tker_H_l1+2*Tpad_H_l1+1)\n')
+f.write('#define Tin_W_l2 (Tin_W_l1-Tker_W_l1+2*Tpad_W_l1+1)\n')
+f.write('#define Tout_H_l2 Tin_H_l2\n')
+f.write('#define Tout_W_l2 Tin_W_l2\n')
+f.write('#define Tin_C_l2 Tout_C_l1\n')
 f.write('#define Tout_C_l2 '+str(pw_channel)+'\n')
 f.close()
 
@@ -191,12 +203,12 @@ def hook_fn3(m, i, o):
       if cont==1:
           print("\n-------------------POINTWISE WEIGHT GRAD---------------------")
           weight_grad = grad
-          f.write('#define PW_WGT_SIZE '+str(weight_grad.numel())+'\n')
+          f.write('#define PW_WGT_G_SIZE '+str(weight_grad.numel())+'\n')
           print(weight_grad)
           if HWC_lay == 0:
-            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')
+            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_G_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')
           elif HWC_lay == 1:
-            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
+            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_G_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
 
       cont += 1
     except AttributeError:
@@ -322,6 +334,8 @@ f = open("init-defines.h", 'a')
 f.write("\n\n// Weight initialization\n")
 f.write("#define DW_WGT_SIZE (Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 f.write('PI_L2 float DW_WEIGHTS[DW_WGT_SIZE] = {'+dump.tensor_to_string(net.convDW.weight.data)+'};\n')
+f.write("#define PW_WGT_SIZE (Tin_C_l2*Tout_C_l2)\n")
+f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
 f.close()
 
 criterion = nn.MSELoss()
