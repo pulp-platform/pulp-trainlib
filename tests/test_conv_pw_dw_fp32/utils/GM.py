@@ -38,6 +38,7 @@ parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
 parser.add_argument( '--pad_h', type=int, default='0')
 parser.add_argument( '--pad_w', type=int, default='0')
+parser.add_argument( '--HWC_layout', type=int, default='0')
 
 args = parser.parse_args()
 
@@ -54,6 +55,7 @@ image_height = args.image_height
 pad_h = args.pad_h
 pad_w = args.pad_w
 step = args.step
+HWC_lay = args.HWC_layout
 
 
 f = open("init-defines.h", "w")
@@ -70,6 +72,10 @@ f = open("step-check.h", "w")
 f.write('#define '+args.step+'\n')
 f.close()
 
+# Check data layout selection
+if HWC_lay > 1 or HWC_lay < 0:
+  print("[utils/GM.py] Invalid data layout selection!!")
+  exit()
 
 class myNet(nn.Module):
   def __init__(self):
@@ -97,13 +103,14 @@ def hook_fn1(m, i, o):
   for grad in i:
     try:
       if cont==0:
+          print("\n----------------DEPTHWISE INPUT GRAD--------------------")
           input_grad = grad
-
           f.write('#define IN_SIZE '+str(input_grad.numel())+'\n')
           print(weight_grad)
           f.write('PI_L2 float INPUT_GRAD[IN_SIZE] = {'+dump.tensor_to_string(input_grad)+'};\n')
 
       if cont==1:
+          print("\n----------------DEPTHWISE WEIGHT GRAD-------------------")
           weight_grad = grad
           f.write('#define WGT_SIZE '+str(weight_grad.numel())+'\n')
           print(weight_grad)
@@ -113,14 +120,17 @@ def hook_fn1(m, i, o):
     except AttributeError:
       print ("None found for Gradient")
 
-  print("------------Output Grad------------")
+  print("\n------------DEPTHWISE OUTPUT GRAD------------")
   for grad in o:
     try:
       output_grad = grad
       f.write('#define G_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
       print(output_grad)
       if step=='DW_BACKWARD_GRAD' or step=='DW_BACKWARD_ERROR':
-          f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          if HWC_lay == 0:
+            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          elif HWC_lay == 1:
+            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
       else:
           f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
 
@@ -140,16 +150,16 @@ def hook_fn2(m, i, o):
 
     # NET PARAMETERS
 
-    print("------------Output------------")
+    print("------------FIRST DUMMY'S LAYER OUTPUT------------")
     for grad in o:
       try:
         output_grad = grad
         f.write('#define OUTPUT_SIZE '+str(output_grad.numel())+'\n')
         print(output_grad)
-        if step=='DW_FORWARD' or step=='DW_BACKWARD_GRAD':
-            f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-        else:
-            f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+        if HWC_lay == 0:
+          f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+        elif HWC_lay == 1:
+          f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(1,2,0))+'};\n')
       except AttributeError:
         print ("None found for Gradient")
     f.close()
@@ -170,31 +180,42 @@ def hook_fn3(m, i, o):
           input_grad = grad
 
           # NET PARAMETERS
-
+          print("\n-------------------POINTWISE INPUT GRAD-------------------")
           f.write('#define PW_IN_SIZE '+str(input_grad.numel())+'\n')
           print(weight_grad)
-          f.write('PI_L2 float PW_INPUT_GRAD[PW_IN_SIZE] = {'+dump.tensor_to_string(input_grad)+'};\n')
+          if HWC_lay == 0:
+            f.write('PI_L2 float PW_INPUT_GRAD[PW_IN_SIZE] = {'+dump.tensor_to_string(input_grad)+'};\n')
+          elif HWC_lay == 1:
+            f.write('PI_L2 float PW_INPUT_GRAD[PW_IN_SIZE] = {'+dump.tensor_to_string(input_grad.permute(0,2,3,1))+'};\n')
 
       if cont==1:
+          print("\n-------------------POINTWISE WEIGHT GRAD---------------------")
           weight_grad = grad
           f.write('#define PW_WGT_SIZE '+str(weight_grad.numel())+'\n')
           print(weight_grad)
-          f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')
+          if HWC_lay == 0:
+            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')
+          elif HWC_lay == 1:
+            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
 
       cont += 1
     except AttributeError:
       print ("None found for Gradient")
 
-  print("------------Output Grad------------")
+  print("\n------------POINTWISE OUTPUT GRAD------------")
   for grad in o:
     try:
       output_grad = grad
       f.write('#define PW_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
       print(output_grad)
-      if step=='PW_BACKWARD_GRAD' or step=='PW_BACKWARD_ERROR':
-          f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+      if step=='FORWARD' or step=='PW_BACKWARD_GRAD' or step=='PW_BACKWARD_ERROR':
+          if HWC_lay == 0:
+            f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          elif HWC_lay == 1:
+            f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
       else:
-          f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          #f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+          pass
     except AttributeError:
       print ("None found for Gradient")
   f.close()
@@ -203,25 +224,28 @@ def hook_fn3(m, i, o):
 
 def hook_fn4(m, i, o):
 
-     cont = 0
-     input_grad = []
-     weight_grad = []
-     output_grad = []
-     f = open("dw-output.h", "w")
+      cont = 0
+      input_grad = []
+      weight_grad = []
+      output_grad = []
+      f = open("dw-output.h", "w")
 
-     print("------------Output------------")
-     for grad in o:
-       try:
-         output_grad = grad
-         f.write('#define DW_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
-         print(output_grad)
-         if step=='PW_FORWARD' or step=='PW_BACKWARD_GRAD':
-             f.write('PI_L2 float DW_OUTPUT[DW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-         else:
-             f.write('PI_L2 float DW_OUTPUT[DW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-       except AttributeError:
-         print ("None found for Gradient")
-     f.close()
+      print("\n------------DEPTHWISE OUTPUT DATA------------")
+      for grad in o:
+        try:
+          output_grad = grad
+          f.write('#define DW_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
+          print(output_grad)
+          if step=='PW_FORWARD' or step=='PW_BACKWARD_GRAD' or step=='PW_BACKWARD_ERROR':
+            if HWC_lay == 0:
+              f.write('PI_L2 float DW_OUTPUT[DW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+            elif HWC_lay == 1:
+              f.write('PI_L2 float DW_OUTPUT[DW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(1,2,0))+'};\n')
+          else:
+            f.write('PI_L2 float DW_OUTPUT[DW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+        except AttributeError:
+          print ("None found for Gradient")
+      f.close()
 
 
 
@@ -233,13 +257,16 @@ def hook_fn5(m, i, o):
     output_grad = []
     f = open("pw-output.h", "w")
 
-    print("------------Output------------")
+    print("\n------------POINTWISE OUTPUT DATA------------")
     for grad in o:
       try:
         output_grad = grad
         f.write('#define PW_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
         print(output_grad)
-        f.write('PI_L2 float PW_OUTPUT[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+        if HWC_lay == 0:
+          f.write('PI_L2 float PW_OUTPUT[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+        elif HWC_lay == 1:
+          f.write('PI_L2 float PW_OUTPUT[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(1,2,0))+'};\n')
       except AttributeError:
         print ("None found for Gradient")
     f.close()
