@@ -322,7 +322,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
       tr_args.N = H_out*W_out;
       pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
 
-      matMul_args.A = outDiff;
+      matMul_args.A = tr_buffer; // outDiff;
       matMul_args.B = i2c_buffer;
       matMul_args.C = coeffDiff;
       matMul_args.N = C_out; 

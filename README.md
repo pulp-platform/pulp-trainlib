@@ -158,7 +158,7 @@ PULP-TrainLib's repository is organized with these branches:
 
 # Known bugs / issues (open for contributions)
 
-- FP32 HWC Conv2D primitives (Weight Grad, Input Grad)
+- FP32 HWC Conv2D primitives (Input Grad)
 - FP16 HWC Conv2D primitives (Input Grad)
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
