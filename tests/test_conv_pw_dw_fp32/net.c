@@ -552,6 +552,8 @@ static inline void compute_memory_occupation() {
   L1_memocc_bytes += Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2*sizeof(float);
   // PW Output grad
   L1_memocc_bytes += Tout_H_l2*Tout_W_l2*Tout_C_l2*sizeof(float);
+  // Transposition buffer
+  L1_memocc_bytes += Tin_C_l2*Tout_C_l2*sizeof(float);
 
   // PW Output grad
   L2_memocc_bytes += PW_OUTPUT_SIZE*sizeof(float);
