@@ -72,20 +72,20 @@ PI_L1 fp16 l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 fp16 l2_in[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 PI_L1 fp16 l2_ker[Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2];
 PI_L1 fp16 l2_out[Tout_H_l2*Tout_W_l2*Tout_C_l2];
-PI_L1 fp16 tr_buff[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 #endif
 
 #ifdef PW_BACKWARD_ERROR
 PI_L1 fp16 l2_in_diff[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 PI_L1 fp16 l2_ker[Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2];
 PI_L1 fp16 l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
-PI_L1 fp16 tr_buff[Tin_C_l2*Tout_C_l2+Tout_H_l2*Tout_W_l2*Tout_C_l2];
+PI_L1 fp16 tr_buff[Tin_C_l2*Tout_C_l2];
 #endif
 
 #ifdef PW_BACKWARD_GRAD
 PI_L1 fp16 l2_in[Tin_H_l2*Tin_W_l2*Tin_C_l2];
 PI_L1 fp16 l2_ker_diff[Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2];
 PI_L1 fp16 l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
+PI_L1 fp16 tr_buff[Tin_C_l2*Tin_H_l2*Tin_W_l2+Tout_C_l2*Tout_H_l2*Tout_W_l2];
 #endif
 
 
@@ -94,8 +94,8 @@ PI_L1 fp16 l2_out_diff[Tout_H_l2*Tout_W_l2*Tout_C_l2];
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  0.0f;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init;
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -176,9 +176,9 @@ static inline void compute_memory_occupation() {
 #ifdef DW_BACKWARD_GRAD
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
-  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = 0.0f;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f;
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
+  for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = zero_init;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init;
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -263,10 +263,10 @@ static inline void compute_memory_occupation() {
 
 #ifdef DW_BACKWARD_ERROR
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = 0.0f;
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = zero_init;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //if (i>=Tker_H_l1*Tker_W_l1) {l1_ker[i] = weight_init;} else {l1_ker[i] = weight_init;}
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = 0.0f; 
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  0.0f;
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init; 
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -347,9 +347,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_FORWARD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = 0.0f;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = 0.1f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out[i] =  0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = zero_init;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = PW_WEIGHTS[i]; // 0.1f;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -386,7 +386,6 @@ static inline void connect_blobs(){
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
   PW_args.opt_matmul_type_ig = MATMUL_TYPE;
-  PW_args.transpose_buffer = tr_buff;
   PW_args.HWC = HWC_LAYOUT;
 }
 
@@ -422,9 +421,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_BACKWARD_GRAD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = 0.4f;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker_diff[i] = 0.0f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in[i] = zero_init;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker_diff[i] = zero_init;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -466,6 +465,7 @@ static inline void connect_blobs(){
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
   PW_args.opt_matmul_type_ig = MATMUL_TYPE;
+  PW_args.transpose_buffer = tr_buff;
   PW_args.HWC = HWC_LAYOUT;
 }
 
@@ -501,9 +501,9 @@ static inline void compute_memory_occupation() {
 
 #ifdef PW_BACKWARD_ERROR
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in_diff[i] = 0.0f;
-  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                           l2_ker[i] = 0.1f;
-  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  0.0f;
+  for (int i=0; i<Tin_H_l2*Tin_W_l2*Tin_C_l2; i++)                             l2_in_diff[i] = zero_init;
+  for (int i=0; i<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; i++)                 l2_ker[i] = PW_WEIGHTS[i]; // 0.1f;
+  for (int i=0; i<Tout_H_l2*Tout_W_l2*Tout_C_l2; i++)                          l2_out_diff[i] =  zero_init;
 }
 
 static inline void connect_blobs(){
@@ -625,7 +625,7 @@ int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
         if ( ABS(tensor_out[i]-tensor_ref[i]) > CHECK_TOLERANCE ) {
             if (error_flag == 0) printf("\n");
             printf("Error at index: %d   (Ideal = %.16f [HEX: %#x]  vs  Actual = %.16f [HEX: %#x])\n", i, 
-                tensor_ref[i], *(unsigned int*) &tensor_ref[i], tensor_out[i], *(unsigned int*) &tensor_out[i]);
+                tensor_ref[i], *(unsigned short int*) &tensor_ref[i], tensor_out[i], *(unsigned short int*) &tensor_out[i]);
             error_flag = 1;
         }
     }
@@ -754,21 +754,31 @@ static inline void train(){
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer2_in, &layer2_wgt, &layer2_out);
   for (int index=0; index<Tout_H_l2*Tout_W_l2*Tout_C_l2; index++) {
-    if (!(index%Tout_H_l2)) printf("\n");
+    #if HWC_LAYOUT == 0
+    if (!(index%Tout_W_l2)) printf("\n");
+    #elif HWC_LAYOUT == 1
+    if (!(index%Tout_C_l2)) printf("\n");
+    #endif
     printf("%f ", l2_out[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef PW_BACKWARD_GRAD
   printf("PW WEIGHTS GRADIENT CHECK: \n");
-  compare_tensors(l2_ker_diff, PW_WEIGHT_GRAD, Tker_H_l2*Tker_W_l2*Tin_C_l2);
-  check_tensor(l2_ker_diff, PW_WEIGHT_GRAD, Tker_H_l2*Tker_W_l2*Tin_C_l2);
+  compare_tensors(l2_ker_diff, PW_WEIGHT_GRAD, Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2);
+  check_tensor(l2_ker_diff, PW_WEIGHT_GRAD, Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2);
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer2_in, &layer2_wgt, &layer2_out);
-  for (int index=0; index<Tker_H_l2*Tker_W_l2*Tin_C_l2; index++) {
-    if (!(index%Tker_H_l2)) printf("\n");
+  for (int index=0; index<Tker_H_l2*Tker_W_l2*Tin_C_l2*Tout_C_l2; index++) {
+    #if HWC_LAYOUT == 0
+    if (!(index%Tin_C_l2)) printf("\n");
+    #elif HWC_LAYOUT == 1
+    if (!(index%Tout_C_l2)) printf("\n");
+    #endif
     printf("%f ", l2_ker_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef PW_BACKWARD_ERROR
@@ -778,9 +788,14 @@ static inline void train(){
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer2_in, &layer2_wgt, &layer2_out);
   for (int index=0; index<Tin_H_l2*Tin_W_l2*Tin_C_l2; index++) {
-    if (!(index%Tin_H_l2)) printf("\n");
+    #if HWC_LAYOUT == 0
+    if (!(index%Tin_W_l2)) printf("\n");
+    #elif HWC_LAYOUT == 1
+    if (!(index%Tin_C_l2)) printf("\n");
+    #endif
     printf("%f ", l2_in_diff[index]);
   }
+  printf("\n");
   #endif
 
   #endif

@@ -307,8 +307,8 @@ void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
     struct transp_args tr_args;
     tr_args.matrix = coeffData;
     tr_args.transp_matrix = tr_buffer;
-    tr_args.N = C_in; //C_out;
-    tr_args.M = C_out; //C_in;
+    tr_args.N = C_in; 
+    tr_args.M = C_out; 
     pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
 
     // COMPUTE ACTIV_GRAD

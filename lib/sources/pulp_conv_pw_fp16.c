@@ -48,7 +48,6 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   // CHW format for both input and output
   if (HWC == 0) 
   {
-    // NON-OPTIMIZED
     matMul_args.A = coeffData;
     matMul_args.B = inData;
     matMul_args.C = outData;
@@ -71,9 +70,8 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
   // HWC format for both input and output
   else if (HWC == 1) 
   {
-    // NON-OPTIMIZED
     matMul_args.A = inData;
-    matMul_args.B = coeffData;
+    matMul_args.B = coeffData;  // Cout * Cin
     matMul_args.C = outData;
     matMul_args.N = H_in*W_in;
     matMul_args.M = Cout;
@@ -188,7 +186,6 @@ void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 )
   // HWC format for both input and output
   else if (HWC == 1) 
   {
-    // COMPUTE GRADIENT
     struct transp_args_fp16 tr_args;
     // Transpose weights in the first part of the buffer
     tr_args.matrix = outDiff;
@@ -196,8 +193,13 @@ void pulp_conv_pw_fp16_bw_param_grads_cl( void * PointWise_Conv_args_fp16 )
     tr_args.N = H_out*W_out;
     tr_args.M = C_out;
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+    tr_args.matrix = inData;
+    tr_args.transp_matrix = (transp_buffer + H_out*W_out*C_out);
+    tr_args.N = H_in*W_in;
+    tr_args.M = C_in;
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
     matMul_args.A = transp_buffer; //outDiff;
-    matMul_args.B = inData;
+    matMul_args.B = (transp_buffer + H_out*W_out*C_out); //inData;
     matMul_args.C = coeffDiff;
     matMul_args.N = C_out;
     matMul_args.M = C_in;
@@ -275,7 +277,6 @@ void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 )
   // CHW format for both input and output
   if (HWC == 0) 
   {
-    // NON-OPTIMIZED CHW
     struct transp_args_fp16 tr_args;
     // Transpose weights in the first part of the buffer
     tr_args.matrix = coeffData;
@@ -283,7 +284,7 @@ void pulp_conv_pw_fp16_bw_input_grads_cl( void * PointWise_Conv_args_fp16 )
     tr_args.N = C_out;
     tr_args.M = C_in;
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
-    matMul_args.A = transp_buffer; // coeffData; // transp ?
+    matMul_args.A = transp_buffer; // coeffData; // transp 
     matMul_args.B = outDiff;
     matMul_args.C = inDiff;
     matMul_args.N = C_in;

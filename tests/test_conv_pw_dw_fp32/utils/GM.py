@@ -220,7 +220,7 @@ def hook_fn3(m, i, o):
       output_grad = grad
       f.write('#define PW_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
       print(output_grad)
-      if step=='FORWARD' or step=='PW_BACKWARD_GRAD' or step=='PW_BACKWARD_ERROR':
+      if step=='PW_FORWARD' or step=='PW_BACKWARD_GRAD' or step=='PW_BACKWARD_ERROR':
           if HWC_lay == 0:
             f.write('PI_L2 float PW_OUTPUT_GRAD[PW_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
           elif HWC_lay == 1:
