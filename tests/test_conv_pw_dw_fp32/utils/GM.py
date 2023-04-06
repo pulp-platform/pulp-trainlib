@@ -314,11 +314,18 @@ print(net.convDW.weight.data.shape)
 print(net.convDW.weight.data)
 print("\n")
 
+# Initialize depthwise kernel
 wgt_init_tensor = torch.zeros(dw_channel, 1, ker2_h, ker2_w)
 for o in range(dw_channel):
     for hk in range(ker2_h):
       for wk in range(ker2_w):
         wgt_init_tensor[o, 0, hk, wk] = (o+hk+wk)*weight_init
+
+# Initialize pointwise kernel
+pw_wgt_init_tensor = torch.zeros(pw_channel, dw_channel, 1, 1)
+for co in range(pw_channel):
+  for ci in range(dw_channel):
+    pw_wgt_init_tensor[co, ci, 0, 0] = (co*ci)*weight_init + weight_init
 
 with torch.no_grad():
     net.convDW0.weight[:, :] = 0.1
@@ -326,7 +333,8 @@ with torch.no_grad():
     #net.convDW.weight[:, :] = weight_init
     net.convDW.weight.data = deepcopy(wgt_init_tensor)
     net.convDW.bias[:] = 0.0
-    net.convPW.weight[:] = weight_init
+    #net.convPW.weight[:] = weight_init
+    net.convPW.weight.data = deepcopy(pw_wgt_init_tensor)
     net.convPW.bias[:] = 0.0
 
 # Print weights to init file
