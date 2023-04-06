@@ -208,7 +208,7 @@ def hook_fn3(m, i, o):
           if HWC_lay == 0:
             f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_G_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')
           elif HWC_lay == 1:
-            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_G_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
+            f.write('PI_L2 float PW_WEIGHT_GRAD[PW_WGT_G_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(1,0,2,3))+'};\n')
 
       cont += 1
     except AttributeError:
@@ -335,7 +335,10 @@ f.write("\n\n// Weight initialization\n")
 f.write("#define DW_WGT_SIZE (Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 f.write('PI_L2 float DW_WEIGHTS[DW_WGT_SIZE] = {'+dump.tensor_to_string(net.convDW.weight.data)+'};\n')
 f.write("#define PW_WGT_SIZE (Tin_C_l2*Tout_C_l2)\n")
-f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
+if HWC_lay == 0:
+  f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
+elif HWC_lay == 1:
+  f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data.permute(1,0,2,3))+'};\n')
 f.close()
 
 criterion = nn.MSELoss()

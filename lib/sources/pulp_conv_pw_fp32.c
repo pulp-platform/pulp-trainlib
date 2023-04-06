@@ -46,7 +46,7 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
   // CHW format for both input and output
   if (HWC == 0) 
   {
-    matMul_args.A = coeffData;
+    matMul_args.A = coeffData;  // Cout * Cin
     matMul_args.B = inData;
     matMul_args.C = outData;
     matMul_args.N = Cout;
@@ -69,7 +69,7 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
   else if (HWC == 1) 
   {
     matMul_args.A = inData; 
-    matMul_args.B = coeffData; 
+    matMul_args.B = coeffData; // Cin * Cout
     matMul_args.C = outData;
     matMul_args.N = H_in*W_in;
     matMul_args.M = Cout;
@@ -185,20 +185,20 @@ void pulp_conv_pw_fp32_bw_param_grads_cl( void * PointWise_Conv_args )
   // HWC format for both input and output
   else if (HWC == 1) 
   {
-    // Transpose inData!
+    // Transpose HWC inData
     struct transp_args tr_args;
     tr_args.matrix = inData;
     tr_args.transp_matrix = tr_buff;
-    tr_args.M = H_in*W_in;
-    tr_args.N = C_in;
+    tr_args.M = C_in; 
+    tr_args.N = H_in*W_in; 
     pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
     // COMPUTE GRADIENT
-    matMul_args.A = tr_buff; //inData;
+    matMul_args.A = tr_buff; 
     matMul_args.B = outDiff; 
     matMul_args.C = coeffDiff;
-    matMul_args.N = C_in; //W_out*H_out; 
-    matMul_args.M = C_out; //C_out;
-    matMul_args.K = W_out*H_out; //C_in; 
+    matMul_args.N = C_in;  
+    matMul_args.M = C_out; 
+    matMul_args.K = W_out*H_out;  
     matMul_args.trans_B = 0;
 
     #ifndef OPTIMIZE
@@ -307,8 +307,8 @@ void pulp_conv_pw_fp32_bw_input_grads_cl( void * PointWise_Conv_args )
     struct transp_args tr_args;
     tr_args.matrix = coeffData;
     tr_args.transp_matrix = tr_buffer;
-    tr_args.N = C_out;
-    tr_args.M = C_in;
+    tr_args.N = C_in; //C_out;
+    tr_args.M = C_out; //C_in;
     pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
 
     // COMPUTE ACTIV_GRAD

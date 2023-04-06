@@ -149,8 +149,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad, FP32 and FP16)
 - [ ] Padding operators for DepthWise and 2D Convolution (Input Grad, FP32 and FP16)
-- [ ] HWC data layout for PointWise and 2D Convolutions
-- [ ] HWD data layout for DepthWise Convolutions
+- [ ] HWC data layout for PointWise and 2D Convolutions (FP32, FP16)
+- [ ] HWC data layout for DepthWise Convolutions (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
 - [ ] RNN training primitives (FP32, FP16)
@@ -161,7 +161,6 @@ PULP-TrainLib's repository is organized with these branches:
 
 - FP32 HWC Conv2D primitives (Input Grad)
 - FP16 HWC Conv2D primitives (Input Grad)
-- FP32 HWC PointWise primitives (Weight Grad)
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
