@@ -173,6 +173,8 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
     max_bt_size = 0
     max_bt_index = 0
     for layer in range(len(layers_l)):
+        # Check layer data layout
+        data_layout = 'CHW'     # Change to input list of data layouts
         # Check layer data type
         byte_size = 4
         if data_type_l[layer] == 'FP32':
@@ -185,6 +187,17 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
         # Find max blocktransp size
         if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
             bt_size = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * out_ch_l[layer] * byte_size
+            if bt_size > max_bt_size:
+                max_bt_size = bt_size
+                max_bt_index = layer
+
+        # Check special conditions in case of HWC
+        if (data_layout == 'HWC' and layers_l[layer] == 'PW'):
+            # Special allocation for weight grad in HWC
+            bt_size = in_ch_l[layer] * hin_l[layer] * win_l[layer] * byte_size
+            if data_type_l[layer] == 'FP16':
+                hout = hin_l[layer]; wout = win_l[layer]
+                bt_size += out_ch_l[layer] * hout * wout * byte_size
             if bt_size > max_bt_size:
                 max_bt_size = bt_size
                 max_bt_index = layer
@@ -855,8 +868,11 @@ def GenerateNet(proj_folder_path, project_name,
     bt_flag = False
     bt_max_memocc = 0
     bt_layer_index = 0
+    wgt_grad_pw = False
     bt_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
+        # Check layer data layout
+        data_layout = 'CHW'     # Change to input list of data layouts
         if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer == 0:
             bt_flag = True
             bt_layer_index = 0
@@ -867,7 +883,20 @@ def GenerateNet(proj_folder_path, project_name,
                 bt_max_memocc = bt_mem
                 bt_layer_index = layer
                 bt_max_data_type = data_type_l[layer]
-    if bt_flag == True:
+        # Special conditions in case of HWC
+        if (data_layout == 'HWC' and layers_l[layer] == 'PW'):
+            # Special allocation for weight grad in HWC
+            bt_flag = True
+            bt_mem = in_ch_l[layer] * hin_l[layer] * win_l[layer]
+            if data_type_l[layer] == 'FP16':
+                hout = hin_l[layer]; wout = win_l[layer]
+                bt_mem += out_ch_l[layer] * hout * wout
+            if bt_mem > bt_max_memocc:
+                bt_max_memocc = bt_mem
+                bt_layer_index = layer
+                bt_max_data_type = data_type_l[layer]
+                wgt_grad_pw = True
+    if (bt_flag == True) and (wgt_grad_pw == False):
         f.write("\n// Define transposition / block transposition buffer for all conv2d and PW layers\n")
         if bt_layer_index == 0:
             f.write("PI_L1 float bt_buffer[1];")
@@ -879,6 +908,16 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for blocktranspose!")
                 exit()
+    elif (bt_flag == True) and (wgt_grad_pw == True):
+        f.write("\n// Define transposition / block transposition buffer for all conv2d and PW layers\n")
+        if bt_max_data_type == 'FP32':
+            f.write("PI_L1 float bt_buffer[Tin_C_l"+str(bt_layer_index)+"*Tin_H_l"+str(bt_layer_index)+"*Tin_W_l"+str(bt_layer_index)+"];\n")
+        elif bt_max_data_type == 'FP16':
+            f.write("PI_L1 fp16 bt_buffer[Tin_C_l"+str(bt_layer_index)+"*Tin_H_l"+str(bt_layer_index)+"*Tin_W_l"+str(bt_layer_index)+"+Tout_C_l"+str(bt_layer_index)+"*Tout_H_l"+str(bt_layer_index)+"*Tout_W_l"+str(bt_layer_index)+"];\n")
+        else:
+            print("[deployment_utils.GenerateNet] Invalid data type for pw transp buffer definition!\n")
+            exit()
+
 
     # Define tensors to backpropagate the output error
     f.write("\n// Define error propagation tensors\n")
