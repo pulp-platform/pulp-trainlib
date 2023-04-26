@@ -149,13 +149,15 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad, FP32 and FP16)
+- [X] RNN training primitives (FP32)
+- [X] Multihead Self Attention training primitives (FP32)
 - [ ] Padding operators for DepthWise and 2D Convolution (Input Grad, FP32 and FP16)
 - [ ] HWC data layout 2D Convolutions (FP32, FP16)
 - [ ] HWC data layout for DepthWise Convolutions (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
-- [ ] RNN training primitives (FP32, FP16)
-- [ ] Multihead Self Attention training primitives (FP32, FP16)
+- [ ] RNN training primitives (FP16)
+- [ ] Multihead Self Attention training primitives (FP16)
 - [ ] Residual connection
 
 # Known bugs / issues (open for contributions)
@@ -167,6 +169,7 @@ PULP-TrainLib's repository is organized with these branches:
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
 - Missing test for residual connections
 - Missing integration for both residual connections and RNN / MHSE in TrainLib_Deployer
+- FP32 MHSA primitives (Input Grad)
 
 
 # Contributors
