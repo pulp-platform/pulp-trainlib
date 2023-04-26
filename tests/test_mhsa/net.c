@@ -381,92 +381,6 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD
-  /*
-  int L = Tin_H_l1;
-  int E = Tin_W_l1;
-  int H = Thead_dim_l1;
-
-  struct matMul_args matMul_args1;
-  matMul_args1.A = mhsa_args.input;
-  matMul_args1.B = mhsa_args.coeff_in; 
-  matMul_args1.C = mhsa_args.qkv; // Q, K, V are saved contiguously, in the same matrix
-  matMul_args1.N = L;
-  matMul_args1.K = E;
-  matMul_args1.M = 3*E;
-  matMul_args1.trans_B = 0;
-
-  pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1);
-
-  // Transpose Projections (L x 3E -> 3E x L) to facilitate division in chunks for the multiple heads (copy is required because transpose CANNOT be inplace)
-  struct transp_args transp_args1;
-  transp_args1.matrix = mhsa_args.qkv;
-  transp_args1.transp_matrix = mhsa_args.temp_buffer;
-  transp_args1.N = L;
-  transp_args1.M = 3*E;
-
-  pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
-
-  struct copy_args copy_args1;
-  copy_args1.from = mhsa_args.temp_buffer;
-  copy_args1.to = mhsa_args.qkv;
-  copy_args1.size = L*3*E;
-
-  pi_cl_team_fork(NUM_CORES, copy, &copy_args1);
-
-  // Separate Q, K and V entry points in the QKV matrix
-  float* q = mhsa_args.qkv;
-  float* k = mhsa_args.qkv + L*E;
-  float* v = mhsa_args.qkv + L*2*E;
-
-  // Cycle on the different heads
-  for(int i = 0; i < Tn_heads_l1; i++){
-    // Transpose i-th head's K chunk
-    struct transp_args transp_args2;
-    transp_args2.matrix = k + L*i*H;
-    transp_args2.transp_matrix = mhsa_args.temp_buffer;
-    transp_args2.N = H;
-    transp_args2.M = L;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
-
-    // Multiply it with the i-th head's Q chunk
-    struct matMul_args matMul_args2;
-    matMul_args2.A = mhsa_args.temp_buffer;
-    matMul_args2.B = q + L*i*H;
-    matMul_args2.C = mhsa_args.head_buffer + i*L*L;
-    matMul_args2.N = L;
-    matMul_args2.K = H;
-    matMul_args2.M = L;
-    matMul_args2.trans_B = 0;
-
-    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2);
-
-    struct act_args softmax_arg;
-    struct blob input;
-    struct blob output;
-    input.data = mhsa_args.head_buffer + i*L*L;
-    input.dim = L*L;
-    output.data = mhsa_args.head_buffer + i*L*L;
-    softmax_arg.input = &input;
-    softmax_arg.output = &output;
-
-    pi_cl_team_fork(NUM_CORES, pulp_softmax_fp32_fw_cl, &softmax_arg);
-
-    // Multiply softmax result with the i-th head's V chunk
-    struct matMul_args matMul_args3;
-    matMul_args3.A = v + L*i*H;
-    matMul_args3.B = mhsa_args.head_buffer + i*L*L;
-    matMul_args3.C = mhsa_args.attention_map + L*i*H;
-    matMul_args3.N = H;
-    matMul_args3.K = L;
-    matMul_args3.M = L;
-    matMul_args3.trans_B = 0;
-
-    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3);
-  }
-
-  pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
-  */
 
   pulp_mhsa_fp32_fw_cl(&mhsa_args);
   printf("\nFORWARD CHECK: \n");
@@ -513,9 +427,11 @@ static inline void train(){
 
   #ifdef BACKWARD
   printf("\nFINAL WEIGHTS GRADIENT CHECK: \n");
+  printf("\nINPUT WEIGHTS GRADIENT CHECK: \n");
   compare_tensors(l0_ker_in_diff, INPUT_WGT_GRAD, G_INPUT_WGT_SIZE);  
   check_tensor(l0_ker_in_diff, INPUT_WGT_GRAD, G_INPUT_WGT_SIZE);
 
+  printf("\nOUTPUT WEIGHTS GRADIENT CHECK: \n");
   compare_tensors(l0_ker_out_diff, OUTPUT_WGT_GRAD, G_OUTPUT_WGT_SIZE);     
   check_tensor(l0_ker_out_diff, OUTPUT_WGT_GRAD, G_OUTPUT_WGT_SIZE);
 

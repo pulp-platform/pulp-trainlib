@@ -328,15 +328,28 @@ static inline void compare_tensors(float *A, float *B, int length){
 
   float mean_err_rel = 0.0f;
   float diff = 0.0f;
+  float den = 0.000001f;
 
   for(int i=0; i<length; i++){
-    diff = A[i]-B[i];
-    if (diff>0) diff = diff;
-    else diff=-diff;
-    mean_err_rel = mean_err_rel + diff/length;
+     if (A[i]>B[i] && A[i]>0.0f){
+        diff = A[i]-B[i];
+        if (diff>0) diff = diff;
+        else diff=-diff;
+        if (A[i]>0) den = A[i];
+        else den = -A[i]; // missing A = 0
+        mean_err_rel = mean_err_rel + (diff / den)/length;
+     }
+     else{
+       diff = A[i]-B[i];
+       if (diff>0) diff = diff;
+       else diff=-diff;
+       if (A[i]>0) den = A[i];
+       else den = -A[i];
+       mean_err_rel = mean_err_rel + (diff / den)/length;
+     }
   }
-  if (mean_err_rel<ERROR_TOLERANCE) printf(">>>TENSOR MATCHING!\nMEAR ERROR:%f\n", mean_err_rel);
-  else printf(">>>TENSOR NOT MATCHING!\nMEAR ERROR:%f\n", mean_err_rel);
+  if (mean_err_rel<ERROR_TOLERANCE) printf(">>>TENSOR MATCHING!\n");
+  else printf(">>>TENSOR NOT MATCHING!\n");
 
 }
 

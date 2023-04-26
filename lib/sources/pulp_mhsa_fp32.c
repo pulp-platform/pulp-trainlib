@@ -178,7 +178,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     copy_args2.size = L*E;
 
     pi_cl_team_fork(NUM_CORES, copy, &copy_args2);
-
+    
     #ifdef DEBUG
     printf("\nOutput Data map Data: %d %d\n", E, L);
     for (int j=0; j<L*E; j++){
@@ -197,17 +197,17 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
 
-    float *coeffDataWin = mhsa_args->coeff_in->data;
-    float *coeffDataWout = mhsa_args->coeff_out->data;
-    float *inData = mhsa_args->input->data;
+    float *coeffDataWin = mhsa_args->coeff_in->data; // E x 3E
+    float *coeffDataWout = mhsa_args->coeff_out->data; // E x E
+    float *inData = mhsa_args->input->data; // L x E
     float *temp = mhsa_args->temp_buffer; // Temporary buffer to save transposed matrices
-    float *grad = mhsa_args->grad;
-    float *outData = mhsa_args->output->data;
-    float *attention_map = mhsa_args->attention_map->data;
-    float *diff_attention_map = mhsa_args->attention_map->diff;
-    float *coeffDiffWin = mhsa_args->coeff_in->diff;
-    float *coeffDiffWout = mhsa_args->coeff_out->diff;
-    float *head_buffer = mhsa_args->head_buffer->data;
+    float *grad = mhsa_args->grad; // L x L
+    float *outData = mhsa_args->output->data; // L x E
+    float *attention_map = mhsa_args->attention_map->data; // E x L
+    float *diff_attention_map = mhsa_args->attention_map->diff; // E x L
+    float *coeffDiffWin = mhsa_args->coeff_in->diff; // E x 3E
+    float *coeffDiffWout = mhsa_args->coeff_out->diff; // E x E
+    float *head_buffer = mhsa_args->head_buffer->data; // L x L
 
     int total_dim = mhsa_args->output->dim;
     int L = mhsa_args->input->H; // Input sequence length
@@ -215,19 +215,19 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     int n_heads = mhsa_args->n_heads; // Number of heads of the mhsa
     int H = E / n_heads;
 
-    float *q = mhsa_args->qkv->data;
+    float *q = mhsa_args->qkv->data; // 3E x L
     float *k = mhsa_args->qkv->data + E*L;
     float *v = mhsa_args->qkv->data + 2*E*L;
 
-    float *q_diff = mhsa_args->qkv->diff;
+    float *q_diff = mhsa_args->qkv->diff; // 3E x L
     float *k_diff = mhsa_args->qkv->diff + E*L;
     float *v_diff = mhsa_args->qkv->diff + 2*E*L;
 
 
-    float *outDiff = mhsa_args->output->diff;  
-    float *inDiff = mhsa_args->input->diff;
-    float *attention_map_diff = mhsa_args->attention_map->diff;
-    float *head_buffer_diff = mhsa_args->head_buffer->diff;
+    float *outDiff = mhsa_args->output->diff; // L x E
+    float *inDiff = mhsa_args->input->diff; // L x E
+    float *attention_map_diff = mhsa_args->attention_map->diff; // E x L
+    float *head_buffer_diff = mhsa_args->head_buffer->diff; // L x L
 
     
     
@@ -260,18 +260,25 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     matMul_args1.N = L;
     matMul_args1.K = E;
     matMul_args1.M = E;
-    matMul_args1.trans_B = 1;
+    matMul_args1.trans_B = 0;
 
     pi_cl_team_fork(NUM_CORES, mm_unroll_4x1, &matMul_args1);
 
-    //Transpose map gradients
+    //Transpose map gradients (copy required because transpose can't be done inplace)
     struct transp_args transp_args1;
     transp_args1.matrix = attention_map_diff;
-    transp_args1.transp_matrix = attention_map_diff;
+    transp_args1.transp_matrix = temp;
     transp_args1.N = L;
     transp_args1.M = E;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
+
+    struct copy_args copy_args1;
+    copy_args1.from = temp;
+    copy_args1.to = attention_map_diff;
+    copy_args1.size = L*E;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args1);
 
 
     // Output Projection Weights
@@ -279,11 +286,18 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     // Transpose output gradients
     struct transp_args transp_args2;
     transp_args2.matrix = outDiff;
-    transp_args2.transp_matrix = outDiff;
+    transp_args2.transp_matrix = temp;
     transp_args2.N = L;
     transp_args2.M = E;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
+
+    struct copy_args copy_args2;
+    copy_args2.from = temp;
+    copy_args2.to = outDiff;
+    copy_args2.size = E*L;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args2);
 
 
     // matmul setup 2
@@ -390,11 +404,18 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         // Transpose softmax gradients
         struct transp_args transp_args4;
         transp_args4.matrix = grad;
-        transp_args4.transp_matrix = grad;
+        transp_args4.transp_matrix = temp;
         transp_args4.N = L;
         transp_args4.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args4);
+
+        struct copy_args copy_args3;
+        copy_args3.from = temp;
+        copy_args3.to = grad;
+        copy_args3.size = L*L;
+
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
 
         // matmul setup 5
         struct matMul_args matMul_args5;
@@ -441,11 +462,20 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     // Transpose input weight gradients
     struct transp_args transp_args5;
     transp_args5.matrix = coeffDiffWin;
-    transp_args5.transp_matrix = coeffDiffWin;
+    transp_args5.transp_matrix = temp;
     transp_args5.N = 3*E;
     transp_args5.M = E;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args5);
+
+    struct copy_args copy_args4;
+    copy_args4.from = temp;
+    copy_args4.to = coeffDiffWin;
+    copy_args4.size = E*3*E;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args4);
+
+
 
 
     // Input Gradients
@@ -465,11 +495,18 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     // Transpose input weight gradients
     struct transp_args transp_args6;
     transp_args6.matrix = inDiff;
-    transp_args6.transp_matrix = inDiff;
+    transp_args6.transp_matrix = temp;
     transp_args6.N = E;
     transp_args6.M = L;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args6);
+
+    struct copy_args copy_args5;
+    copy_args5.from = temp;
+    copy_args5.to = inDiff;
+    copy_args5.size = L*E;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args5);
 
 
 }

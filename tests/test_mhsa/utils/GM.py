@@ -247,8 +247,8 @@ f.close()
 net.zero_grad()
 loss.backward()
 
-input_wgt_grad = net.mhsa.proj_in.weight.grad 
-output_wgt_grad = net.mhsa.proj_out.weight.grad
+input_wgt_grad = torch.transpose(net.mhsa.proj_in.weight.grad, 0, 1) 
+output_wgt_grad = torch.transpose(net.mhsa.proj_out.weight.grad, 0, 1)
 input_grad = inp.grad
 
 
