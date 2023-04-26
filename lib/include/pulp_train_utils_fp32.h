@@ -258,6 +258,46 @@ struct mm_manager_args {
 };
 
 
+
+/**
+ * @brief Arguments for tanh in parallel output=tanh(input)
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+*/
+struct tanh_args{
+  float* input;
+  int dim;
+  float* output;
+};
+
+/**
+ * @brief Arguments for exponential and softmax in parallel
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+ * @param sum  	  final sum value of all exponentials
+*/
+struct softmax_args{
+  float* input;
+  int dim;
+  float* output;
+  float sum;
+};
+
+/**
+ * @brief Arguments weight updates output=output + gradient
+ * @param accum    pointer to weight gradient accumulators
+ * @param grad    pointer to weight gradient of the current timestep
+ * @param dim       dimension vector
+*/
+struct update_weight_args{
+  float* accum;
+  float* grad;
+  int dim;
+};
+
+
 /**
  * =====> FUNCTIONS <=====
  */
@@ -320,3 +360,22 @@ void CHW_to_HWC (void * layout_args);
  * @param (void *) (struct mm_manager_args void_args)
  */
 void mm_manager (void * void_args);
+
+/**
+ * @brief Calculates the exponential value of each element in the input vector/matrix.
+ * @param (void *) (struct softmax_args void_args)
+ */
+void exponential (void * void_args);
+
+/**
+ * @brief Divides each output vector element by their sum.
+ * @param (void *) (struct softmax_args void_args)
+ */
+void softmax (void * void_args);
+
+
+static inline float
+fasterexp (float p);
+
+static inline float
+fasterpow2 (float p);

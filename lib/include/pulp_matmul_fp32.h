@@ -33,6 +33,14 @@ void mm(
 );
 
 /**
+ * @brief Naive matrix multiply algorithm, performing C+=A*B (C is N*M, A is N*K, B is K*M). Parallelizes on N.
+ * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
+ */
+void mm_add(
+    void * matMul_args
+);
+
+/**
  * @brief Naive matrix multiply algorithm, performing C=A*B (C is N*M, A is N*K, B is K*M). Parallelizes on M.
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */

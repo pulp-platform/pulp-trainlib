@@ -56,6 +56,97 @@ void mm(void * matMul_args) {
         {
           C[i*M+j] = A[i*K] * B[j];
           #ifdef DEBUG
+          //printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i], B[j]);
+          #endif
+        }
+      }
+    }
+    else if (K > 0)
+    {
+      for (uint32_t i=start; i < stop; i++) 
+      {
+        for (uint32_t j = 0; j < M; j++) 
+        {
+          float temp = 0;
+          for (uint32_t k = 0; k < K; k++) 
+          {
+                temp += A[i*K+k] * B[j+k*M];
+                #ifdef DEBUG
+                //printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
+                #endif
+          } 
+          C[i*M+j] = temp;
+        } 
+      } 
+    }
+  }
+
+  // =====> B IS TRANSPOSED <=====  
+  else 
+  {
+    if (K == 1) 
+    {
+      for (uint32_t i=start; i < stop; i++) 
+      {
+        for (uint32_t j = 0; j < M; j++) 
+        {
+          C[i*M+j] = A[i*K] * B[j*K];
+          #ifdef DEBUG
+          //printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i, j*K, C[i*M+j], A[i*K], B[j*K]);
+          #endif
+        } 
+      } 
+    }
+    else if (K > 0)
+    {
+      for (uint32_t i=start; i < stop; i++) 
+      {
+        for (uint32_t j = 0; j < M; j++) 
+        {
+          float temp = 0;
+          for (uint32_t k = 0; k < K; k++) 
+          {
+              temp += A[i*K+k] * B[k+j*K];
+              #ifdef DEBUG
+              //printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, k+j*K, C[i*M+j], A[i*K+k], B[k+j*K]);
+              #endif
+          } 
+          C[i*M+j] = temp;
+        } 
+      } 
+    }
+  }
+}
+
+// Naive version with add on the output matrix
+void mm_add(void * matMul_args) {
+
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ A = args->A;
+  float * __restrict__ B = args->B;
+  float * __restrict__ C = args->C;
+
+  const uint32_t N = args->N;
+  const uint32_t M = args->M;
+  const uint32_t K = args->K;
+
+  uint32_t transp = args->trans_B;
+
+  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  // =====> B NOT TRANSPOSED <=====
+  if (transp==0)
+  {
+    if (K == 1) 
+    {
+      for (uint32_t i=start; i < stop; i++) 
+      {
+        for (uint32_t j = 0; j < M; j++) 
+        {
+          C[i*M+j] += A[i*K] * B[j];
+          #ifdef DEBUG
           printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i], B[j]);
           #endif
         }
@@ -75,7 +166,7 @@ void mm(void * matMul_args) {
                 printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
                 #endif
           } 
-          C[i*M+j] = temp;
+          C[i*M+j] += temp;
         } 
       } 
     }
@@ -90,7 +181,7 @@ void mm(void * matMul_args) {
       {
         for (uint32_t j = 0; j < M; j++) 
         {
-          C[i*M+j] = A[i*K] * B[j*K];
+          C[i*M+j] += A[i*K] * B[j*K];
           #ifdef DEBUG
           printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i, j*K, C[i*M+j], A[i*K], B[j*K]);
           #endif
@@ -111,7 +202,7 @@ void mm(void * matMul_args) {
               printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, k+j*K, C[i*M+j], A[i*K+k], B[k+j*K]);
               #endif
           } 
-          C[i*M+j] = temp;
+          C[i*M+j] += temp;
         } 
       } 
     }

@@ -67,3 +67,38 @@ void pulp_softmax_fp32_fw_cl( void * act_args );
  * @param output Output of softmax.
 */
 void pulp_softmax_fp32_bw_cl( void * act_args );
+
+/**
+ * @brief Forward pass function that parallelize the fastertanh function (below).
+ * @param pointer to a tanh_args struct
+*/
+void tanh_prll(
+    void * args
+);
+
+
+/**
+ * @brief A tanh implementation exploiting bit manipulation and "magic numbers" to be a bit faster.
+ * @param float value
+*/
+static inline float fasttanh (
+    float p
+);
+
+/**
+ * @brief A power of 2 implementation exploiting bit manipulation and "magic numbers" to be a bit faster.
+ * @param float value
+*/
+static inline float fastpow2 (
+    float p
+);
+
+/**
+ * @brief An exponential implementation exploiting bit manipulation and "magic numbers" to be a bit faster.
+ * @param float value
+*/
+static inline float fastexp (
+    float p
+);
+
+
