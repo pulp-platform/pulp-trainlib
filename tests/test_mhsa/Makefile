@@ -1,9 +1,10 @@
 APP = rnn_fp32
 
 # User settings
-IN_H?=4 # Sequence Length
+IN_H?=16 # Sequence Length
 IN_W?=8 # Token Size
 N_HEADS?=8
+ATT_DIM?=64 #Hidden dimension
 IN_CH?=1
 OUT_CH?=1
 NUM_CORES?=8
@@ -41,10 +42,10 @@ APP_LDFLAGS += -lm
 #APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS)
+	python3.6 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)
 
 profile_all_optim:
-	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS)
+	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)
 
 profile_all_sizes:
 	python3.6 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}

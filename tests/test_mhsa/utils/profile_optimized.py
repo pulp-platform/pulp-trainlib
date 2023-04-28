@@ -31,11 +31,12 @@ parser.add_argument( '--step', type=str, default="FORWARD")
 parser.add_argument( '--cores', type=int, default=1)
 parser.add_argument( '--data_type', type=str, default='fp32')
 
-parser.add_argument( '--in_width', type=int, default=10 )
+parser.add_argument( '--in_width', type=int, default=4 )
 parser.add_argument( '--in_height', type=int, default=10 )
 parser.add_argument( '--out_width', type=int, default=16 )
 parser.add_argument( '--ch_in', type=int, default=1 )
 parser.add_argument( '--ch_out', type=int, default=1 )
+parser.add_argument( '--n_heads', type=int, default=0 )
 
 
 args = parser.parse_args()
