@@ -55,13 +55,19 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* inData = args->input->data;
   float* outData = args->output->data;
   float sum = 0.0;
+  float max = 0.0;
 
   for (int i = 0; i < dim; i++) {
-    sum += expf(inData[i]);
+    if(max < inData[i])
+      max = inData[i];
   }
 
   for (int i = 0; i < dim; i++) {
-    outData[i] = expf(inData[i])/sum;
+    sum += expf(inData[i] - max);
+  }
+
+  for (int i = 0; i < dim; i++) {
+    outData[i] = expf(inData[i] - max)/sum;
   }
 }
 

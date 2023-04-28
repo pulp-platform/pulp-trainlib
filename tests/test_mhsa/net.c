@@ -43,31 +43,31 @@ PI_L2 int L2_memocc_bytes = 0;
 
 #ifdef FORWARD
 PI_L1 float l0_in[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_ker_in[Tin_W_l1*Tin_W_l1*3];
-PI_L1 float l0_ker_out[Tin_W_l1*Tin_W_l1]; 
-PI_L1 float l0_qkv[Tin_H_l1*Tin_W_l1*3];
-PI_L1 float l0_att_map[Tin_H_l1*Tin_W_l1];
+PI_L1 float l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
+PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
+PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
 PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_temp[Tin_H_l1*Tin_W_l1*3]; 
+PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
 #endif
 
 #ifdef BACKWARD
 PI_L1 float l0_in[Tin_H_l1*Tin_W_l1];
 PI_L1 float l0_in_diff[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_ker_in[Tin_W_l1*Tin_W_l1*3];
-PI_L1 float l0_ker_out[Tin_W_l1*Tin_W_l1]; 
-PI_L1 float l0_ker_in_diff[Tin_W_l1*Tin_W_l1*3];
-PI_L1 float l0_ker_out_diff[Tin_W_l1*Tin_W_l1];
-PI_L1 float l0_qkv[Tin_H_l1*Tin_W_l1*3];
-PI_L1 float l0_qkv_diff[Tin_H_l1*Tin_W_l1*3]; 
-PI_L1 float l0_att_map[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_att_map_diff[Tin_H_l1*Tin_W_l1];
+PI_L1 float l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
+PI_L1 float l0_ker_in_diff[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 float l0_ker_out_diff[Tatt_dim_l1*Tin_W_l1];
+PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
+PI_L1 float l0_qkv_diff[Tin_H_l1*Tatt_dim_l1*3]; 
+PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
+PI_L1 float l0_att_map_diff[Tin_H_l1*Tatt_dim_l1]; 
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1]; 
 PI_L1 float l0_out_diff[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_temp[Tin_H_l1*Thead_dim_l1]; 
-PI_L1 float l0_grad[Tin_H_l1*Tin_H_l1];
-PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
+PI_L1 float l0_grad[Tin_H_l1*Tin_H_l1]; // Buffer containing the pre-softmax head buffer gradient, necessary in the backward process
+PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1]; 
 PI_L1 float l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 #endif
 
@@ -77,13 +77,13 @@ PI_L1 float l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 static inline void tensor_init() 
 {
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_in[i] = INPUT[i];
-  for (int i=0; i<Tin_W_l1*Tin_W_l1*3; i++)             l0_ker_in[i] = INPUT_WEIGHTS[i]; 
-  for (int i=0; i<Tin_W_l1*Tin_W_l1; i++)               l0_ker_out[i] = OUTPUT_WEIGHTS[i]; 
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1*3; i++)          l0_ker_in[i] = INPUT_WEIGHTS[i]; 
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_out[i] = OUTPUT_WEIGHTS[i]; 
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_out[i] = zero_init; 
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*3; i++)             l0_qkv[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_att_map[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_qkv[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_att_map[i] = zero_init; 
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_h_buffer[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*3; i++)             l0_temp[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_temp[i] = zero_init; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
 }
 
 static inline void connect_blobs() 
@@ -96,23 +96,23 @@ static inline void connect_blobs()
 
 
   layer0_wgt_in.data = l0_ker_in;
-  layer0_wgt_in.dim = Tin_W_l1*Tin_W_l1*3;
+  layer0_wgt_in.dim = Tin_W_l1*Tatt_dim_l1*3;
   layer0_wgt_in.H = Tin_W_l1;
-  layer0_wgt_in.W = Tin_W_l1*3;
+  layer0_wgt_in.W = Tatt_dim_l1*3;
   layer0_wgt_in.C = Tout_C_l1;
 
 
   layer0_wgt_out.data = l0_ker_out;
-  layer0_wgt_out.dim = Tin_W_l1*Tin_W_l1;
+  layer0_wgt_out.dim = Tin_W_l1*Tatt_dim_l1;
   layer0_wgt_out.H = Tin_W_l1;
-  layer0_wgt_out.W = Tin_W_l1;
+  layer0_wgt_out.W = Tatt_dim_l1;
   layer0_wgt_out.C = Tin_C_l1;
 
 
   layer0_qkv.data = l0_qkv;
-  layer0_qkv.dim = Tin_W_l1*3*Tin_H_l1;
+  layer0_qkv.dim = Tatt_dim_l1*3*Tin_H_l1;
   layer0_qkv.H = Tin_H_l1;
-  layer0_qkv.W = Tin_W_l1*3;
+  layer0_qkv.W = Tatt_dim_l1*3;
   layer0_qkv.C = Tin_C_l1;
 
 
@@ -124,9 +124,9 @@ static inline void connect_blobs()
 
 
   layer0_att_map.data = l0_att_map;
-  layer0_att_map.dim = Tin_H_l1*Tin_W_l1;
+  layer0_att_map.dim = Tin_H_l1*Tatt_dim_l1;
   layer0_att_map.H = Tin_H_l1;
-  layer0_att_map.W = Tin_W_l1;
+  layer0_att_map.W = Tatt_dim_l1;
   layer0_att_map.C = Tin_C_l1;
 
 
@@ -151,38 +151,38 @@ static inline void compute_memory_occupation(){
   // Input
   L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
   // Kernel input
-  L1_memocc_bytes += Tin_W_l1*Tin_W_l1*3*sizeof(float); 
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
   // Kernel output
-  L1_memocc_bytes += Tin_W_l1*Tin_W_l1*sizeof(float);
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
   // QKV
-  L1_memocc_bytes += Tin_W_l1*Tin_H_l1*3*sizeof(float);
+  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
   // Output
   L1_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
   // Attention Map
-  L1_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
-  L1_memocc_bytes += Tin_H_l1*Thead_dim_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
 
 
 
   // Input
   L2_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
   // Kernel input
-  L2_memocc_bytes += Tin_W_l1*Tin_W_l1*3*sizeof(float); 
+  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
   // Kernel output
-  L2_memocc_bytes += Tin_W_l1*Tin_W_l1*sizeof(float);
+  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
   // QKV
-  L2_memocc_bytes += Tin_W_l1*Tin_H_l1*3*sizeof(float);
+  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
   // Output
   L2_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
   // Attention Map
-  L2_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
-  L2_memocc_bytes += Tin_H_l1*Thead_dim_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
 }
 #endif
 
@@ -194,24 +194,24 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)                    l0_in[i] = INPUT[i];
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)                    l0_in_diff[i] = zero_init;
   
-  for (int i=0; i<Tin_W_l1*Tin_W_l1*3; i++)                  l0_ker_in[i] = INPUT_WEIGHTS[i]; 
-  for (int i=0; i<Tin_W_l1*Tin_W_l1*3; i++)                  l0_ker_in_diff[i] = zero_init;           //initialization to zero, then it is overwritten the result in the function
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1*3; i++)               l0_ker_in[i] = INPUT_WEIGHTS[i]; 
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1*3; i++)               l0_ker_in_diff[i] = zero_init;           //initialization to zero, then it is overwritten the result in the function
   
-  for (int i=0; i<Tin_W_l1*Tin_W_l1; i++)                    l0_ker_out[i] = OUTPUT_WEIGHTS[i];
-  for (int i=0; i<Tin_W_l1*Tin_W_l1; i++)                    l0_ker_out_diff[i] = zero_init;
+  for (int i=0; i<Tatt_dim_l1*Tin_W_l1; i++)                 l0_ker_out[i] = OUTPUT_WEIGHTS[i];
+  for (int i=0; i<Tatt_dim_l1*Tin_W_l1; i++)                 l0_ker_out_diff[i] = zero_init;
 
   for (int i=0; i<Tin_W_l1*Tin_H_l1; i++)                    l0_out_diff[i] = OUTPUT_GRAD[i];  
   for (int i=0; i<Tin_W_l1*Tin_H_l1; i++)                    l0_out[i] = OUTPUT[i];
 
-  for (int i=0; i<Tin_H_l1*Thead_dim_l1; i++)                l0_temp[i] = zero_init; 
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)               l0_temp[i] = zero_init; 
 
   for (int i=0; i<Tin_H_l1*Tin_H_l1; i++)                    l0_grad[i] = zero_init;
 
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*3; i++)                  l0_qkv_diff[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*3; i++)                  l0_qkv[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)               l0_qkv_diff[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)               l0_qkv[i] = zero_init;
 
-  for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)                    l0_att_map[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)                    l0_att_map_diff[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)                 l0_att_map[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)                 l0_att_map_diff[i] = zero_init;
 
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_h_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_h_buffer_diff[i] = zero_init;
@@ -227,23 +227,23 @@ static inline void connect_blobs()
   layer0_in.diff = l0_in_diff;
 
   layer0_wgt_in.data = l0_ker_in;
-  layer0_wgt_in.dim = Tin_W_l1*Tin_W_l1*3;
+  layer0_wgt_in.dim = Tin_W_l1*Tatt_dim_l1*3;
   layer0_wgt_in.H = Tin_W_l1;
-  layer0_wgt_in.W = Tin_W_l1*3;
+  layer0_wgt_in.W = Tatt_dim_l1*3;
   layer0_wgt_in.C = Tout_C_l1;
   layer0_wgt_in.diff = l0_ker_in_diff;
 
   layer0_wgt_out.data = l0_ker_out;
-  layer0_wgt_out.dim = Tin_W_l1*Tin_W_l1;
+  layer0_wgt_out.dim = Tin_W_l1*Tatt_dim_l1;
   layer0_wgt_out.H = Tin_W_l1;
-  layer0_wgt_out.W = Tin_W_l1;
+  layer0_wgt_out.W = Tatt_dim_l1;
   layer0_wgt_out.C = Tin_C_l1;
   layer0_wgt_out.diff = l0_ker_out_diff;
 
   layer0_qkv.data = l0_qkv;
-  layer0_qkv.dim = Tin_W_l1*3*Tin_H_l1;
+  layer0_qkv.dim = Tatt_dim_l1*3*Tin_H_l1;
   layer0_qkv.H = Tin_H_l1;
-  layer0_qkv.W = Tin_W_l1*3;
+  layer0_qkv.W = Tatt_dim_l1*3;
   layer0_qkv.C = Tin_C_l1;
   layer0_qkv.diff = l0_qkv_diff;
 
@@ -255,9 +255,9 @@ static inline void connect_blobs()
   layer0_out.diff = l0_out_diff;
 
   layer0_att_map.data = l0_att_map;
-  layer0_att_map.dim = Tin_H_l1*Tin_W_l1;
+  layer0_att_map.dim = Tin_H_l1*Tatt_dim_l1;
   layer0_att_map.H = Tin_H_l1;
-  layer0_att_map.W = Tin_W_l1;
+  layer0_att_map.W = Tatt_dim_l1;
   layer0_att_map.C = Tin_C_l1;
   layer0_att_map.diff = l0_att_map_diff;
 
@@ -285,19 +285,19 @@ static inline void compute_memory_occupation(){
   // Input
   L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
   // Kernel input
-  L1_memocc_bytes += Tin_W_l1*Tin_W_l1*3*sizeof(float); 
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
   // Kernel output
-  L1_memocc_bytes += Tin_W_l1*Tin_W_l1*sizeof(float);
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
   // QKV + grad
-  L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*3*sizeof(float);
+  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
   // Output + grad
   L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
   // Attention Map + grad
-  L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores + grad
   L1_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
-  L1_memocc_bytes += Tin_H_l1*Thead_dim_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
   // Gradient buffer
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
 
@@ -306,19 +306,19 @@ static inline void compute_memory_occupation(){
   // Input + grad
   L2_memocc_bytes += 2*Tin_H_l1*Tin_W_l1*sizeof(float);
   // Kernel input + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_W_l1*3*sizeof(float); 
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
   // Kernel output + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_W_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*sizeof(float);
   // QKV + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*3*sizeof(float);
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(float);
   // Output + grad
   L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
   // Attention Map + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores + grad
   L2_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
-  L2_memocc_bytes += Tin_H_l1*Thead_dim_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
   // Gradient buffer
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
 }
