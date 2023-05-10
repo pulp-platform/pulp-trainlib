@@ -16,7 +16,7 @@
 
 /**
  * Authors: Davide Nadalini, Leonardo Ravaglia
-*/ 
+*/
 
 #include "pulp_train_utils_fp32.h"
 #include "pulp_act_fp32.h"
@@ -55,13 +55,19 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* inData = args->input->data;
   float* outData = args->output->data;
   float sum = 0.0;
+  float max = 0.0;
 
   for (int i = 0; i < dim; i++) {
-    sum += expf(inData[i]);
+    if(max < inData[i])
+      max = inData[i];
   }
 
   for (int i = 0; i < dim; i++) {
-    outData[i] = expf(inData[i])/sum;
+    sum += expf(inData[i] - max);
+  }
+
+  for (int i = 0; i < dim; i++) {
+    outData[i] = expf(inData[i] - max)/sum;
   }
 }
 
@@ -80,4 +86,41 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
 
   // Fix using: https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function
   printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
+}
+
+void tanh_prll(void * args){
+
+  struct tanh_args* args_tanh=(struct tanh_args *) args;
+
+  const int blockSize=(args_tanh->dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > args_tanh->dim ? args_tanh->dim : start+blockSize;
+
+  for(int i=start;i<stop;i++){
+    args_tanh->output[i]=fasttanh(args_tanh->input[i]);
+  }
+}
+
+static inline float
+fastexp (float p)
+{
+  return fastpow2 (1.442695040f * p);
+}
+
+static inline float
+fasttanh (float p)
+{
+  return -1.0f + 2.0f / (1.0f + fastexp (-2.0f * p));
+}
+
+static inline float
+fastpow2 (float p)
+{
+  float offset = (p < 0) ? 1.0f : 0.0f;
+  float clipp = (p < -126) ? -126.0f : p;
+  int w = clipp;
+  float z = clipp - w + offset;
+  union { uint32_t i; float f; } v = { (uint32_t) ( (1 << 23) * (clipp + 121.2740575f + 27.7280233f / (4.84252568f - z) - 1.49012907f * z) ) };
+
+  return v.f;
 }

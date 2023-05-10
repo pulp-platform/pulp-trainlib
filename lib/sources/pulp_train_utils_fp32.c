@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
 */ 
 
 #include "pmsis.h"
@@ -685,4 +685,48 @@ void mm_manager (void * void_args)
         printf("\nWrong layer_type selection!!\n");
     }
 
+}
+
+static inline float
+fasterpow2 (float p)
+{
+  float clipp = (p < -126) ? -126.0f : p;
+  union { uint32_t i; float f; } v = { (uint32_t) ( (1 << 23) * (clipp + 126.94269504f) ) };
+  return v.f;
+}
+
+static inline float
+fasterexp (float p)
+{
+  return fasterpow2 (1.442695040f * p);
+}
+
+void exponential(void* void_args){
+    struct softmax_args *args = ((struct softmax_args *)void_args);
+    float* input = args->input;
+    float* output = args->output;
+    int dim = args->dim;
+
+    const uint32_t blockSize = (dim+NUM_CORES-1) / NUM_CORES;
+    const uint32_t start = pi_core_id()*blockSize;
+    const uint32_t stop = start+blockSize > dim ? dim : start+blockSize;
+
+    for(int i = start; i < stop; i++){
+        output[i] = fasterexp(input[i]);
+    }
+}
+
+void softmax(void* void_args){
+    struct softmax_args *args = ((struct softmax_args *)void_args);
+    float* output = args->output;
+    int dim = args->dim;
+    float sum = args->sum;
+
+    const uint32_t blockSize = (dim+NUM_CORES-1) / NUM_CORES;
+    const uint32_t start = pi_core_id()*blockSize;
+    const uint32_t stop = start+blockSize > dim ? dim : start+blockSize;
+
+    for(int i = start; i < stop; i++){
+        output[i] = output[i] / sum;
+    }
 }
