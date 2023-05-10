@@ -144,7 +144,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32, FP16)
 - [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
-- [X] HWC data layout for PointWise Convolution (FP32, FP16)
+- [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32)
 - [X] ReLU activation function (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
@@ -162,7 +162,6 @@ PULP-TrainLib's repository is organized with these branches:
 
 # Known bugs / issues (open for contributions)
 
-- FP32 HWC Conv2D primitives (Input Grad)
 - FP16 HWC Conv2D primitives (Input Grad)
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)

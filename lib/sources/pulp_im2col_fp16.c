@@ -937,7 +937,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
       for (uint32_t hk=0; hk<Hk; hk++) {
         for (uint32_t wk=0; wk<Wk; wk++) {
           for (uint32_t ci=0; ci<Cin; ci++) {
-            bt_weights[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Cin*Wk + co*Cin*Hk*Wk];
+            bt_weights[ci*Hk*Wk*Cout + wk*Cout + hk*Wk*Cout + co] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Wk*Cin + co*Wk*Hk*Cin];
           }
         }
       }
@@ -947,7 +947,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
       for (uint32_t hk=0; hk<Hk; hk++) {
         for (uint32_t wk=0; wk<Wk; wk++) {
           for (uint32_t ci=0; ci<Cin; ci++) {
-            bt_weights[ci*Hk*Wk*Cout + wk + hk*Wk + co*Hk*Wk] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Cin*Wk + co*Cin*Hk*Wk];
+            bt_weights[ci*Hk*Wk*Cout + wk*Cout + hk*Wk*Cout + co] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Wk*Cin + co*Wk*Hk*Cin];
           }
         }
       }
