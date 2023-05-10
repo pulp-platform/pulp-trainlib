@@ -37,12 +37,12 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --step $(STEP)
+	python3 utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --step $(STEP)
 
 profile_all_optim:
-	python ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH}
+	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH}
 
 profile_all_sizes:
-	python ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
+	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
 
 include $(RULES_DIR)/pmsis_rules.mk

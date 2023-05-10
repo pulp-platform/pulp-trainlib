@@ -129,8 +129,7 @@ When generating a DNN for PULP with the TrainLib Deployer, make sure to launch t
 # Branches
 
 PULP-TrainLib's repository is organized with these branches:
-- `pulp-trainlib-stable`: stable branch 
-- `pulp-trainlib-dev`: work-in-progress branch (more features, less stable)
+- `pulp-trainlib`: main branch, targeting PULP architectures
 - `pulp-trainlib-paper`: branch to generate the results provided in the paper ["PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
 - `pulp-trainlib-stm32`: this is a PULP-TrainLib port compatible with STM32 and other MCUs (FP32 format only).
 
@@ -152,7 +151,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] RNN training primitives (FP32)
 - [X] Multihead Self Attention training primitives (FP32)
 - [ ] Padding operators for DepthWise and 2D Convolution (Input Grad, FP32 and FP16)
-- [ ] HWC data layout 2D Convolutions (FP32, FP16)
+- [ ] HWC data layout for 2D Convolutions (FP16)
 - [ ] HWC data layout for DepthWise Convolutions (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)

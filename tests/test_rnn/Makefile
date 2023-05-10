@@ -41,12 +41,12 @@ APP_LDFLAGS += -lm
 #APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3.6 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --out_width $(OUT_W)
+	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --out_width $(OUT_W)
 
 profile_all_optim:
-	python3.6 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --out_width $(OUT_W)
+	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --out_width $(OUT_W)
 
 profile_all_sizes:
-	python3.6 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
+	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
 
 include $(RULES_DIR)/pmsis_rules.mk
