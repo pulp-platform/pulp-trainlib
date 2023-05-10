@@ -408,11 +408,18 @@ static inline void train(){
   compare_tensors(l1_out, OUTPUT, Tout_H_l1*Tout_W_l1*Tout_C_l1);
   check_tensor(l1_out, OUTPUT, Tout_H_l1*Tout_W_l1*Tout_C_l1);
   // TEST
-  printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer1_in, &layer1_wgt, &layer1_out);
+  printf("\nOUT SIZES: [%d, %d, %d]\n", Tout_C_l1, Tout_H_l1, Tout_W_l1);
+  //printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer1_in, &layer1_wgt, &layer1_out);
+  printf("\nOUT_ELEMENTS: %d\n", Tout_H_l1*Tout_W_l1*Tout_C_l1);
   for (int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
-    if (!(index%Tout_H_l1)) printf("\n");
+    #if HWC_LAYOUT == 0
+    if (!(index%Tout_W_l1)) printf("\n");
+    #else
+    if (!(index%Tout_C_l1)) printf("\n");
+    #endif
     printf("%f ", l1_out[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef BACKWARD_GRAD
@@ -420,11 +427,17 @@ static inline void train(){
   compare_tensors(l1_ker_diff, WEIGHT_GRAD, Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1);
   check_tensor(l1_ker_diff, WEIGHT_GRAD, Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1);
   // TEST
-  printf("\nADDR\nIN: %x, WGT: %x, OUT: %x, BUFF:%x\n", &layer1_in, &layer1_wgt, &layer1_out, im2col_buffer);
+  printf("\nOUT SIZES: [%d, %d, %d]\n", Tout_C_l1, Tout_H_l1, Tout_W_l1);
+  //printf("\nADDR\nIN: %x, WGT: %x, OUT: %x, BUFF:%x\n", &layer1_in, &layer1_wgt, &layer1_out, im2col_buffer);
   for (int index=0; index<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; index++) {
-   if (!(index%Tker_H_l1)) printf("\n");
-   printf("%f ", l1_ker_diff[index]);
+    #if HWC_LAYOUT == 0 
+    if (!(index%Tker_W_l1)) printf("\n");
+    #else
+    if (!(index%Tin_C_l1*Tker_H_l1*Tker_W_l1)) printf("\n");
+    #endif
+    printf("%f ", l1_ker_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef BACKWARD_ERROR
@@ -434,9 +447,14 @@ static inline void train(){
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x, BUFF:%x\n", &layer1_in, &layer1_wgt, &layer1_out, im2col_buffer);
   for (int index=0; index<Tin_H_l1*Tin_W_l1*Tin_C_l1; index++) {
-    if (!(index%Tin_H_l1)) printf("\n");
+    #if HWC_LAYOUT == 0
+    if (!(index%Tin_W_l1)) printf("\n");
+    #else
+    if (!(index%Tin_C_l1)) printf("\n");
+    #endif
     printf("%f ", l1_in_diff[index]);
   }
+  printf("\n");
   #endif
 }
 

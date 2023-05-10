@@ -899,7 +899,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
   // USE CHW LAYOUT
   if (HWC_layout == 0) {
     #ifdef OPTIMIZE_BT
-    // Block tranposition
+    // Block transposition
     for (uint32_t k=start; k<stop; k++) {
       for (uint32_t c=0; c<Cin; c++) {
         for (uint32_t i=0; i<(HW & 0xfffffffe); i+=2) {
@@ -947,6 +947,7 @@ void pulp_blocktransp_fp16 (void * void_args_fp16)
       for (uint32_t hk=0; hk<Hk; hk++) {
         for (uint32_t wk=0; wk<Wk; wk++) {
           for (uint32_t ci=0; ci<Cin; ci++) {
+            // OPTIMIZE ME!!
             bt_weights[ci*Hk*Wk*Cout + wk*Cout + hk*Wk*Cout + co] = weights[ci + (Wk-1-wk)*Cin + (Hk-1-hk)*Wk*Cin + co*Wk*Hk*Cin];
           }
         }
