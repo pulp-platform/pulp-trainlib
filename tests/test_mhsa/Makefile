@@ -1,7 +1,7 @@
 APP = rnn_fp32
 
 # User settings
-IN_H?=16 # Sequence Length
+IN_H?=8 # Sequence Length
 IN_W?=8 # Token Size
 N_HEADS?=8
 ATT_DIM?=64 #Hidden dimension
@@ -35,11 +35,11 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -mhwloopalign
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
-APP_CFLAGS += -DDEBUG
+#APP_CFLAGS += -DDEBUG
 APP_LDFLAGS += -lm 
 
 # STATISTICS
-#APP_CFLAGS += -DSTATS
+APP_CFLAGS += -DSTATS
 
 get_golden:
 	python3.6 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)

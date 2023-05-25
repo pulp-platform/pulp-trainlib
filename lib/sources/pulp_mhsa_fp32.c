@@ -32,6 +32,8 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     float *v = mhsa_args->qkv->data;
     int n_heads = mhsa_args->n_heads;
 
+    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;
+
     int L = mhsa_args->input->H; // Input/Output Sequence length
     int E = mhsa_args->input->W; // Input Sequence element size
     int F = mhsa_args->attention_map->W; // Hidden dimension of attention
@@ -67,8 +69,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     printf("\n");
     #endif
 
+    #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1);
-
+    #else
+    struct mm_manager_args man_args1;
+    man_args1.mm_args = &matMul_args1;
+    man_args1.layer_type = LAYER_LINEAR;
+    man_args1.step_type = STEP_FW;
+    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
+    #endif
 
     #ifdef DEBUG
     printf("\nQKV Data: %d %d\n", L, 3*F);
@@ -122,7 +132,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         matMul_args2.M = L;
         matMul_args2.trans_B = 0;
 
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2);
+        #else
+        struct mm_manager_args man_args2;
+        man_args2.mm_args = &matMul_args2;
+        man_args2.layer_type = LAYER_LINEAR;
+        man_args2.step_type = STEP_FW;
+        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
+        #endif
 
         for(int j = 0; j < (L*L); j++)
             current_head_buffer[j] = current_head_buffer[j]*scaling;
@@ -148,7 +167,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3);
+        #else
+        struct mm_manager_args man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
+        #endif
     }
 
     // Final attention map projection
@@ -161,7 +189,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     matMul_args4.M = L;
     matMul_args4.trans_B = 0;
 
+    #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES,  mm, &matMul_args4);
+    #else
+    struct mm_manager_args man_args4;
+    man_args4.mm_args = &matMul_args4;
+    man_args4.layer_type = LAYER_LINEAR;
+    man_args4.step_type = STEP_FW;
+    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args4);
+    #endif
 
     #ifdef DEBUG
     printf("\nTransposed Output sequence Data: %d %d\n", E, L);
@@ -224,6 +261,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     int F = mhsa_args->attention_map->W; // Attention block hidden size
     int n_heads = mhsa_args->n_heads; // Number of heads of the mhsa
     int H = F / n_heads;
+    int opt_matmul_type = mhsa_args->opt_matmul_type_wg;
 
     float *q = mhsa_args->qkv->data; // 3F x L
     float *k = mhsa_args->qkv->data + F*L;
@@ -272,7 +310,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
 
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args1); // Gradient of attention map: (L x E)*(E x F) - > (L x F)
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1); // Gradient of attention map: (L x E)*(E x F) - > (L x F)
+    #else
+    struct mm_manager_args man_args1;
+    man_args1.mm_args = &matMul_args1;
+    man_args1.layer_type = LAYER_LINEAR;
+    man_args1.step_type = STEP_FW;
+    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
+    #endif
 
     //Transpose map gradients (copy required because transpose can't be done inplace)
     struct transp_args transp_args1;
@@ -292,6 +339,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
 
     // Output Projection Weights
 
+    /*
     // Transpose output gradients
     struct transp_args transp_args2;
     transp_args2.matrix = outDiff;
@@ -323,45 +371,71 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     copy_args6.size = L*F;
 
     pi_cl_team_fork(NUM_CORES, copy, &copy_args6); // Attention map: (F x L) - > (L x F)
+    */
 
 
 
     // matmul setup 2
     struct matMul_args matMul_args2;
-    matMul_args2.A = outDiff; 
-    matMul_args2.B = attention_map; 
+    matMul_args2.A = attention_map; 
+    matMul_args2.B = outDiff; 
     matMul_args2.C = coeffDiffWout;
-    matMul_args2.N = E;
+    matMul_args2.N = F;
     matMul_args2.K = L;
-    matMul_args2.M = F;
+    matMul_args2.M = E;
     matMul_args2.trans_B = 0;
 
 
     #ifdef DEBUG
-    printf("\ngrad transposed\n");
+    printf("\ngrad\n");
     for (int i=0; i<total_dim; i++){
-        if(!(i%L)) printf("\n");
+        if(!(i%E)) printf("\n");
         printf("%4.2e  ", outDiff[i]);
     }
     printf("\n");
 
     printf("\nTransposed Attention map\n");
-    for (int i=0; i<E*L; i++){
+    for (int i=0; i<F*L; i++){
         if(!(i%L)) printf("\n");
         printf("%4.2e  ", attention_map[i]);
     }
     printf("\n");
     #endif
 
-  
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args2); // Output weight gradient: (E x L)*(L x F) - > (E x F)
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2); // Output weight gradient: (F x L)*(L x E) - > (F x E)
+    #else
+    struct mm_manager_args man_args2;
+    man_args2.mm_args = &matMul_args2;
+    man_args2.layer_type = LAYER_LINEAR;
+    man_args2.step_type = STEP_FW;
+    man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
+    #endif
+
+
+    // Transpose Linear Output Weight gradients
+    struct transp_args transp_args9;
+    transp_args9.matrix = coeffDiffWout;
+    transp_args9.transp_matrix = temp;
+    transp_args9.N = F;
+    transp_args9.M = E;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args9);
+
+    struct copy_args copy_args9;
+    copy_args9.from = temp;
+    copy_args9.to = coeffDiffWout;
+    copy_args9.size = E*F;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args9); // Transposed output weight gradient: (F x E) - > (E x F)
 
 
     #ifdef DEBUG
     printf("\nLinear coeffDiffWout");
     for (int i=0; i<E*F; i++){
       if(!(i%F)) printf("\n");
-      printf("%4.2e (i=%d)", matMul_args1.C[i], i);
+      printf("%4.2e (i=%d)", coeffDiffWout[i], i);
     }
     printf("\n");
     #endif
@@ -380,7 +454,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args3); // i-th head Value gradient: (H x L)*(L x L) - > (H x L)
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3); // i-th head Value gradient: (H x L)*(L x L) - > (H x L)
+        #else
+        struct mm_manager_args man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
+        #endif
 
 
         // I-th head Buffer Gradient
@@ -405,7 +488,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
 
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args4); // i-th head Buffer gradient: (L x H)*(H x L) - > (L x L)
+        #else
+        struct mm_manager_args man_args4;
+        man_args4.mm_args = &matMul_args4;
+        man_args4.layer_type = LAYER_LINEAR;
+        man_args4.step_type = STEP_FW;
+        man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args4);
+        #endif
 
 
         // Back propagation of i-th head Buffer gradient through the softmax operation
@@ -455,7 +547,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         matMul_args5.M = L;
         matMul_args5.trans_B = 0;
 
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args5); // i-th head Query gradient: (H x L)*(L x L) - > (H x L)
+        #else
+        struct mm_manager_args man_args5;
+        man_args5.mm_args = &matMul_args5;
+        man_args5.layer_type = LAYER_LINEAR;
+        man_args5.step_type = STEP_FW;
+        man_args5.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args5);
+        #endif
 
 
         // I-th head Key Gradients
@@ -470,7 +571,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
 
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args6); // i-th head Key gradient: (H x L)*(L x L) - > (H x L)
+        #else
+        struct mm_manager_args man_args6;
+        man_args6.mm_args = &matMul_args6;
+        man_args6.layer_type = LAYER_LINEAR;
+        man_args6.step_type = STEP_FW;
+        man_args6.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args6);
+        #endif
     }
 
     // Input projection Gradients
@@ -485,7 +595,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     matMul_args7.M = E;
     matMul_args7.trans_B = 0;
 
+    #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7); // Input weight gradient: (3F x L)*(L x E) - > (3F x E)
+    #else
+    struct mm_manager_args man_args7;
+    man_args7.mm_args = &matMul_args7;
+    man_args7.layer_type = LAYER_LINEAR;
+    man_args7.step_type = STEP_FW;
+    man_args7.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7);
+    #endif
 
     // Transpose input weight gradients
     struct transp_args transp_args5;
@@ -518,7 +637,16 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     matMul_args8.M = L;
     matMul_args8.trans_B = 0;
 
+    #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8); // Input gradients: (E x 3F)*(3F x L) - > (E x L)
+    #else
+    struct mm_manager_args man_args8;
+    man_args8.mm_args = &matMul_args8;
+    man_args8.layer_type = LAYER_LINEAR;
+    man_args8.step_type = STEP_FW;
+    man_args8.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8);
+    #endif
 
     // Transpose input weight gradients
     struct transp_args transp_args6;
