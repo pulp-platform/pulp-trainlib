@@ -57,8 +57,10 @@ PI_L1 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 // Extra variables
 #if DATA_BITS == 32
 float temp_val = 0.1f;
+float zero_val = 0.0f;
 #elif DATA_BITS == 16
 fp16 temp_val = 0.1f;
+fp16 zero_val = 0.0f;
 #endif
 
 
@@ -67,9 +69,9 @@ static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             {l1_in[i] = temp_val; temp_val+=0.1;}
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = weight_init;
   #if MOD==0
-  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer[i] = 0.0f;
+  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer[i] = zero_val;
   #else 
-  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer_bw[i] = 0.0f;
+  for (int i=0; i<i2c_check_size; i++)                                         im2col_buffer_bw[i] = zero_val;
   #endif
   temp_val = 0.1f;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          {l1_out[i] = temp_val; temp_val+=0.1;} //l1_out[i] =  0.0f;
