@@ -1,11 +1,11 @@
 APP = blocktransposer
 
 # User code
-NUM_CORES?=1
-CH_IN?=4
-CH_OUT?=4
-HK?=3
-WK?=3
+NUM_CORES?=8
+CH_IN?=2
+CH_OUT?=3
+HK?=2
+WK?=2
 HWC_LAY?=1		# =0 use CHW layout, =1 use HWC layout for the weights
 APP_CFLAGS += -DPRINT_MATS
 # End of user code

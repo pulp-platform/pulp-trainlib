@@ -89,7 +89,7 @@ void net_step ()
     printf("\nTRANSPOSED MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
     {
-        if (!(i%(Tin_Hk*Tin_Wk))) printf("  ");
+        if (!(i%(Tin_Cout))) printf("  ");
         if (!(i%(Tin_Hk*Tin_Wk*Tin_Cout))) printf("\n");
         printf("%f ", BT_MATRIX_FP32[i]);
     }
@@ -148,7 +148,7 @@ void net_step ()
     printf("\nTRANSPOSED MATRIX:\n");
     for (int i=0; i<Tin_Cout*Tin_Cin*Tin_Hk*Tin_Wk; i++) 
     {
-        if (!(i%(Tin_Hk*Tin_Wk))) printf("  ");
+        if (!(i%(Tin_Cout))) printf("  ");
         if (!(i%(Tin_Hk*Tin_Wk*Tin_Cout))) printf("\n");
         printf("%f ", BT_MATRIX_FP16[i]);
     }
