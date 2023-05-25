@@ -31,12 +31,12 @@ parser.add_argument( '--step', type=str, default="FORWARD")
 parser.add_argument( '--cores', type=int, default=1)
 parser.add_argument( '--data_type', type=str, default='fp32')
 
-parser.add_argument( '--in_width', type=int, default=4 )
-parser.add_argument( '--in_height', type=int, default=10 )
-parser.add_argument( '--out_width', type=int, default=16 )
+parser.add_argument( '--in_width', type=int, default=8 )
+parser.add_argument( '--in_height', type=int, default=8 )
 parser.add_argument( '--ch_in', type=int, default=1 )
 parser.add_argument( '--ch_out', type=int, default=1 )
-parser.add_argument( '--n_heads', type=int, default=0 )
+parser.add_argument( '--n_heads', type=int, default=8 )
+parser.add_argument( '--att_dim', type=int, default=64 )
 
 
 args = parser.parse_args()
@@ -49,9 +49,10 @@ data_type = args.data_type
 
 in_width = args.in_width
 in_height = args.in_height
-out_width = args.out_width
 ch_in = args.ch_in
 ch_out = args.ch_out
+n_heads = args.n_heads
+att_dim = args.att_dim
 
 print("\n=====> ENTERING TEST SEQUENCE.. <=====\n")
 
@@ -63,7 +64,7 @@ f.write("STEP TYPE: LINEAR {}\n".format(step_type))
 f.write("NUM_CORES: {}\n".format(cores))
 f.write("DATA_TYPE: {}\n".format(data_type))
 f.write("NUM_MATMUL algorithms: {}\n".format(num_matmuls))
-f.write("SIZES ARE:\n  Sequence Length (in_height): {}\n  Vector Length (in_width): {}\n  Output Length (out_width): {}\n  Channels In: {} Out: {}\n".format(in_height, in_width, out_width, ch_in, ch_out))
+f.write("SIZES ARE:\n  Sequence Length (in_height): {}\n  Vector Length (in_width): {}\n Channels In: {} Out: {}\n Number of Attention Heads: {}\n Hidden Attention Dimension: {}\n".format(in_height, in_width, ch_in, ch_out, n_heads, att_dim))
 f.write("------------------------------------------------\n")
 f.write("\n=====> UNSORTED RESULTS <=====")
 f.close()
@@ -73,7 +74,7 @@ for compile_idx in range(num_matmuls) :
     print("Executing build {}".format(compile_idx))
     # Execute build
     os.system("rm -r BUILD/")
-    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IN_H={} IN_W={} OUT_W={} IN_CH={} OUT_CH={}> log.txt".format(step_type, cores, compile_idx, in_height, in_width, out_width, ch_in, ch_out))
+    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IN_H={} IN_W={} IN_CH={} OUT_CH={} N_HEADS={} ATT_DIM={}> log.txt".format(step_type, cores, compile_idx, in_height, in_width, ch_in, ch_out, n_heads, att_dim))
     # Find profiling and write it to file
     prof.extract_performance(compile_idx, filename)
 

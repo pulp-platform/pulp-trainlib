@@ -135,7 +135,7 @@ def hook_fn2(m, i, o):
      f.close()
 
 
-gradsRnn = net.mhsa.register_backward_hook(hook_fn1)
+gradsRnn = net.mhsa.register_full_backward_hook(hook_fn1)
 
 inp = torch.div(torch.ones(ch_in, in_h, in_w), 1000)
 for cin in range(ch_in):
@@ -145,7 +145,7 @@ for cin in range(ch_in):
 
 inp.requires_grad = True
 
-label = torch.ones(1, ch_out, in_h, in_w)
+label = torch.ones(in_h, in_w)
 
 # Write input sequence
 print("------------Input sequence------------")
@@ -212,8 +212,8 @@ f.close()
 criterion = nn.MSELoss()
 out = net(x=inp, tgt_len=in_h)
 print("out: ")
-print(out.size)
-print(label.size)
+print(out.size())
+print(label.size())
 print(out)
 loss = criterion(out, label)
 
@@ -238,4 +238,9 @@ f.write('#define G_OUTPUT_WGT_SIZE '+str(output_wgt_grad.numel())+'\n')
 f.write("PI_L2 float OUTPUT_WGT_GRAD[G_OUTPUT_WGT_SIZE] = {"+dump.tensor_to_string(output_wgt_grad)+"};\n")
 f.write("#define G_IN_SIZE "+str(input_grad.numel())+ '\n')
 f.write("PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
+f.close()
+
+f = open("attention_scores.h", "w")
+f.write('#define ATTENTION_S_LENGTH '+str(net.mhsa.scores.numel())+'\n')
+f.write('PI_L2 float ATTENTION_SCORES[ATTENTION_S_LENGTH] = {'+dump.tensor_to_string(torch.transpose(net.mhsa.scores, 0, 1))+'};\n')
 f.close()

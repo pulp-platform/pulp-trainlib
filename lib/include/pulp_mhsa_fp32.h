@@ -46,6 +46,9 @@
 struct Mhsa_args {
     struct blob * input;
     int 	n_heads; 
+    int opt_matmul_type_fw;
+    int opt_matmul_type_wg;
+    int opt_matmul_type_ig;
     struct blob * output;
     struct blob * coeff_in;
     struct blob * coeff_out;

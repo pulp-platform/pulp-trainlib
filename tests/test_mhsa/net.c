@@ -20,6 +20,7 @@
 #include "input-sequence.h"
 #include "mhsa-grads.h"
 #include "mhsa-output.h"
+#include "attention_scores.h"
 #include "stats.h"
 
 #include "step-check.h"
@@ -145,6 +146,9 @@ static inline void connect_blobs()
   mhsa_args.attention_map = &layer0_att_map;
   mhsa_args.head_buffer = &layer0_h_buffer;
   mhsa_args.temp_buffer = l0_temp;
+  mhsa_args.opt_matmul_type_fw = MATMUL_TYPE;
+  mhsa_args.opt_matmul_type_wg = MATMUL_TYPE;
+  mhsa_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation(){
@@ -278,6 +282,9 @@ static inline void connect_blobs()
   mhsa_args.attention_map = &layer0_att_map;
   mhsa_args.head_buffer = &layer0_h_buffer;
   mhsa_args.n_heads = Tn_heads_l1;
+  mhsa_args.opt_matmul_type_fw = MATMUL_TYPE;
+  mhsa_args.opt_matmul_type_wg = MATMUL_TYPE;
+  mhsa_args.opt_matmul_type_ig = MATMUL_TYPE;
 
 }
 
@@ -383,9 +390,15 @@ static inline void train(){
   #ifdef BACKWARD
 
   pulp_mhsa_fp32_fw_cl(&mhsa_args);
+
   printf("\nFORWARD CHECK: \n");
   compare_tensors(l0_out, OUTPUT, OUTPUT_SIZE);
   check_tensor(l0_out, OUTPUT, OUTPUT_SIZE);
+
+  printf("\nATTENTION SCORE CHECK: \n");
+  compare_tensors(l0_att_map, ATTENTION_SCORES, ATTENTION_S_LENGTH);
+  check_tensor(l0_att_map, ATTENTION_SCORES, ATTENTION_S_LENGTH);
+
 
   #ifdef PROF_BCKWD
   printf("\nBackward stats\n");
@@ -409,7 +422,7 @@ static inline void train(){
   int load_count=pi_perf_read (PI_PERF_LD);
   int active_cycles_count=pi_perf_read (PI_PERF_ACTIVE_CYCLES);
 
-  printf("performance");
+  printf("\nperformance\n");
   printf("\n%d \n", cycles_count);
   printf("%d\n", instr_count);
   printf("%d\n", active_cycles_count);
