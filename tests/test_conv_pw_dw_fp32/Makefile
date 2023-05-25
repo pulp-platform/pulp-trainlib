@@ -19,7 +19,7 @@ WSTR?=1
 # Others
 NUM_CORES?=8
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
-HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
+HWC_layout?=1				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
