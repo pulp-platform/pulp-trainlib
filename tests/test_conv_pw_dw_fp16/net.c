@@ -714,6 +714,7 @@ static inline void train(){
     if (!(index%Tout_H_l1)) printf("\n");
     printf("%f ", l1_out[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef DW_BACKWARD_GRAD
@@ -722,21 +723,12 @@ static inline void train(){
   check_tensor(l1_ker_diff, WEIGHT_GRAD, Tker_H_l1*Tker_W_l1*Tin_C_l1);
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x, BUFF:%x\n", &layer1_in, &layer1_wgt, &layer1_out, im2col_buffer_bw);
-  printf("\nIm2col buffer:");
-  for (int index=0; index<IM2COL_SIZE; index++) {
-   if (!(index%Tker_H_l1*Tker_W_l1)) printf("\n");
-   printf("%f ", im2col_buffer_bw[index]);
-  }
-  printf("\n\nOutput grad:");
-  for (int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
-   if (!(index%Tout_H_l1)) printf("\n");
-   printf("%f ", l1_out_diff[index]);
-  }
   printf("\n\nWEIGHT GRAD:");
   for (int index=0; index<WGT_SIZE; index++) {
    if (!(index%Tker_H_l1)) printf("\n");
    printf("%f ", l1_ker_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef DW_BACKWARD_ERROR
@@ -749,6 +741,7 @@ static inline void train(){
     if (!(index%Tin_H_l1)) printf("\n");
     printf("%f ", l1_in_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef PW_FORWARD
