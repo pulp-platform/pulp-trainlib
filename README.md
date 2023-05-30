@@ -129,7 +129,7 @@ When generating a DNN for PULP with the TrainLib Deployer, make sure to launch t
 # Branches
 
 PULP-TrainLib's repository is organized with these branches:
-- `pulp-trainlib`: main branch, targeting PULP architectures
+- `main`: main branch, targeting PULP architectures
 - `pulp-trainlib-paper`: branch to generate the results provided in the paper ["PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
 - `pulp-trainlib-stm32`: this is a PULP-TrainLib port compatible with STM32 and other MCUs (FP32 format only).
 
