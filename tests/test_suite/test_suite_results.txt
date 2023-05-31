@@ -1,0 +1,16 @@
+
+MHSA FORWARD check...
+
+MM 0  => cycles:
+281904
+instr = 111245, ext_ld = 0, TCDM_cont = 0, ld_stalls = 0, imiss = 0
+
+MHSA BACKWARD check...
+
+MM 0  
+CONTAINS ERRORS!!!
+im2col check...
+
+MM 0  => cycles:
+1126
+instr = 756, ext_ld = 1, TCDM_cont = 11, ld_stalls = 21, imiss = 198

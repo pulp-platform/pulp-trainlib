@@ -423,11 +423,11 @@ static inline void train(){
   int active_cycles_count=pi_perf_read (PI_PERF_ACTIVE_CYCLES);
 
   printf("\nperformance\n");
-  printf("\n%d \n", cycles_count);
-  printf("%d\n", instr_count);
-  printf("%d\n", active_cycles_count);
-  printf("%d\n", load_count);
-  printf("%f\n", (float)cycles_count/instr_count);
+  printf("\nCycles count %d \n", cycles_count);
+  printf("Instruction Count %d\n", instr_count);
+  printf("Active Cycles Count %d\n", active_cycles_count);
+  printf("Load Count %d\n", load_count);
+  printf("Cycles/Instruction %f\n", (float)cycles_count/instr_count);
   
 
 
