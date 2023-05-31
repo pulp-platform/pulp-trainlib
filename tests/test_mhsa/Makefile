@@ -1,10 +1,10 @@
-APP = rnn_fp32
+APP = mhsa_fp32
 
 # User settings
 IN_H?=8 # Sequence Length
 IN_W?=8 # Token Size
 N_HEADS?=8
-ATT_DIM?=16 #Hidden dimension
+ATT_DIM?=8 #Hidden dimension
 IN_CH?=1
 OUT_CH?=1
 NUM_CORES?=8

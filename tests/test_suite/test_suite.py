@@ -22,12 +22,12 @@ os.chdir("test_mhsa")
 
 os.system("rm -r BUILD/")
 cmd = "make clean get_golden all run STEP='FORWARD' > log.txt"
-subprocess.check_output(cmd, shell=True, timeout=timeout)
+p = subprocess.call(cmd, shell=True, timeout=timeout)
 prof.extract_performance("\nMHSA FORWARD check...\n", 0, filename)
 
 os.system("rm -r BUILD/")
 cmd = "make clean get_golden all run STEP='BACKWARD' > log.txt"
-subprocess.check_output(cmd, shell=True, timeout=timeout)
+p = subprocess.call(cmd, shell=True, timeout=timeout)
 prof.extract_performance("\nMHSA BACKWARD check...\n", 0, filename)
 
 
@@ -36,5 +36,5 @@ os.chdir(os.getcwd()+"/../test_im2col")
 
 os.system("rm -r BUILD/")
 cmd = "make clean all run > log.txt"
-subprocess.check_output(cmd, shell=True, timeout=timeout)
+p = subprocess.call(cmd, shell=True, timeout=timeout)
 prof.extract_performance("\nim2col check...\n", 0, filename)
