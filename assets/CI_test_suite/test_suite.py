@@ -57,31 +57,19 @@ with open(results_file, 'w') as f:
     # Copy PULP-TrainLib in the right position
     ci.copy_trainlib_ci(ci_cwd, trainlib_cwd)
 
-    current_test_folder = test_cwd + "/test_linear_fp32"
-    ci.copy_test_folder_ci(0, ci_cwd, current_test_folder)
-
     """
-
-    print("\n=====> ENTERING TEST SEQUENCE FOR MHSA.. <=====\n")
-    os.chdir("test_mhsa")
-
-    os.system("rm -r BUILD/")
-    cmd = "make clean get_golden all run STEP='FORWARD' > log.txt"
-    p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nMHSA FORWARD check...\n", 0, filename)
-
-    os.system("rm -r BUILD/")
-    cmd = "make clean get_golden all run STEP='BACKWARD' > log.txt"
-    p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nMHSA BACKWARD check...\n", 0, filename)
-
+    START TEST SEQUENCE
+    """
+    test_sequence_iterator = 0
 
     print("\n=====> ENTERING TEST SEQUENCE FOR IM2COL.. <=====\n")
-    os.chdir(os.getcwd()+"/../test_im2col")
 
+    current_test_source_folder = test_cwd + "/test_im2col"
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     os.system("rm -r BUILD/")
     cmd = "make clean all run > log.txt"
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nim2col check...\n", 0, filename)
+    prof.extract_performance("\nim2col check...\n", 0, results_file)
+    test_sequence_iterator += 1
 
-    """

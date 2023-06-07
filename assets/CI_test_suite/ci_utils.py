@@ -20,8 +20,8 @@ import shutil
 def copy_test_folder_ci (test_id, ci_test_folder, test_folder):
 
     test_dest_folder = str(ci_test_folder)+"/temp/tests/ci_test_"+str(test_id)
-    #if not os.path.exists(test_dest_folder):
-    os.mkdir(test_dest_folder)
+    if not os.path.exists(test_dest_folder):
+        os.mkdir(test_dest_folder)
     os.chdir(test_dest_folder)
     shutil.copytree(test_folder, test_dest_folder, dirs_exist_ok=True)
 
