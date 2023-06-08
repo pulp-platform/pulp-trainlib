@@ -73,7 +73,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Activations (FP32): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Activations (FP32): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -83,7 +83,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Activations (FP16): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Activations (FP16): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -104,7 +104,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -114,7 +114,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -124,7 +124,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -134,7 +134,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -144,7 +144,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -154,7 +154,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     """
@@ -168,7 +168,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -178,7 +178,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -188,7 +188,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -198,7 +198,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -208,7 +208,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -218,7 +218,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -235,7 +235,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -245,7 +245,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -255,7 +255,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -265,7 +265,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -275,7 +275,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -285,7 +285,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     """
@@ -299,7 +299,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -309,7 +309,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -319,7 +319,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -329,7 +329,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -339,7 +339,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -349,7 +349,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -362,7 +362,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -372,7 +372,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -382,7 +382,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -392,7 +392,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -402,7 +402,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -412,7 +412,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -425,7 +425,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -435,7 +435,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -445,7 +445,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, CHW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, CHW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -455,7 +455,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -465,7 +465,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -475,26 +475,15 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, HWC): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, HWC): ", 0, results_file)
     test_sequence_iterator += 1
 
 
     # TO DO
     #print("\n=====> ENTERING TEST SEQUENCE FOR DMA TRANSFER.. <=====\n")
 
-
+    # TO DO
     # print("\n=====> ENTERING TEST SEQUENCE FOR IM2COL.. <=====\n")
-
-    # # Test settings
-    # current_test_source_folder = test_cwd + "/test_im2col"
-    # cmd = "rm -rf BUILD/; make clean all run > log.txt"
-    # # Automatic test sequence
-    # ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
-    # os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
-    # p = subprocess.call(cmd, shell=True, timeout=timeout)
-    # prof.extract_performance("\nTest Im2Col (FP32, FW): ", 0, results_file)
-    # test_sequence_iterator += 1
-
 
     # TO DO
     #print("\n=====> ENTERING TEST SEQUENCE FOR LAYOUT CHANGE.. <=====\n")
@@ -509,7 +498,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, FW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, FW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -519,7 +508,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, WG): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, WG): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -529,7 +518,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, IG): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, IG): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -542,7 +531,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, FW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP32, FW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -552,7 +541,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, WG): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP32, WG): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -562,7 +551,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, IG): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP32, IG): ", 0, results_file)
     test_sequence_iterator += 1
 
 
@@ -583,7 +572,7 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, FW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, FW): ", 0, results_file)
     test_sequence_iterator += 1
 
     # Test settings
@@ -593,5 +582,29 @@ with open(results_file, 'w') as f:
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, BW): ", 0, results_file)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, BW): ", 0, results_file)
     test_sequence_iterator += 1
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP32 RNN.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_rnn_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") RNN (FP32, FW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_rnn_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") RNN (FP32, BW): ", 0, results_file)
+    test_sequence_iterator += 1
+    
