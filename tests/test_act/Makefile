@@ -2,9 +2,9 @@ APP = test_act
 
 # User settings
 # Standard matmul arguments
-IN_H?=2
-IN_W?=2
-IN_C?=1
+IN_H?=8
+IN_W?=8
+IN_C?=8
 VALUE?=0.5
 # General arguments
 DATA_TYPE?='FP16'	# FP32 or FP16

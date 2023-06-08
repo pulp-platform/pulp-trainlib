@@ -7,7 +7,7 @@ NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=1
+MATMUL_TYPE?=0
 NUM_MATMULS?=6		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings

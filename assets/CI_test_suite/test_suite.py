@@ -22,7 +22,7 @@ import ci_utils as ci
 """
 USER CONSTRAINTS
 """
-timeout = 300
+timeout = 120
 
 
 """
@@ -57,19 +57,541 @@ with open(results_file, 'w') as f:
     # Copy PULP-TrainLib in the right position
     ci.copy_trainlib_ci(ci_cwd, trainlib_cwd)
 
+
+
     """
     START TEST SEQUENCE
     """
     test_sequence_iterator = 0
 
-    print("\n=====> ENTERING TEST SEQUENCE FOR IM2COL.. <=====\n")
+    print("\n=====> ENTERING TEST SEQUENCE FOR ACTIVATIONS.. <=====\n")
 
-    current_test_source_folder = test_cwd + "/test_im2col"
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_act"
+    cmd = "rm -rf BUILD/; make clean get_golden all run DATA_TYPE='FP32' > log.txt"
+    # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
-    os.system("rm -r BUILD/")
-    cmd = "make clean all run > log.txt"
     p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\nim2col check...\n", 0, results_file)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Activations (FP32): ", 0, results_file)
     test_sequence_iterator += 1
 
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_act"
+    cmd = "rm -rf BUILD/; make clean get_golden all run DATA_TYPE='FP16' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Activations (FP16): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    # TO DO
+    #print("\n=====> ENTERING TEST SEQUENCE FOR BLOCKTRANSPOSE.. <=====\n")
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP16 DEPTWHISE AND POINTWISE.. <=====\n")
+
+    """
+    DEPTHWISE CONVOLUTION
+    """
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_FORWARD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_FORWARD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP16, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    """
+    POINTWISE CONVOLUTION
+    """
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP16, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP32 DEPTWHISE AND POINTWISE.. <=====\n")
+
+    """
+    DEPTHWISE CONVOLUTION
+    """
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_FORWARD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_FORWARD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='DW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Depthwise (FP32, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    """
+    POINTWISE CONVOLUTION
+    """
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Pointwise (FP32, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP16 CONV2D.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP16, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP32 CONV2D.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, CHW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, FW, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, WG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_conv2d_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Conv2D (FP32, IG, HWC): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    # TO DO
+    #print("\n=====> ENTERING TEST SEQUENCE FOR DMA TRANSFER.. <=====\n")
+
+
+    # print("\n=====> ENTERING TEST SEQUENCE FOR IM2COL.. <=====\n")
+
+    # # Test settings
+    # current_test_source_folder = test_cwd + "/test_im2col"
+    # cmd = "rm -rf BUILD/; make clean all run > log.txt"
+    # # Automatic test sequence
+    # ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    # os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    # p = subprocess.call(cmd, shell=True, timeout=timeout)
+    # prof.extract_performance("\nTest Im2Col (FP32, FW): ", 0, results_file)
+    # test_sequence_iterator += 1
+
+
+    # TO DO
+    #print("\n=====> ENTERING TEST SEQUENCE FOR LAYOUT CHANGE.. <=====\n")
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP16 FULLY-CONNECTED.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, FW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, WG): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp16"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP16, IG): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP32 FULLY-CONNECTED.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, FW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, WG): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_linear_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") Linear (FP32, IG): ", 0, results_file)
+    test_sequence_iterator += 1
+
+
+    # TO DO
+    #print("\n=====> ENTERING TEST SEQUENCE FOR LOSSES.. <=====\n")
+
+
+    # TO DO
+    #print("\n=====> ENTERING TEST SEQUENCE FOR MATMUL.. <=====\n")
+
+
+    print("\n=====> ENTERING TEST SEQUENCE FOR FP32 MHSA.. <=====\n")
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_mhsa_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, FW): ", 0, results_file)
+    test_sequence_iterator += 1
+
+    # Test settings
+    current_test_source_folder = test_cwd + "/test_mhsa_fp32"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD' > log.txt"
+    # Automatic test sequence
+    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    p = subprocess.call(cmd, shell=True, timeout=timeout)
+    prof.extract_performance("\nTest ("+str(test_sequence_iterator)+") MHSA (FP32, BW): ", 0, results_file)
+    test_sequence_iterator += 1
