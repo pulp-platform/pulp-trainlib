@@ -75,17 +75,28 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
 {
   struct act_args * args = (struct act_args *) act_args;
   int dim = args->input->dim;
+  int i = args->output->dim;
   float* inDiff = args->input->diff;
   float* outData = args->output->data;
   float* outDiff = args->output->diff;
   float sum = 0.0;
 
-  for (int i = 0; i < dim; i++) {
-    //inDiff[i] = outDiff[i];
+  for(int j = 0; j < dim; j++){ // Cycle over the elements of the i-th head buffer
+      float sum = 0.0;
+      const float neg_sft_j  =  -(outData)[j]; 
+      for(int z = 0; z < dim; ++z){ // Softmax involves all the elements of the i-th head buffer
+          float mul =  (outDiff)[z] * (outData)[z] * neg_sft_j;
+          sum +=  mul; // adding to the total sum of this row.
+      }
+      inDiff[j] = sum;
+  }
+
+  for(int j=0; j<dim; j++){
+      inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
   }
 
   // Fix using: https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function
-  printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
+  //printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
 }
 
 void tanh_prll(void * args){

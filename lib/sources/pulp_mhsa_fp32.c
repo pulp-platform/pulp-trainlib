@@ -500,8 +500,19 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         #endif
 
 
+        struct act_args softmax_arg;
+        struct blob input;
+        struct blob output;
+        input.diff = grad;
+        input.dim = L*L;
+        output.data = head_buffer + i*L*L;
+        output.diff = head_buffer_diff + i*L*L;
+        output.dim = i;
+        softmax_arg.input = &input;
+        softmax_arg.output = &output;
         // Back propagation of i-th head Buffer gradient through the softmax operation
 
+        /*
         for(int j = 0; j < L*L; j++){ // Cycle over the elements of the i-th head buffer
             float sum = 0.0;
             const float neg_sft_j  =  -(head_buffer + i*L*L)[j]; 
@@ -515,6 +526,8 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         for(int j=0; j<L*L; j++){
             grad[j] += (head_buffer + i*L*L)[j] * (head_buffer_diff + i*L*L)[j]; // Gradient of pre-softmax head buffer: (L x L)
         }
+        */
+        pi_cl_team_fork(1, pulp_softmax_fp32_bw_cl, &softmax_arg);
 
 
 
