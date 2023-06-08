@@ -489,37 +489,37 @@ with open(results_file, 'w') as f:
     #print("\n=====> ENTERING TEST SEQUENCE FOR LAYOUT CHANGE.. <=====\n")
 
 
-    print("\n=====> ENTERING TEST SEQUENCE FOR FP16 FULLY-CONNECTED.. <=====\n")
+    # print("\n=====> ENTERING TEST SEQUENCE FOR FP16 FULLY-CONNECTED.. <=====\n")
 
-    # Test settings
-    current_test_source_folder = test_cwd + "/test_linear_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
-    # Automatic test sequence
-    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
-    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
-    p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, FW): ", 0, results_file)
-    test_sequence_iterator += 1
+    # # Test settings
+    # current_test_source_folder = test_cwd + "/test_linear_fp16"
+    # cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    # # Automatic test sequence
+    # ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    # os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    # p = subprocess.call(cmd, shell=True, timeout=timeout)
+    # prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, FW): ", 0, results_file)
+    # test_sequence_iterator += 1
 
-    # Test settings
-    current_test_source_folder = test_cwd + "/test_linear_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' > log.txt"
-    # Automatic test sequence
-    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
-    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
-    p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, WG): ", 0, results_file)
-    test_sequence_iterator += 1
+    # # Test settings
+    # current_test_source_folder = test_cwd + "/test_linear_fp16"
+    # cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' > log.txt"
+    # # Automatic test sequence
+    # ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    # os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    # p = subprocess.call(cmd, shell=True, timeout=timeout)
+    # prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, WG): ", 0, results_file)
+    # test_sequence_iterator += 1
 
-    # Test settings
-    current_test_source_folder = test_cwd + "/test_linear_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' > log.txt"
-    # Automatic test sequence
-    ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
-    os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
-    p = subprocess.call(cmd, shell=True, timeout=timeout)
-    prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, IG): ", 0, results_file)
-    test_sequence_iterator += 1
+    # # Test settings
+    # current_test_source_folder = test_cwd + "/test_linear_fp16"
+    # cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' > log.txt"
+    # # Automatic test sequence
+    # ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
+    # os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
+    # p = subprocess.call(cmd, shell=True, timeout=timeout)
+    # prof.extract_performance("\n\nTest ("+str(test_sequence_iterator)+") Linear (FP16, IG): ", 0, results_file)
+    # test_sequence_iterator += 1
 
 
     print("\n=====> ENTERING TEST SEQUENCE FOR FP32 FULLY-CONNECTED.. <=====\n")

@@ -85,6 +85,8 @@ If further info are needed, please refer to the [test's README](tests/README.md)
 
 The `tools/` folder contains useful tools which ease the usage of PULP-TrainLib, as the TrainLib_Deployer and AutoTuner. For further info, please refer to [tools' README](tools/README.md).
 
+The `assets/` folder contains useful support files for PULP-TrainLib. Inside [CI_test_suite](assets/CI_test_suite/), users can find a testing environment that can be used to verify PULP-TrainLib's primitives for Continuous Integration. 
+
 
 
 # Installation and requirements
@@ -123,6 +125,11 @@ Before compiling any project, source `pulp-sdk/configs/pulp_open.sh` from the te
 The `configs/` folder is located inside the path to your pulp-sdk directory.
 
 When generating a DNN for PULP with the TrainLib Deployer, make sure to launch the python task from a terminal in which you did not source the `pulp_open.sh`.
+
+
+# Testing and verification
+
+To add new functionalities, users can follow the naming convention of PULP-TrainLib and provide [primitives](lib/) and a related test inside the `tests/` folder. For integrating the new features, we recommend to extend the [continuous integration test suite](assets/CI_test_suite/test_suite.py) to functionally verify the primitives before the integration.
 
 
 
