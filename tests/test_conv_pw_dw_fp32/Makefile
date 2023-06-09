@@ -2,8 +2,8 @@ APP = dw_pw_fp32
 
 # User settings
 # Depthwise
-IMAGE_W?=8
-IMAGE_H?=8
+IMAGE_W?=4
+IMAGE_H?=4
 DW_KER_W?=3
 DW_KER_H?=3
 DW_IN_CH?=8
@@ -19,13 +19,14 @@ WSTR?=1
 # Others
 NUM_CORES?=8
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
-HWC_layout?=1				# Choose if data layout is CHW (=0) or HWC (=1)
+HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=24	# When profiling with multiple matmul algorithms
 NUM_SIZES?=3	# When profiling multiple sizes of the network
 APP_CFLAGS += -DCHECK_PRINT
+#APP_CFLAGS += -DDEBUG_DW
 # End of user settings
 
 TRAIN_LIB=../../lib

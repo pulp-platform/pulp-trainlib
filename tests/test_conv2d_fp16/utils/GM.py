@@ -34,7 +34,7 @@ parser.add_argument( '--image_height', type=int, default=7)
 parser.add_argument( '--ker_width', type=int, default=3)
 parser.add_argument( '--ker_height', type=int, default=3)
 parser.add_argument( '--ch_in', type=int, default=8 )  
-parser.add_argument( '--weight', type=float, default=0.1)
+parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out', type=int, default=8 )
 parser.add_argument( '--step', default='FORWARD') # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data needs to be bfloat16 (no fp16 on that target)
@@ -206,12 +206,20 @@ outConv = net.conv.register_forward_hook(hook_fn2)
 
 if bf16_format == 1:
   inp = torch.div(torch.ones(1, in_ch, image_height, image_width), 1000).bfloat16()
-  inp.requires_grad = True
   label = torch.ones(1, out_ch, out_size_h, out_size_w).bfloat16()
+  for cin in range(in_ch):
+    for hi in range(image_height):
+      for wi in range(image_width):
+        inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
+  inp.requires_grad = True
 else:
   inp = torch.div(torch.ones(1, in_ch, image_height, image_width), 1000).half()
-  inp.requires_grad = True
   label = torch.ones(1, out_ch, out_size_h, out_size_w).half()
+  for cin in range(in_ch):
+    for hi in range(image_height):
+      for wi in range(image_width):
+        inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
+  inp.requires_grad = True
 
 
 # Write input image

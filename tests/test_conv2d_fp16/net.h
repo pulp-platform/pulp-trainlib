@@ -38,7 +38,7 @@
 
 // Tensor checksum definition
 #define CHECK_TOLERANCE 1e-3
-#define ERROR_TOLERANCE 0.01
+#define ERROR_TOLERANCE 1e-3
 
 // PULP DEFINES
 #define STACK_SIZE      4096
