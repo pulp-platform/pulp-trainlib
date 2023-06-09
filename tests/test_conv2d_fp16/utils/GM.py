@@ -148,6 +148,7 @@ def hook_fn1(m, i, o):
       print("None found for Gradient (input)")
 
 
+  print("------------Output Grad------------")
   for grad in o:
     try:
       output_grad = grad

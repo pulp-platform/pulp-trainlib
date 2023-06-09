@@ -50,7 +50,7 @@ PI_L1 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 fp16 bt_buffer[1];
 #endif
 
-#ifdef BACKWARD_ERROR   // PASS TO BE FIXED
+#ifdef BACKWARD_ERROR   
 //#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tout_C_l1*Tin_H_l1*Tin_W_l1)
 #define IM2COL_SIZE (Tin_H_l1*Tin_W_l1*Tin_C_l1*Tout_C_l1*Tker_W_l1*Tker_H_l1)
 PI_L1 fp16 l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
@@ -351,6 +351,7 @@ static inline void compare_tensors(fp16 *A, fp16 *B, int length){
   else printf(">>>TENSOR NOT MATCHING!\n");
 
 }
+
 
 // Elementwise checker
 int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){

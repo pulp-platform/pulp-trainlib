@@ -24,7 +24,7 @@
 /**
  * @brief IM2ROW with padding and stride
  * 
- * @param void_args 
+ * @param im2col_args 
  */
 void pulp_im2row_fp16(void * void_args){
 
@@ -339,7 +339,7 @@ void pulp_im2row_fp16(void * void_args){
           }
         }
 
-    }
+      }
     }
 
     // ERROR SIGNAL
@@ -521,7 +521,7 @@ void pulp_im2row_fp16(void * void_args){
 /**
  * @brief IM2COL with padding and stride
  * 
- * @param void_args 
+ * @param im2col_args 
  */
 void pulp_im2col_fp16(void * void_args){
 
