@@ -37,7 +37,7 @@ parser.add_argument( '--ch_in', type=int, default=8 )
 parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out', type=int, default=8 )
 parser.add_argument( '--step', default='FORWARD') # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
-parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data needs to be bfloat16 (no fp16 on that target)
+parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data format if bfloat16, if 0 is float16
 parser.add_argument( '--h_pad', type=int, default=0)
 parser.add_argument( '--w_pad', type=int, default=0)
 parser.add_argument( '--h_str', type=int, default=1)
@@ -97,7 +97,7 @@ class myNet(nn.Module):
 
 if bf16_format == 1:
   net = myNet().bfloat16()
-else: 
+elif bf16_format == 0: 
   net = myNet().half()
 net.zero_grad()
 
@@ -122,7 +122,9 @@ def hook_fn1(m, i, o):
         if HWC_layout == 0:
           f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
         elif HWC_layout == 1:
-          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad.permute(0,3,1,2))+ "};\n")
+          ingrad = deepcopy(input_grad)
+          ingrad = ingrad.permute(0,2,3,1)
+          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(ingrad)+ "};\n")
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -134,7 +136,9 @@ def hook_fn1(m, i, o):
         if HWC_layout == 0:
           f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
         elif HWC_layout == 1:
-          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
+          wgt_grad = deepcopy(weight_grad)
+          wgt_grad = weight_grad.permute(0,2,3,1)
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(wgt_grad)+'};\n')
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -154,7 +158,9 @@ def hook_fn1(m, i, o):
           if HWC_layout == 0:
             f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
           elif HWC_layout == 1:
-            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
+            outgrad = deepcopy(output_grad)
+            outgrad = outgrad.permute(0,2,3,1)
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
@@ -162,7 +168,9 @@ def hook_fn1(m, i, o):
           if HWC_layout == 0:
             f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
           elif HWC_layout == 1:
-            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.permute(0,2,3,1))+'};\n')
+            outgrad = deepcopy(output_grad)
+            outgrad = outgrad.permute(0,2,3,1)
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
@@ -191,7 +199,9 @@ def hook_fn2(m, i, o):
           if HWC_layout == 0:
             f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data)+'};\n')
           elif HWC_layout == 1:
-            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data.permute(1,2,0))+'};\n')
+            outdata = output_data
+            outdata = outdata.permute(1,2,0)
+            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(outdata)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
@@ -231,7 +241,9 @@ if step=='FORWARD':
   if HWC_layout == 0:
     f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
   elif HWC_layout == 1:
-    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp.permute(0,2,3,1))+'};\n')
+    indata = deepcopy(inp)
+    indata = indata.permute(0,2,3,1)
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
   else:
     print("[utils/GM.py] Invalid data layout!!")
     exit()
@@ -239,7 +251,9 @@ else:
   if HWC_layout == 0:
     f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
   elif HWC_layout == 1:
-    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp.permute(0,2,3,1))+'};\n')
+    indata = deepcopy(inp)
+    indata = indata.permute(0,2,3,1)
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
   else:
     print("[utils/GM.py] Invalid data layout!!")
     exit()
@@ -280,9 +294,11 @@ f = open("init-defines.h", 'a')
 f.write("\n\n// Weight initialization\n")
 f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 if HWC_layout == 0:
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
+  f.write('PI_L2 fp16 WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
 elif HWC_layout == 1:
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data.permute(0,2,3,1))+'};\n')
+  weightdata = deepcopy(net.conv.weight.data)
+  weightdata = net.conv.weight.data.permute(0,2,3,1)
+  f.write('PI_L2 fp16 WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(weightdata)+'};\n')
 else:
   print("[utils/GM.py] Invalid data layout!!")
   exit()

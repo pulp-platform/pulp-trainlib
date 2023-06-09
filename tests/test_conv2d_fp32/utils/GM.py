@@ -34,7 +34,7 @@ parser.add_argument( '--image_height', type=int, default=7)
 parser.add_argument( '--ker_width', type=int, default=3)
 parser.add_argument( '--ker_height', type=int, default=3)
 parser.add_argument( '--ch_in', type=int, default=8 )  
-parser.add_argument( '--weight', type=float, default=0.1)
+parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out', type=int, default=8 )
 parser.add_argument( '--step', default='FORWARD') # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 parser.add_argument( '--h_pad', type=int, default=0)
@@ -130,7 +130,9 @@ def hook_fn1(m, i, o):
         if HWC_layout == 0:
           f.write('PI_L2 float WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
         elif HWC_layout == 1:
-          f.write('PI_L2 float WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad.permute(0,2,3,1))+'};\n')
+          wgt_grad = deepcopy(weight_grad)
+          wgt_grad = weight_grad.permute(0,2,3,1)
+          f.write('PI_L2 float WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(wgt_grad)+'};\n')
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -283,7 +285,9 @@ f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 if HWC_layout == 0:
   f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
 elif HWC_layout == 1:
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data.permute(0,2,3,1))+'};\n')
+  weightdata = deepcopy(net.conv.weight.data)
+  weightdata = net.conv.weight.data.permute(0,2,3,1)
+  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(weightdata)+'};\n')
 else:
   print("[utils/GM.py] Invaid data layout!!")
   exit()
