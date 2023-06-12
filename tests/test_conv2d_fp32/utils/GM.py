@@ -136,7 +136,6 @@ def hook_fn1(m, i, o):
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
-
       cont += 1
 
     except AttributeError:

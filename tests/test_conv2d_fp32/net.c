@@ -68,7 +68,7 @@ PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 float bt_buffer[1];
+PI_L1 float bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 

@@ -26,10 +26,10 @@
  * 
  * @param im2col_args 
  */
-void pulp_im2row_fp16(void * void_args){
+void pulp_im2row_fp16(void * im2col_args_fp16){
 
   // unpack args
-  struct im2col_args_fp16 * args = (struct im2col_args_fp16 *)void_args;
+  struct im2col_args_fp16 * args = (struct im2col_args_fp16 *)im2col_args_fp16;
   struct blob_fp16 * input = args->input;
   struct blob_fp16 * coeff = args->c;
   struct blob_fp16 * output = args->output;
@@ -122,9 +122,9 @@ void pulp_im2row_fp16(void * void_args){
       // FORWARD & WEIGHT GRAD
       if (mod==0)
       {
-        if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp16: 259] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
+        if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp16] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
         else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp16: 261] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
+        if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp16] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
         uint32_t padding = Lpad + Rpad + Upad + Dpad;
@@ -523,10 +523,10 @@ void pulp_im2row_fp16(void * void_args){
  * 
  * @param im2col_args 
  */
-void pulp_im2col_fp16(void * void_args){
+void pulp_im2col_fp16(void * im2col_args_fp16){
 
   // unpack args
-  struct im2col_args_fp16 * args = (struct im2col_args_fp16 *)void_args;
+  struct im2col_args_fp16 * args = (struct im2col_args_fp16 *)im2col_args_fp16;
   struct blob_fp16 * input = args->input;
   struct blob_fp16 * coeff = args->c;
   struct blob_fp16 * output = args->output;
@@ -879,9 +879,9 @@ void pulp_im2col_fp16(void * void_args){
 #define OPTIMIZE_BT
 #endif
 
-void pulp_blocktransp_fp16 (void * void_args_fp16)
+void pulp_blocktransp_fp16 (void * blocktransp_args_fp16)
 {
-  struct blocktransp_args_fp16 * args = (struct blocktransp_args_fp16 *)void_args_fp16;
+  struct blocktransp_args_fp16 * args = (struct blocktransp_args_fp16 *)blocktransp_args_fp16;
   fp16 * weights = args->weights;
   fp16 * bt_weights = args->bt_weights;
   uint32_t Cin = args->Cin;

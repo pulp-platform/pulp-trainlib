@@ -67,7 +67,7 @@ PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
 PI_L1 fp16 l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 fp16 l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 fp16 bt_buffer[1];
+PI_L1 fp16 bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 
@@ -367,7 +367,6 @@ int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
     }
     return error_flag;
 }
-
 
 
 static inline void train(){
