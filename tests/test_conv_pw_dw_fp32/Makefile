@@ -2,8 +2,8 @@ APP = dw_pw_fp32
 
 # User settings
 # Depthwise
-IMAGE_W?=4
-IMAGE_H?=4
+IMAGE_W?=8
+IMAGE_H?=8
 DW_KER_W?=3
 DW_KER_H?=3
 DW_IN_CH?=8

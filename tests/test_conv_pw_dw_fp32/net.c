@@ -177,22 +177,22 @@ static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = zero_init;
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init;
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i]; //zero_init;
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = zero_init;
 }
 
 static inline void connect_blobs(){
 
   // // Copy golden model's data into the correct tensor
-  //struct copy_args cpy;
-  //cpy.from = OUTPUT;
-  //cpy.to = l1_in;
-  //cpy.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
-  //pi_cl_team_fork(NUM_CORES, copy, (void*)&cpy);
+  struct copy_args cpy;
+  cpy.from = OUTPUT;
+  cpy.to = l1_in;
+  cpy.size = Tin_H_l1*Tin_W_l1*Tin_C_l1;
+  pi_cl_team_fork(NUM_CORES, copy, (void*)&cpy);
 
-  //cpy.from = OUTPUT_GRAD;
-  //cpy.to = l1_out_diff;
-  //cpy.size = Tout_H_l1*Tout_W_l1*Tout_C_l1;
-  //pi_cl_team_fork(NUM_CORES, copy, (void*)&cpy);
+  cpy.from = OUTPUT_GRAD;
+  cpy.to = l1_out_diff;
+  cpy.size = Tout_H_l1*Tout_W_l1*Tout_C_l1;
+  pi_cl_team_fork(NUM_CORES, copy, (void*)&cpy);
 
   // ********** LAYER SEPARABLE CONV **************
   layer1_in.data = l1_in; //OUTPUT;
@@ -591,8 +591,8 @@ static inline void forward(){
 
 static inline void compare_tensors(float *A, float *B, int length){
 
-  float mean_err_rel = zero_init;
-  float diff = zero_init;
+  float mean_err_rel = 0.0f; //zero_init;
+  float diff = 0.0f; //zero_init;
   float den = 0.000001f;
 
   for(int i=0; i<length; i++){
@@ -695,6 +695,7 @@ static inline void train(){
   pulp_conv_dw_fp32_bw_input_grads_cl(&DW_args);
   #endif
 
+
   #ifdef PROF_DW_BKWD
   STOP_STATS();
   #endif
@@ -712,6 +713,7 @@ static inline void train(){
     if (!(index%Tout_H_l1)) printf("\n");
     printf("%f ", l1_out[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef DW_BACKWARD_GRAD
@@ -725,6 +727,7 @@ static inline void train(){
    if (!(index%Tker_H_l1)) printf("\n");
    printf("%f ", l1_ker_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef DW_BACKWARD_ERROR
@@ -737,6 +740,7 @@ static inline void train(){
     if (!(index%Tin_H_l1)) printf("\n");
     printf("%f ", l1_in_diff[index]);
   }
+  printf("\n");
   #endif
 
   #ifdef PW_FORWARD
