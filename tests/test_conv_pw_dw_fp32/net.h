@@ -45,8 +45,8 @@
 #define stride_l2_steps (Tin_H_l1-Tker_H_l1+1)
 
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-3
-#define ERROR_TOLERANCE 0.01
+#define CHECK_TOLERANCE 1e-7
+#define ERROR_TOLERANCE 1e-7
 
 // PULP DEFINES
 #define STACK_SIZE      4096
