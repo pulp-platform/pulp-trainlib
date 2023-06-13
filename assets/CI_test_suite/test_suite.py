@@ -22,7 +22,13 @@ import ci_utils as ci
 """
 USER CONSTRAINTS
 """
-timeout = 120
+timeout                     = 120       # Sets the timeout for each process
+Conv2D_Opt_MM_FP32          = 10        # Selects the optimized MM for the Conv2D layers (FP32)
+PointWise_Opt_MM_FP32       = 10        # Selects the optimized MM for the PW layers (FP32)
+Linear_Opt_MM_FP32          = 0         # Selects the optimized MM for the Fully Conneced layer (FP32)
+Conv2D_Opt_MM_FP16          = 3         # Selects the optimized MM for the Conv2D layers (FP16)
+PointWise_Opt_MM_FP16       = 3         # Selects the optimized MM for the PW layers (FP16)
+Linear_Opt_MM_FP16          = 0         # Selects the optimized MM for the Fully Conneced layer (FP16)
 
 
 """
@@ -163,7 +169,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -173,7 +179,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -183,7 +189,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -193,7 +199,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -203,7 +209,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -213,7 +219,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -294,7 +300,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -304,7 +310,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -314,7 +320,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=0 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -324,7 +330,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_FORWARD' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -334,7 +340,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_GRAD' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -344,7 +350,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv_pw_dw_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='PW_BACKWARD_ERROR' HWC_layout=1 MATMUL_TYPE="+str(PointWise_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -357,7 +363,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -367,7 +373,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -377,7 +383,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -387,7 +393,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -397,7 +403,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -407,7 +413,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp16"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP16)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -420,7 +426,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -430,7 +436,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -440,7 +446,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=0 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -450,7 +456,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -460,7 +466,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -470,7 +476,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_conv2d_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' HWC_LAYOUT=1 MATMUL_TYPE="+str(Conv2D_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -526,7 +532,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_linear_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='FORWARD' MATMUL_TYPE="+str(Linear_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -536,7 +542,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_linear_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_GRAD' MATMUL_TYPE="+str(Linear_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
@@ -546,7 +552,7 @@ with open(results_file, 'w') as f:
 
     # Test settings
     current_test_source_folder = test_cwd + "/test_linear_fp32"
-    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' > log.txt"
+    cmd = "rm -rf BUILD/; make clean get_golden all run STEP='BACKWARD_ERROR' MATMUL_TYPE="+str(Linear_Opt_MM_FP32)+" > log.txt"
     # Automatic test sequence
     ci.copy_test_folder_ci(test_sequence_iterator, ci_cwd, current_test_source_folder)
     os.chdir(ci_cwd+"/temp/tests/ci_test_"+str(test_sequence_iterator))
