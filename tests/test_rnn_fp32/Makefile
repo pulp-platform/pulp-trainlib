@@ -38,7 +38,7 @@ APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_LDFLAGS += -lm 
 
 # STATISTICS
-#APP_CFLAGS += -DSTATS
+APP_CFLAGS += -DSTATS
 
 get_golden:
 	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --out_width $(OUT_W)

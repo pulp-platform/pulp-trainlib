@@ -32,7 +32,7 @@ parser.add_argument( '--image_height', type=int, default=3)
 parser.add_argument( '--ker_width', type=int, default=3 )
 parser.add_argument( '--ker_height', type=int, default=3)
 parser.add_argument( '--ch_in_dw', type=int, default=128 )
-parser.add_argument( '--weight', type=float, default=0.001)
+parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
 parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data needs to be bfloat16 (no fp16 on that target)
@@ -378,12 +378,12 @@ with torch.no_grad():
 f = open("init-defines.h", 'a')
 f.write("\n\n// Weight initialization\n")
 f.write("#define DW_WGT_SIZE (Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
-f.write('PI_L2 float DW_WEIGHTS[DW_WGT_SIZE] = {'+dump.tensor_to_string(net.convDW.weight.data)+'};\n')
+f.write('PI_L2 fp16 DW_WEIGHTS[DW_WGT_SIZE] = {'+dump.tensor_to_string(net.convDW.weight.data)+'};\n')
 f.write("#define PW_WGT_SIZE (Tin_C_l2*Tout_C_l2)\n")
 if HWC_lay == 0:
-  f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
+  f.write('PI_L2 fp16 PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
 elif HWC_lay == 1:
-  f.write('PI_L2 float PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
+  f.write('PI_L2 fp16 PW_WEIGHTS[PW_WGT_SIZE] = {'+dump.tensor_to_string(net.convPW.weight.data)+'};\n')
 f.close()
 
 criterion = nn.MSELoss()

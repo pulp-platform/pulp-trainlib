@@ -38,6 +38,7 @@ int verify_tensor_fp16(fp16 * tensor_out, fp16 * tensor_ref, int size, fp16 tole
 }
 
 
+
 void transpose_fp16(void * void_args) 
 {
     struct transp_args_fp16 args = *((struct transp_args_fp16 *)void_args);
@@ -230,6 +231,9 @@ void CHW_to_HWC_fp16 (void * layout_args)
 
 
 
+/**
+ * Choose the user-selected matmul for the chosen layer.
+ */
 void mm_manager_fp16 (void * void_args) 
 {
     struct mm_manager_args_fp16* args = (struct mm_manager_args_fp16 *) void_args;
