@@ -297,6 +297,26 @@ struct update_weight_args{
   int dim;
 };
 
+/**
+ * @brief Arguments for implementing parallelized max on an input vector
+ * @param input   input vector on which we want to find the max
+ * @param maxes   vector on which each core saves the max they have found
+ * @param dim     dimension of input
+*/
+struct max_args{
+  float* input;
+  float* maxes;
+  int dim;
+};
+
+struct exp_sum_args{
+  float* input;
+  float* sums;
+  float* output;
+  int dim;
+  float max;
+};
+
 
 /**
  * =====> FUNCTIONS <=====
@@ -373,6 +393,17 @@ void exponential (void * void_args);
  */
 void softmax (void * void_args);
 
+/**
+ * @brief Calculate the maxes of a vector in parallelized fashion
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_max_fp32_cl(void * void_args);
+
+/**
+ * @brief Calculate the exponential of each element and sum them
+ * @param (void *)  (struct exp_sum_args void_args)
+ */
+void pulp_exp_sum_fp32_cl(void* void_args);
 
 static inline float
 fasterexp (float p);

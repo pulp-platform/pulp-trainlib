@@ -155,7 +155,9 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         softmax_arg.input = &input;
         softmax_arg.output = &output;
 
-        pi_cl_team_fork(1, pulp_softmax_fp32_fw_cl, &softmax_arg); //TODO: actually parallelize this function
+        pulp_softmax_fp32_fw_cl(&softmax_arg);
+
+        //pi_cl_team_fork(1, pulp_softmax_fp32_fw_cl, &softmax_arg); //TODO: actually parallelize this function
 
         // Multiply softmax result with the i-th head's V chunk
         struct matMul_args matMul_args3;

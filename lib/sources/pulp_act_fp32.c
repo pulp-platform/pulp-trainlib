@@ -51,23 +51,50 @@ void pulp_relu_fp32_bw_cl( void * act_args )
 void pulp_softmax_fp32_fw_cl( void * act_args )
 {
   struct act_args * args = (struct act_args *) act_args;
+
   int dim = args->input->dim;
   float* inData = args->input->data;
   float* outData = args->output->data;
+
+  /*
+  const int blockSize=(args_tanh->dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > args_tanh->dim ? args_tanh->dim : start+blockSize;
+  */
+
   float sum = 0.0;
+  float sum2 = 0.0;
   float max = 0.0;
+  float maxes[NUM_CORES] = {0.0};
+  float sums[NUM_CORES] = {0.0};
 
-  for (int i = 0; i < dim; i++) {
-    if(max < inData[i])
-      max = inData[i];
+  
+  struct max_args m_args;
+  m_args.input = inData;
+  m_args.maxes = maxes;
+  m_args.dim = dim;
+
+  pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &m_args);
+
+  for(int i=0; i<NUM_CORES; i++)
+    if(max < maxes[i])
+      max = maxes[i];
+  
+  struct exp_sum_args e_s_args;
+  e_s_args.input = inData;
+  e_s_args.sums = sums;
+  e_s_args.output = outData;
+  e_s_args.dim = dim;
+  e_s_args.max = max;
+  
+  pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &e_s_args);
+
+  for(int i=0; i<NUM_CORES; i++){
+    sum += sums[i];
   }
 
   for (int i = 0; i < dim; i++) {
-    sum += expf(inData[i] - max);
-  }
-
-  for (int i = 0; i < dim; i++) {
-    outData[i] = expf(inData[i] - max)/sum;
+    outData[i] = outData[i]/sum;
   }
 }
 
