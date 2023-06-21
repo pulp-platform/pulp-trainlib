@@ -339,41 +339,6 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
 
     // Output Projection Weights
 
-    /*
-    // Transpose output gradients
-    struct transp_args transp_args2;
-    transp_args2.matrix = outDiff;
-    transp_args2.transp_matrix = temp;
-    transp_args2.N = L;
-    transp_args2.M = E;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
-
-    struct copy_args copy_args2;
-    copy_args2.from = temp;
-    copy_args2.to = outDiff;
-    copy_args2.size = E*L;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args2); // Transposed output gradient: (L x E) - > (E x L)
-
-    // Transpose Attention Map
-    struct transp_args transp_args7;
-    transp_args7.matrix = attention_map;
-    transp_args7.transp_matrix = temp;
-    transp_args7.N = F;
-    transp_args7.M = L;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args7); 
-
-    struct copy_args copy_args6;
-    copy_args6.from = temp;
-    copy_args6.to = attention_map;
-    copy_args6.size = L*F;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args6); // Attention map: (F x L) - > (L x F)
-    */
-
-
 
     // matmul setup 2
     struct matMul_args matMul_args2;
@@ -512,21 +477,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         softmax_arg.output = &output;
         // Back propagation of i-th head Buffer gradient through the softmax operation
 
-        /*
-        for(int j = 0; j < L*L; j++){ // Cycle over the elements of the i-th head buffer
-            float sum = 0.0;
-            const float neg_sft_j  =  -(head_buffer + i*L*L)[j]; 
-            for(int z = 0; z < L*L; ++z){ // Softmax involves all the elements of the i-th head buffer
-                float mul =  (head_buffer_diff + i*L*L)[z] * (head_buffer + i*L*L)[z] * neg_sft_j;
-                sum +=  mul; // adding to the total sum of this row.
-            }
-            grad[j] = sum;
-        }
-
-        for(int j=0; j<L*L; j++){
-            grad[j] += (head_buffer + i*L*L)[j] * (head_buffer_diff + i*L*L)[j]; // Gradient of pre-softmax head buffer: (L x L)
-        }
-        */
+        
         pi_cl_team_fork(1, pulp_softmax_fp32_bw_cl, &softmax_arg);
 
 

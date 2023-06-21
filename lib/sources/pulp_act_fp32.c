@@ -94,9 +94,6 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
   for(int j=0; j<dim; j++){
       inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
   }
-
-  // Fix using: https://stackoverflow.com/questions/33541930/how-to-implement-the-softmax-derivative-independently-from-any-loss-function
-  //printf("[pulp_softmax_fp32_bw_cl] INVALID FORMULA, FIX!!");
 }
 
 void tanh_prll(void * args){
