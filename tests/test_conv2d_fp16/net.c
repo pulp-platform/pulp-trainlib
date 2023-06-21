@@ -50,7 +50,7 @@ PI_L1 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 fp16 bt_buffer[1];
 #endif
 
-#ifdef BACKWARD_ERROR   // PASS TO BE FIXED
+#ifdef BACKWARD_ERROR   
 //#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tout_C_l1*Tin_H_l1*Tin_W_l1)
 #define IM2COL_SIZE (Tin_H_l1*Tin_W_l1*Tin_C_l1*Tout_C_l1*Tker_W_l1*Tker_H_l1)
 PI_L1 fp16 l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
@@ -67,7 +67,7 @@ PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
 PI_L1 fp16 l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 fp16 l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 fp16 bt_buffer[1];
+PI_L1 fp16 bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 
@@ -352,6 +352,7 @@ static inline void compare_tensors(fp16 *A, fp16 *B, int length){
 
 }
 
+
 // Elementwise checker
 int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
 
@@ -366,7 +367,6 @@ int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
     }
     return error_flag;
 }
-
 
 
 static inline void train(){

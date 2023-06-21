@@ -33,7 +33,7 @@ parser.add_argument( '--image_height', type=int, default=3)
 parser.add_argument( '--ker_width', type=int, default=3 )
 parser.add_argument( '--ker_height', type=int, default=3)
 parser.add_argument( '--ch_in_dw', type=int, default=128 )
-parser.add_argument( '--weight', type=float, default=0.1)
+parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
 parser.add_argument( '--pad_h', type=int, default='0')

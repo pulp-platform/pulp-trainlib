@@ -231,7 +231,7 @@ void CHW_to_HWC (void * layout_args)
 
 
 /**
- * Choose the correct matmul for the chosen layer.
+ * Choose the user-selected matmul for the chosen layer.
  */
 void mm_manager (void * void_args)
 {

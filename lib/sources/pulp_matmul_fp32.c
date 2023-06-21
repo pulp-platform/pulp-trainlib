@@ -284,7 +284,7 @@ void mm_dw(void * matMul_DW_args) {
   uint32_t K = args->K;
   uint32_t ker_dim = args->ker_size;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_DW
   uint32_t num_MAC = 0;
   #endif
 
@@ -292,7 +292,7 @@ void mm_dw(void * matMul_DW_args) {
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-  #ifdef DEBUG
+  #ifdef DEBUG_DW
   float a = 0;
   float b = 0;
   uint32_t idx_a = 0;
@@ -303,14 +303,13 @@ void mm_dw(void * matMul_DW_args) {
   {
     for (uint32_t k=start; k < stop; k++) 
     {
-      #ifdef DEBUG
+      #ifdef DEBUG_DW
         printf("\nCORE %d: start=%d, stop=%d\n", pi_core_id(), start, stop);
       #endif
       float temp = 0; 
       for (uint32_t t = 0; t < ker_dim; t++) 
       {
-        #ifdef DEBUG
-          // variables needed for debugging, remove to measure performances
+        #ifdef DEBUG_DW
           idx_a = /*i*K+*/(k*ker_dim+t);
           a = A[idx_a];
           idx_b = j*(N*ker_dim)+(k*ker_dim+t);
@@ -323,13 +322,13 @@ void mm_dw(void * matMul_DW_args) {
         #endif
       }
       C[j+k*M] = temp;
-      #ifdef DEBUG
+      #ifdef DEBUG_DW
         printf("C[%d] = %f\n", j+k*M, temp);
       #endif
     } 
   }
 
-  #ifdef DEBUG
+  #ifdef DEBUG_DW
   printf("\n\n=====> MM_DW MAC: %d <=====\n\n", num_MAC);
   #endif
 }

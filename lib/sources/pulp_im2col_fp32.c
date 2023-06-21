@@ -64,7 +64,7 @@ void pulp_im2row_fp32(void * im2col_args){
   Wo = Win - Wk + 1;
 
   // Set up im2col variables for padding and stride
-  uint32_t Htot, Wtot;
+  uint32_t Htot=0, Wtot=0;
   Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
   Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
@@ -122,9 +122,9 @@ void pulp_im2row_fp32(void * im2col_args){
       // FORWARD & WEIGHT GRAD
       if (mod==0)
       {
-        if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
+        if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
         else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32: 243] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
+        if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
         else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
         uint32_t padding = Lpad + Rpad + Upad + Dpad;
@@ -137,7 +137,7 @@ void pulp_im2row_fp32(void * im2col_args){
                 uint32_t kernel_idx = ci*Hk*Wk;
                 uint32_t segment_idx = wo*Hk*Wk*Cin + ho*Hk*Wk*Cin*(Wtot);
                 // Input tensor coordinates
-                uint32_t receptive_field_idx = (wo*Wstr-Lpad) + (ho*Hstr-Upad)*Win + ci*Hin*Win;
+                uint32_t receptive_field_idx = (wo*Wstr) + (ho*Hstr)*Win + ci*Hin*Win;
                 for (uint32_t hk=0; hk<Hk; hk++) {
                   for (uint32_t wk=0; wk<Wk; wk++) {
                     // IM2COl buffer coordinate update
@@ -651,8 +651,8 @@ void pulp_im2row_fp32(void * im2col_args){
   else {
     printf("[pulp_im2col_fp32:] Invalid HWC parameter (not 0 or 1)\n");
   }
-}
 
+}
 
 
 
@@ -703,7 +703,7 @@ void pulp_im2col_fp32(void * im2col_args){
   Wo = Win - Wk + 1;
 
   // Set up im2col variables for padding and stride
-  uint32_t Htot, Wtot;
+  uint32_t Htot=0, Wtot=0;
   Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
   Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
@@ -1070,4 +1070,3 @@ void pulp_blocktransp_fp32 (void * blocktransp_args)
     printf("[pulp_blocktransp_fp32.c] Invalid data layout (not 0 or 1)!!\n");
   }
 }
-

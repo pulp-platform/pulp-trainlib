@@ -136,8 +136,8 @@ To add new functionalities, users can follow the naming convention of PULP-Train
 # Branches
 
 PULP-TrainLib's repository is organized with these branches:
-- `main`: main branch, targeting PULP architectures
-- `pulp-trainlib-paper`: branch to generate the results provided in the paper ["PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
+- `main`: main branch, targeting PULP architectures.
+- `pulp-trainlib-paper`: branch to reproduce the results provided in the paper ["PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf).
 - `pulp-trainlib-stm32`: this is a PULP-TrainLib port compatible with STM32 and other MCUs (FP32 format only).
 
 
@@ -149,26 +149,25 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32, FP16)
-- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
-- [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32)
+- [X] CWH data layout for PointWise and 2D Convolutions (FP32, FP16)
+- [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
 - [X] ReLU activation function (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
-- [X] Padding operators for DepthWise and 2D Convolution (Forward & Weight Grad, FP32 and FP16)
 - [X] RNN training primitives (FP32)
 - [X] Multihead Self Attention training primitives (FP32)
-- [ ] Padding operators for DepthWise and 2D Convolution (Input Grad, FP32 and FP16)
-- [ ] HWC data layout for 2D Convolutions (FP16)
-- [ ] HWC data layout for DepthWise Convolutions (FP32, FP16)
+- [ ] Padding operators for DepthWise and 2D Convolution
+- [ ] CHW data layout for DepthWise Convolution (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] Verification of all layer steps and adaptation of the tests to the new features (stride, padding)
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
 - [ ] Residual connection
+- [ ] Biases for all layers
 
 # Known bugs / issues (open for contributions)
 
-- FP16 HWC Conv2D primitives (Input Grad)
+- FP32/FP16 Weight Gradient for the Depthwise Convolutions (CHW, still not converging to GM)
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
@@ -197,4 +196,3 @@ PULP-TrainLib's repository is organized with these branches:
 > D. Nadalini, M. Rusci, L. Benini, and F. Conti, "Reduced Precision Floating-Point Optimization for Deep Neural Network On-Device Learning on MicroControllers" [ArXiv Pre-Print](https://arxiv.org/abs/2305.19167)
 > 
 > D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
-
