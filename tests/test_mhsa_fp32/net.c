@@ -36,7 +36,7 @@
 // MHSA
 PI_L1 float zero_init = 0.0f;
 PI_L1 struct Mhsa_args mhsa_args;
-PI_L1 struct blob layer0_in, layer0_wgt_in, layer0_wgt_out, layer0_qkv, layer0_att_map, layer0_h_buffer, layer0_out;
+PI_L1 struct blob layer0_in, layer0_wgt_in, layer0_wgt_out, layer0_qkv, layer0_att_map, layer0_h_buffer, layer0_softmax_buffer, layer0_out;
 
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
@@ -49,6 +49,7 @@ PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1];
 PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
 PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
 PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
 PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
 #endif
@@ -70,6 +71,7 @@ PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (ca
 PI_L1 float l0_grad[Tin_H_l1*Tin_H_l1]; // Buffer containing the pre-softmax head buffer gradient, necessary in the backward process
 PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1]; 
 PI_L1 float l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 #endif
 
 
@@ -84,6 +86,7 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_qkv[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_att_map[i] = zero_init; 
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_h_buffer[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_softmax_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_temp[i] = zero_init; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
 }
 
@@ -137,6 +140,12 @@ static inline void connect_blobs()
   layer0_h_buffer.W = Tin_H_l1*Tin_H_l1;
   layer0_h_buffer.C = Tin_C_l1;
 
+  layer0_softmax_buffer.data = l0_softmax_buffer;
+  layer0_softmax_buffer.dim = Tin_H_l1*Tin_H_l1*Tn_heads_l1;
+  layer0_softmax_buffer.H = Tn_heads_l1;
+  layer0_softmax_buffer.W = Tin_H_l1*Tin_H_l1;
+  layer0_softmax_buffer.C = Tin_C_l1;
+
   mhsa_args.input = &layer0_in;
   mhsa_args.n_heads = Tn_heads_l1;
   mhsa_args.qkv = &layer0_qkv;
@@ -145,6 +154,7 @@ static inline void connect_blobs()
   mhsa_args.coeff_out = &layer0_wgt_out;
   mhsa_args.attention_map = &layer0_att_map;
   mhsa_args.head_buffer = &layer0_h_buffer;
+  mhsa_args.softmax_buffer = &layer0_softmax_buffer;
   mhsa_args.temp_buffer = l0_temp;
   mhsa_args.opt_matmul_type_fw = MATMUL_TYPE;
   mhsa_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -166,6 +176,8 @@ static inline void compute_memory_occupation(){
   L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  // Heads Softmax Output
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
 
@@ -184,6 +196,8 @@ static inline void compute_memory_occupation(){
   // Attention Map
   L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
   // Heads Scores
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  // Heads Softmax Output
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
@@ -219,6 +233,8 @@ static inline void tensor_init()
 
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_h_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_h_buffer_diff[i] = zero_init;
+
+  for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_softmax_buffer[i] = zero_init;
 }
 
 static inline void connect_blobs() 
@@ -272,6 +288,12 @@ static inline void connect_blobs()
   layer0_h_buffer.C = Tin_C_l1;
   layer0_h_buffer.diff = l0_h_buffer_diff;
 
+  layer0_softmax_buffer.data = l0_softmax_buffer;
+  layer0_softmax_buffer.dim = Tin_H_l1*Tin_H_l1*Tn_heads_l1;
+  layer0_softmax_buffer.H = Tn_heads_l1;
+  layer0_softmax_buffer.W = Tin_H_l1*Tin_H_l1;
+  layer0_softmax_buffer.C = Tin_C_l1;
+
   mhsa_args.input = &layer0_in;
   mhsa_args.qkv = &layer0_qkv;
   mhsa_args.output = &layer0_out;
@@ -281,6 +303,7 @@ static inline void connect_blobs()
   mhsa_args.grad = l0_grad;
   mhsa_args.attention_map = &layer0_att_map;
   mhsa_args.head_buffer = &layer0_h_buffer;
+  mhsa_args.softmax_buffer = &layer0_softmax_buffer;
   mhsa_args.n_heads = Tn_heads_l1;
   mhsa_args.opt_matmul_type_fw = MATMUL_TYPE;
   mhsa_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -307,6 +330,8 @@ static inline void compute_memory_occupation(){
   L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
   // Gradient buffer
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  // Heads Softmax Output
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
 
 
 
@@ -328,6 +353,8 @@ static inline void compute_memory_occupation(){
   L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
   // Gradient buffer
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  // Heads Softmax Output
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
 }
 #endif
 

@@ -26,6 +26,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     float *inputData = mhsa_args->input->data;
     float *temp = mhsa_args->temp_buffer;
     float *head_buffer = mhsa_args->head_buffer->data;
+    float *softmax_buffer = mhsa_args->softmax_buffer->data;
     float *qkv = mhsa_args->qkv->data;
     float *q = mhsa_args->qkv->data;
     float *k = mhsa_args->qkv->data;
@@ -113,6 +114,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     // Cycle on the different heads
     for(int i = 0; i < n_heads; i++){
         float* current_head_buffer = head_buffer + i*L*L;
+        float* current_softmax_buffer = softmax_buffer + i*L*L;
         // Transpose i-th head's K chunk
         struct transp_args transp_args2;
         transp_args2.matrix = k + L*i*H;
@@ -151,7 +153,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         struct blob output;
         input.data = current_head_buffer;
         input.dim = L*L;
-        output.data = current_head_buffer;
+        output.data = current_softmax_buffer;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
 
@@ -162,7 +164,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         // Multiply softmax result with the i-th head's V chunk
         struct matMul_args matMul_args3;
         matMul_args3.A = v + L*i*H;
-        matMul_args3.B = current_head_buffer;
+        matMul_args3.B = current_softmax_buffer;
         matMul_args3.C = attention_map + L*i*H;
         matMul_args3.N = H;
         matMul_args3.K = L;
@@ -256,6 +258,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     float *coeffDiffWin = mhsa_args->coeff_in->diff; // E x 3F
     float *coeffDiffWout = mhsa_args->coeff_out->diff; // E x F
     float *head_buffer = mhsa_args->head_buffer->data; // L x L
+    float *softmax_buffer = mhsa_args->softmax_buffer->data;
 
     int total_dim = mhsa_args->output->dim;
     int L = mhsa_args->input->H; // Input sequence length
@@ -414,7 +417,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         // matmul setup 3
         struct matMul_args matMul_args3;
         matMul_args3.A = attention_map_diff + i*L*H; 
-        matMul_args3.B = head_buffer + i*L*L; 
+        matMul_args3.B = softmax_buffer + i*L*L; 
         matMul_args3.C = v_diff + i*L*H;
         matMul_args3.N = H;
         matMul_args3.K = L;
@@ -472,7 +475,7 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         struct blob output;
         input.diff = grad;
         input.dim = L*L;
-        output.data = head_buffer + i*L*L;
+        output.data = softmax_buffer + i*L*L;
         output.diff = head_buffer_diff + i*L*L;
         output.dim = i;
         softmax_arg.input = &input;

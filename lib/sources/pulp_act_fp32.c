@@ -93,9 +93,12 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
     sum += sums[i];
   }
 
-  for (int i = 0; i < dim; i++) {
-    outData[i] = outData[i]/sum;
-  }
+  struct div_args d_args;
+  d_args.input = outData;
+  d_args.n = sum;
+  d_args.dim = dim;
+
+  pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &d_args);
 }
 
 void pulp_softmax_fp32_bw_cl( void * act_args )

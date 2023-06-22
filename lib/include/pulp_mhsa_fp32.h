@@ -57,6 +57,7 @@ struct Mhsa_args {
     float * temp_buffer;
     float * grad;
     struct blob * head_buffer;
+    struct blob * softmax_buffer;
 };
 
 

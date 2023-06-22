@@ -317,6 +317,11 @@ struct exp_sum_args{
   float max;
 };
 
+struct div_args{
+  float* input;
+  float n;
+  int dim;
+};
 
 /**
  * =====> FUNCTIONS <=====
@@ -404,6 +409,12 @@ void pulp_max_fp32_cl(void * void_args);
  * @param (void *)  (struct exp_sum_args void_args)
  */
 void pulp_exp_sum_fp32_cl(void* void_args);
+
+/**
+ * @brief Element-wise division of vector with a single constant
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_div_fp32_cl(void* void_args);
 
 static inline float
 fasterexp (float p);

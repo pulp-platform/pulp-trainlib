@@ -269,6 +269,21 @@ void pulp_exp_sum_fp32_cl(void* void_args){
     args->sums[pi_core_id()] = sum;
 }
 
+void pulp_div_fp32_cl(void* void_args){
+    struct div_args* args = (struct div_args *) void_args;
+
+    float* input = args->input;
+    float n = args->n;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]/n;
+    }
+}
 
 
 
