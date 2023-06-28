@@ -309,6 +309,14 @@ struct max_args{
   int dim;
 };
 
+/**
+ * @brief Arguments for implementing parallelized exponential and sum on an input vector
+ * @param input   input vector on which we want to calculate the exponential and summatory
+ * @param sums    vector on which each core saves their sum
+ * @param output  vector where the exponential is saved
+ * @param dim     dimension of input
+ * @param max     maximum value of the input map
+*/
 struct exp_sum_args{
   float* input;
   float* sums;
@@ -317,11 +325,30 @@ struct exp_sum_args{
   float max;
 };
 
+/**
+ * @brief Arguments for implementing parallelized division of an input vector and a scalar
+ * @param input   input vector we want to divide
+ * @param n       scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
 struct div_args{
   float* input;
   float n;
   int dim;
 };
+
+/**
+ * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
+ * @param input   input vector we want to multiply
+ * @param scalar  scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct scalar_mul_args{
+  float* input;
+  float scalar;
+  int dim;
+};
+
 
 /**
  * =====> FUNCTIONS <=====
@@ -415,6 +442,12 @@ void pulp_exp_sum_fp32_cl(void* void_args);
  * @param (void *)  (struct div_args void_args)
  */
 void pulp_div_fp32_cl(void* void_args);
+
+/**
+ * @brief Element-wise multiplication of vector with a single constant
+ * @param (void *)  (struct scalar_mul_args void_args)
+ */
+void pulp_scalar_mul_fp32_cl(void* void_args);
 
 static inline float
 fasterexp (float p);

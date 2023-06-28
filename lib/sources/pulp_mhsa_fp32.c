@@ -39,7 +39,9 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     int E = mhsa_args->input->W; // Input Sequence element size
     int F = mhsa_args->attention_map->W; // Hidden dimension of attention
 
+    #ifdef DEBUG
     printf("\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
+    #endif
 
     int H = F / n_heads; // Size of head chunks
     float scaling = 1/sqrt(H);
@@ -145,9 +147,18 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
         #endif
 
+
+        struct scalar_mul_args s_m_args;
+        s_m_args.input = current_head_buffer;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
+
+        /*
         for(int j = 0; j < (L*L); j++)
             current_head_buffer[j] = current_head_buffer[j]*scaling;
-
+        */
         struct act_args softmax_arg;
         struct blob input;
         struct blob output;

@@ -285,6 +285,22 @@ void pulp_div_fp32_cl(void* void_args){
     }
 }
 
+void pulp_scalar_mul_fp32_cl(void* void_args){
+    struct scalar_mul_args* args = (struct scalar_mul_args *) void_args;
+
+    float* input = args->input;
+    float scalar = args->scalar;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]*scalar;
+    }
+}
+
 
 
 /**
