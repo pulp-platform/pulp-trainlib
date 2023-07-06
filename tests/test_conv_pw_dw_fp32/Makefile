@@ -69,7 +69,6 @@ profile_all_optim:
 profile_all_sizes:
 	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
 
-profile_traces:
-	python3 ./compute-fp-density.py ./BUILD/PULP/GCC_RISCV/trace_core_00_0.log
+include ../trace.mk
 
 include $(RULES_DIR)/pmsis_rules.mk
