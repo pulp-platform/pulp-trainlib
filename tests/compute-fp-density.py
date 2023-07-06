@@ -50,19 +50,25 @@ with open(filename, 'r') as f:
    # Read the file contents and generate a list with each line
    lines = f.readlines()
    for x in range(len(lines)):
+      trace = lines[len(lines)-x-1].split()
+      instruction = trace[4]
       # Start from the bottom, when we execute pi_perf_stop()
-      if "cc179073 csrrw            x0, x15, 0xcc1      x15:00000000" in lines[len(lines)-x-1]:
-         start_count = 1
+      if (instruction=="csrrw"):
+         if (trace[7]=="0xcc1"):
+            if "00000000" in trace[8]:
+               print("Start @%s" %(trace[1]))
+               start_count = 1
 
       if start_count:
          # This is pi_perf_start(), we can exit
-         if "cc179073 csrrw            x0, x15, 0xcc1      x15:00000003" in lines[len(lines)-x-1]:
-            break
+         if (instruction=="csrrw"):
+            if (trace[7]=="0xcc1"):
+               if "00000003" in trace[8]:
+                  print("Stop @%s" %(trace[1]))
+                  break
 
          else:
             instr_counter = instr_counter + 1
-            trace = lines[len(lines)-x-1].split()
-            instruction = trace[4]
             if instruction.startswith(prefixes):
                 fp_counter = fp_counter + 1
             elif instruction.startswith(prefixes2):
