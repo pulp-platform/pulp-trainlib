@@ -1,12 +1,12 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=7
-IMAGE_W?=7
+IMAGE_H?=8
+IMAGE_W?=8
 KER_H?=3
 KER_W?=3
-IN_CH?=4
-OUT_CH?=4
+IN_CH?=8
+OUT_CH?=32
 PAD_L?=0
 PAD_R?=0
 PAD_U?=0
@@ -17,7 +17,7 @@ NUM_CORES?=8
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=0
+MATMUL_TYPE?=11
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
@@ -31,7 +31,7 @@ APP_SRCS = main.c net.c
 
 DATA_TYPE?='fp32'
 APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
-APP_CFLAGS += -O3 -g3
+APP_CFLAGS += -O3 -g3 -flto
 APP_CFLAGS += -DFABRIC
 APP_CFLAGS += -DCLUSTER
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
@@ -48,7 +48,7 @@ APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
 APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
 APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAYOUT)
-APP_LDFLAGS += -lm
+APP_LDFLAGS += -lm -flto
 
 
 # STATISTICS
@@ -68,5 +68,12 @@ profile_all_optim:
 
 profile_all_sizes:
 	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
+
+ifndef platform
+platform=gvsoc
+runner_args+="--trace=cluster/pe0/insn:trace_core_00_0.log"
+endif
+
+include ../trace.mk
 
 include $(RULES_DIR)/pmsis_rules.mk
