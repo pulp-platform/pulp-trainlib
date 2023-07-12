@@ -297,6 +297,58 @@ struct update_weight_args{
   int dim;
 };
 
+/**
+ * @brief Arguments for implementing parallelized max on an input vector
+ * @param input   input vector on which we want to find the max
+ * @param maxes   vector on which each core saves the max they have found
+ * @param dim     dimension of input
+*/
+struct max_args{
+  float* input;
+  float* maxes;
+  int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized exponential and sum on an input vector
+ * @param input   input vector on which we want to calculate the exponential and summatory
+ * @param sums    vector on which each core saves their sum
+ * @param output  vector where the exponential is saved
+ * @param dim     dimension of input
+ * @param max     maximum value of the input map
+*/
+struct exp_sum_args{
+  float* input;
+  float* sums;
+  float* output;
+  int dim;
+  float max;
+};
+
+/**
+ * @brief Arguments for implementing parallelized division of an input vector and a scalar
+ * @param input   input vector we want to divide
+ * @param n       scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct div_args{
+  float* input;
+  float n;
+  int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
+ * @param input   input vector we want to multiply
+ * @param scalar  scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct scalar_mul_args{
+  float* input;
+  float scalar;
+  int dim;
+};
+
 
 /**
  * =====> FUNCTIONS <=====
@@ -373,6 +425,29 @@ void exponential (void * void_args);
  */
 void softmax (void * void_args);
 
+/**
+ * @brief Calculate the maxes of a vector in parallelized fashion
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_max_fp32_cl(void * void_args);
+
+/**
+ * @brief Calculate the exponential of each element and sum them
+ * @param (void *)  (struct exp_sum_args void_args)
+ */
+void pulp_exp_sum_fp32_cl(void* void_args);
+
+/**
+ * @brief Element-wise division of vector with a single constant
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_div_fp32_cl(void* void_args);
+
+/**
+ * @brief Element-wise multiplication of vector with a single constant
+ * @param (void *)  (struct scalar_mul_args void_args)
+ */
+void pulp_scalar_mul_fp32_cl(void* void_args);
 
 static inline float
 fasterexp (float p);

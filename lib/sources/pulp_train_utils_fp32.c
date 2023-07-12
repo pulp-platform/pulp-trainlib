@@ -21,6 +21,7 @@
 #include "pmsis.h"
 #include "pulp_train_utils_fp32.h"
 #include "pulp_matmul_fp32.h"
+#include <math.h>
 
 
 int verify_tensor(float * tensor_out, float * tensor_ref, int size, float tolerance){
@@ -227,6 +228,78 @@ void CHW_to_HWC (void * layout_args)
     }
 }
 
+void pulp_max_fp32_cl(void * void_args){
+    struct max_args* args = (struct max_args *) void_args;
+
+    float* input = args->input;
+    float max = args->maxes[pi_core_id()];
+    int dim = args->dim;
+
+    const int blockSize=(args->dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++)
+        if(max < input[i])
+            max = input[i];
+
+    args->maxes[pi_core_id()] = max;
+}
+
+void pulp_exp_sum_fp32_cl(void* void_args){
+    struct exp_sum_args* args = (struct exp_sum_args *) void_args;
+
+    float* input = args->input;
+    float* output = args->output;
+    float sum = args->sums[pi_core_id()];
+    int dim = args->dim;
+    float max = args->max;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+
+    for(int i=start; i<stop; i++){
+        float o = expf(input[i] - max);
+        output[i] = o;
+        sum += o;
+    }
+    
+    args->sums[pi_core_id()] = sum;
+}
+
+void pulp_div_fp32_cl(void* void_args){
+    struct div_args* args = (struct div_args *) void_args;
+
+    float* input = args->input;
+    float n = args->n;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]/n;
+    }
+}
+
+void pulp_scalar_mul_fp32_cl(void* void_args){
+    struct scalar_mul_args* args = (struct scalar_mul_args *) void_args;
+
+    float* input = args->input;
+    float scalar = args->scalar;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]*scalar;
+    }
+}
 
 
 

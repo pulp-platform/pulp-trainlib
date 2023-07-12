@@ -34,44 +34,44 @@
 
 
 // MHSA
-PI_L1 float zero_init = 0.0f;
-PI_L1 struct Mhsa_args mhsa_args;
-PI_L1 struct blob layer0_in, layer0_wgt_in, layer0_wgt_out, layer0_qkv, layer0_att_map, layer0_h_buffer, layer0_softmax_buffer, layer0_out;
+PI_L1 fp16 zero_init = 0.0f;
+PI_L1 struct Mhsa_args_fp16 mhsa_args;
+PI_L1 struct blob_fp16 layer0_in, layer0_wgt_in, layer0_wgt_out, layer0_qkv, layer0_att_map, layer0_h_buffer, layer0_softmax_buffer, layer0_out;
 
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
 
 #ifdef FORWARD
-PI_L1 float l0_in[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
-PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
-PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
-PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
-PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
-PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
-PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
+PI_L1 fp16 l0_in[Tin_H_l1*Tin_W_l1];
+PI_L1 fp16 l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 fp16 l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
+PI_L1 fp16 l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
+PI_L1 fp16 l0_att_map[Tin_H_l1*Tatt_dim_l1];
+PI_L1 fp16 l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 fp16 l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 fp16 l0_out[Tin_H_l1*Tin_W_l1];
+PI_L1 fp16 l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
 #endif
 
 #ifdef BACKWARD
-PI_L1 float l0_in[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_in_diff[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
-PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
-PI_L1 float l0_ker_in_diff[Tin_W_l1*Tatt_dim_l1*3];
-PI_L1 float l0_ker_out_diff[Tatt_dim_l1*Tin_W_l1];
-PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
-PI_L1 float l0_qkv_diff[Tin_H_l1*Tatt_dim_l1*3]; 
-PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
-PI_L1 float l0_att_map_diff[Tin_H_l1*Tatt_dim_l1]; 
-PI_L1 float l0_out[Tin_H_l1*Tin_W_l1]; 
-PI_L1 float l0_out_diff[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
-PI_L1 float l0_grad[Tin_H_l1*Tin_H_l1]; // Buffer containing the pre-softmax head buffer gradient, necessary in the backward process
-PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1]; 
-PI_L1 float l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
-PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 fp16 l0_in[Tin_H_l1*Tin_W_l1];
+PI_L1 fp16 l0_in_diff[Tin_H_l1*Tin_W_l1];
+PI_L1 fp16 l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 fp16 l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
+PI_L1 fp16 l0_ker_in_diff[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 fp16 l0_ker_out_diff[Tatt_dim_l1*Tin_W_l1];
+PI_L1 fp16 l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
+PI_L1 fp16 l0_qkv_diff[Tin_H_l1*Tatt_dim_l1*3]; 
+PI_L1 fp16 l0_att_map[Tin_H_l1*Tatt_dim_l1];
+PI_L1 fp16 l0_att_map_diff[Tin_H_l1*Tatt_dim_l1]; 
+PI_L1 fp16 l0_out[Tin_H_l1*Tin_W_l1]; 
+PI_L1 fp16 l0_out_diff[Tin_H_l1*Tin_W_l1];
+PI_L1 fp16 l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
+PI_L1 fp16 l0_grad[Tin_H_l1*Tin_H_l1]; // Buffer containing the pre-softmax head buffer gradient, necessary in the backward process
+PI_L1 fp16 l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1]; 
+PI_L1 fp16 l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 fp16 l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 #endif
 
 
@@ -163,44 +163,44 @@ static inline void connect_blobs()
 
 static inline void compute_memory_occupation(){
   // Input
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(fp16);
   // Kernel input
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
   // Kernel output
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
   // QKV
-  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
+  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(fp16);
   // Output
-  L1_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(fp16);
   // Attention Map
-  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
   // Heads Scores
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Heads Softmax Output
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Tmp buffer
-  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(fp16);
 
 
 
   // Input
-  L2_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(fp16);
   // Kernel input
-  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
+  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
   // Kernel output
-  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
+  L2_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
   // QKV
-  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
+  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*3*sizeof(fp16);
   // Output
-  L2_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += Tin_W_l1*Tin_H_l1*sizeof(fp16);
   // Attention Map
-  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
   // Heads Scores
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Heads Softmax Output
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Tmp buffer
-  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(fp16);
 }
 #endif
 
@@ -313,56 +313,56 @@ static inline void connect_blobs()
 
 static inline void compute_memory_occupation(){
   // Input
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(fp16);
   // Kernel input
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
   // Kernel output
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(float);
+  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
   // QKV + grad
-  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*3*sizeof(float);
+  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*3*sizeof(fp16);
   // Output + grad
-  L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(fp16);
   // Attention Map + grad
-  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
   // Heads Scores + grad
-  L1_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L1_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Tmp buffer
-  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(fp16);
   // Gradient buffer
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(fp16);
   // Heads Softmax Output
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
 
 
 
   // Input + grad
-  L2_memocc_bytes += 2*Tin_H_l1*Tin_W_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tin_H_l1*Tin_W_l1*sizeof(fp16);
   // Kernel input + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(float); 
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
   // Kernel output + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
   // QKV + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(float);
+  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16);
   // Output + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(fp16);
   // Attention Map + grad
-  L2_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
   // Heads Scores + grad
-  L2_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L2_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
   // Tmp buffer
-  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(fp16);
   // Gradient buffer
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(fp16);
   // Heads Softmax Output
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
 }
 #endif
 
 
 
-static inline void compare_tensors(float *A, float *B, int length){
-  float mean_err_rel = zero_init;
-  float diff = zero_init;
+static inline void compare_tensors(fp16 *A, fp16 *B, int length){
+  fp16 mean_err_rel = zero_init;
+  fp16 diff = zero_init;
 
   for(int i=0; i<length; i++){
     diff = A[i]-B[i];
@@ -375,7 +375,7 @@ static inline void compare_tensors(float *A, float *B, int length){
 }
 
 // Elementwise checker
-int check_tensor(float * tensor_out, float * tensor_ref, int size){
+int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
 
     int error_flag = 0;
     for (int i=0; i<size; i++) {
@@ -407,7 +407,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_mhsa_fp32_fw_cl(&mhsa_args);
+  pulp_mhsa_fp16_fw_cl(&mhsa_args);
   #endif
 
   #ifdef PROF_FWD
@@ -416,7 +416,7 @@ static inline void train(){
 
   #ifdef BACKWARD
 
-  pulp_mhsa_fp32_fw_cl(&mhsa_args);
+  pulp_mhsa_fp16_fw_cl(&mhsa_args);
 
   printf("\nFORWARD CHECK: \n");
   compare_tensors(l0_out, OUTPUT, OUTPUT_SIZE);
@@ -432,7 +432,7 @@ static inline void train(){
   START_STATS();
   #endif
 
-  pulp_mhsa_fp32_bw_cl(&mhsa_args);
+  pulp_mhsa_fp16_bw_cl(&mhsa_args);
 
   #ifdef PROF_BCKWD
   STOP_STATS();
@@ -454,7 +454,7 @@ static inline void train(){
   printf("Instruction Count %d\n", instr_count);
   printf("Active Cycles Count %d\n", active_cycles_count);
   printf("Load Count %d\n", load_count);
-  printf("Cycles/Instruction %f\n", (float)cycles_count/instr_count);
+  printf("Cycles/Instruction %f\n", (fp16)cycles_count/instr_count);
   
 
 

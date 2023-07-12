@@ -57,4 +57,5 @@
 #include "pulp_optimizers_fp16.h"
 #include "pulp_pooling_fp16.h"
 #include "pulp_residual_fp16.h"
+#include "pulp_mhsa_fp16.h"
 

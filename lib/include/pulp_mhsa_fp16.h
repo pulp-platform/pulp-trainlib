@@ -23,6 +23,7 @@
  * Authors: Alberto Dequino
 */ 
 
+#include "pulp_train_defines.h"
 
 /**
  * Multi-Head Self Attention layer configuration structure
@@ -43,21 +44,21 @@
  * 
  */
 
-struct Mhsa_args {
-    struct blob * input;
+struct Mhsa_args_fp16 {
+    struct blob_fp16 * input;
     int 	n_heads; 
     int opt_matmul_type_fw;
     int opt_matmul_type_wg;
     int opt_matmul_type_ig;
-    struct blob * output;
-    struct blob * coeff_in;
-    struct blob * coeff_out;
-    struct blob * qkv;
-    struct blob * attention_map;
-    float * temp_buffer;
-    float * grad;
-    struct blob * head_buffer;
-    struct blob * softmax_buffer;
+    struct blob_fp16 * output;
+    struct blob_fp16 * coeff_in;
+    struct blob_fp16 * coeff_out;
+    struct blob_fp16 * qkv;
+    struct blob_fp16 * attention_map;
+    fp16 * temp_buffer;
+    fp16 * grad;
+    struct blob_fp16 * head_buffer;
+    struct blob_fp16 * softmax_buffer;
 };
 
 
@@ -71,15 +72,15 @@ struct Mhsa_args {
 
 /**
  * @brief Forward pass function, forked on PULP cluster.
- * @param Mhsa_args structure configuring the MHSA layer.
+ * @param Mhsa_args_fp16 structure configuring the MHSA layer.
  */
-void pulp_mhsa_fp32_fw_cl(void * Mhsa_args);
+void pulp_mhsa_fp16_fw_cl(void * Mhsa_args_fp16);
 
 
 // BACKWARD FUNCTIONS
 
 /**
  * @brief Backward pass function, which internally calculate both weight gradient and input gradient.
- * @param Mhsa_args structure configuring the MHSA layer.
+ * @param Mhsa_args_fp16 structure configuring the MHSA layer.
  */
-void pulp_mhsa_fp32_bw_cl(void * Mhsa_args);
+void pulp_mhsa_fp16_bw_cl(void * Mhsa_args_fp16);

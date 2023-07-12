@@ -228,6 +228,78 @@ void CHW_to_HWC_fp16 (void * layout_args)
     }
 }
 
+void pulp_max_fp16_cl(void * void_args){
+    struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
+
+    fp16* input = args->input;
+    fp16 max = args->maxes[pi_core_id()];
+    int dim = args->dim;
+
+    const int blockSize=(args->dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++)
+        if(max < input[i])
+            max = input[i];
+
+    args->maxes[pi_core_id()] = max;
+}
+
+void pulp_exp_sum_fp16_cl(void* void_args){
+    struct exp_sum_args_fp16* args = (struct exp_sum_args_fp16 *) void_args;
+
+    fp16* input = args->input;
+    fp16* output = args->output;
+    fp16 sum = args->sums[pi_core_id()];
+    int dim = args->dim;
+    fp16 max = args->max;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+
+    for(int i=start; i<stop; i++){
+        fp16 o = expf(input[i] - max);
+        output[i] = o;
+        sum += o;
+    }
+    
+    args->sums[pi_core_id()] = sum;
+}
+
+void pulp_div_fp16_cl(void* void_args){
+    struct div_args_fp16* args = (struct div_args_fp16 *) void_args;
+
+    fp16* input = args->input;
+    fp16 n = args->n;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]/n;
+    }
+}
+
+void pulp_scalar_mul_fp16_cl(void* void_args){
+    struct scalar_mul_args_fp16* args = (struct scalar_mul_args_fp16 *) void_args;
+
+    fp16* input = args->input;
+    fp16 scalar = args->scalar;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    for(int i=start; i<stop; i++){
+        input[i] = input[i]*scalar;
+    }
+}
 
 
 
