@@ -242,6 +242,97 @@ struct mm_manager_args_fp16 {
   int matmul_type;
 };
 
+/**
+ * @brief Arguments for tanh in parallel output=tanh(input)
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+*/
+struct tanh_args_fp16{
+  fp16* input;
+  int dim;
+  fp16* output;
+};
+
+
+/**
+ * @brief Arguments for exponential and softmax in parallel
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+ * @param sum     final sum value of all exponentials
+*/
+struct softmax_args_fp16{
+  fp16* input;
+  int dim;
+  fp16* output;
+  fp16 sum;
+};
+
+/**
+ * @brief Arguments weight updates output=output + gradient
+ * @param accum    pointer to weight gradient accumulators
+ * @param grad    pointer to weight gradient of the current timestep
+ * @param dim       dimension vector
+*/
+struct update_weight_args_fp16{
+  fp16* accum;
+  fp16* grad;
+  int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized max on an input vector
+ * @param input   input vector on which we want to find the max
+ * @param maxes   vector on which each core saves the max they have found
+ * @param dim     dimension of input
+*/
+struct max_args_fp16{
+  fp16* input;
+  fp16* maxes;
+  int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized exponential and sum on an input vector
+ * @param input   input vector on which we want to calculate the exponential and summatory
+ * @param sums    vector on which each core saves their sum
+ * @param output  vector where the exponential is saved
+ * @param dim     dimension of input
+ * @param max     maximum value of the input map
+*/
+struct exp_sum_args_fp16{
+  fp16* input;
+  fp16* sums;
+  fp16* output;
+  int dim;
+  fp16 max;
+};
+
+/**
+ * @brief Arguments for implementing parallelized division of an input vector and a scalar
+ * @param input   input vector we want to divide
+ * @param n       scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct div_args_fp16{
+  fp16* input;
+  fp16 n;
+  int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
+ * @param input   input vector we want to multiply
+ * @param scalar  scalar value we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct scalar_mul_args_fp16{
+  fp16* input;
+  fp16 scalar;
+  int dim;
+};
+
 
 /**
  * =====> FUNCTIONS <=====
@@ -306,6 +397,41 @@ void CHW_to_HWC_fp16 (void * layout_args);
  */
 void mm_manager_fp16 (void * void_args);
 
+/**
+ * @brief Calculates the exponential value of each element in the input vector/matrix.
+ * @param (void *) (struct softmax_args_fp16 void_args)
+ */
+void exponential_fp16 (void * void_args);
+
+/**
+ * @brief Divides each output vector element by their sum.
+ * @param (void *) (struct softmax_args_fp16 void_args)
+ */
+void softmax_fp16 (void * void_args);
+
+/**
+ * @brief Calculate the maxes of a vector in parallelized fashion
+ * @param (void *)  (struct max_args_fp16 void_args)
+ */
+void pulp_max_fp16_cl(void * void_args);
+
+/**
+ * @brief Calculate the exponential of each element and sum them
+ * @param (void *)  (struct exp_sum_args_fp16 void_args)
+ */
+void pulp_exp_sum_fp16_cl(void* void_args);
+
+/**
+ * @brief Element-wise division of vector with a single constant
+ * @param (void *)  (struct div_args_fp16 void_args)
+ */
+void pulp_div_fp16_cl(void* void_args);
+
+/**
+ * @brief Element-wise multiplication of vector with a single constant
+ * @param (void *)  (struct scalar_mul_args_fp16 void_args)
+ */
+void pulp_scalar_mul_fp16_cl(void* void_args);
 
 /**
  * =====> ASSEMBLY CALLS <=====
