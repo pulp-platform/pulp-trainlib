@@ -5,3 +5,4 @@ input-sequence.h
 mhsa-grads.h
 mhsa-output.h
 step-check.h
+dis.S

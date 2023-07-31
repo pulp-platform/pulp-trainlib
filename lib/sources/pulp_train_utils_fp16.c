@@ -21,6 +21,7 @@
 #include "pmsis.h"
 #include "pulp_train_utils_fp16.h"
 #include "pulp_matmul_fp16.h"
+#include <math.h>
 
 
 int verify_tensor_fp16(fp16 * tensor_out, fp16 * tensor_ref, int size, fp16 tolerance){
