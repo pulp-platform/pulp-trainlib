@@ -272,20 +272,6 @@ struct tanh_args{
 };
 
 /**
- * @brief Arguments for exponential and softmax in parallel
- * @param input   pointer to input vector
- * @param dim     dimension vector
- * @param output  pointer to output vector
- * @param sum  	  final sum value of all exponentials
-*/
-struct softmax_args{
-  float* input;
-  int dim;
-  float* output;
-  float sum;
-};
-
-/**
  * @brief Arguments weight updates output=output + gradient
  * @param accum    pointer to weight gradient accumulators
  * @param grad    pointer to weight gradient of the current timestep

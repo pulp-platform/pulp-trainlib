@@ -58,6 +58,8 @@ struct Mhsa_args {
     float * grad;
     struct blob * head_buffer;
     struct blob * softmax_buffer;
+    float * global_max;
+    float * partial_exp_sum;
 };
 
 
@@ -74,6 +76,13 @@ struct Mhsa_args {
  * @param Mhsa_args structure configuring the MHSA layer.
  */
 void pulp_mhsa_fp32_fw_cl(void * Mhsa_args);
+
+
+/**
+ * @brief Forward pass function, forked on PULP cluster, using partial softmax.
+ * @param Mhsa_args structure configuring the MHSA layer.
+ */
+void pulp_mhsa_fp32_fw_cl_2(void * Mhsa_args);
 
 
 // BACKWARD FUNCTIONS

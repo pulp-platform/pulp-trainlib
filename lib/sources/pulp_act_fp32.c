@@ -56,19 +56,12 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* inData = args->input->data;
   float* outData = args->output->data;
 
-  /*
-  const int blockSize=(args_tanh->dim+NUM_CORES-1)/NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start + blockSize > args_tanh->dim ? args_tanh->dim : start+blockSize;
-  */
-
   float sum = 0.0;
   float sum2 = 0.0;
   float max = 0.0;
   float maxes[NUM_CORES] = {0.0};
   float sums[NUM_CORES] = {0.0};
 
-  
   struct max_args m_args;
   m_args.input = inData;
   m_args.maxes = maxes;
@@ -99,6 +92,18 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   d_args.dim = dim;
 
   pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &d_args);
+
+  #ifdef DEBUG
+    if(pi_core_id()==0){
+        int L = sqrt(dim);
+        printf("\nCurrent softmax output: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%((int)L))) printf("\n");
+            printf("%.8f ", outData[j]);
+        }
+    }
+    printf("\n");
+    #endif
 }
 
 void pulp_softmax_fp32_bw_cl( void * act_args )
@@ -123,6 +128,123 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
 
   for(int j=0; j<dim; j++){
       inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
+  }
+}
+
+
+void pulp_partial_softmax_fp32_fw_cl( void * act_args )
+{
+  struct softmax_args * args = (struct softmax_args *) act_args;
+
+  int L = args->L;
+  int n_heads = args->n_heads;
+  float * inData = args->input->data;
+  float * outData = args->output->data;
+
+  float * partial_exp_sum = args->partial_exp_sum + pi_core_id()*L;
+  float * global_max = args->global_max + pi_core_id()*L;
+
+  float eps_max = 0.03125f;
+
+  float zero = 0.0f;
+  float minfloat = -340282346638528859811704183484516925440.0f;
+
+  const int blockSize=(n_heads+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > n_heads ? n_heads : start+blockSize;
+
+  //Cycle over the heads
+  for(int i = start; i < stop; i++){
+    //STAGE 1: Calculate the denominator
+    if(i != start){
+      for(int l=0; l < L; l++){
+        partial_exp_sum[l] = zero;
+        global_max[l] = minfloat;
+      }
+    }
+    float* pointer = inData + i*L*L;
+    for(int j = 0; j < L; j++){
+      for(int k = 0; k < L; k++){
+        float max_shift = zero;
+        if(global_max[j] < (*pointer)){
+          max_shift = ((*pointer) - global_max[j]) * eps_max; 
+          global_max[j] = *pointer;
+        }
+        float shift = (global_max[j] - (*pointer)) * eps_max;
+        float exp_sum = 1 / pow(2, shift); 
+        partial_exp_sum[j] = ((partial_exp_sum[j]) / pow(2, max_shift)) + exp_sum;
+        pointer++;
+      }
+    }
+    //STAGE 2: Calculate activation value
+    pointer = inData + i*L*L;
+    float* out_pointer = outData + i*L*L;
+    for(int j = 0; j < L; j++){
+      for(int k = 0; k < L; k++){
+        float shift = (global_max[j] - (*pointer)) * eps_max;
+        (*out_pointer) = (1 / pow(2, shift))/partial_exp_sum[j];
+        pointer++;
+        out_pointer++;
+      }
+    }
+  }
+}
+
+void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
+{
+  struct softmax_args * args = (struct softmax_args *) act_args;
+
+  int L = args->L;
+  int n_heads = args->n_heads;
+  float * inData = args->input->data;
+  float * outData = args->output->data;
+
+  float * partial_exp_sum = args->partial_exp_sum + pi_core_id()*L;
+  float * global_max = args->global_max + pi_core_id()*L;
+
+  float eps_max = 0.03125f;
+
+  float zero = 0.0f;
+  float minfloat = -340282346638528859811704183484516925440.0f;
+
+  const int blockSize=(n_heads+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > n_heads ? n_heads : start+blockSize;
+
+  //Cycle over the heads
+  for(int i = start; i < stop; i++){
+    //STAGE 1: Calculate the denominator
+    if(i != start){
+      for(int l=0; l < L; l++){
+        partial_exp_sum[l] = zero;
+        global_max[l] = minfloat;
+      }
+    }
+    float* pointer = inData + i*L*L;
+    for(int j = 0; j < L; j++){
+      for(int k = 0; k < L; k++){
+        float max_shift = zero;
+        if(global_max[j] < (*pointer)){
+          max_shift = ((*pointer) - global_max[j]) * eps_max; 
+          global_max[j] = *pointer;
+        }
+        float shift = (global_max[j] - (*pointer)) * eps_max;
+        float exp_sum = 1  >> (int)(ceilf(shift)); 
+        partial_exp_sum[j] = ((int)(partial_exp_sum[j]) >> (int)ceilf(max_shift)) + exp_sum;
+        pointer++;
+      }
+    }
+    //STAGE 2: Calculate activation value
+    pointer = inData + i*L*L;
+    float* out_pointer = outData + i*L*L;
+    for(int j = 0; j < L; j++){
+      for(int k = 0; k < L; k++){
+        float shift = (global_max[j] - (*pointer)) * eps_max;
+        (*out_pointer) = (1 >> (int) ceilf(shift))/partial_exp_sum[j];
+        pointer++;
+        out_pointer++;
+      }
+    }
   }
 }
 
