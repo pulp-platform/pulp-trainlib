@@ -155,10 +155,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 
         pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
 
-        /*
-        for(int j = 0; j < (L*L); j++)
-            current_head_buffer[j] = current_head_buffer[j]*scaling;
-        */
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", current_head_buffer[j]);
+        }
+        printf("\n");
+        #endif
+
+        
         struct act_args softmax_arg;
         struct blob input;
         struct blob output;
@@ -170,12 +176,310 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 
         pulp_softmax_fp32_fw_cl(&softmax_arg);
 
-        //pi_cl_team_fork(1, pulp_softmax_fp32_fw_cl, &softmax_arg); //TODO: actually parallelize this function
-
         // Multiply softmax result with the i-th head's V chunk
         struct matMul_args matMul_args3;
         matMul_args3.A = v + L*i*H;
         matMul_args3.B = current_softmax_buffer;
+        matMul_args3.C = attention_map + L*i*H;
+        matMul_args3.N = H;
+        matMul_args3.K = L;
+        matMul_args3.M = L;
+        matMul_args3.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3);
+        #else
+        struct mm_manager_args man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
+        #endif
+    }
+
+    #ifdef DEBUG
+    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
+    for (int j=0; j<n_heads; j++){
+        printf("\n\n");
+        for(int i=0; i<L*L; i++){
+            if(!(i%L))
+                printf("\n");
+            printf("%.8f ", softmax_buffer[j*L*L+i]);
+        }
+        
+    }
+    printf("\n");
+    #endif
+
+    // Final attention map projection
+    struct matMul_args matMul_args4;
+    matMul_args4.A = coeffDataWout;
+    matMul_args4.B = attention_map;
+    matMul_args4.C = outData;
+    matMul_args4.N = E;
+    matMul_args4.K = F;
+    matMul_args4.M = L;
+    matMul_args4.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args4);
+    #else
+    struct mm_manager_args man_args4;
+    man_args4.mm_args = &matMul_args4;
+    man_args4.layer_type = LAYER_LINEAR;
+    man_args4.step_type = STEP_FW;
+    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args4);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nTransposed Output sequence Data: %d %d\n", E, L);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args4.C[j]);
+    }
+    printf("\n");
+    #endif
+
+    // Transpose back to original dimension
+    struct transp_args transp_args3;
+    transp_args3.matrix = outData;
+    transp_args3.transp_matrix = temp;
+    transp_args3.N = E;
+    transp_args3.M = L;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args3);
+
+    struct copy_args copy_args2;
+    copy_args2.from = temp;
+    copy_args2.to = outData;
+    copy_args2.size = L*E;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args2);
+    
+    #ifdef DEBUG
+    printf("\nOutput Data map Data: %d %d\n", E, L);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", outData[j]);
+    }
+    printf("\n");
+    #endif
+}
+
+
+//FORWARD
+void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
+    struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
+    float *coeffDataWin = mhsa_args->coeff_in->data; // Input Projection Weights
+    float *coeffDataWout = mhsa_args->coeff_out->data; // Output Projection Weights
+    float *attention_map = mhsa_args->attention_map->data; // Buffer saving the MHSA map before projection
+    float *outData = mhsa_args->output->data;  
+    float *inputData = mhsa_args->input->data;
+    float *temp = mhsa_args->temp_buffer;
+    float *head_buffer = mhsa_args->head_buffer->data;
+    float *softmax_buffer = mhsa_args->softmax_buffer->data;
+    float *qkv = mhsa_args->qkv->data;
+    float *q = mhsa_args->qkv->data;
+    float *k = mhsa_args->qkv->data;
+    float *v = mhsa_args->qkv->data;
+    float *global_max = mhsa_args->global_max;
+    float *partial_exp_sum = mhsa_args->partial_exp_sum;
+    int n_heads = mhsa_args->n_heads;
+
+    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;
+
+    int L = mhsa_args->input->H; // Input/Output Sequence length
+    int E = mhsa_args->input->W; // Input Sequence element size
+    int F = mhsa_args->attention_map->W; // Hidden dimension of attention
+
+    #ifdef DEBUG
+    printf("\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
+    #endif
+
+    int H = F / n_heads; // Size of head chunks
+    float scaling = 1/sqrt(H);
+
+
+    // Projecting input sequence into Q, K, V
+    struct matMul_args matMul_args1;
+    matMul_args1.A = inputData;
+    matMul_args1.B = coeffDataWin; 
+    matMul_args1.C = qkv; // Q, K, V are saved contiguously, in the same matrix
+    matMul_args1.N = L;
+    matMul_args1.K = E;
+    matMul_args1.M = 3*F;
+    matMul_args1.trans_B = 0;
+
+    #ifdef DEBUG
+    printf("\ninputData: %d %d\n", L, E);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args1.A[j]);
+    }
+    printf("\n");
+
+    printf("\nWin: %d %d\n", E, 3*F);
+    for (int j=0; j<E*3*F; j++){
+        if(!(j%(3*F))) printf("\n");
+        printf("%.8f ",  matMul_args1.B[j]);
+    }
+    printf("\n");
+    #endif
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1);
+    #else
+    struct mm_manager_args man_args1;
+    man_args1.mm_args = &matMul_args1;
+    man_args1.layer_type = LAYER_LINEAR;
+    man_args1.step_type = STEP_FW;
+    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nQKV Data: %d %d\n", L, 3*F);
+    for (int j=0; j<L*3*F; j++){
+        if(!(j%(3*F))) printf("\n");
+        printf("%.8f ", matMul_args1.C[j]);
+    }
+    printf("\n");
+    #endif
+
+    // Transpose Projections (L x 3F -> 3F x L) to facilitate division in chunks for the multiple heads. Copy of temporary buffer required because transpose is NOT inplace
+    struct transp_args transp_args1;
+    transp_args1.matrix = qkv;
+    transp_args1.transp_matrix = temp;
+    transp_args1.N = L;
+    transp_args1.M = 3*F;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
+
+    struct copy_args copy_args1;
+    copy_args1.from = temp;
+    copy_args1.to = qkv;
+    copy_args1.size = L*3*F;
+
+    pi_cl_team_fork(NUM_CORES, copy, &copy_args1);
+
+    // Separate Q, K and V entry points in the QKV matrix
+    q = qkv;
+    k = qkv + L*F;
+    v = qkv + L*2*F;
+
+    // Cycle on the different heads
+    for(int i = 0; i < n_heads; i++){
+        float* current_head_buffer = head_buffer + i*L*L;
+        // Transpose i-th head's K chunk
+        struct transp_args transp_args2;
+        transp_args2.matrix = k + L*i*H;
+        transp_args2.transp_matrix = temp;
+        transp_args2.N = H;
+        transp_args2.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
+
+        // Multiply it with the i-th head's Q chunk
+        struct matMul_args matMul_args2;
+        matMul_args2.A = temp;
+        matMul_args2.B = q + L*i*H;
+        matMul_args2.C = current_head_buffer;
+        matMul_args2.N = L;
+        matMul_args2.K = H;
+        matMul_args2.M = L;
+        matMul_args2.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2);
+        #else
+        struct mm_manager_args man_args2;
+        man_args2.mm_args = &matMul_args2;
+        man_args2.layer_type = LAYER_LINEAR;
+        man_args2.step_type = STEP_FW;
+        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
+        #endif
+
+
+        struct scalar_mul_args s_m_args;
+        s_m_args.input = current_head_buffer;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
+
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", current_head_buffer[j]);
+        }
+        printf("\n");
+        #endif
+    }
+
+    float exp_max = 0.03125;
+
+    struct div_args d_args;
+    d_args.input = head_buffer;
+    d_args.n = exp_max;
+    d_args.dim = L*L*n_heads;
+
+    pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &d_args);
+
+    #ifdef DEBUG
+    printf("\nSoftmax inputs: %d %d %d\n", L, L, n_heads);
+    for (int j=0; j<n_heads; j++){
+        printf("\n\n");
+        for(int i=0; i<L*L; i++){
+            if(!(i%L))
+                printf("\n");
+            printf("%.8f ", head_buffer[j*L*L+i]);
+        }
+        
+    }
+    printf("\n");
+    #endif
+
+        
+    struct softmax_args softmax_arg;
+    struct blob input;
+    struct blob output;
+    input.data = head_buffer;
+    input.dim = L*L*n_heads;
+    output.data = softmax_buffer;
+    output.dim = L*L*n_heads;
+    softmax_arg.input = &input;
+    softmax_arg.output = &output;
+    softmax_arg.L = L;
+    softmax_arg.n_heads = n_heads;
+    softmax_arg.global_max = global_max;
+    softmax_arg.partial_exp_sum = partial_exp_sum;
+
+    pi_cl_team_fork(NUM_CORES, pulp_partial_softmax_shift_fp32_fw_cl, &softmax_arg);
+
+    #ifdef DEBUG
+    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
+    for (int j=0; j<n_heads; j++){
+        printf("\n\n");
+        for(int i=0; i<L*L; i++){
+            if(!(i%L))
+                printf("\n");
+            printf("%.8f ", softmax_buffer[j*L*L+i]);
+        }
+        
+    }
+    printf("\n");
+    #endif
+
+
+    for(int i = 0; i < n_heads; i++){
+        // Multiply softmax result with the i-th head's V chunk
+        struct matMul_args matMul_args3;
+        matMul_args3.A = v + L*i*H;
+        matMul_args3.B = softmax_buffer + i*L*L;
         matMul_args3.C = attention_map + L*i*H;
         matMul_args3.N = H;
         matMul_args3.K = L;

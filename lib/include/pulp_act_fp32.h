@@ -32,6 +32,22 @@ struct act_args {
     struct blob * output;
 };
 
+/**
+ * @brief Arguments for exponential and softmax in parallel
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+ * @param sum     final sum value of all exponentials
+*/
+struct softmax_args{
+  struct blob * input;
+  struct blob * output;
+  int L;
+  int n_heads;
+  float * global_max;
+  float * partial_exp_sum;
+};
+
 
 
 /**
@@ -67,6 +83,20 @@ void pulp_softmax_fp32_fw_cl( void * act_args );
  * @param output Output of softmax.
 */
 void pulp_softmax_fp32_bw_cl( void * act_args );
+
+/**
+ * @brief Forward pass function, second version using partial algorithm.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_partial_softmax_fp32_fw_cl( void * act_args );
+
+/**
+ * @brief Forward pass function, second version using partial algorithm.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args );
 
 /**
  * @brief Forward pass function that parallelize the fastertanh function (below).
