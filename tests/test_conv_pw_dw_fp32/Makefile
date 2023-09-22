@@ -2,11 +2,11 @@ APP = dw_pw_fp32
 
 # User settings
 # Depthwise
-IMAGE_W?=8
-IMAGE_H?=8
+IMAGE_W?=4
+IMAGE_H?=4
 DW_KER_W?=3
 DW_KER_H?=3
-DW_IN_CH?=8
+DW_IN_CH?=2
 # Pointwise
 PW_OUT_CH?=8
 # Depthwise Padding and stride
@@ -17,7 +17,7 @@ DPAD?=0
 HSTR?=1
 WSTR?=1
 # Others
-NUM_CORES?=8
+NUM_CORES?=1
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization

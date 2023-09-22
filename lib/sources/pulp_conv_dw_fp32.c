@@ -24,6 +24,10 @@
 #include "pulp_conv_dw_fp32.h"
 #include "pulp_train_defines.h"
 
+#ifndef NAIVE_DW
+//#define NAIVE_DW
+#endif
+
 void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
 {
   struct DepthWise_Conv_args * DW_args = (struct DepthWise_Conv_args *) DepthWise_Conv_args;
@@ -55,6 +59,7 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   int input_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_fw;
 
+  #ifndef NAIVE_DW
   // Set im2col args
   im2col_args.input = DW_args->input;
   im2col_args.c = DW_args->coeff;
@@ -89,6 +94,29 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   man_args.step_type = STEP_FW;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+  #endif
+
+  #else
+  
+  for (int ch=0; ch<C_in; ch++) 
+  {
+    for (int ho=0; ho<H_out; ho++) 
+    {
+      for (int wo=0; wo<W_out; wo++)
+      {
+        float temp = 0;
+        for (int hk=0; hk<pH; hk++) 
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
+          }
+        }
+        outData[wo + ho*W_out + ch*H_out*W_out] = temp;
+      }
+    }
+  } 
+
   #endif
 
   #ifdef DEBUG
@@ -154,6 +182,8 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
   int input_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_wg;
 
+  #ifndef NAIVE_DW
+
   im2col_args.input = DW_args->input; 
   im2col_args.c = DW_args->coeff;
   im2col_args.output = DW_args->output; 
@@ -188,6 +218,30 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
   man_args.step_type = STEP_WGT_GRAD;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+  #endif
+
+  #else
+
+  for (int ch=0; ch<C_in; ch++) 
+  {
+    for (int hk=0; hk<pH; hk++)
+    {
+      for (int wk=0; wk<pW; wk++) 
+      {
+        float temp = 0;
+        for (int ho=0; ho<H_out; ho++)
+        {
+          for (int wo=0; wo<W_out; wo++) 
+          {
+            temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
+          }
+        }
+        coeffDiff[wk + hk*pW + ch*pH*pW] = temp;
+      }
+    }
+  }
+
+
   #endif
 
   #ifdef DEBUG
@@ -236,6 +290,8 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
   
   int output_layout = DW_args->HWC;
   int opt_matmul_type = DW_args->opt_matmul_type_ig;
+
+  #ifndef NAIVE_DW
 
   // PREPARE im2col_buffer for ACTIV_GRAD
   im2col_args.input = DW_args->input;
@@ -290,6 +346,36 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
   man_args.step_type = STEP_IN_GRAD;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+  #endif
+
+  #else
+
+  for (int ch=0; ch<C_in; ch++) 
+  {
+    for (int hin=0; hin<H_in; hin++)
+    {
+      int ho = hin - pH + 1;
+      for (int win=0; win<W_in; win++) 
+      {
+        int wo = win - pW + 1;
+        float temp = 0;
+        for (int hk=0; hk<pH; hk++)
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            if ((wo+wk>=0) || (ho+hk>=0) || (wo+wk<=W_out) || (ho+hk<=H_out)) {
+              temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
+            }
+            printf("not_pad?=%d, coeffData[%d]=%f, outDiff[%d]=%f, temp=%f", (wo+wk>=0) || (ho+hk>=0) || (wo+wk<=W_out) || (ho+hk<=H_out), 
+                    (pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW, coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW], (wo+wk) + (ho+hk)*W_out + ch*H_out*W_out,
+                    temp);
+          }
+        }
+        inDiff[win + hin*W_in + ch*H_in*W_in] = temp;
+      }
+    }
+  }
+
   #endif
 
   #ifdef DEBUG
