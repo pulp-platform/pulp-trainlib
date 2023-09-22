@@ -9,7 +9,7 @@ LPAD?=1
 RPAD?=1
 UPAD?=1
 DPAD?=1
-HWC_LAY?=1		# =0 use CHW layout, =1 use HWC layout for the weights
+HWC_LAY?=0		# =0 use CHW layout, =1 use HWC layout for the weights
 APP_CFLAGS += -DPRINT_MATS
 # End of user code
 
@@ -39,6 +39,6 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
-#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 
 include $(RULES_DIR)/pmsis_rules.mk

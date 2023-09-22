@@ -229,6 +229,79 @@ void CHW_to_HWC_fp16 (void * layout_args)
     }
 }
 
+
+void pad_tensor_fp16 (void * pad_args_fp16) 
+{
+    struct pad_args_fp16 * args = (struct pad_args_fp16*) pad_args_fp16;
+    fp16 * source = args->source;
+    fp16 * dest = args->dest;
+    int C = args->C;
+    int H = args->H;
+    int W = args->W;
+    int L_PAD = args->T_LPAD;
+    int R_PAD = args->T_RPAD;
+    int U_PAD = args->T_UPAD;
+    int D_PAD = args->T_DPAD;
+    int HWC = args->HWC_lay;
+    
+    int H_out = H + U_PAD + D_PAD;
+    int W_out = W + L_PAD + R_PAD;
+
+    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
+    int start = pi_core_id()*blockSize;
+    int stop = start+blockSize > C ? C : start+blockSize;
+
+    if (HWC == 0) 
+    {
+        for (int ch=0; ch<C; ch++) 
+        {
+            for (int ht=0; ht<H_out; ht++) 
+            {
+                for (int wt=0; wt<W_out; wt++) 
+                {
+                    // Compute matrix idx
+                    int in_t_idx = (wt-L_PAD) + (ht-U_PAD)*W + ch*H*W;
+                    int out_t_idx = wt + ht*W_out + ch*H_out*W_out;
+                    // Padding conditions
+                    int zero_cond = (wt < L_PAD || wt > W) || (ht < U_PAD || ht > H);
+                    if (zero_cond == 1) { dest[out_t_idx] = 0; }
+                    else 
+                    {
+                        dest[out_t_idx] = source[in_t_idx];
+                    }
+                }
+            }
+        }
+    }
+    else if (HWC == 1)
+    {
+        for (int ht=0; ht<H_out; ht++) 
+        {
+            for (int wt=0; wt<W_out; wt++)
+            {
+                for (int ch=0; ch<C; ch++) 
+                {
+                    // Compute matrix idx
+                    int in_t_idx = ch + (wt-L_PAD)*C + (ht-U_PAD)*C*W;
+                    int out_t_idx = ch + wt*C + ht*C*W_out;
+                    // Padding conditions
+                    int zero_cond = (wt < L_PAD || wt > W) || (ht < U_PAD || ht > H);
+                    if (zero_cond == 1) { dest[out_t_idx] = 0; }
+                    else 
+                    {
+                        dest[out_t_idx] = source[in_t_idx];
+                    }                    
+                }
+            }
+        }
+    }
+    else 
+    {
+        printf("[pad_tensor_fp16] HWC layout not implemented!!");
+    }
+}
+
+
 void pulp_max_fp16_cl(void * void_args){
     struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
 
