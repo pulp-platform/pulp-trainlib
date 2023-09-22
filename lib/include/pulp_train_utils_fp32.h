@@ -176,6 +176,32 @@ struct cast_16t32_args {
 };
 
 /**
+ * @brief Arguments for the pad_tensor
+ * @param source Tensor to be padded
+ * @param dest Padded tensor
+ * @param C Channels of the tensor
+ * @param H Height of the tensor
+ * @param W Width of the tensor
+ * @param RPAD Right padding
+ * @param LPAD Left padding
+ * @param UPAD Upper padding
+ * @param DPAD Lower padding
+ * @param HWC_lay Set to 0 if CHW layout, 1 if HWC
+*/
+struct pad_args {
+  float * source;
+  float * dest;
+  int C;
+  int H;
+  int W;
+  int T_RPAD;
+  int T_LPAD;
+  int T_UPAD;
+  int T_DPAD;
+  int HWC_lay;
+};
+
+/**
  * @brief Arguments for standard matrix multiplication C=A*B (A=N*K, B=K*M, result is C=N*M)
  * @param A  pointer to input matrix A
  * @param B  pointer to input matrix B
@@ -392,6 +418,12 @@ void HWC_to_CHW (void * layout_args);
  * @param layout_args (void *) (struct layout_args layout_args) 
  */
 void CHW_to_HWC (void * layout_args);
+
+/**
+ * @brief Pad a tensor into a destination buffer specifying its size and the spatial sizes of the padding. Parallelize with pi_cl_team_fork(NUM_CORES, pad_tensor, &args).
+ * @param (void *) (struct pad_args pad_args)
+*/
+void pad_tensor (void * pad_args);
 
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager, &args) to parallelize.
