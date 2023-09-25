@@ -40,7 +40,7 @@ import utils.DNN_Composer   as composer
 
 # GENERAL PROPERTIES
 project_name    = 'Test_CNN'
-project_path    = '../../../../TrainLib_Examples/'
+project_path    = '../../../DNN_Tests/'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES

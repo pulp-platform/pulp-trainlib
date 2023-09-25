@@ -154,7 +154,6 @@ f.write("\n\n\n\n")
 # Compute DW memory occupation (FORWARD)
 in_act  = dw_in_H * dw_in_W * dw_inout_ch
 ker     = dw_ker_H * dw_ker_W * dw_inout_ch
-im2colF = dw_ker_H * dw_ker_W * dw_inout_ch * (dw_in_H-dw_ker_H+1) * (dw_in_W-dw_ker_W+1)
 out_act = dw_inout_ch * (dw_in_H-dw_ker_H+1) * (dw_in_W-dw_ker_W+1)
 tot_FW  = in_act + ker + im2colF + out_act
 f.write("-------------------------------------------\n")
@@ -167,7 +166,6 @@ f.write("| OUT: \tH={}, W={}, C={}\n".format((dw_in_H-dw_ker_H+1), (dw_in_W-dw_k
 f.write("-------------------------------------------\n")
 f.write("| ### FORWARD ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
-f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colF, im2colF*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
 f.write("| OUT: \t\t\t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL FORWARD: \t{} ({} bytes)\n".format(tot_FW, tot_FW*data_size))
@@ -175,12 +173,10 @@ f.write("-------------------------------------------\n")
 # Compute DW memory occupation (WEIGHT GRADIENT)
 in_act  = dw_in_H * dw_in_W * dw_inout_ch
 ker     = dw_ker_H * dw_ker_W * dw_inout_ch
-im2colW  = dw_ker_H * dw_ker_W * dw_inout_ch * (dw_in_H-dw_ker_H+1) * (dw_in_W-dw_ker_W+1) 
 out_act = dw_inout_ch * (dw_in_H-dw_ker_H+1) * (dw_in_W-dw_ker_W+1)
 tot_WGT = in_act + ker + im2colW + out_act
 f.write("| ### WEIGHT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
-f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colW, im2colW*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL WGT GRAD: \t{} ({} bytes)\n".format(tot_WGT, tot_WGT*data_size))
@@ -188,17 +184,15 @@ f.write("-------------------------------------------\n")
 # Compute DW memory occupation (IN GRADIENT)
 in_act  = dw_in_H * dw_in_W * dw_inout_ch
 ker     = dw_ker_H * dw_ker_W * dw_inout_ch
-im2colI = dw_in_H * dw_in_W * dw_inout_ch * dw_ker_H * dw_ker_W
 out_act = dw_inout_ch * (dw_in_H-dw_ker_H+1) * (dw_in_W-dw_ker_W+1)
 tot_ING = in_act + ker + im2colI + out_act
 f.write("| ### INPUT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
-f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colI, im2colI*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL IN GRAD: \t{} ({} bytes)\n".format(tot_ING, tot_ING*data_size))
 f.write("-------------------------------------------\n")
-tot_MEM = tot_FW + tot_WGT + tot_ING - im2colF - im2colW - im2colI + max(im2colF, im2colW, im2colI)
+tot_MEM = tot_FW + tot_WGT
 f.write("DEPTHWISE CONV TOTAL OCCUPATION: \t{} ({} bytes)\n".format(tot_MEM, (tot_MEM)*data_size))
 
 

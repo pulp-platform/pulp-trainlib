@@ -283,17 +283,17 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Upad = "+str(pad_h)+";\n"
     template += "  l"+str(layer_number)+"_args.Dpad = "+str(pad_h)+";\n"
-    if DATA_TYPE == 'FP32':
-        template += "  l"+str(layer_number)+"_args.i2c_buffer = (float*) im2col_buffer;\n"
-    elif DATA_TYPE == 'FP16':
-        template += "  l"+str(layer_number)+"_args.i2c_buffer = (fp16*) im2col_buffer;\n"
-    else:
-        print("[net_templates.DW_config_template]: Invalid data type!")
-        exit()
+    #if DATA_TYPE == 'FP32':
+    #    template += "  l"+str(layer_number)+"_args.i2c_buffer = (float*) im2col_buffer;\n"
+    #elif DATA_TYPE == 'FP16':
+    #    template += "  l"+str(layer_number)+"_args.i2c_buffer = (fp16*) im2col_buffer;\n"
+    #else:
+    #    print("[net_templates.DW_config_template]: Invalid data type!")
+    #    exit()
     template += "  l"+str(layer_number)+"_args.HWC = 0;\n"
-    template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
-    template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
-    template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
+    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
+    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
+    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
 def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
