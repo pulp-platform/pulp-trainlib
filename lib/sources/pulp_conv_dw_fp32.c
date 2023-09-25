@@ -24,9 +24,6 @@
 #include "pulp_conv_dw_fp32.h"
 #include "pulp_train_defines.h"
 
-#ifndef NAIVE_DW
-#define NAIVE_DW
-#endif
 
 void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
 {

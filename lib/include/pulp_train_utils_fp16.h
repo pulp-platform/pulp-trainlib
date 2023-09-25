@@ -214,6 +214,12 @@ struct pad_args_fp16 {
  * @param pH for Conv2D in grad: kernel height
  * @param pCin for Conv2D in grad: kernel in channels
  * @param pCout for Conv2D in grad: kernel out channels (number of blocks of filters with pCin channels each)
+ * @param stride_w sets the amount of horizontal stride
+ * @param stride_h sets the amount of vertical stride
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
  */
 struct matMul_args_fp16 {
   fp16 * __restrict__ A;
@@ -223,33 +229,31 @@ struct matMul_args_fp16 {
   int M;
   int K;
   int trans_B;
-  // For Conv2D in grad
+  // For Conv2D in grad & naive
   int H;
   int W;
   int pW;
   int pH;
   int pCin;
   int pCout;
+  int stride_h;
+  int stride_w;
+  int Lpad;
+  int Rpad;
+  int Upad;
+  int Dpad;
 };
 
 /**
- * @brief Arguments for depthwise matrix multiplication (A=N*K, B=K*M, result is C=N*M)
- * @param A  pointer to input matrix A
- * @param B  pointer to input matrix B
- * @param C  pointer to output matrix C
- * @param N  rows of A
- * @param M  columns of B
- * @param K  columns of A / rows of B
- * @param ker_size  size of the kernel involved in the matrix multiplication
- */
-struct matMul_DW_args_fp16 {
-  fp16 * __restrict__ A;
-  fp16 * __restrict__ B;
-  fp16 * __restrict__ C;
-  int N;
-  int M;
-  int K;
-  int ker_size;
+ * @brief Arguments for the naive core kernel of DepthWise Convolution (forward and backward)
+ * @param input pointer to the input blob
+ * @param weight pointer to the weight blob
+ * @param output pointer to the output blob
+*/
+struct kernel_DW_args_fp16 {
+  struct blob_fp16 * input;
+  struct blob_fp16 * weights;
+  struct blob_fp16 * output;
 };
 
 /**

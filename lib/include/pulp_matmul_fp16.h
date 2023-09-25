@@ -41,19 +41,27 @@ void mm_M_fp16(
 );
 
 /**
- * @brief Matrix multiply for depthwise convolution. 
- * @param void_args pointer to a matMul_DW_args_fp16 structure (please refer to this to setup the args)
- */
-void mm_dw_fp16(
-    void * void_args
+ * @brief Naive core kernel for Depthwise Convolution (forward). Parallelizes on the channels.
+ * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
+*/
+void dw_kernel_forward_fp16(
+    void * matMul_DW_args_fp16
 );
 
 /**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix). 
- * @param void_args pointer to a matMul_DW_args_fp16 structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_fp16(
-    void * void_args
+ * @brief Naive core kernel for Depthwise Convolution (weight gradient). Parallelizes on the channels.
+ * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
+*/
+void dw_kernel_weight_grad_fp16(
+    void * matMul_DW_args_fp16
+);
+
+/**
+ * @brief Naive core kernel for Depthwise Convolution (input gradient). Parallelizes on the channels.
+ * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
+*/
+void dw_kernel_input_grad_fp16(
+    void * matMul_DW_args_fp16
 );
 
 /**
@@ -131,25 +139,5 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (
  * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
  */
 void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (
-    void * void_args
-);
-
-
-
-// =====> Matmuls for depthwise convolution <=====
-
-/**
- * @brief Matrix multiply for depthwise convolution. 
- * @param void_args pointer to a matMul_DW_args_fp16 structure (please refer to this to setup the args)
- */
-void __attribute__((noinline)) mm_dw_fp16_SIMD_1x2_u2(
-    void * void_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix). 
- * @param void_args pointer to a matMul_DW_args_fp16 structure (please refer to this to setup the args)
- */
-void __attribute__((noinline)) mm_dw_in_grad_fp16_SIMD_1x2_u2(
     void * void_args
 );

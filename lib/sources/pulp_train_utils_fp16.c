@@ -462,54 +462,6 @@ void mm_manager_fp16 (void * void_args)
 
     }
 
-// =====> DEPTHWISE CONVOLUTION
-    else if (layer_type == LAYER_DW_CONV) 
-    {
-
-        // Select step type
-        if (step_type == STEP_FW)
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw_fp16((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_fp16_SIMD_1x2_u2((void *) matMul_DW_args);}
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-
-        else if (step_type == STEP_WGT_GRAD) 
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw_fp16((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_fp16_SIMD_1x2_u2((void *) matMul_DW_args);}
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-
-        else if (step_type == STEP_IN_GRAD)
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw_in_grad_fp16((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_in_grad_fp16_SIMD_1x2_u2((void *) matMul_DW_args); }
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-        else
-        {
-            printf("\nWrong step selection!!\n");
-        }
-        // End step selection
-        
-    }
-
 // =====> POINTWISE CONVOLUTION
     else if (layer_type == LAYER_PW_CONV)
     {

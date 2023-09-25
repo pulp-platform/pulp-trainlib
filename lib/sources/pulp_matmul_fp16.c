@@ -176,118 +176,135 @@ void mm_M_fp16(void * void_args) {
 
 
 
-// Matmul for depthwise convolutions
-void mm_dw_fp16(void * void_args) {
+// Naive forward kernel for DepthWise Convolution
+void dw_kernel_forward_fp16(void * kernel_DW_args_fp16) {
 
-  struct matMul_DW_args_fp16* args = (struct matMul_DW_args_fp16 *)void_args;
-  fp16 * __restrict__ A = args->A;
-  fp16 * __restrict__ B = args->B;
-  fp16 * __restrict__ C = args->C;
+  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
+  fp16 * inData = args->input->data;
+  fp16 * coeffData = args->weights->data;
+  fp16 * outData = args->output->data;
 
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
 
-  #ifdef DEBUG
-  uint32_t num_MAC = 0;
-  #endif
-
-  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
-  #ifdef DEBUG
-  fp16 a = 0;
-  fp16 b = 0;
-  uint32_t idx_a = 0;
-  uint32_t idx_b = 0;
-  #endif
-
-  for (uint32_t j = 0; j < M; j++) 
+  for (int ch=start; ch<stop; ch++) 
   {
-    for (uint32_t k=start; k < stop; k++) 
+    for (int ho=0; ho<H_out; ho++) 
     {
-      #ifdef DEBUG
-        printf("\nCORE %d: start=%d, stop=%d\n", pi_core_id(), start, stop);
-      #endif
-      fp16 temp = 0; 
-      for (uint32_t t = 0; t < ker_dim; t++) 
+      for (int wo=0; wo<W_out; wo++)
       {
-        #ifdef DEBUG
-          // variables needed for debugging, remove to measure performances
-          idx_a = /*i*K+*/(k*ker_dim+t);
-          a = A[idx_a];
-          idx_b = j*(N*ker_dim)+(k*ker_dim+t);
-          b = B[idx_b];
-          temp += a * b;
-          num_MAC++;
-          printf("idx_a=%d, a=%f, idx_b=%d, b=%f, temp=%f\n", idx_a, a, idx_b, b, temp);
-        #else
-          temp += A[k*ker_dim+t] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-        #endif
+        fp16 temp = 0;
+        for (int hk=0; hk<pH; hk++) 
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
+          }
+        }
+        outData[wo + ho*W_out + ch*H_out*W_out] = temp;
       }
-      C[j+k*M] = temp;
-      #ifdef DEBUG
-        printf("C[%d] = %f\n", j+k*M, temp);
-      #endif
-    } 
-  }
+    }
+  } 
 
-  #ifdef DEBUG
-  printf("\n\n=====> MM_DW MAC: %d <=====\n\n", num_MAC);
-  #endif
 }
 
 
 
-void mm_dw_in_grad_fp16(void * void_args) {
+// Naive weight grad kernel for DepthWise Convolution
+void dw_kernel_weight_grad_fp16(void * kernel_DW_args_fp16) {
 
-  struct matMul_DW_args_fp16* args = (struct matMul_DW_args_fp16 *)void_args;
-  fp16 * __restrict__ A = args->A;
-  fp16 * __restrict__ B = args->B;
-  fp16 * __restrict__ C = args->C;
+  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
+  fp16 * inData = args->input->data;
+  fp16 * coeffDiff = args->weights->diff;
+  fp16 * outDiff = args->output->diff;
 
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
 
-  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
-  #ifdef DEBUG
-  uint32_t num_MAC = 0;
-  #endif
-
-  for (uint32_t i=0; i<N; i++) 
+  for (int ch=0; ch<C_in; ch++) 
   {
-    for (uint32_t j=0; j<M; j++) 
+    for (int hk=0; hk<pH; hk++)
     {
-      for (uint32_t k=start; k<stop; k++)
+      for (int wk=0; wk<pW; wk++) 
       {
         fp16 temp = 0;
-        for (uint32_t u=0; u<ker_dim; u++) 
+        for (int ho=0; ho<H_out; ho++)
         {
-          // In-order weights (A matrix)
-          // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-          
-          // Flipped weights (A matrix inverted channel-by-channel)
-          temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];
-          
-          #ifdef DEBUG
-          num_MAC++;
-          #endif
+          for (int wo=0; wo<W_out; wo++) 
+          {
+            temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
+          }
         }
-        C[j+k*M] = temp;
+        coeffDiff[wk + hk*pW + ch*pH*pW] = temp;
       }
     }
   }
 
-  #ifdef DEBUG
-  printf("\n\n=====> MM_DW_IN_GRAD MAC: %d <=====\n\n", num_MAC);
-  #endif
+}
+
+
+
+// Naive input grad kernel for DepthWise Convolution
+void dw_kernel_input_grad_fp16(void * kernel_DW_args_fp16) {
+
+  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
+  fp16 * inDiff = args->input->diff;
+  fp16 * coeffData = args->weights->data;
+  fp16 * outDiff = args->output->diff;
+
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
+
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
+
+  for (int ch=0; ch<C_in; ch++) 
+  {
+    for (int hin=0; hin<H_in; hin++)
+    {
+      int ho = hin - pH + 1;
+      for (int win=0; win<W_in; win++) 
+      {
+        int wo = win - pW + 1;
+        fp16 temp = 0;
+        for (int hk=0; hk<pH; hk++)
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
+              temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
+            }
+          }
+        }
+        inDiff[win + hin*W_in + ch*H_in*W_in] = temp;
+      }
+    }
+  }
+
 }
 
 
@@ -1412,138 +1429,4 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (void * void_args)
       }
     }
   }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Matmul for depthwise convolutions
-void __attribute__((noinline)) mm_dw_fp16_SIMD_1x2_u2(void * void_args) {
-
-  struct matMul_DW_args_fp16* args = (struct matMul_DW_args_fp16 *)void_args;
-  fp16 * __restrict__ A = args->A;
-  fp16 * __restrict__ B = args->B;
-  fp16 * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-  for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
-  {
-    for (uint32_t k=start; k < stop; k++) 
-    {
-      v2f16 temp0 = (v2f16) {0, 0};
-      v2f16 temp1 = (v2f16) {0, 0}; 
-      fp16 res0 = 0;
-      fp16 res1 = 0;
-      for (uint32_t t = 0; t < ker_dim; t+=2) 
-      {
-          uint32_t Aidx     = k*ker_dim+t;
-          uint32_t Bidx     = j*(N*ker_dim)+(k*ker_dim+t);
-          v2f16 Avsh   = *((v2f16*) &A[Aidx]);
-          v2f16 Bv     = *((v2f16*) &B[Bidx]);
-          // Compute first couple of operands
-          temp0        = Avsh * Bv;
-          // Sum them
-          res0        += (float) (((unsigned int) temp0) & 0x0000ffff) + (((unsigned int) temp0) & 0xffff0000 >> 16);
-          
-          Bidx         = (j+1)*(N*ker_dim)+(k*ker_dim+t);
-          Bv           = *((v2f16*) &B[Bidx]);
-          // Compute first couple of operands
-          temp1        = Avsh * Bv;
-          res1        += (float) (((unsigned int) temp1) & 0x0000ffff) + (((unsigned int) temp1) & 0xffff0000 >> 16);          
-      }
-      if (ker_dim & 1) 
-      {
-        res0     += A[(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-        res1     += A[(k*ker_dim+ker_dim-1)] * B[(j+1)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-      }
-      C[j+k*M]   = res0;
-      C[j+1+k*M] = res1;
-    } 
-    // Leftover in M
-    if (M % 2) 
-    {
-      for (uint32_t k=start; k < stop; k++) 
-      {
-        fp16 temp = 0;
-
-        for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
-        {
-          temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
-          temp += A[(k*ker_dim+t+1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t+1)];
-        }
-        if (ker_dim & 1) {
-          temp += A[(k*ker_dim+ker_dim-1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-        }
-        C[(M-1)+k*M]    = temp;
-      }        
-    } 
-
-  }
-
-}
-
-
-
-void __attribute__((noinline)) mm_dw_in_grad_fp16_SIMD_1x2_u2(void * void_args) {
-
-  struct matMul_DW_args_fp16* args = (struct matMul_DW_args_fp16 *)void_args;
-  fp16 * __restrict__ A = args->A;
-  fp16 * __restrict__ B = args->B;
-  fp16 * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-  uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-  for (uint32_t i=0; i<N; i++) 
-  {
-    for (uint32_t j=0; j<M; j++) 
-    {
-      for (uint32_t k=start; k<stop; k++)
-      {
-        fp16 temp = 0;
-        for (uint32_t u=0; u<ker_dim; u++) 
-        {
-          // In-order weights (A matrix)
-          // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-          
-          // Flipped weights (A matrix inverted channel-by-channel)
-          temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];          
-        }
-        C[j+k*M] = temp;
-      }
-    }
-  }
-
 }
