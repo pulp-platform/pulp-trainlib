@@ -49,18 +49,26 @@ void mm_M(
 );
 
 /**
- * @brief Matrix multiply for depthwise convolution. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw(
+ * @brief Naive core kernel for Depthwise Convolution (forward). Parallelizes on the channels.
+ * @param matMul_DW_args  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp32.h)
+*/
+void dw_kernel_forward(
     void * matMul_DW_args
 );
 
 /**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix). Parallelizes on K/ker_dim.
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad(
+ * @brief Naive core kernel for Depthwise Convolution (weight gradient). Parallelizes on the channels.
+ * @param matMul_DW_args  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp32.h)
+*/
+void dw_kernel_weight_grad(
+    void * matMul_DW_args
+);
+
+/**
+ * @brief Naive core kernel for Depthwise Convolution (input gradient). Parallelizes on the channels.
+ * @param matMul_DW_args  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp32.h)
+*/
+void dw_kernel_input_grad(
     void * matMul_DW_args
 );
 
@@ -285,104 +293,4 @@ void mm_M_unroll_2x4(
  */
 void mm_M_unroll_4x4(
     void * matMul_args
-);
-
-
-
-// =====> Matmuls for depthwise convolution <=====
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 2 in the inner loop. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_u2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 3 in the inner loop. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_u3(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 2 in M. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_unroll_1x2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 4 in M. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_unroll_1x4(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 2 in M and 2 in the inner loop. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_unroll_1x2_u2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution, with unrolling of 4 in M and 2 in the inner loop. Parallelizes on N. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_unroll_1x4_u2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 2 in the inner loop. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_u2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 3 in the inner loop. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_u3(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 2 in M. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_unroll_1x2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 4 in M. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_unroll_1x4(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 2 in M and 2 in the inner loop. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_unroll_1x2_u2(
-    void * matMul_DW_args
-);
-
-/**
- * @brief Matrix multiply for depthwise convolution (input grads calculation, flips A matrix), with unrolling of 4 in M and 2 in the inner loop. Parallelizes on K/ker_dim. 
- * @param matMul_DW_args pointer to a matMul_DW_args structure (please refer to this to setup the args)
- */
-void mm_dw_in_grad_unroll_1x4_u2(
-    void * matMul_DW_args
 );

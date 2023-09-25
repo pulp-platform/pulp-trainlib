@@ -32,12 +32,8 @@
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
- * @param i2c_buffer pointer to im2col buffer
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
- * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
- * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
- * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt) 
  */
 struct DepthWise_Conv_args {
 	struct blob * input;
@@ -47,12 +43,8 @@ struct DepthWise_Conv_args {
 	int Rpad;
 	int Upad;
 	int Dpad;
-	float * i2c_buffer;
 	int skip_in_grad;
 	int HWC;
-	int opt_matmul_type_fw;
-	int opt_matmul_type_wg;
-	int opt_matmul_type_ig;
 };
 
 
@@ -73,9 +65,7 @@ struct DepthWise_Conv_args {
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
- * @param i2c_buffer pointer to im2col buffer
  * @param HWC tells the DW Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
- * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp32_fw_cl( void * DepthWise_Conv_args );
 
@@ -91,11 +81,8 @@ void pulp_conv_dw_fp32_fw_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
- * @param i2c_buffer pointer to im2col buffer
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
- * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
- * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp32_bw_cl( void * DepthWise_Conv_args );
 
@@ -108,9 +95,7 @@ void pulp_conv_dw_fp32_bw_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
- * @param i2c_buffer pointer to im2col buffer
  * @param HWC tells the DW Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
- * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args );
 
@@ -123,8 +108,6 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
- * @param i2c_buffer pointer to im2col buffer
  * @param HWC tells the DW Convolution if the output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
- * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
  */
 void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args );

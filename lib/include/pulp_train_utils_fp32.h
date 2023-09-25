@@ -247,25 +247,16 @@ struct matMul_args {
 };
 
 /**
- * @brief Arguments for depthwise matrix multiplication (A=N*K, B=K*M, result is C=N*M)
- * @param A  pointer to input matrix A
- * @param B  pointer to input matrix B
- * @param C  pointer to output matrix C
- * @param N  rows of A
- * @param M  columns of B
- * @param K  columns of A / rows of B
- * @param ker_size  size of the kernel involved in the matrix multiplication
- */
-struct matMul_DW_args {
-  float * __restrict__ A;
-  float * __restrict__ B;
-  float * __restrict__ C;
-  int N;
-  int M;
-  int K;
-  int ker_size;
+ * @brief Arguments for the naive core kernel of DepthWise Convolution (forward and backward)
+ * @param input pointer to the input blob
+ * @param weight pointer to the weight blob
+ * @param output pointer to the output blob
+*/
+struct kernel_DW_args {
+  struct blob * input;
+  struct blob * weights;
+  struct blob * output;
 };
-
 
 /**
  * @brief Arguments for mm_manager function, which selects which matmul to be executed.

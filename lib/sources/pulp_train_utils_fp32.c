@@ -530,69 +530,6 @@ void mm_manager (void * void_args)
 
     }
 
-// =====> DEPTHWISE CONVOLUTION
-    else if (layer_type == LAYER_DW_CONV) 
-    {
-
-        // Select step type
-        if (step_type == STEP_FW)
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_u2((void *) matMul_DW_args);}
-            else if (matmul_type == 2)      { mm_dw_u3((void *) matMul_DW_args);}
-            else if (matmul_type == 3)      { mm_dw_unroll_1x2((void *) matMul_DW_args);}
-            else if (matmul_type == 4)      { mm_dw_unroll_1x4((void *) matMul_DW_args);}
-            else if (matmul_type == 5)      { mm_dw_unroll_1x2_u2((void *) matMul_DW_args);}
-            else if (matmul_type == 6)      { mm_dw_unroll_1x4_u2((void *) matMul_DW_args);}
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-
-        else if (step_type == STEP_WGT_GRAD) 
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_u2((void *) matMul_DW_args);}
-            else if (matmul_type == 2)      { mm_dw_u3((void *) matMul_DW_args);}
-            else if (matmul_type == 3)      { mm_dw_unroll_1x2((void *) matMul_DW_args);}
-            else if (matmul_type == 4)      { mm_dw_unroll_1x4((void *) matMul_DW_args);}
-            else if (matmul_type == 5)      { mm_dw_unroll_1x2_u2((void *) matMul_DW_args);}
-            else if (matmul_type == 6)      { mm_dw_unroll_1x4_u2((void *) matMul_DW_args);}
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-
-        else if (step_type == STEP_IN_GRAD)
-        {
-            // Select matmul type
-            if      (matmul_type == 0)      { mm_dw_in_grad((void *) matMul_DW_args); }
-            else if (matmul_type == 1)      { mm_dw_in_grad_u2((void *) matMul_DW_args); }
-            else if (matmul_type == 2)      { mm_dw_in_grad_u3((void *) matMul_DW_args); }
-            else if (matmul_type == 3)      { mm_dw_in_grad_unroll_1x2((void *) matMul_DW_args); }
-            else if (matmul_type == 4)      { mm_dw_in_grad_unroll_1x4((void *) matMul_DW_args); }
-            else if (matmul_type == 5)      { mm_dw_in_grad_unroll_1x2_u2((void *) matMul_DW_args);}
-            else if (matmul_type == 6)      { mm_dw_in_grad_unroll_1x4_u2((void *) matMul_DW_args);}
-            else
-            {
-                printf("\nWrong matmul selection!\n");
-            }
-            // End of matmul type selection
-        }
-        else
-        {
-            printf("\nWrong step selection!!\n");
-        }
-        // End step selection
-        
-    }
-
 // =====> POINTWISE CONVOLUTION
     else if (layer_type == LAYER_PW_CONV)
     {

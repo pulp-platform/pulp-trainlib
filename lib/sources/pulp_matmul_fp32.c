@@ -271,117 +271,135 @@ void mm_M(void * matMul_args) {
 
 
 
-// Matmul for depthwise convolutions
-void mm_dw(void * matMul_DW_args) {
+// Naive forward kernel for DepthWise Convolution
+void dw_kernel_forward(void * kernel_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
+  struct kernel_DW_args * args = (struct kernel_DW_args *) kernel_DW_args;
+  float * inData = args->input->data;
+  float * coeffData = args->weights->data;
+  float * outData = args->output->data;
 
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
 
-  #ifdef DEBUG_DW
-  uint32_t num_MAC = 0;
-  #endif
-
-  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
-  #ifdef DEBUG_DW
-  float a = 0;
-  float b = 0;
-  uint32_t idx_a = 0;
-  uint32_t idx_b = 0;
-  #endif
-
-  for (uint32_t j = 0; j < M; j++) 
+  for (int ch=start; ch<stop; ch++) 
   {
-    for (uint32_t k=start; k < stop; k++) 
+    for (int ho=0; ho<H_out; ho++) 
     {
-      #ifdef DEBUG_DW
-        printf("\nCORE %d: start=%d, stop=%d\n", pi_core_id(), start, stop);
-      #endif
-      float temp = 0; 
-      for (uint32_t t = 0; t < ker_dim; t++) 
+      for (int wo=0; wo<W_out; wo++)
       {
-        #ifdef DEBUG_DW
-          idx_a = /*i*K+*/(k*ker_dim+t);
-          a = A[idx_a];
-          idx_b = j*(N*ker_dim)+(k*ker_dim+t);
-          b = B[idx_b];
-          temp += a * b;
-          num_MAC++;
-          printf("idx_a=%d, a=%f, idx_b=%d, b=%f, temp=%f\n", idx_a, a, idx_b, b, temp);
-        #else
-          temp += A[k*ker_dim+t] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-        #endif
+        float temp = 0;
+        for (int hk=0; hk<pH; hk++) 
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
+          }
+        }
+        outData[wo + ho*W_out + ch*H_out*W_out] = temp;
       }
-      C[j+k*M] = temp;
-      #ifdef DEBUG_DW
-        printf("C[%d] = %f\n", j+k*M, temp);
-      #endif
-    } 
-  }
+    }
+  } 
 
-  #ifdef DEBUG_DW
-  printf("\n\n=====> MM_DW MAC: %d <=====\n\n", num_MAC);
-  #endif
 }
 
 
 
-void mm_dw_in_grad(void * matMul_DW_args) {
+// Naive weight grad kernel for DepthWise Convolution
+void dw_kernel_weight_grad(void * kernel_DW_args) {
 
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
+  struct kernel_DW_args * args = (struct kernel_DW_args *) kernel_DW_args;
+  float * inData = args->input->data;
+  float * coeffDiff = args->weights->diff;
+  float * outDiff = args->output->diff;
 
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
 
-  uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
-  #ifdef DEBUG
-  uint32_t num_MAC = 0;
-  #endif
-
-  for (uint32_t i=0; i<N; i++) 
+  for (int ch=0; ch<C_in; ch++) 
   {
-    for (uint32_t j=0; j<M; j++) 
+    for (int hk=0; hk<pH; hk++)
     {
-      for (uint32_t k=start; k<stop; k++)
+      for (int wk=0; wk<pW; wk++) 
       {
         float temp = 0;
-        for (uint32_t u=0; u<ker_dim; u++) 
+        for (int ho=0; ho<H_out; ho++)
         {
-          // In-order weights (A matrix)
-          // temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-          
-          // Flipped weights (A matrix inverted channel-by-channel)
-          temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];
-          
-          #ifdef DEBUG
-          num_MAC++;
-          #endif
+          for (int wo=0; wo<W_out; wo++) 
+          {
+            temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
+          }
         }
-        C[j+k*M] = temp;
+        coeffDiff[wk + hk*pW + ch*pH*pW] = temp;
       }
     }
   }
 
-  #ifdef DEBUG
-  printf("\n\n=====> MM_DW_IN_GRAD MAC: %d <=====\n\n", num_MAC);
-  #endif
+}
+
+
+
+// Naive input grad kernel for DepthWise Convolution
+void dw_kernel_input_grad(void * kernel_DW_args) {
+
+  struct kernel_DW_args * args = (struct kernel_DW_args *) kernel_DW_args;
+  float * inDiff = args->input->diff;
+  float * coeffData = args->weights->data;
+  float * outDiff = args->output->diff;
+
+  uint32_t C_in = args->input->C;
+  uint32_t H_in = args->input->H;
+  uint32_t W_in = args->input->W;
+  uint32_t pH = args->weights->H;
+  uint32_t pW = args->weights->W;
+  uint32_t H_out = args->output->H;
+  uint32_t W_out = args->output->W;
+
+  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = pi_core_id()*blockSize;
+  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
+
+  for (int ch=0; ch<C_in; ch++) 
+  {
+    for (int hin=0; hin<H_in; hin++)
+    {
+      int ho = hin - pH + 1;
+      for (int win=0; win<W_in; win++) 
+      {
+        int wo = win - pW + 1;
+        float temp = 0;
+        for (int hk=0; hk<pH; hk++)
+        {
+          for (int wk=0; wk<pW; wk++)
+          {
+            if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
+              temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
+            }
+          }
+        }
+        inDiff[win + hin*W_in + ch*H_in*W_in] = temp;
+      }
+    }
+  }
+
 }
 
 
@@ -4023,858 +4041,6 @@ void mm_M_unroll_4x4 (void * matMul_args)
             C[i*M+j] = left_temp;
           }
         }
-      }
-    }
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_u2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if (ker_dim < 2) { mm_dw(args); }
-  else
-  {
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-    float a = 0;
-    float b = 0;
-    uint32_t idx_a = 0;
-    uint32_t idx_b = 0;
-
-    for (uint32_t i = 0; i < 1; i++) {  
-      for (uint32_t j = 0; j < M; j++) {
-        for (uint32_t k=start; k < stop; k++) {
-          float temp = 0;
-          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t=t+2) {
-              temp += A[i*K+(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-              temp += A[i*K+(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];            
-          }
-          // Leftover on ker_dim
-          if (ker_dim & 1) {
-            temp += A[i*K+(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-          }
-          C[i*M+j+k*M] = temp;
-        } //k
-      } //j
-    } //i
-  }
-}
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_u3(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if (ker_dim < 3) { mm_dw(args); }
-  else
-  {
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-    float a = 0;
-    float b = 0;
-    uint32_t idx_a = 0;
-    uint32_t idx_b = 0;
-
-    for (uint32_t i = 0; i < 1; i++) {  
-      for (uint32_t j = 0; j < M; j++) {
-        for (uint32_t k=start; k < stop; k++) {
-          float temp = 0;
-          for (uint32_t t = 0; t < (ker_dim & 0xfffffffd); t=t+3) {
-              temp += A[i*K+(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-              temp += A[i*K+(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
-              temp += A[i*K+(k*ker_dim+t+2)] * B[j*(N*ker_dim)+(k*ker_dim+t+2)];
-          }
-          // Leftover on ker_dim
-          if (ker_dim % 3) {
-            if (ker_dim & 0x00000001) {
-              temp += A[i*K+(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            }
-            else {
-              temp += A[i*K+(k*ker_dim+ker_dim-2)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-2)];
-              temp += A[i*K+(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            }
-          }
-          C[i*M+j+k*M] = temp;
-        } //k
-      } //j
-    } //i
-  }
-}
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_unroll_1x2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if (M < 2) { mm_dw(args); }
-  else 
-  {
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-      for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
-      {
-        for (uint32_t k=start; k < stop; k++) 
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-
-          for (uint32_t t = 0; t < ker_dim; t++) 
-          {
-            float Ash  = A[k*ker_dim+t];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t)];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-        }
-        // Leftover in M
-        if (M % 2) 
-        {
-          for (uint32_t k=start; k < stop; k++) 
-          {
-            float temp = 0;
-
-            for (uint32_t t = 0; t < ker_dim; t++) 
-            {
-              temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
-            }
-            C[(M-1)+k*M]    = temp;
-          }        
-        } 
-      } 
-    } 
-}
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_unroll_1x4(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if (M < 4) { mm_dw_unroll_1x2(args); }
-  else
-  {
-    uint32_t M_left = M % 4;
-
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-      for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
-      {
-        for (uint32_t k=start; k < stop; k++) 
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-          float temp2 = 0;
-          float temp3 = 0;
-
-          for (uint32_t t = 0; t < ker_dim; t++) 
-          {
-            float Ash  = A[(k*ker_dim+t)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t)];
-            temp2     += Ash * B[(j+2)*(N*ker_dim)+(k*ker_dim+t)];
-            temp3     += Ash * B[(j+3)*(N*ker_dim)+(k*ker_dim+t)];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-          C[j+2+k*M]  = temp2;
-          C[j+3+k*M]  = temp3;
-        }
-        // Leftover in M
-        if (M % 4) 
-        {
-          for (uint32_t j = M-M_left; j < M; j++) 
-          {
-            for (uint32_t k=start; k < stop; k++) 
-            {
-              float temp = 0; 
-              for (uint32_t t = 0; t < ker_dim; t++) 
-              {
-                temp += A[(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-              }
-              C[j+k*M] = temp;
-            }        
-          }
-        } 
-      } 
-    }
-}
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_unroll_1x2_u2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if      (M < 2)         { mm_dw(args); }
-  else if (ker_dim < 2)   { mm_dw_unroll_1x2(args); }
-  else 
-  {
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-      for (uint32_t j = 0; j < (M & 0xfffffffe); j+=2) 
-      {
-        for (uint32_t k=start; k < stop; k++) 
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-
-          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
-          {
-            float Ash  = A[(k*ker_dim+t)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t)];
-            Ash        = A[(k*ker_dim+t+1)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t+1)];
-          }
-          if (ker_dim & 1) {
-            temp0     += A[(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            temp1     += A[(k*ker_dim+ker_dim-1)] * B[(j+1)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-        }
-        // Leftover in M
-        if (M % 2) 
-        {
-          for (uint32_t k=start; k < stop; k++) 
-          {
-            float temp = 0;
-
-            for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
-            {
-              temp += A[(k*ker_dim+t)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t)];
-              temp += A[(k*ker_dim+t+1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+t+1)];
-            }
-            if (ker_dim & 1) {
-              temp += A[(k*ker_dim+ker_dim-1)] * B[(M-1)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            }
-            C[(M-1)+k*M]    = temp;
-          }        
-        } 
-      } 
-    } 
-}
-
-
-
-
-// Matmul for depthwise convolutions
-void mm_dw_unroll_1x4_u2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-
-  uint32_t ker_dim = args->ker_size;
-
-  uint32_t k = 0;
-
-  if      (M < 4)         { mm_dw_unroll_1x2(args); }
-  else if (ker_dim < 2)   { mm_dw_unroll_1x4(args); }
-  else
-  {
-    uint32_t M_left = M % 4;
-
-    uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-      for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
-      {
-        for (uint32_t k=start; k < stop; k++) 
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-          float temp2 = 0;
-          float temp3 = 0;
-
-          for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
-          {
-            float Ash  = A[(k*ker_dim+t)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t)];
-            temp2     += Ash * B[(j+2)*(N*ker_dim)+(k*ker_dim+t)];
-            temp3     += Ash * B[(j+3)*(N*ker_dim)+(k*ker_dim+t)];
-            Ash  = A[(k*ker_dim+t+1)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+t+1)];
-            temp2     += Ash * B[(j+2)*(N*ker_dim)+(k*ker_dim+t+1)];
-            temp3     += Ash * B[(j+3)*(N*ker_dim)+(k*ker_dim+t+1)];
-          }
-          if (ker_dim & 1) {
-            float Ash  = A[(k*ker_dim+ker_dim-1)];
-            temp0     += Ash * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            temp1     += Ash * B[(j+1)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            temp2     += Ash * B[(j+2)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-            temp3     += Ash * B[(j+3)*(N*ker_dim)+(k*ker_dim+ker_dim-1)];           
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-          C[j+2+k*M]  = temp2;
-          C[j+3+k*M]  = temp3;
-        }
-        // Leftover in M
-        if (M % 4) 
-        {
-          for (uint32_t j = M-M_left; j < M; j++) 
-          {
-            for (uint32_t k=start; k < stop; k++) 
-            {
-              float temp = 0; 
-              for (uint32_t t = 0; t < (ker_dim & 0xfffffffe); t+=2) 
-              {
-                temp += A[(k*ker_dim+t)] * B[j*(N*ker_dim)+(k*ker_dim+t)];
-                temp += A[(k*ker_dim+t+1)] * B[j*(N*ker_dim)+(k*ker_dim+t+1)];
-              }
-              if (ker_dim & 1) {
-                temp += A[(k*ker_dim+ker_dim-1)] * B[j*(N*ker_dim)+(k*ker_dim+ker_dim-1)];
-              }
-              C[j+k*M] = temp;
-            }        
-          }
-        } 
-      } 
-    }
-}
-
-
-
-// Matmul for dw input grad with unrolling of 2
-void mm_dw_in_grad_u2(void * matMul_DW_args)
-{
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if (ker_dim < 2)  { mm_dw_in_grad(args); }
-  else
-  {
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j<M; j++) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp = 0;
-          for (uint32_t u=0; u < (ker_dim & 0xfffffffe); u=u+2) 
-          {
-            temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-            temp += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+j*K];
-          }
-          if (ker_dim & 1) {
-            temp += A[ker_dim-1+k*ker_dim] * B[ker_dim-1+k*ker_dim+j*K];
-          }
-          C[j+k*M] = temp;
-        }
-      }
-    }
-  }
-}
-
-
-
-// Matmul for dw input grad with unrolling of 2
-void mm_dw_in_grad_u3(void * matMul_DW_args)
-{
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if (ker_dim < 3)  { mm_dw_in_grad(args); }
-  else
-  {
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j<M; j++) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp = 0;
-          for (uint32_t u=0; u < (ker_dim & 0xfffffffd); u=u+3) 
-          {
-            temp += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-            temp += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+j*K];
-            temp += A[u+2+k*ker_dim] * B[u+2+k*ker_dim+j*K];
-          }
-          if (ker_dim % 3) {
-            if (ker_dim & 0x00000001) {
-              temp += A[ker_dim-1+k*ker_dim] * B[ker_dim-1+k*ker_dim+j*K];
-            }
-            else {
-              temp += A[ker_dim-2+k*ker_dim] * B[ker_dim-2+k*ker_dim+j*K];
-              temp += A[ker_dim-1+k*ker_dim] * B[ker_dim-1+k*ker_dim+j*K];
-            }
-          }
-          C[j+k*M] = temp;
-        }
-      }
-    }
-  }
-}
-
-
-
-void mm_dw_in_grad_unroll_1x2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if (M < 2) { mm_dw_in_grad(args); }
-  else 
-  {
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j< (M & 0xfffffffe); j+=2) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-
-          for (uint32_t u=0; u<ker_dim; u++) 
-          {
-            // In-order weights (A matrix)
-            // float Ash = A[u+k*ker_dim];
-            // temp0    += Ash * B[u+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+k*ker_dim+(j+1)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-u+k*ker_dim];
-            temp0     += Ash * B[u+k*ker_dim+j*K];
-            temp1     += Ash * B[u+k*ker_dim+(j+1)*K];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-        }
-      }
-      // Leftover in M
-      if (M % 1) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp = 0;
-          for (uint32_t u=0; u<ker_dim; u++) 
-          {
-            // In-order weights (A matrix)
-            // temp += A[u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel
-            temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
-          }
-          C[(M-1)+k*M]    = temp;
-        }        
-      }
-    }
-  }
-}
-
-
-
-void mm_dw_in_grad_unroll_1x4(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if (M < 4) { mm_dw_in_grad_unroll_1x2(args); }
-  else 
-  {
-    uint32_t M_left = M % 4;
-
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j< (M & 0xfffffffc); j+=4) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-          float temp2 = 0;
-          float temp3 = 0;
-
-          for (uint32_t u=0; u<ker_dim; u++) 
-          {
-            // In-order weights (A matrix)
-            // float Ash = A[u+k*ker_dim];
-            // temp0    += Ash * B[u+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+k*ker_dim+(j+1)*K];
-            // temp2    += Ash * B[u+k*ker_dim+(j+2)*K];
-            // temp3    += Ash * B[u+k*ker_dim+(j+3)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-u+k*ker_dim];
-            temp0     += Ash * B[u+k*ker_dim+j*K];
-            temp1     += Ash * B[u+k*ker_dim+(j+1)*K];
-            temp2     += Ash * B[u+k*ker_dim+(j+2)*K];
-            temp3     += Ash * B[u+k*ker_dim+(j+3)*K];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-          C[j+2+k*M]  = temp2;
-          C[j+3+k*M]  = temp3;
-        }
-      }
-      // Leftover in M
-      if (M % 4) 
-      {
-        for (uint32_t j=M-M_left; j< M; j++) 
-        {
-          for (uint32_t k=start; k<stop; k++)
-          {
-            float temp = 0;
-            for (uint32_t u=0; u<ker_dim; u++) 
-            {
-              // In-order weights (A matrix)
-              // temp0    += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-              
-              // Flipped weights (A matrix inverted channel-by-channel)
-              temp     += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];
-            }
-            C[j+k*M]    = temp;
-          }
-        }        
-      }
-    }
-  }
-}
-
-
-
-void mm_dw_in_grad_unroll_1x2_u2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if      (M < 2)         { mm_dw_in_grad(args); }
-  else if (ker_dim < 2)   { mm_dw_in_grad_unroll_1x2(args); }
-  else 
-  {
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j< (M & 0xfffffffe); j+=2) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-
-          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
-          {
-            // In-order weights (A matrix)
-            // float Ash = A[u+k*ker_dim];
-            // temp0    += Ash * B[u+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+k*ker_dim+(j+1)*K];
-            // Ash       = A[u+1+k*ker_dim];
-            // temp0    += Ash * B[u+1+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+1+k*ker_dim+(j+1)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-u+k*ker_dim];
-            temp0     += Ash * B[u+k*ker_dim+j*K];
-            temp1     += Ash * B[u+k*ker_dim+(j+1)*K];
-            Ash        = A[(ker_dim-1)-(u+1)+k*ker_dim];
-            temp0     += Ash * B[u+1+k*ker_dim+j*K];
-            temp1     += Ash * B[u+1+k*ker_dim+(j+1)*K];
-          }
-          if (ker_dim & 1) {
-            // In-order weights (A matrix)
-            // float Ash = A[ker_dim-1+k*ker_dim];
-            // temp0    += Ash * B[ker_dim-1+k*ker_dim+j*K];
-            // temp1    += Ash * B[ker_dim-1+k*ker_dim+(j+1)*K];
-
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-(ker_dim-1)+k*ker_dim];
-            temp0     += Ash * B[ker_dim-1+k*ker_dim+j*K];
-            temp1     += Ash * B[ker_dim-1+k*ker_dim+(j+1)*K];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-        }
-      }
-      // Leftover in M
-      if (M % 1) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp = 0;
-          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
-          {
-            // In-order weights (A matrix)
-            // temp += A[u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
-            // temp += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+(M-1)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel
-            temp += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+(M-1)*K];
-            temp += A[(ker_dim-1)-u+1+k*ker_dim] * B[u+1+k*ker_dim+(M-1)*K];
-          }
-          if (ker_dim & 1) {
-            temp += A[(ker_dim-1)-(ker_dim-1)+k*ker_dim] * B[(ker_dim-1)+k*ker_dim+(M-1)*K];
-          }
-          C[(M-1)+k*M]    = temp;
-        }        
-      }
-    }
-  }
-}
-
-
-
-void mm_dw_in_grad_unroll_1x4_u2(void * matMul_DW_args) {
-
-  struct matMul_DW_args* args = (struct matMul_DW_args *)matMul_DW_args;
-  float * __restrict__ A = args->A;
-  float * __restrict__ B = args->B;
-  float * __restrict__ C = args->C;
-
-  uint32_t N = args->N;
-  uint32_t M = args->M;
-  uint32_t K = args->K;
-  uint32_t ker_dim = args->ker_size;
-
-  if      (M < 4)         { mm_dw_in_grad_unroll_1x2(args); }
-  else if (ker_dim < 2)   { mm_dw_in_grad_unroll_1x4(args); }
-  else 
-  {
-    uint32_t M_left = M % 4;
-
-    uint32_t blockSize = ((K/ker_dim)+NUM_CORES-1) / NUM_CORES;
-    uint32_t start = pi_core_id()*blockSize;
-    uint32_t stop = start+blockSize > (K/ker_dim) ? (K/ker_dim) : start+blockSize;
-
-    for (uint32_t i=0; i<N; i++) 
-    {
-      for (uint32_t j=0; j< (M & 0xfffffffc); j+=4) 
-      {
-        for (uint32_t k=start; k<stop; k++)
-        {
-          float temp0 = 0;
-          float temp1 = 0;
-          float temp2 = 0;
-          float temp3 = 0;
-
-          for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
-          {
-            // In-order weights (A matrix)
-            // float Ash = A[u+k*ker_dim];
-            // temp0    += Ash * B[u+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+k*ker_dim+(j+1)*K];
-            // temp2    += Ash * B[u+k*ker_dim+(j+2)*K];
-            // temp3    += Ash * B[u+k*ker_dim+(j+3)*K];
-            // Ash       = A[u+1+k*ker_dim];
-            // temp0    += Ash * B[u+1+k*ker_dim+j*K];
-            // temp1    += Ash * B[u+1+k*ker_dim+(j+1)*K];
-            // temp2    += Ash * B[u+1+k*ker_dim+(j+2)*K];
-            // temp3    += Ash * B[u+1+k*ker_dim+(j+3)*K];
-            
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-u+k*ker_dim];
-            temp0     += Ash * B[u+k*ker_dim+j*K];
-            temp1     += Ash * B[u+k*ker_dim+(j+1)*K];
-            temp2     += Ash * B[u+k*ker_dim+(j+2)*K];
-            temp3     += Ash * B[u+k*ker_dim+(j+3)*K];
-            Ash        = A[(ker_dim-1)-(u+1)+k*ker_dim];
-            temp0     += Ash * B[u+1+k*ker_dim+j*K];
-            temp1     += Ash * B[u+1+k*ker_dim+(j+1)*K];
-            temp2     += Ash * B[u+1+k*ker_dim+(j+2)*K];
-            temp3     += Ash * B[u+1+k*ker_dim+(j+3)*K];
-          }
-          if (ker_dim & 1) {
-            // In-order weights (A matrix)
-            // float Ash = A[(ker_dim-1)+k*ker_dim];
-            // temp0    += Ash * B[(ker_dim-1)+k*ker_dim+j*K];
-            // temp1    += Ash * B[(ker_dim-1)+k*ker_dim+(j+1)*K];
-            // temp2    += Ash * B[(ker_dim-1)+k*ker_dim+(j+2)*K];
-            // temp3    += Ash * B[(ker_dim-1)+k*ker_dim+(j+3)*K];
-
-            // Flipped weights (A matrix inverted channel-by-channel)
-            float Ash  = A[(ker_dim-1)-(ker_dim-1)+k*ker_dim];
-            temp0     += Ash * B[(ker_dim-1)+k*ker_dim+j*K];
-            temp1     += Ash * B[(ker_dim-1)+k*ker_dim+(j+1)*K];
-            temp2     += Ash * B[(ker_dim-1)+k*ker_dim+(j+2)*K];
-            temp3     += Ash * B[(ker_dim-1)+k*ker_dim+(j+3)*K];
-          }
-          C[j+k*M]    = temp0;
-          C[j+1+k*M]  = temp1;
-          C[j+2+k*M]  = temp2;
-          C[j+3+k*M]  = temp3;
-        }
-      }
-      // Leftover in M
-      if (M % 4) 
-      {
-        for (uint32_t j=M-M_left; j< M; j++) 
-        {
-          for (uint32_t k=start; k<stop; k++)
-          {
-            float temp = 0;
-            for (uint32_t u=0; u<(ker_dim & 0xfffffffe); u+=2) 
-            {
-              // In-order weights (A matrix)
-              // temp0    += A[u+k*ker_dim] * B[u+k*ker_dim+j*K];
-              // temp0    += A[u+1+k*ker_dim] * B[u+1+k*ker_dim+j*K];
-              
-              // Flipped weights (A matrix inverted channel-by-channel)
-              temp     += A[(ker_dim-1)-u+k*ker_dim] * B[u+k*ker_dim+j*K];
-              temp     += A[(ker_dim-1)-(u+1)+k*ker_dim] * B[u+1+k*ker_dim+j*K];
-            }
-            if (ker_dim & 1) {
-              // In-order weights (A matrix)
-              // temp0    += A[(ker_dim-1)+k*ker_dim] * B[(ker_dim-1)+k*ker_dim+j*K];
-
-              // Flipped weights (A matrix inverted channel-by-channel)
-              temp     += A[(ker_dim-1)-(ker_dim-1)+k*ker_dim] * B[(ker_dim-1)+k*ker_dim+j*K];                            
-            }
-            C[j+k*M]    = temp;
-          }
-        }        
       }
     }
   }

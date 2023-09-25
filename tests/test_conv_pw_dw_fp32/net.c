@@ -44,25 +44,19 @@ PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
 
 #ifdef DW_FORWARD
-#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tin_C_l1*(Tout_H_l1)*(Tout_W_l1))
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float im2col_buffer_bw[IM2COL_SIZE];
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1];
 PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 #ifdef DW_BACKWARD_ERROR
-#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tout_C_l1*(Tin_H_l1)*(Tin_W_l1))
 PI_L1 float l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float im2col_buffer_bw[IM2COL_SIZE];
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1];
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 #ifdef DW_BACKWARD_GRAD
-#define IM2COL_SIZE (Tout_H_l1*Tout_W_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float im2col_buffer_bw[IM2COL_SIZE];
 PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1];
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
@@ -93,7 +87,6 @@ PI_L1 float transpose_buffer[Tin_C_l2*Tin_W_l2*Tin_H_l2];
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
 }
 
@@ -132,19 +125,13 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
-  DW_args.i2c_buffer = im2col_buffer_bw;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
-  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
-  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
-  DW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
   // Input
   L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
-  // Im2col
-  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*(Tout_H_l1)*(Tout_W_l1)*sizeof(float);
   // DW Kernel
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*sizeof(float);
   // DW Output
@@ -176,7 +163,6 @@ static inline void compute_memory_occupation() {
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = OUTPUT[i]; //0.4f;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker_diff[i] = zero_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = zero_init;
 }
 
@@ -220,19 +206,13 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
-  DW_args.i2c_buffer = im2col_buffer_bw;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
-  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
-  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
-  DW_args.opt_matmul_type_ig = MATMUL_TYPE;  
 }
 
 static inline void compute_memory_occupation() {
   // Input
   L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
-  // Im2col
-  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1*sizeof(float);
   // DW Kernel grad
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*sizeof(float);
   // DW Output grad
@@ -264,7 +244,6 @@ static inline void compute_memory_occupation() {
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in_diff[i] = zero_init;
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                           l1_ker[i] = DW_WEIGHTS[i]; //weight_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer_bw[i] = zero_init; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] =  zero_init;
 }
 
@@ -303,19 +282,13 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
-  DW_args.i2c_buffer = im2col_buffer_bw;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
-  DW_args.opt_matmul_type_fw = MATMUL_TYPE;
-  DW_args.opt_matmul_type_wg = MATMUL_TYPE;
-  DW_args.opt_matmul_type_ig = MATMUL_TYPE;
 }
 
 static inline void compute_memory_occupation() {
   // Input grad
   L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
-  // Im2col
-  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tout_C_l1*(Tin_H_l1)*(Tin_W_l1)*sizeof(float);
   // DW Kernel
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*sizeof(float);
   // DW Output grad
