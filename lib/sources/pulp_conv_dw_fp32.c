@@ -363,12 +363,9 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
         {
           for (int wk=0; wk<pW; wk++)
           {
-            if ((wo+wk>=0) || (ho+hk>=0) || (wo+wk<=W_out) || (ho+hk<=H_out)) {
+            if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
               temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
             }
-            printf("not_pad?=%d, coeffData[%d]=%f, outDiff[%d]=%f, temp=%f", (wo+wk>=0) || (ho+hk>=0) || (wo+wk<=W_out) || (ho+hk<=H_out), 
-                    (pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW, coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW], (wo+wk) + (ho+hk)*W_out + ch*H_out*W_out,
-                    temp);
           }
         }
         inDiff[win + hin*W_in + ch*H_in*W_in] = temp;
