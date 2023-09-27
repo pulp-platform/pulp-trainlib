@@ -106,7 +106,7 @@ void set_to_value_fp16 (void * void_args)
 }
 
 
-
+//#define DEBUG
 void vect_sum_fp16 (void * vect_sum_args)
 {
   struct vect_sum_args_fp16 * args = (struct vect_sum_args_fp16*) vect_sum_args;
@@ -115,13 +115,28 @@ void vect_sum_fp16 (void * vect_sum_args)
   fp16 * dest = args->dest;
   int size = args->size;
 
+// SIMD implementation
+  v2f16 TEMP;
+  v2f16 OP1;
+  v2f16 OP2;
+  v2f16 * DEST = (v2f16 *) dest;
+
   int blockSize = (size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > size ? size : start+blockSize;
+  int stop = start+blockSize > size  ? size : start+blockSize;
+  if ((unsigned int)start & 0x00000001)  start ++;
+  if (((unsigned int)stop & 0x00000001) == 0x00000000)  stop --;
 
-  for (int i=start; i<stop; i++) {
-      dest[i] = op_1[i] + op_2[i];
-  }   
+  for (int i=start; i<stop; i+=2) 
+  {
+    OP1 = *(v2f16 *) &op_1[i];
+    OP2 = *(v2f16 *) &op_2[i];
+    TEMP = OP1 + OP2;
+    DEST = (v2f16 *)&dest[i];
+    *DEST = TEMP;
+
+  }
+ 
 }
 
 

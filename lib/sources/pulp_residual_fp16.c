@@ -25,46 +25,26 @@
 
 // FORWARD PRIMITIVES
 
-void pulp_sumnode_fp16_fw( void * SkipConn_args_fp16 )
-{
-    struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 act0 = args->activation0;
-    struct blob_fp16 act1 = args->activation1;
-    struct blob_fp16 out = args->activation2;
-
-    if (act0.dim != act1.dim || act1.dim != out.dim) {
-        printf("[pulp_sumnode_fp16_fw]: Sizes of input and output activations not matching!!"); return;
-    }
-
-    struct vect_sum_args_fp16 args;
-    args.op_1 = act0.data;
-    args.op_2 = act1.data;
-    args.dest = out.data;
-    args.size = out.dim;
-
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args);
-}
-
 
 
 void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
 {
     struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 act0 = args->activation0;
-    struct blob_fp16 act1 = args->activation1;
-    struct blob_fp16 out = args->activation2;
+    struct blob_fp16 * skip = args->skip;
+    struct blob_fp16 * lout = args->lout;
+    struct blob_fp16 * out = args->output;
 
-    if (act0.dim != act1.dim || act1.dim != out.dim) {
+    if (skip->dim != lout->dim || lout->dim != out->dim) {
         printf("[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!"); return;
     }
 
-    struct vect_sum_args_fp16 args;
-    args.op_1 = act0.data;
-    args.op_2 = act1.data;
-    args.dest = out.data;
-    args.size = out.dim;
+    struct vect_sum_args_fp16 args_sum;
+    args_sum.op_1 = skip->data;
+    args_sum.op_2 = lout->data;
+    args_sum.dest = out->data;
+    args_sum.size = out->dim;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args);
+    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args_sum);
 }
 
 
@@ -76,42 +56,48 @@ void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
 void pulp_sumnode_fp16_bw( void * SkipConn_args_fp16 )
 {
     struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 act0 = args->activation0;
-    struct blob_fp16 act1 = args->activation1;
-    struct blob_fp16 indiff = args->activation2;
-    
-    if (act0.dim != act1.dim || act1.dim != indiff.dim) {
-        printf("[pulp_sumnode_fp16_bw]: Sizes of input and output gradients not matching!!"); return;
+    struct blob_fp16 * skip = args->skip;
+    struct blob_fp16 * lout = args->lout;
+    struct blob_fp16 * out = args->output;
+    int skip_grad = args->skip_in_grad;
+  
+    if (skip_grad==0)
+   {
+    if (skip->dim != lout->dim) {
+        printf("[pulp_sumnode_fp16_fw]: Sizes of input and output activations not matching!!"); return;
     }
 
-    struct vect_sum_args_fp16 args;
-    args.op_1 = act0.diff;
-    args.op_2 = act1.diff;
-    args.dest = indiff.diff;
-    args.size = indiff.dim;
+    struct vect_sum_args_fp16 args_sum;
+    args_sum.op_1 = out->diff;
+    args_sum.op_2 = skip->diff;
+    args_sum.dest = skip->diff;
+    args_sum.size = skip->dim;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args);
+    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args_sum);
+   }
 }
-
 
 
 void pulp_residualconn_fp16_bw( void * SkipConn_args_fp16 )
 {
     struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 act0 = args->activation0;
-    struct blob_fp16 act1 = args->activation1;
-    struct blob_fp16 outdiff = args->activation2;
-    
-    if (act0.dim != act1.dim || act1.dim != outdiff.dim) {
-        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output gradients not matching!!"); return;
+    struct blob_fp16 * skip = args->skip;
+    struct blob_fp16 * lout = args->lout;
+    struct blob_fp16 * out = args->output;
+
+    if (skip->dim != lout->dim || lout->dim != out->dim) {
+        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output activations not matching!!"); return;
     }
 
     // Copy gradient into the input
     struct copy_args_fp16 cpy_args;
-    cpy_args.from = outdiff.diff;
-    cpy_args.to = act0.diff;
-    cpy_args.size = outdiff.dim;
-    pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);
-    cpy_args.to = act1.diff;
+    cpy_args.from = out->diff;
+    //cpy_args.to = skip->diff;
+    cpy_args.size = out->dim;
+    //pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);
+    cpy_args.to = lout->diff;
     pi_cl_team_fork(NUM_CORES, copy_fp16, &cpy_args);
 }
+
+
+

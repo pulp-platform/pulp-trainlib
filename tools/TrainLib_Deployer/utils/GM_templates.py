@@ -106,3 +106,15 @@ def AvgPool_template(layer, hk, wk, hstr, wstr, data_type):
         print("[GM_templates.AvgPool_template] Invalid data type!!")
         exit()
     return template
+
+'''
+SKIPCONN TEMPLATES
+'''
+
+def Skipnode_template(layer):                                       
+    template= "\t\tself.l"+str(layer) +" =Skipnode() #Skip layer\n"
+    return template                                             
+
+def Sumnode_template(layer, ls):                                        
+    template= "\t\tself.l"+str(layer) +f"= Sumnode({ls}) #Sumnode layer\n"
+    return template                                             

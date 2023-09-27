@@ -109,7 +109,39 @@ def PW_template_BW(layer_number, DATA_TYPE):
     return template
 
 
+"""
+RESIDUAL CONNECTIONS TEMPLATE
+"""
 
+def residualconn_template_FW(layer_number, DATA_TYPE):
+    if DATA_TYPE == 'FP32':
+        template = "  pulp_residualconn_fp32_fw(&l"+str(layer_number)+"_args);\n"
+    elif DATA_TYPE == 'FP16':
+        template = "  pulp_residualconn_fp16_fw(&l"+str(layer_number)+"_args);\n"
+    else:
+        print("[net_templates.residualconn_template_FW]: Invalid data type!")
+        exit()
+    return template
+
+def residualconn_template_copy_BW(layer_number, DATA_TYPE):
+    if DATA_TYPE == 'FP32':
+        template = "  pulp_residualconn_fp32_bw(&l"+str(layer_number)+"_args);\n"
+    elif DATA_TYPE == 'FP16':
+        template = "  pulp_residualconn_fp16_bw(&l"+str(layer_number)+"_args);\n"
+    else:
+        print("[net_templates.residualconn_template_copy_BW]: Invalid data type!")
+        exit()
+    return template
+
+def residualconn_template_sum_BW(layer_number, DATA_TYPE):
+    if DATA_TYPE == 'FP32':
+        template = "  pulp_sumnode_fp32_bw(&l"+str(layer_number)+"_args);\n"
+    elif DATA_TYPE == 'FP16':
+        template = "  pulp_sumnode_fp16_bw(&l"+str(layer_number)+"_args);\n"
+    else:
+        print("[net_templates.residualconn_template_sum_BW]: Invalid data type!")
+        exit()
+    return template
 
 """
 ACTIVATIONS TEMPLATES
@@ -318,6 +350,16 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
 def ReLU_config_template(layer_number, DATA_TYPE):
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    return template
+
+def resconn_config_template(layer_number, skip_node, skip_input):
+    template  = "  l"+str(layer_number)+"_args.lout = &layer"+str(layer_number)+"_in;\n"
+    template += "  l"+str(layer_number)+"_args.skip = &layer"+str(skip_node)+"_in;\n"
+    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    if skip_input:
+        template += f"  l{layer_number}_args.skip_in_grad = 1;\n"
+    else:
+        template += f"  l{layer_number}_args.skip_in_grad = 0;\n"
     return template
 
 # def MaxPool_config_template(layer_number):

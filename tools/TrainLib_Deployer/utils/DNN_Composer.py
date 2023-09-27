@@ -70,6 +70,34 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     return total_memory_occupation_bytes
 
 
+
+def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list):
+    num_skip = 0
+    num_sum = 0
+    previous_param = []
+    for layer in range(len(layer_list)):
+        if layer_list[layer] == 'Skipnode':
+            num_skip += 1
+        if layer_list[layer] == 'Sumnode':
+            num_sum += 1
+        if layer_list[layer] == 'Sumnode'or layer_list[layer] == 'Skipnode':
+            # Test for same dimensionality  between input and output
+            if in_ch_list[layer] != out_ch_list[layer]:
+                print(f"Different number of channels at layer {layer}\n")
+                exit()
+            elif layer_list[layer] == 'Skipnode':
+                previous_param = [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]
+            elif layer_list[layer] == 'Sumnode':
+                if previous_param != [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]:
+                    print(f"Differen dimensionality at Sumnode {layer}, needed {previous_param}\n")
+                    exit()
+        
+    if num_skip != num_sum:
+        print(f"Different number of Skipnode ({num_skip}) and Sumnode ({num_sum})\n")
+        exit()
+
+
+        
 """
 The DNN Composer takes the lists representing the DNN graph and 
 generates the code for PULP
