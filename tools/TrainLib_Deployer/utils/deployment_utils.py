@@ -330,16 +330,12 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
     return
 
 
-LastSkip = 0 
-SkipConnList = [] 
-SkipInd = 0
-
 # Generates the Golden Model
 def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l):
+                data_type_l, sumnode_connections):
     
     # Print DNN structure
     print("---------- DNN ARCHITECTURE ----------")
@@ -523,10 +519,8 @@ def GenerateGM(proj_folder_path, project_name,
         #Skipconn
         elif layers_l[layer] == "Skipnode": 
             f.write(Gtemp.Skipnode_template(layer)) 
-            LastSkip = layer 
-            SkipConnList.append(LastSkip) 
         elif layers_l[layer] == "Sumnode": 
-            f.write(Gtemp.Sumnode_template(layer, LastSkip)) 
+            f.write(Gtemp.Sumnode_template(layer, sumnode_connections[layer])) 
         # Throw error
         else:
             print("[deployment_utils.GenerateGM]: Layer {} not recognized!!\n".format(layer))
@@ -534,7 +528,6 @@ def GenerateGM(proj_folder_path, project_name,
     # Create Forward
     f.write("\n")
     f.write("\tdef forward(self, x):")
-    SkipInd = 0 # For Skip Connections 
     for layer in range(len(layers_l)):
         # Vectorize inputs in case of linear layer
         if layers_l[layer] == 'linear':
@@ -552,8 +545,7 @@ def GenerateGM(proj_folder_path, project_name,
             f.write("\n\t\tx = self.l"+str(layer)+"(x)")
         #Skipconn
         elif layers_l[layer] == "Sumnode": 
-            f.write("\n\t\tx = self.l"+str(SkipConnList[SkipInd]) + ".data  + x") 
-            SkipInd = SkipInd + 1 
+            f.write("\n\t\tx = self.l"+str(sumnode_connections[layer]) + ".data  + x") 
         # Last layer
         elif layer == len(layers_l)-1:
             f.write("\n\t\tx = self.l"+str(layer)+"(x).float()")
@@ -664,7 +656,7 @@ def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l):
+                data_type_l, sumnode_connections):
 
     # Generate net.h
     f = open(proj_folder_path+'net.h', 'w')
@@ -1211,12 +1203,11 @@ def GenerateNet(proj_folder_path, project_name,
             exit()
 
         if layers_l[layer] == 'Skipnode':
-            previous_was_skip = 1
+            previous_was_skip += 1
         else:
             previous_was_skip = 0
 
     f.write("\n  // Configure layer structures\n")
-    SkipInd = 0 # For Skip Connections
     first_is_skip = False #
     for layer in range(len(layers_l)):
         f.write("  // Layer "+str(layer)+"\n")
@@ -1242,9 +1233,8 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[layer] == 'AvgPool':
             f.write("  //   Pooling layer (see next section)\n")
         elif layers_l[layer] == 'Sumnode':
-            f.write(ntemp.resconn_config_template(layer, SkipConnList[SkipInd], first_is_skip))
+            f.write(ntemp.resconn_config_template(layer, sumnode_connections[layer], first_is_skip))
             first_is_skip = False
-            SkipInd = SkipInd + 1
         elif layers_l[layer] == 'Skipnode':
             if layer == 0:
                 first_is_skip = True
@@ -1331,7 +1321,7 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[lay] == 'MaxPool':
             f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'Skipnode':
-            f.write(ntemp.residualconn_template_sum_BW(prev_sumnode, data_type_l[lay]))
+            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay]))
         elif layers_l[lay] == 'Sumnode':
             f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
             prev_sumnode = lay

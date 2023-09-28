@@ -114,6 +114,7 @@ void vect_sum_fp16 (void * vect_sum_args)
   fp16 * op_2 = args->op_2;
   fp16 * dest = args->dest;
   int size = args->size;
+  int size_left = size & 0x00000001;
 
 // SIMD implementation
   v2f16 TEMP;
@@ -124,8 +125,8 @@ void vect_sum_fp16 (void * vect_sum_args)
   int blockSize = (size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > size  ? size : start+blockSize;
-  if ((unsigned int)start & 0x00000001)  start ++;
-  if (((unsigned int)stop & 0x00000001) == 0x00000000)  stop --;
+  //if ((unsigned int)start & 0x00000001)  start ++;
+  //if (((unsigned int)stop & 0x00000001) == 0x00000000)  stop --;
 
   for (int i=start; i<stop; i+=2) 
   {
@@ -134,7 +135,11 @@ void vect_sum_fp16 (void * vect_sum_args)
     TEMP = OP1 + OP2;
     DEST = (v2f16 *)&dest[i];
     *DEST = TEMP;
-
+  }
+  if (size_left > 0)
+  {
+    int idx = size-size_left;
+    dest[idx] = op_1[idx] + op_2[idx];
   }
  
 }

@@ -83,7 +83,7 @@ void forward()
     #endif
 
     //Error calculation
-    printf("\nExpected Loss: %.10f, Calculated Loss: %.10f\n", expected_loss, calculated_loss);
+    printf("\nExpected Loss: %.5f, Calculated Loss: %.5f\n", expected_loss, calculated_loss);
     #ifdef FLOAT32
     printf("Error: %.4fppm\n\n",1000000*fabs(1 - expected_loss/calculated_loss));
     #else
@@ -104,7 +104,7 @@ void backward()
     pulp_relu_fp16_bw_cl(&relu_args);
     pulp_residualconn_fp16_bw(&residual_args);
     pulp_conv2d_fp16_bw_input_grads_cl(&conv1_args);
-    pulp_sumnode_fp16_bw(&residual_args);    
+    pulp_sumnode_fp16_bw(&residual_args);   
     #endif
 
     #ifdef PROF_NET
@@ -123,6 +123,7 @@ void backward()
     printf("Expected Input Gradient:\n");
     PrintBlob(&expected_input, 0);
     
+    verify_tensor_fp16(input.diff, expected_input.diff, input.dim, (fp16) (0x0004));
     //Error calculation
     float ppm=0;
     for(int i=0; i<input.dim; i++)

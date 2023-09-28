@@ -71,7 +71,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
 
 
-def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list):
+def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnode_connections):
     num_skip = 0
     num_sum = 0
     previous_param = []
@@ -85,13 +85,19 @@ def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list):
             if in_ch_list[layer] != out_ch_list[layer]:
                 print(f"Different number of channels at layer {layer}\n")
                 exit()
-            elif layer_list[layer] == 'Skipnode':
-                previous_param = [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]
-            elif layer_list[layer] == 'Sumnode':
-                if previous_param != [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]:
-                    print(f"Differen dimensionality at Sumnode {layer}, needed {previous_param}\n")
-                    exit()
-        
+            # Test for connections via sumnode_connections list
+            layer_connected = sumnode_connections[layer]
+            if layer_list[layer_connected] != 'Skipnode' and  layer_list[layer_connected] != 'Sumnode':
+                print(f"Layer {layer} connected to wrong layer:{layer_connected}\n")
+                exit()
+            if sumnode_connections[layer_connected] != layer:
+                print(f" The layer l{layer} is connected to does not connect back ({layer_connected})\n")
+                exit() 
+            # Test for same dimensionality between connected layers
+            param1 = [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]
+            param2 = [in_ch_list[layer_connected], out_ch_list[layer_connected], hin_list[layer_connected], win_list[layer_connected]]
+            if  param1 != param2 :
+                print(f"Dimensionality between SkipConn layers {layer} and {layer_connected} are not the same [{param1}, {param2}]\n")
     if num_skip != num_sum:
         print(f"Different number of Skipnode ({num_skip}) and Sumnode ({num_sum})\n")
         exit()
@@ -106,7 +112,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list):
+                  NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -119,13 +125,13 @@ def DNN_Composer (proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
                         epochs, batch_size, learning_rate, optimizer, loss_fn,
-                        data_type_l)
+                        data_type_l, sumnode_connections)
 
     # Generate the net.c and net.h files to run the training in L1 (for now)
     utils.GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l)
+                data_type_l, sumnode_connections)
 
     return
