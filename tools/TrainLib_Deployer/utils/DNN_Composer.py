@@ -72,35 +72,35 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
 
 def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnode_connections):
+    # Check same number of Skipnodes and Sumnodes
     num_skip = 0
     num_sum = 0
-    previous_param = []
-    for layer in range(len(layer_list)):
-        if layer_list[layer] == 'Skipnode':
-            num_skip += 1
+    for layer in range(len(layer_list)): 
         if layer_list[layer] == 'Sumnode':
             num_sum += 1
-        if layer_list[layer] == 'Sumnode'or layer_list[layer] == 'Skipnode':
-            # Test for same dimensionality  between input and output
-            if in_ch_list[layer] != out_ch_list[layer]:
-                print(f"Different number of channels at layer {layer}\n")
-                exit()
-            # Test for connections via sumnode_connections list
-            layer_connected = sumnode_connections[layer]
-            if layer_list[layer_connected] != 'Skipnode' and  layer_list[layer_connected] != 'Sumnode':
-                print(f"Layer {layer} connected to wrong layer:{layer_connected}\n")
-                exit()
-            if sumnode_connections[layer_connected] != layer:
-                print(f" The layer l{layer} is connected to does not connect back ({layer_connected})\n")
-                exit() 
-            # Test for same dimensionality between connected layers
-            param1 = [in_ch_list[layer], out_ch_list[layer], hin_list[layer], win_list[layer]]
-            param2 = [in_ch_list[layer_connected], out_ch_list[layer_connected], hin_list[layer_connected], win_list[layer_connected]]
-            if  param1 != param2 :
-                print(f"Dimensionality between SkipConn layers {layer} and {layer_connected} are not the same [{param1}, {param2}]\n")
+        elif sumnode_connections[layer] != -1:
+            num_skip += 1
+        else:
+            pass
     if num_skip != num_sum:
         print(f"Different number of Skipnode ({num_skip}) and Sumnode ({num_sum})\n")
         exit()
+
+
+    for layer in range(len(layer_list)):
+        if layer_list[layer] == 'Sumnode':
+            if in_ch_list[layer] == out_ch_list[layer]:
+                param = [in_ch_list[layer], hin_list[layer], win_list[layer]]
+                layer_to_test = sumnode_connections[layer]
+                if param != [in_ch_list[layer_to_test], hin_list[layer_to_test], win_list[layer_to_test]] and layer_list[layer_to_test] == 'Skipnode':
+                    print(f"\nDifferent number of parameters between layers {layer}, {layer_to_test}\n")
+                    exit()
+            else:
+                print(f"\nDifferent number of I/O Channels at layer {layer}\n")
+                exit()
+
+
+
 
 
         
