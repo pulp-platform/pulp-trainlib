@@ -88,8 +88,10 @@ void copy_fp16 (void * void_args)
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > args.size ? args.size : start+blockSize;
 
+
   for(int i=start; i<stop; i++)
     args.to[i] = args.from[i];
+
 }
 
 
@@ -125,8 +127,6 @@ void vect_sum_fp16 (void * vect_sum_args)
   int blockSize = (size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
   int stop = start+blockSize > size  ? size : start+blockSize;
-  //if ((unsigned int)start & 0x00000001)  start ++;
-  //if (((unsigned int)stop & 0x00000001) == 0x00000000)  stop --;
 
   for (int i=start; i<stop; i+=2) 
   {

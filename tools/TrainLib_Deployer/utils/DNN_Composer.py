@@ -71,6 +71,18 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
 
 
+def AdjustResConnList(sumnode_connections):
+    res = []
+    for layer in range(len(sumnode_connections)):
+        if sumnode_connections[layer] == 0:
+            res.append(-1)
+        else:
+            my_value = sumnode_connections[layer]
+            for scanned_layer in range(len(sumnode_connections)):
+                if sumnode_connections[scanned_layer] == my_value and layer != scanned_layer:
+                    res.append(scanned_layer)
+    return res
+
 def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnode_connections):
     # Check same number of Skipnodes and Sumnodes
     num_skip = 0

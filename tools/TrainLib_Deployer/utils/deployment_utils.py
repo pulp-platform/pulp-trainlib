@@ -1150,7 +1150,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
                     f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")     
                 # End of assignment       
-                f.write("  layer"+str(layer)+"_out.dim = Tin_C_l"+str(layer+1)+"*Tin_H_l"+str(layer+1)+"*Tin_W_l"+str(layer+1)+";\n")
+                f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
@@ -1188,7 +1188,7 @@ def GenerateNet(proj_folder_path, project_name,
                     else:     
                         f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")
                 # End of assignment     
-                f.write("  layer"+str(layer)+"_out.dim = Tin_C_l"+str(layer+1)+"*Tin_H_l"+str(layer+1)+"*Tin_W_l"+str(layer+1)+";\n")
+                f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
@@ -1225,6 +1225,8 @@ def GenerateNet(proj_folder_path, project_name,
             previous_was_skip_data += 1
             if layers_l[layer] == 'Skipnode':
                 previous_was_skip_diff += 1
+            else: 
+                previous_was_skip_diff = 0
         else:
             previous_was_skip_data = 0
             previous_was_skip_diff = 0

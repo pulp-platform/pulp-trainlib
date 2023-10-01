@@ -33,7 +33,8 @@ void pulp_residualconn_fp32_fw( void * SkipConn_args )
     struct blob * out = args->output;
 
     if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("[pulp_residualconn_fp32_fw]: Sizes of input and output activations not matching!!"); return;
+        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!, got %d , %d and %d (%d, %d, %d), (%d, %d, %d) and (%d, %d, %d)\n",skip->dim, lout->dim, out->dim, skip->C, skip->H, skip->W, lout->C, lout->H, lout->W, out->C, out->H, out->W ); 
+        return;
     }
 
     struct vect_sum_args args_sum;

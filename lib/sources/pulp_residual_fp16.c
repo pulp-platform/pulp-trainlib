@@ -35,7 +35,7 @@ void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
     struct blob_fp16 * out = args->output;
 
     if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!, got %d , %d and %d (%d, %d, %d), (%d, %d, %d) and (%d, %d, %d)\n",skip->dim, lout->dim, out->dim, skip->C, skip->H, skip->W, lout->C, lout->H, lout->W, out->C, out->H, out->W ); 
+        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!, got %d , %d and %d (%d, %d, %d), (%d, %d, %d) and (%d, %d, %d)\n",skip->dim, lout->dim, out->dim, skip->C, skip->H, skip->W, lout->C, lout->H, lout->W, out->C, out->H, out->W ); 
         return;
     }
 
