@@ -46,7 +46,7 @@ project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 100
+epochs          = 25
 batch_size      = 1                    # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.5
 optimizer       = "SGD"                # Name of PyTorch's optimizer
@@ -55,17 +55,17 @@ loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
 # ------- NETWORK GRAPH --------
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
-layer_list      = ['conv2d', 'conv2d', 'conv2d', 'Sumnode', 'PW', 'linear' ]
+layer_list      = [ 'conv2d', 'ReLU','PW',  'conv2d','Sumnode', 'ReLU', 'linear', 'Skipnode','Skipnode', 'linear' ,'Sumnode', 'Sumnode']
 # Layer properties
-sumnode_connections = [0, 1, 0, 1, 0, 0, 0, 0]           #For Skipnode and Sumnode only, for each Skipnode-Sumnode couple choose a value and assign it to both, all other layer MUST HAVE 0
+sumnode_connections = [0, 0, 1, 0, 1, 0, 0, 2,  3, 0, 2, 3]           #For Skipnode and Sumnode only, indicates the layer which is connected to
 
-in_ch_list      = [6, 3, 3, 2, 2, 2*4*4 ]          # Linear: size of input vector
-out_ch_list     = [3, 2, 2, 2, 2, 5]            # Linear: size of output vector
-hk_list         = [3, 2, 2, 1, 1, 1 ]             # Linear: = 1
-wk_list         = [3, 2, 2, 1, 1, 1 ]             # Linear: = 1
+in_ch_list      = [ 1, 4, 4, 4, 4, 4, 4*4*4, 10, 10, 10, 10, 10]          # Linear: size of input vector
+out_ch_list     = [ 4, 4, 4, 4, 4, 4, 10, 10, 10, 10, 10, 10]            # Linear: size of output vector
+hk_list         = [ 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Linear: = 1
+wk_list         = [ 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Linear: = 1
 # Input activations' properties
-hin_list        = [7, 5, 5, 4, 4, 1 ]             # Linear: = 1
-win_list        = [7, 5, 5, 4, 4, 1 ]             # Linear: = 1
+hin_list        = [ 6, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1]             # Linear: = 1
+win_list        = [ 6, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1]             # Linear: = 1
 # Convolutional strides
 h_str_list      = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Only for conv2d, maxpool, avgpool
 w_str_list      = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Only for conv2d, maxpool, avgpool
@@ -77,7 +77,7 @@ opt_mm_fw_list  = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 opt_mm_wg_list  = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 opt_mm_ig_list  = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 # Data type list for layer-by-layer deployment (mixed precision)
-data_type_list   = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
+data_type_list   = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
 # Data layout list (CHW or HWC) 
 data_layout_list = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # ----- END OF NETWORK GRAPH -----

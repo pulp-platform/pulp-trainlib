@@ -86,9 +86,8 @@ void copy_fp16 (void * void_args)
   struct copy_args_fp16 args = *((struct copy_args_fp16 *)void_args);
   int blockSize = (args.size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > args.size ? args.size : start+blockSize;
-
-
+  int stop = start+blockSize > args.size ? args.size  : start+blockSize;
+ 
   for(int i=start; i<stop; i++)
     args.to[i] = args.from[i];
 
@@ -126,8 +125,10 @@ void vect_sum_fp16 (void * vect_sum_args)
 
   int blockSize = (size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > size  ? size : start+blockSize;
+  int stop = start+blockSize > size  ? size-1 : start+blockSize;
 
+  if (start & 0x0001) start++;
+  if (0x1 != (stop & 0x1)) stop--;
   for (int i=start; i<stop; i+=2) 
   {
     OP1 = *(v2f16 *) &op_1[i];
@@ -136,11 +137,12 @@ void vect_sum_fp16 (void * vect_sum_args)
     DEST = (v2f16 *)&dest[i];
     *DEST = TEMP;
   }
-  if (size_left > 0)
-  {
-    int idx = size-size_left;
-    dest[idx] = op_1[idx] + op_2[idx];
-  }
+  if (size_left)
+    if(pi_core_id()== NUM_CORES-1)
+    {
+     int idx = size-1;
+     dest[idx] = op_1[idx] + op_2[idx];
+    }
  
 }
 

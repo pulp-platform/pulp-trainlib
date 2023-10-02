@@ -122,9 +122,12 @@ void backward()
     PrintBlob(&expected_input, 0);
     #endif
 
-    
-    
+    #ifdef FLOAT32
+    verify_tensor(input.diff, expected_input.diff, input.dim, (float) 1e-5);
+    #else
     verify_tensor_fp16(input.diff, expected_input.diff, input.dim, (fp16) 1e-5);
+    #endif
+
     //Error calculation
     float ppm=0;
     for(int i=0; i<input.dim; i++)
@@ -137,6 +140,7 @@ void backward()
    printf("Average ppm difference: %.3fppm (%.3f%% average error)\n", ppm, ppm*0.0001);
 
 }
+
 
 void net_step()
 {
