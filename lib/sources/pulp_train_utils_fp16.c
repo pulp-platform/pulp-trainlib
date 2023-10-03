@@ -86,10 +86,11 @@ void copy_fp16 (void * void_args)
   struct copy_args_fp16 args = *((struct copy_args_fp16 *)void_args);
   int blockSize = (args.size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > args.size ? args.size : start+blockSize;
-
+  int stop = start+blockSize > args.size ? args.size  : start+blockSize;
+ 
   for(int i=start; i<stop; i++)
     args.to[i] = args.from[i];
+
 }
 
 
@@ -106,7 +107,7 @@ void set_to_value_fp16 (void * void_args)
 }
 
 
-
+//#define DEBUG
 void vect_sum_fp16 (void * vect_sum_args)
 {
   struct vect_sum_args_fp16 * args = (struct vect_sum_args_fp16*) vect_sum_args;
@@ -114,14 +115,35 @@ void vect_sum_fp16 (void * vect_sum_args)
   fp16 * op_2 = args->op_2;
   fp16 * dest = args->dest;
   int size = args->size;
+  int size_left = size & 0x00000001;
+
+// SIMD implementation
+  v2f16 TEMP;
+  v2f16 OP1;
+  v2f16 OP2;
+  v2f16 * DEST = (v2f16 *) dest;
 
   int blockSize = (size+NUM_CORES-1) / NUM_CORES;
   int start = pi_core_id()*blockSize;
-  int stop = start+blockSize > size ? size : start+blockSize;
+  int stop = start+blockSize > size  ? size-1 : start+blockSize;
 
-  for (int i=start; i<stop; i++) {
-      dest[i] = op_1[i] + op_2[i];
-  }   
+  if (start & 0x0001) start++;
+  if (0x1 != (stop & 0x1)) stop--;
+  for (int i=start; i<stop; i+=2) 
+  {
+    OP1 = *(v2f16 *) &op_1[i];
+    OP2 = *(v2f16 *) &op_2[i];
+    TEMP = OP1 + OP2;
+    DEST = (v2f16 *)&dest[i];
+    *DEST = TEMP;
+  }
+  if (size_left)
+    if(pi_core_id()== NUM_CORES-1)
+    {
+     int idx = size-1;
+     dest[idx] = op_1[idx] + op_2[idx];
+    }
+ 
 }
 
 

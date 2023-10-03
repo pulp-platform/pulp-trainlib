@@ -5,5 +5,7 @@ AutoTuner/raw_data_tiling.txt
 AutoTuner/basic.yml
 AutoTuner/treegen.py
 AutoTuner/Makefile
+TrainLib_Deployer/Test_CNN/
+TrainLib_Deployer/Makefile
 # Momentary
 # TrainLib_Deployer/

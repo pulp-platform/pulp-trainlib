@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini
+ * Authors: Davide Nadalini, Giacomo Saporetti
 */ 
 
 /**
@@ -31,11 +31,11 @@
  * How to make a skip connection:
  * 
  *   Input        
- *     |______    - pulp_sumnode_fp32_bw();
+ *     |______    - pulp_sumnode_fp16_bw();
  *     |     |
  *  LAYERS   |
  *     |_____|     
- *     +          - FW: pulp_residualconn_fp32_fw(), BW: pulp_residualconn_fp32_bw()
+ *     +          - FW: pulp_residualconn_fp16_fw(), BW: pulp_residualconn_fp16_bw()
  *     |
  *   Output
  * 
@@ -43,36 +43,28 @@
 
 /**
  * @brief Structure to configure a residual connection or summation node
- * @param activation0 first activation to be summed 
- * @param activation1 second activation to be summed
- * @param activation2 output sum activation (forward: activation data, backward: activation gradient)
+ * @param skip activation to be forwarded at the output 
+ * @param lout second activation to be summed
+ * @param output result from the sum of Input (@param skip) and LAYERS output (@param lout) (forward: activation data, backward: activation gradient)
  */
 struct SkipConn_args_fp16 {
-    struct blob_fp16 * activation0;
-    struct blob_fp16 * activation1;
-    struct blob_fp16 * activation2;
+    struct blob_fp16 * skip;
+    struct blob_fp16 * lout;
+    struct blob_fp16 * output;
+    int skip_in_grad;
 };
 
 
 // FORWARD FUNCTIONS
 
 /**
- * @brief Accumulates the input activations on an output activation 
+ * @brief Sums the input activations to the output  
  * 
- * @param activation0 first activation to be summed
- * @param activation1 second activation to be summed
- * @param activation2 output sum activation (forward: activation data, backward: activation gradient)
+ * @param skip: activation to be forwarded at the output 
+ * @param lout: layers output, second activation to be summed
+ * @param output: result of the sum between Input (@param skip) and LAYERS output (@param lout) (forward: activation data, backward: activation gradient)
  */
-void pulp_sumnode_fp16_fw( void * SkipConn_args_fp16 );
-
-/**
- * @brief Accumulates the input 
- * 
- * @param activation0 activation coming from the layers
- * @param activation1 input activation of the skipped layer
- * @param activation2 output activation data sum
- */
-void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 );
+void pulp_residualconn_fp16_fw( void * SkipConn_args );
 
 
 
@@ -81,17 +73,19 @@ void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 );
 /**
  * @brief Accumulates the output gradients on an input gradient 
  * 
- * @param activation0 first activation to be summed
- * @param activation1 second activation to be summed
- * @param activation2 output sum activation (forward: activation data, backward: activation gradient)
+ * @param skip: activation to be forwarded at the output 
+ * @param lout: layers output, second activation to be summed
+ * @param output: result of the sum between Input (@param skip) and LAYERS output (@param lout) (forward: activation data, backward: activation gradient)
  */
-void pulp_sumnode_fp16_bw( void * SkipConn_args_fp16 );
+void pulp_sumnode_fp16_bw( void * SkipConn_args );
 
 /**
  * @brief Dispatches the gradient coming from the output of a residual connection sum node to the layers and their input
  * 
- * @param activation0 gradient going to the skipped layers
- * @param activation1 gradient going to the input of the skipped layers
- * @param activation2 output gradient to be dispatched to the input grads
+ * @param skip: activation to be forwarded at the output 
+ * @param lout: layers output, second activation to be summed
+ * @param output: result of the sum between Input (@param skip) and LAYERS output (@param lout) (forward: activation data, backward: activation gradient)
  */
-void pulp_residualconn_fp16_bw( void * SkipConn_args_fp16 );
+void pulp_residualconn_fp16_bw( void * SkipConn_args );
+
+

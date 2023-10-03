@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini
+ * Authors: Davide Nadalini, Giacomo Saporetti
 */ 
 
 #include "pmsis.h"
@@ -25,46 +25,26 @@
 
 // FORWARD PRIMITIVES
 
-void pulp_sumnode_fp32_fw( void * SkipConn_args )
-{
-    struct SkipConn_args * args = (struct SkipConn_args *) SkipConn_args;
-    struct blob act0 = args->activation0;
-    struct blob act1 = args->activation1;
-    struct blob out = args->activation2;
-
-    if (act0.dim != act1.dim || act1.dim != out.dim) {
-        printf("[pulp_sumnode_fp32_fw]: Sizes of input and output activations not matching!!"); return;
-    }
-
-    struct vect_sum_args args;
-    args.op_1 = act0.data;
-    args.op_2 = act1.data;
-    args.dest = out.data;
-    args.size = out.dim;
-
-    pi_cl_team_fork(NUM_CORES, vect_sum, &args);
-}
-
-
-
 void pulp_residualconn_fp32_fw( void * SkipConn_args )
 {
     struct SkipConn_args * args = (struct SkipConn_args *) SkipConn_args;
-    struct blob act0 = args->activation0;
-    struct blob act1 = args->activation1;
-    struct blob out = args->activation2;
+    struct blob * skip = args->skip;
+    struct blob * lout = args->lout;
+    struct blob * out = args->output;
 
-    if (act0.dim != act1.dim || act1.dim != out.dim) {
-        printf("[pulp_residualconn_fp32_fw]: Sizes of input and output activations not matching!!"); return;
+    if (skip->dim != lout->dim || lout->dim != out->dim) {
+        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!, got %d , %d and %d (%d, %d, %d), (%d, %d, %d) and (%d, %d, %d)\n",skip->dim, lout->dim, out->dim, skip->C, skip->H, skip->W, lout->C, lout->H, lout->W, out->C, out->H, out->W ); 
+        return;
     }
 
-    struct vect_sum_args args;
-    args.op_1 = act0.data;
-    args.op_2 = act1.data;
-    args.dest = out.data;
-    args.size = out.dim;
+    struct vect_sum_args args_sum;
+    args_sum.op_1 = skip->data;
+    args_sum.op_2 = lout->data;
+    args_sum.dest = out->data;
+    args_sum.size = out->dim;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum, &args);
+    pi_cl_team_fork(NUM_CORES, vect_sum, &args_sum);
+
 }
 
 
@@ -73,45 +53,52 @@ void pulp_residualconn_fp32_fw( void * SkipConn_args )
 
 // BACKWARD PRIMITIVES
 
+
+
 void pulp_sumnode_fp32_bw( void * SkipConn_args )
 {
     struct SkipConn_args * args = (struct SkipConn_args *) SkipConn_args;
-    struct blob act0 = args->activation0;
-    struct blob act1 = args->activation1;
-    struct blob indiff = args->activation2;
+    struct blob * skip = args->skip;
+    struct blob * lout = args->lout;
+    struct blob * out = args->output;
+    int skip_grad = args->skip_in_grad; 
     
-    if (act0.dim != act1.dim || act1.dim != indiff.dim) {
-        printf("[pulp_sumnode_fp32_bw]: Sizes of input and output gradients not matching!!"); return;
+    if (skip_grad==0)
+   {
+    if (skip->dim != lout->dim || lout->dim != out->dim) {
+        printf("[pulp_sumnode_fp32_fw]: Sizes of input and output activations not matching!!"); return;
     }
 
-    struct vect_sum_args args;
-    args.op_1 = act0.diff;
-    args.op_2 = act1.diff;
-    args.dest = indiff.diff;
-    args.size = indiff.dim;
+    struct vect_sum_args args_sum;
+    args_sum.op_1 = out->diff;
+    args_sum.op_2 = skip->diff;
+    args_sum.dest = skip->diff;
+    args_sum.size = skip->dim;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum, &args);
+    pi_cl_team_fork(NUM_CORES, vect_sum, &args_sum);
+   }
 }
+
 
 
 
 void pulp_residualconn_fp32_bw( void * SkipConn_args )
 {
     struct SkipConn_args * args = (struct SkipConn_args *) SkipConn_args;
-    struct blob act0 = args->activation0;
-    struct blob act1 = args->activation1;
-    struct blob outdiff = args->activation2;
+    struct blob * skip = args->skip;
+    struct blob * lout = args->lout;
+    struct blob * out = args->output;
     
-    if (act0.dim != act1.dim || act1.dim != outdiff.dim) {
-        printf("[pulp_residualconn_fp32_bw]: Sizes of input and output gradients not matching!!"); return;
+    if (skip->dim != lout->dim || lout->dim != out->dim) {
+        printf("[pulp_residualconn_fp32_fw]: Sizes of input and output activations not matching!!"); return;
     }
 
     // Copy gradient into the input
     struct copy_args cpy_args;
-    cpy_args.from = outdiff.diff;
-    cpy_args.to = act0.diff;
-    cpy_args.size = outdiff.dim;
-    pi_cl_team_fork(NUM_CORES, copy, &cpy_args);
-    cpy_args.to = act1.diff;
+    cpy_args.from = out->diff;
+    //cpy_args.to = skip->diff;
+    cpy_args.size = out->dim;
+    //pi_cl_team_fork(NUM_CORES, copy, &cpy_args);
+    cpy_args.to = lout->diff;
     pi_cl_team_fork(NUM_CORES, copy, &cpy_args);
 }
