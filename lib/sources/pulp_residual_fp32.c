@@ -61,12 +61,13 @@ void pulp_sumnode_fp32_bw( void * SkipConn_args )
     struct blob * skip = args->skip;
     struct blob * lout = args->lout;
     struct blob * out = args->output;
-    int skip_grad = args->skip_in_grad; 
     
-    if (skip_grad==0)
+    if (args->skip_in_grad==0)
    {
-    if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("[pulp_sumnode_fp32_fw]: Sizes of input and output activations not matching!!"); return;
+    if (skip->dim != out->dim ) {
+        printf("[pulp_sumnode_fp32_bw]: Sizes of input and output activations not matching!!"); 
+        printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",skip->dim,skip->C,skip->H,skip->W,lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
+        return;
     }
 
     struct vect_sum_args args_sum;
@@ -85,12 +86,13 @@ void pulp_sumnode_fp32_bw( void * SkipConn_args )
 void pulp_residualconn_fp32_bw( void * SkipConn_args )
 {
     struct SkipConn_args * args = (struct SkipConn_args *) SkipConn_args;
-    struct blob * skip = args->skip;
+    //struct blob * skip = args->skip;
     struct blob * lout = args->lout;
     struct blob * out = args->output;
     
-    if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("[pulp_residualconn_fp32_fw]: Sizes of input and output activations not matching!!"); return;
+    if ( lout->dim != out->dim) {
+        printf("[pulp_residualconn_fp32_bw]: Sizes of input and output activations not matching!!");
+        printf("\ngot (NCHW)  Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W); return;
     }
 
     // Copy gradient into the input

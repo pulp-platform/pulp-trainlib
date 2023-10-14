@@ -24,9 +24,9 @@ LAYER TEMPLATES
 
 def linear_template_FW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_linear_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_linear_fp32_fw_cl(&linear_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_linear_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_linear_fp16_fw_cl(&linear_args);\n"
     else:
         print("[net_templates.linear_template_FW]: Invalid data type!")
         exit()
@@ -34,9 +34,9 @@ def linear_template_FW(layer_number, DATA_TYPE):
 
 def linear_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_linear_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_linear_fp32_bw_cl(&linear_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_linear_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_linear_fp16_bw_cl(&linear_args);\n"
     else:
         print("[net_templates.linear_template_BW]: Invalid data type!")
         exit()
@@ -46,9 +46,9 @@ def linear_template_BW(layer_number, DATA_TYPE):
 
 def conv2d_template_FW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv2d_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv2d_fp32_fw_cl(&conv2d_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv2d_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv2d_fp16_fw_cl(&conv2d_args);\n"
     else:
         print("[net_templates.conv2d_template_FW]: Invalid data type!")
         exit()    
@@ -56,9 +56,9 @@ def conv2d_template_FW(layer_number, DATA_TYPE):
 
 def conv2d_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv2d_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv2d_fp32_bw_cl(&conv2d_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv2d_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv2d_fp16_bw_cl(&conv2d_args);\n"
     else:
         print("[net_templates.conv2d_template_BW]: Invalid data type!")
         exit()  
@@ -68,9 +68,9 @@ def conv2d_template_BW(layer_number, DATA_TYPE):
 
 def DW_template_FW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv_dw_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_dw_fp32_fw_cl(&DW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv_dw_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_dw_fp16_fw_cl(&DW_args);\n"
     else:
         print("[net_templates.DW_template_FW]: Invalid data type!")
         exit()  
@@ -78,9 +78,9 @@ def DW_template_FW(layer_number, DATA_TYPE):
 
 def DW_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv_dw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_dw_fp32_bw_cl(&DW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv_dw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_dw_fp16_bw_cl(DW_args);\n"
     else:
         print("[net_templates.DW_template_BW]: Invalid data type!")
         exit()  
@@ -90,9 +90,9 @@ def DW_template_BW(layer_number, DATA_TYPE):
 
 def PW_template_FW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv_pw_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_pw_fp32_fw_cl(&PW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv_pw_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_pw_fp16_fw_cl(&PW_args);\n"
     else:
         print("[net_templates.PW_template_FW]: Invalid data type!")
         exit()  
@@ -100,9 +100,9 @@ def PW_template_FW(layer_number, DATA_TYPE):
 
 def PW_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_conv_pw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_pw_fp32_bw_cl(&PW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_conv_pw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_conv_pw_fp16_bw_cl(&PW_args);\n"
     else:
         print("[net_templates.PW_template_BW]: Invalid data type!")
         exit()  
@@ -114,30 +114,40 @@ RESIDUAL CONNECTIONS TEMPLATE
 """
 
 def residualconn_template_FW(layer_number, DATA_TYPE):
+    template = "\tresconn_args.skip = &weight_blob;\n"
+    template += "\tresconn_args.output = &output_blob;\n"
+    template += "\tresconn_args.lout = &input_blob;\n"
     if DATA_TYPE == 'FP32':
-        template = "  pulp_residualconn_fp32_fw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_residualconn_fp32_fw(&resconn_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_residualconn_fp16_fw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_residualconn_fp16_fw(&resconn_args);\n"
     else:
         print("[net_templates.residualconn_template_FW]: Invalid data type!")
         exit()
     return template
 
 def residualconn_template_copy_BW(layer_number, DATA_TYPE):
+    template = "\tresconn_args.skip = &weight_blob;\n"
+    template += "\tresconn_args.output = &output_blob;\n"
+    template += "\tresconn_args.lout = &input_blob;\n"
     if DATA_TYPE == 'FP32':
-        template = "  pulp_residualconn_fp32_bw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_residualconn_fp32_bw(&resconn_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_residualconn_fp16_bw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_residualconn_fp16_bw(&resconn_args);\n"
     else:
         print("[net_templates.residualconn_template_copy_BW]: Invalid data type!")
         exit()
     return template
 
-def residualconn_template_sum_BW(layer_number, DATA_TYPE):
+def residualconn_template_sum_BW(layer_number, DATA_TYPE, target):
+    template = "\tresconn_args.skip = &input_blob;\n"
+    template += "\tresconn_args.output = &output_blob;\n"
+    template += "\tresconn_args.lout = &weight_blob;\n"
+    template += f"\tload_input(&layer{target}_in, 0);\n"
     if DATA_TYPE == 'FP32':
-        template = "  pulp_sumnode_fp32_bw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_sumnode_fp32_bw(&resconn_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_sumnode_fp16_bw(&l"+str(layer_number)+"_args);\n"
+        template += "  pulp_sumnode_fp16_bw(&resconn_args);\n"
     else:
         print("[net_templates.residualconn_template_sum_BW]: Invalid data type!")
         exit()
@@ -149,9 +159,9 @@ ACTIVATIONS TEMPLATES
 
 def ReLU_template_FW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_relu_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_relu_fp32_fw_cl(&act_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_relu_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_relu_fp16_fw_cl(&act_args);\n"
     else:
         print("[net_templates.ReLU_template_FW]: Invalid data type!")
         exit()  
@@ -159,9 +169,9 @@ def ReLU_template_FW(layer_number, DATA_TYPE):
 
 def ReLU_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
-        template = "  pulp_relu_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_relu_fp32_bw_cl(&act_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "  pulp_relu_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+        template = "  pulp_relu_fp16_bw_cl(&act_args);\n"
     else:
         print("[net_templates.ReLU_template_BW]: Invalid data type!")
         exit()  
@@ -223,14 +233,14 @@ def cast_fp32_to_fp16_template (layer_number, STEP, DATA_TYPE):
         template =  "  // Propagate FP32 layer "+str(layer_number)+" to FP16\n"
         template += "  struct cast_32t16_args cast_l"+str(layer_number)+"_args;\n"
         template += "  cast_l"+str(layer_number)+"_args.source = (float*) cast_buffer;\n"
-        template += "  cast_l"+str(layer_number)+"_args.destination = layer"+str(layer_number+1)+"_in.data;\n"  
+        template += "  cast_l"+str(layer_number)+"_args.destination = l"+str(layer_number+1)+"_in;\n"  
         template += "  cast_l"+str(layer_number)+"_args.size = Tout_C_l"+str(layer_number)+" * Tout_H_l"+str(layer_number)+" * Tout_W_l"+str(layer_number)+";\n"
         template += "  pi_cl_team_fork(NUM_CORES, cast_fp32_tensor_to_fp16, &cast_l"+str(layer_number)+"_args);\n"
         template += "  // End of casting\n"
     elif STEP == 'BW':
         template =  "  // Propagate FP32 layer "+str(layer_number)+" back to FP16\n"
         template += "  struct cast_32t16_args cast_l"+str(layer_number)+"_args;\n"
-        template += "  cast_l"+str(layer_number)+"_args.source = layer"+str(layer_number)+"_in.diff;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = l"+str(layer_number)+"_in_diff;\n"
         template += "  cast_l"+str(layer_number)+"_args.destination = (fp16*) cast_buffer;\n"  
         template += "  cast_l"+str(layer_number)+"_args.size = Tin_C_l"+str(layer_number)+" * Tin_H_l"+str(layer_number)+" * Tin_W_l"+str(layer_number)+";\n"
         template += "  pi_cl_team_fork(NUM_CORES, cast_fp32_tensor_to_fp16, &cast_l"+str(layer_number)+"_args);\n"
@@ -244,14 +254,14 @@ def cast_fp16_to_fp32_template (layer_number, STEP, DATA_TYPE):
         template =  "  // Propagate FP16 layer "+str(layer_number)+" to FP32\n"
         template += "  struct cast_16t32_args cast_l"+str(layer_number)+"_args;\n"
         template += "  cast_l"+str(layer_number)+"_args.source = (fp16*) cast_buffer;\n"
-        template += "  cast_l"+str(layer_number)+"_args.destination = layer"+str(layer_number+1)+"_in.data;\n" 
+        template += "  cast_l"+str(layer_number)+"_args.destination = l"+str(layer_number+1)+"_in;\n" 
         template += "  cast_l"+str(layer_number)+"_args.size = Tout_C_l"+str(layer_number)+" * Tout_H_l"+str(layer_number)+" * Tout_W_l"+str(layer_number)+";\n" 
         template += "  pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &cast_l"+str(layer_number)+"_args);\n"
         template += "  // End of casting\n"
     elif STEP == 'BW':
         template =  "  // Propagate FP16 layer "+str(layer_number)+" back to FP32\n"
         template += "  struct cast_16t32_args cast_l"+str(layer_number)+"_args;\n"
-        template += "  cast_l"+str(layer_number)+"_args.source = layer"+str(layer_number)+"_in.diff;\n"
+        template += "  cast_l"+str(layer_number)+"_args.source = l"+str(layer_number)+"_in_diff;\n"
         template += "  cast_l"+str(layer_number)+"_args.destination = (float*) cast_buffer;\n"
         template += "  cast_l"+str(layer_number)+"_args.size = Tin_C_l"+str(layer_number)+" * Tin_H_l"+str(layer_number)+" * Tin_W_l"+str(layer_number)+";\n"  
         template += "  pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &cast_l"+str(layer_number)+"_args);\n"
@@ -269,9 +279,9 @@ CONFIGURATION STRUCTURE TEMPLATES
 """
 
 def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
-    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
@@ -279,9 +289,9 @@ def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
     return template
 
 def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
-    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -307,9 +317,9 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     return template
 
 def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
-    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -330,9 +340,9 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
 
 def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     # &layer"+str(layer_number)+"_in, &layer"+str(layer_number)+"_wgt, &layer"+str(layer_number)+"_out, "+str(pad)+", MATMUL_TYPE_FW_L"+str(layer_number)+"
-    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     if DATA_TYPE == 'FP32':
         template += "  l"+str(layer_number)+"_args.transpose_buffer = (float*) bt_buffer;\n"
     elif DATA_TYPE == 'FP16':
@@ -348,17 +358,14 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     return template
 
 def ReLU_config_template(layer_number, DATA_TYPE):
-    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     return template
 
-def resconn_config_template(layer_number, skip_node, skip_input, layer_type):
-    template  = "  l"+str(layer_number)+"_args.lout = &layer"+str(layer_number)+"_in;\n"
-    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
-    if layer_type == 'Skipnode':
-        template += "  l"+str(layer_number)+"_args.skip = &layer"+str(skip_node)+"_in;\n"
-    else:
-        template += "  l"+str(layer_number)+"_args.skip = &layer"+str(skip_node)+"_out;\n"
+def resconn_config_template(layer_number, skip_node, skip_input):
+    template  = "  l"+str(layer_number)+"_args.lout = &input_blob;\n"
+    template += "  l"+str(layer_number)+"_args.skip = &weight_blob;\n"
+    template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     if skip_input:
         template += f"  l{layer_number}_args.skip_in_grad = 1;\n"
     else:
@@ -379,20 +386,21 @@ def resconn_config_template(layer_number, skip_node, skip_input, layer_type):
 #     return template
 
 
+
 def sum(layer, data_type):
     if data_type == 'FP32':
-        template = f"vect_sum_args.op_1 = layer{layer}_in.diff;\n"
-        template += f"vect_sum_args.op_2 = layer{layer+1}_in.diff;\n"
-        template += f"vect_sum_args.dest = layer{layer}_in.diff;\n"
-        template += f"vect_sum_args.size = layer{layer}_in.dim;\n"
-        template += "pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);\n"
+        template = f"  vect_sum_args.op_1 = output_blob.diff;\n"
+        template += f"  vect_sum_args.op_2 = input_blob.diff;\n"
+        template += f"  vect_sum_args.dest = input_blob.diff;\n"
+        template += f"  vect_sum_args.size = input_blob.dim;\n"
+        template += "  pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);\n"
 
     elif data_type == 'FP16':
-        template = f"vect_sum_args_fp16.op_1 = layer{layer}_in.diff;\n"
-        template += f"vect_sum_args_fp16.op_2 = layer{layer+1}_in.diff;\n"
-        template += f"vect_sum_args_fp16.dest = layer{layer}_in.diff;\n"
-        template += f"vect_sum_args_fp16.size = layer{layer}_in.dim;\n"
-        template += "pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args_fp16);\n"
+        template = f"  vect_sum_args_fp16.op_1 = output_blob.diff;\n"
+        template += f"  vect_sum_args_fp16.op_2 = input_blob.diff;\n"
+        template += f"  vect_sum_args_fp16.dest = input_blob.diff;\n"
+        template += f"  vect_sum_args_fp16.size = input_blob.dim;\n"
+        template += "  pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args_fp16);\n"
     else:
         print("\n[net_templates.py - sum] Invalid Data Type\n")
         exit()

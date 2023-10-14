@@ -29,8 +29,8 @@ Available DNN layer names:
 'ReLU'      -> ReLU activation
 'MaxPool'   -> max pooling layer
 'AvgPool'   -> average pooling layer
-'Skipnode'  -> node at which data is taken and forwarded, to add an additional layer after the skip derivation simply substitute 'Skipnode' with any kind of layer
-'Sumnode'   -> node at which forwarded data from Skipnode is summed 
+'Skipnode'  -> node at which data is taken and passes forward, to add an additional layer after the skip derivation simply substitute 'Skipnode' with any kind of layer
+'Sumnode'   -> node at which data from Skipnode is summed 
 """
 
 import utils.DNN_Reader     as reader
@@ -46,20 +46,18 @@ project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 25
+epochs          = 15
 batch_size      = 1                    # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.5
 optimizer       = "SGD"                # Name of PyTorch's optimizer
 loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
-
 # ------- NETWORK GRAPH --------
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
-layer_list      = [ 'conv2d', 'ReLU','PW',  'conv2d','Sumnode', 'ReLU', 'linear', 'Skipnode','Skipnode', 'linear' ,'Sumnode', 'Sumnode']
+layer_list      = [ 'conv2d', 'ReLU','Skipnode',  'conv2d','Sumnode', 'ReLU', 'linear', 'Skipnode','Skipnode', 'linear' ,'Sumnode', 'Sumnode']
 # Layer properties
-sumnode_connections = [0, 0, 1, 0, 1, 0, 0, 2,  3, 0, 2, 3]           #For Skipnode and Sumnode only, indicates the layer which is connected to
-
-in_ch_list      = [ 1, 4, 4, 4, 4, 4, 4*4*4, 10, 10, 10, 10, 10]          # Linear: size of input vector
+sumnode_connections = [0, 0, 1, 0, 1, 0, 0, 2,  3, 0, 2, 3]           #For Skipnode and Sumnode only, for each Skipnode-Sumnode couple choose a value and assign it to both, all other layer MUST HAVE 0
+in_ch_list      = [ 75, 4, 4, 4, 4, 4, 4*4*4, 10, 10, 10, 10, 10]          # Linear: size of input vector
 out_ch_list     = [ 4, 4, 4, 4, 4, 4, 10, 10, 10, 10, 10, 10]            # Linear: size of output vector
 hk_list         = [ 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Linear: = 1
 wk_list         = [ 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]             # Linear: = 1
@@ -81,10 +79,8 @@ data_type_list   = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP1
 # Data layout list (CHW or HWC) 
 data_layout_list = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # ----- END OF NETWORK GRAPH -----
-
-
 # EXECUTION PROPERTIES
-NUM_CORES       = 8
+NUM_CORES       = 1
 L1_SIZE_BYTES   = 60*(2**10)
 
 # OTHER PROPERTIES

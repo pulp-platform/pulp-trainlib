@@ -63,9 +63,20 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     #if mem_cast_buffer > 0:
     print("Additional {} bytes allocated for mixed precision management (size @layer {}, {})".format(mem_cast_buffer, idx_max_act, max_act_inout))
 
+    l1_buff_size = 4*utils.max_input_dim(layers_l, in_ch_l, hin_l, win_l) + 2*utils.max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l)
+    if data_type_l[0] == 'FP32':
+        l1_buff_size = l1_buff_size*4
+    else:
+        l1_buff_size = l1_buff_size*2
+
+    tot_l1_mem = l1_buff_size + mem_im2col + mem_blocktransp
+    print(f"[DNN_Size_Checker]: L1 memory occupation (single buffer mode): {tot_l1_mem}\n")
+    if tot_l1_mem > avail_mem_bytes:
+        print("[DNN_Size_Checker]: L1 memory allocation for DMA single buffer mode overflows\n")
+
     if total_memory_occupation_bytes > avail_mem_bytes:
         print("[DNN_Size_Checker]: DNN overflows PULP L1 memory!!\nExpected occupation: {} bytes vs {} available L1 ({}%)!".format(total_memory_occupation_bytes, avail_mem_bytes, (total_memory_occupation_bytes/avail_mem_bytes)*100))
-        exit()
+        #exit()
 
     return total_memory_occupation_bytes
 
