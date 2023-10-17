@@ -18,6 +18,7 @@ limitations under the License.
 Authors: Davide Nadalini
 '''
 
+import utils.deployment_utils_single_buffer as utilsSB
 import utils.deployment_utils as utils
 
 """
@@ -25,18 +26,24 @@ The DNN Size Checker checks if the DNN fits the available PULP
 memory
 """
 
+
+
+
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list, w_pad_list,
-                        data_type_l, avail_mem_bytes):
+                        data_type_l, avail_mem_bytes, USE_DMA):
 
     total_memory_occupation_bytes = 0
-
+    l2_occupation = 0
     # Compute activation and weight memory occupation
+    
     for layer in range(len(layers_l)):
         is_last_layer = False
         if layer == len(layers_l) - 1:
             is_last_layer = True
-        total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], is_last_layer)
-
+        if USE_DMA == 'NO':
+            total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], is_last_layer)
+        elif USE_DMA == 'SB':
+            l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], is_last_layer)
     # Compute im2col memory occupation
     mem_im2col = 0
     idx_im2col = 0
@@ -63,20 +70,24 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     #if mem_cast_buffer > 0:
     print("Additional {} bytes allocated for mixed precision management (size @layer {}, {})".format(mem_cast_buffer, idx_max_act, max_act_inout))
 
-    l1_buff_size = 4*utils.max_input_dim(layers_l, in_ch_l, hin_l, win_l) + 2*utils.max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l)
-    if data_type_l[0] == 'FP32':
-        l1_buff_size = l1_buff_size*4
-    else:
-        l1_buff_size = l1_buff_size*2
+    # Buffer memory allocation for Single Buffer mode
+    l1_buff_size = 0
+    if USE_DMA == 'SB':
+        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0])
+        l1_buff_size = 2*MAX_LAYER_DIM
+        if data_type_l[0] == 'FP32':
+            l1_buff_size = l1_buff_size*4
+        else:
+            l1_buff_size = l1_buff_size*2
 
-    tot_l1_mem = l1_buff_size + mem_im2col + mem_blocktransp
-    print(f"[DNN_Size_Checker]: L1 memory occupation (single buffer mode): {tot_l1_mem}\n")
-    if tot_l1_mem > avail_mem_bytes:
-        print("[DNN_Size_Checker]: L1 memory allocation for DMA single buffer mode overflows\n")
+        total_memory_occupation_bytes += l1_buff_size + 300 # 300 bytes from struct declaration in L1
 
     if total_memory_occupation_bytes > avail_mem_bytes:
         print("[DNN_Size_Checker]: DNN overflows PULP L1 memory!!\nExpected occupation: {} bytes vs {} available L1 ({}%)!".format(total_memory_occupation_bytes, avail_mem_bytes, (total_memory_occupation_bytes/avail_mem_bytes)*100))
         #exit()
+
+    if USE_DMA == 'SB':
+        print(f"Total L2 memory occupation: {l2_occupation} bytes")
 
     return total_memory_occupation_bytes
 
@@ -123,9 +134,6 @@ def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnod
                 exit()
 
 
-
-
-
         
 """
 The DNN Composer takes the lists representing the DNN graph and 
@@ -135,7 +143,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections):
+                  NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections, USE_DMA):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -151,10 +159,20 @@ def DNN_Composer (proj_folder_path, project_name,
                         data_type_l, sumnode_connections)
 
     # Generate the net.c and net.h files to run the training in L1 (for now)
-    utils.GenerateNet(proj_folder_path, project_name,
-                layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
-                h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections)
+    if USE_DMA == 'NO':
+        utils.GenerateNet(proj_folder_path, project_name,
+                    layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
+                    h_str_l, w_str_l, h_pad_l, w_pad_l,
+                    epochs, batch_size, learning_rate, optimizer, loss_fn,
+                    data_type_l, sumnode_connections)
+    elif USE_DMA == 'SB':
+        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0]) # For single Buffer mode
+        utilsSB.GenerateNet(proj_folder_path, project_name,
+                    layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
+                    h_str_l, w_str_l, h_pad_l, w_pad_l,
+                    epochs, batch_size, learning_rate, optimizer, loss_fn,
+                    data_type_l, sumnode_connections, MAX_LAYER_DIM)
+    else:
+        print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
 
     return

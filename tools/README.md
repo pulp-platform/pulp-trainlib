@@ -9,7 +9,13 @@ PULP-TrainLib is equipped with TrainLib_Deployer, a code-generation tool to depl
 The user's requirements can be set by editing the `"USER SETTINGS"` section of [TrainLib_Deployer](./TrainLib_Deployer/TrainLib_Deployer.py).
 
 The graph of the DNN model to be deployed has to be provided manually. To do so, users need to edit the lists in the `NETWORK GRAPH` section. The list of available layers is provided on top of the tool. To insert a new layer, edit the `layer_list` and all the following lists. The sizes and properties of each layer have to inserted in column - i.e. at the same index of each list. Be careful to provide the DNN sizes as a set of lists of the same lengths, and to match the input and the output sizes of each layer.
+To add a Residual Connection, insert a layer called 'Skipnode' after the layer you want to take the output from, and insert a layer called 'Sumnode' where you want to compute the sum.
+To add a different type of layer after a skipnode derivation is taken, simply substitute 'Skipnode' with any kind of supperted layer, and modify the lists containing the layer's informations (hin, win, cin, etc..) as you would for the selected layer.
 E.g: if you have a Conv2D layer with a 3x3 kernel, 2 in channels, 4 output channels, 5x5 input size, followed by a Fully-Connected Layer with 36 inputs and 8 outputs, the input size of the Fully-Connected should have kernel sizes (hk, wk) equal to 1, as well as (hin, win). The channels, instead, need to be 36 in the Fully-Connected input and 8 in output. 
+
+In order to select how data is stored, the variable USE_DMA can be modified, the supported modes are:
+- 'NO', to load all  structures and data in L1 
+- 'SB', to load only structures in L1 and keep data in L2 while using Single Buffer mode for data manipulation in L1
 
 The structure of TrainLib_Deployer is:
 
