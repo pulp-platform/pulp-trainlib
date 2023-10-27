@@ -23,47 +23,17 @@ import shutil
 import math
 
 from torch import mm
-import utils.GM_templates as Gtemp
-import utils.net_templates_single_buffer as ntemp
+import utils.net_templates_double_buffer as ntemp
 
 
 """
 DNN Size Checker backend functions
 """
-def max_input_dim(layers_l, cin_l, hin_l, win_l):
-    RES = 0
-    for layer in range(len(layers_l)):
-        temp = cin_l[layer]*hin_l[layer]*win_l[layer]
-        if temp > RES:
-            RES = temp
-
-    return RES
-
-def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
-    RES = 0
-    temp = 0
-    for layer in range(len(layers_l)):
-        if layers_l[layer] == 'conv2d' : 
-            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]
-        if layers_l[layer] == 'PW':
-            temp = cin_l[layer]*cout_l[layer]
-        if   layers_l[layer] == 'DW':
-            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]
-        if layers_l[layer] == 'linear' :
-            temp = cin_l[layer]*cout_l[layer]
-        if layers_l[layer] == 'Sumnode':
-            temp = cin_l[layer]*hin_l[layer]*win_l[layer]
-        if temp > RES:
-            RES = temp
-
-    return RES
-
 
 def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
     RES = 0
     temp1 = 0 #input
     temp2 = 0 #wgt
-    temp3 = 0 #output
     tot = 0
     max_layer =  0
     for layer in range(len(layers_l)):
@@ -80,21 +50,16 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
 
         temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]
 
-        if layer + 1 < len(layers_l): 
-            temp3 = cin_l[layer + 1] * hin_l[layer + 1] * win_l[layer + 1] 
-        else:
-            temp3 = cout_l[layer] * hin_l[layer] * win_l[layer] 
-
-        tot = temp1 + temp2 + temp3
+        tot = temp1 + temp2 
         if tot > RES:
             RES = tot
             max_layer = layer
 
+    RES = 4 * RES
     multiplier = 2
-    RES = 2*RES
-    if data  == 'FP32':
+    if data == 'FP32':
         multiplier = 4
-    print(f"Max Layer size (including data and gradients): {multiplier*RES} bytes   @layer {max_layer}")
+    print(f"Max Layer size (considering only input data and coefficients): {multiplier * RES} bytes @layer {max_layer}")
     return RES
 
 
@@ -147,6 +112,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void load_input(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_output(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_coeff(void * src_blob, uint8_t data_diff_both);\n")
+    f.write("void swap_in_out();\n")
     f.write("void store_output(void * dest_blob, uint8_t data_diff_both);\n")
     f.write("void store_input(void * dest_blob, uint8_t data_diff_both);\n")
     f.write("void store_coeff(void * dest_blob, uint8_t data_diff_both);\n")
@@ -157,9 +123,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void reset_arguments();\n")
     f.write("void update_blob();\n")
     f.write("void reset_dim();\n")
-
-    f.write(f"#define MAX_IN_SIZE {max_input_dim(layers_l, in_ch_l, hin_l, win_l)}\n")
-    f.write(f"#define MAX_WGT_SIZE {max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l)}\n")
+    f.write("void dma_handler(uint8_t do_store, uint8_t do_load, void * src_store, void * dst_store, void * src_load, void * dst_load);\n")
+    f.write("void load(uint32_t src, uint32_t dst, int dim);\n")
+    f.write("void store(uint32_t src, uint32_t dst, int dim);\n")
+    f.write("void update();\n")
+    f.write("void get_dim(void * src_blob, void * dst_blob);\n")
     f.write(f"#define MAX_SIZE {MAX_LAYER_DIM}\n")
     f.close()    
 
@@ -178,39 +146,47 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\n// Define structures and pointers to data in L1 memory\n")
     if data_type == 'FP32':
-        f.write("PI_L1 float * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * OUT_DATA, * OUT_DIFF;\n")
+        #f.write("PI_L1 float * D0, * d0, * W0, * w0, * D1, * d1, * W1, *w1;\n")
         f.write("PI_L1 float BUFF[MAX_SIZE];\n")
-        f.write("PI_L1 struct blob input_blob;\n")
-        f.write("PI_L1 struct blob weight_blob;\n")
-        f.write("PI_L1 struct blob output_blob;\n")
-        f.write("PI_L1 struct blob temp_blob;\n")
+        f.write("PI_L1 struct blob d1_blob;\n")
+        f.write("PI_L1 struct blob w1_blob;\n")
+        f.write("PI_L1 struct blob d0_blob;\n")
+        f.write("PI_L1 struct blob w0_blob;\n")
+        f.write("PI_L1 struct blob in;\n")
+        f.write("PI_L1 struct blob wgt;\n")
+        f.write("PI_L1 struct blob out;\n")
         f.write("PI_L1 struct Linear_args linear_args;\n")
         f.write("PI_L1 struct Conv2D_args conv2d_args;\n")
         f.write("PI_L1 struct PointWise_Conv_args PW_args;\n")
         f.write("PI_L1 struct DepthWise_Conv_args DW_args;\n")
         f.write("PI_L1 struct act_args act_args;\n")
         f.write("PI_L1 struct SkipConn_args resconn_args;\n")
-        f.write("PI_L1 float * t;\n")
+        #f.write("PI_L1 float * t;\n")
     elif data_type == 'FP16':
-        f.write("PI_L1 fp16 * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * OUT_DATA, * OUT_DIFF;\n")
+        f.write("PI_L1 fp16 * D1, * d1, * W1, * w1, * D0, * d0, * W0, *w0;\n")
         f.write("PI_L1 fp16 BUFF[MAX_SIZE];\n")
-        f.write("PI_L1 struct blob_fp16 input_blob;\n")
-        f.write("PI_L1 struct blob_fp16 weight_blob;\n")
-        f.write("PI_L1 struct blob_fp16 output_blob;\n")
-        f.write("PI_L1 struct blob_fp16 temp_blob;\n")
+        f.write("PI_L1 struct blob_fp16 d1_blob;\n")
+        f.write("PI_L1 struct blob_fp16 w1_blob;\n")
+        f.write("PI_L1 struct blob_fp16 d0_blob;\n")
+        f.write("PI_L1 struct blob_fp16 w0_blob;\n")
+        f.write("PI_L1 struct blob_fp16 in;\n")
+        f.write("PI_L1 struct blob_fp16 wgt;\n")
+        f.write("PI_L1 struct blob_fp16 out;\n")
         f.write("PI_L1 struct Linear_args_fp16 linear_args;\n")
         f.write("PI_L1 struct Conv2D_args_fp16 conv2d_args;\n")
         f.write("PI_L1 struct PointWise_Conv_args_fp16 PW_args;\n")
         f.write("PI_L1 struct DepthWise_Conv_args_fp16 DW_args;\n")
         f.write("PI_L1 struct act_args_fp16 act_args;\n")
         f.write("PI_L1 struct SkipConn_args_fp16 resconn_args;\n")
-        f.write("PI_L1 fp16 * t;\n")
+        #f.write("PI_L1 fp16 * t;\n")
     else:
         print("[deployment_utils.GenerateNet] Invalid last layer data type!")
         exit()
     
     f.write("PI_L1 pi_cl_dma_cmd_t * cmd_store;\n")
     f.write("PI_L1 pi_cl_dma_cmd_t * cmd_load;\n")
+    f.write("PI_L1 pi_cl_dma_cmd_t * cmd_struct;\n")
+
 
     f.write("\n\n\n/**\n * DATA\n**/\n")
 
@@ -236,8 +212,10 @@ def GenerateNet(proj_folder_path, project_name,
 
 
     f.write("\n// Define DNN layer structures\n")
-    f.write("PI_L1 struct vect_sum_args vect_sum_args;\n")
-    f.write("PI_L1 struct vect_sum_args_fp16 vect_sum_args_fp16;\n")
+    if data_type_l[0] == 'FP32':
+        f.write("PI_L1 struct vect_sum_args vect_sum_args;\n")
+    else:
+        f.write("PI_L1 struct vect_sum_args_fp16 vect_sum_args;\n")
     for layer in range(len(layers_l)):
         # Define FP32 structure
         if data_type_l[layer] == 'FP32':
@@ -565,13 +543,14 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// DNN initialization function\n")
     f.write("void DNN_init()\n{\n")
     f.write("\n// Assign pointers in L1\n")
-    f.write("IN_DATA = BUFF;\n")
-    f.write("IN_DIFF = BUFF;\n")
-    f.write("W_DATA = BUFF;\n")
-    f.write("W_DIFF = BUFF;\n")
-    f.write("OUT_DATA = BUFF;\n")
-    f.write("OUT_DIFF = BUFF;\n")
-    f.write("update_blob();\n")
+    f.write("d0_blob.data = BUFF;\n")
+    f.write("d0_blob.diff = BUFF;\n")
+    f.write("w0_blob.data = BUFF;\n")
+    f.write("w0_blob.diff = BUFF;\n")
+    f.write("d1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("d1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("w1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("w1_blob.diff = BUFF + MAX_SIZE/2;\n")
     f.write("reset_arguments();\n\n")
     for layer in range(len(layers_l)):
         if layer == 0:
@@ -838,20 +817,86 @@ def GenerateNet(proj_folder_path, project_name,
 
 
     f.write("\n// Forward pass function\n")
-    f.write("void forward()\n{\n")
-    f.write("\treset_dim();\n")
-    f.write("\tload_input(&layer0_in, 1);\n")
-    previous_was_skip = False
-    for layer in range(len(layers_l)):
-        if layer > 0:
-            f.write("\treset_dim();\n")
-            f.write(f"\tload_input(&layer{layer}_in, 1);\n")
+    f.write("void forward(){\n")
+    f.write("\tpi_cl_dma_flush();\n")
+    f.write("\treset_arguments();\n")
+    current_buffer = 0
+    output_buffer = 1
+    next_buffer = 1
+    previous_out = 0
+    is_skipder = False
+    do_store = True
+    bytes_per_data = 2
+    if data_type_l[0] == 'FP32':
+        bytes_per_data = 4       
 
-        if layers_l[layer] != 'Skipnode' and layers_l[layer] != 'ReLU':
-            f.write(f"\tload_coeff(&layer{layer}_wgt, 1);\n")
-            if layers_l[layer] != 'Sumnode':
-                f.write(f"\tcopy_struct_param((unsigned int) &l{layer}_args, (unsigned int) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
-        f.write(f"\tget_output_dim(&layer{layer}_out);\n")
+    # First Layer load of data and weight 
+    f.write("\n\tget_dim(&layer0_in, &d0_blob);\n")
+    f.write(f"\tload((uint32_t) layer0_in.data, (uint32_t) d0_blob.data, {bytes_per_data}*layer0_in.dim);\n")
+    f.write("\tget_dim(&layer0_wgt, &w0_blob);\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
+    f.write(f"\tload((uint32_t) layer0_wgt.data, (uint32_t) w0_blob.data, {bytes_per_data}*layer0_wgt.dim);\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
+
+    for layer in range(len(layers_l)):
+
+
+        is_skipder = True
+        if sumnode_connections[layer] < 0 or layers_l[layer] == 'Sumnode':
+            is_skipder = False 
+
+        output_buffer = 1
+        if current_buffer == 1:
+            output_buffer = 0
+
+        if is_skipder:
+            next_buffer = current_buffer
+        else:
+            next_buffer = 1
+            if current_buffer == 1:
+                next_buffer = 0
+
+        f.write("\n")
+        f.write(f"\t// Layer {layer} ({layers_l[layer]}, {current_buffer}, {next_buffer}, {previous_out})\n")
+
+        bytes_per_data = 2
+        if data_type_l[layer] == 'FP32':
+            bytes_per_data = 4        
+
+
+        # Get layers informations 
+        if not (layers_l[layer] in ['Skipnode', 'ReLU', 'Sumnode']):
+            f.write(f"\tcopy_struct_param((uint32_t) &l{layer}_args, (uint32_t) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
+  
+
+        # Get data dimensions to adjust array pointers     
+        f.write(f"\tget_dim(&layer{layer}_out, &d{output_buffer}_blob);\n")
+        if layer < len(layers_l) - 1:
+            if (not is_skipder) or (layers_l[layer] == 'Skipnode'):
+                if not (layers_l[layer + 1] in ['Skipnode', 'ReLU']):
+                    f.write(f"\tget_dim(&layer{layer+1}_wgt, &w{next_buffer}_blob);\n")
+
+        
+
+        # Adjust arguments for structures 
+        f.write(f"\tin = d{current_buffer}_blob;\n")
+        f.write(f"\twgt = w{current_buffer}_blob;\n")
+        f.write(f"\tout = d{output_buffer}_blob;\n")
+    
+        # Make sure to have no pending dma transfers
+        f.write("\tpi_cl_dma_flush();\n")
+
+        # Store previous calculated output
+        if layer > 0 and do_store:
+            f.write(f"\tstore((uint32_t) d{previous_out}_blob.data, (uint32_t) layer{layer-1}_out.data, {bytes_per_data}*layer{layer-1}_out.dim);\n")
+
+         # Load coeff for the next layer   
+        if (layer + 1 < len(layers_l)) and not (layers_l[layer + 1] in ['Skipnode', 'ReLU']) and not is_skipder:
+            f.write(f"\tload((uint32_t) layer{layer+1}_wgt.data, (uint32_t) w{next_buffer}_blob.data, {bytes_per_data}*layer{layer+1}_wgt.dim);\n")
+        if layers_l[layer] == 'Skipnode':
+            f.write(f"\tload((uint32_t) layer{layer+1}_wgt.data, (uint32_t) w{next_buffer}_blob.data, {bytes_per_data}*layer{layer+1}_wgt.dim);\n")
+
+
         # Generate layer template
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_template_FW(layer, data_type_l[layer]))
@@ -874,10 +919,9 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
-        if layers_l[layer] != 'Skipnode':
-            f.write(f"\tstore_output(&layer{layer}_out, 1);\n\n")
-        else:
-            f.write(f"\tstore_input(&layer{layer}_out, 1);\n\n")
+
+
+
         # Insert casting operator for data type variation
         if layer < len(layers_l)-1 and data_type_l[layer] != data_type_l[layer+1]:
             if data_type_l[layer] == 'FP32' and data_type_l[layer+1] == 'FP16':
@@ -887,75 +931,171 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[layer], data_type_l[layer+1], layer))
 
-        # Check if current layer is Skipnode
-        if sumnode_connections[layer] < 0 or layers_l[layer] == 'Sumnode':
-            previous_was_skip = False
-        else:
-            previous_was_skip = True
+        # Handle last layer store 
+        if (layer == len(layers_l) - 1):
+            f.write(f"\n\tstore((uint32_t) out.data, (uint32_t) layer{layer}_out.data, {bytes_per_data}*layer{layer}_out.dim);\n")
+            f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
+
+        
+        do_store = True
+        if is_skipder:
+            if layers_l[layer] != 'Skipnode':
+                f.write("\n\t// Save Skipderivation output\n")
+                f.write(f"\tstore((uint32_t) out.data, (uint32_t) layer{layer}_out.data, {bytes_per_data}*layer{layer}_out.dim);\n")  
+                if not (layers_l[layer + 1] in ['Skipnode', 'ReLU']):
+                    f.write(f"\tget_dim(&layer{layer + 1}_wgt, &w{current_buffer}_blob);\n")
+                    f.write(f"\tload((uint32_t) layer{layer + 1}_wgt.data, (uint32_t) wgt.data,  {bytes_per_data}*layer{layer + 1}_wgt.dim);\n")  
+                    f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n") 
+            do_store = False
+
+        if layers_l[layer] != 'Skipnode':
+            previous_out  = output_buffer
+        current_buffer = next_buffer
+
     f.write("}\n")
 
 
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
+    
+    next_input_buffer = 0
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
         # Generate backward layer template
-        is_skipderivation = False # Bool for Skipnode and layer after Skipnodes detection
+
+        # Bool for Skipnode and layer after Skipnodes detection
+        is_skipderivation = False
+        next_is_skipderivation  = False
         if layers_l[lay] != 'Sumnode' and sumnode_connections[lay] > -1:
             is_skipderivation = True
+        if lay > 0:
+            if layers_l[lay - 1] != 'Sumnode' and sumnode_connections[lay - 1] > -1:
+                next_is_skipderivation = True
 
         skip_in_grad = 0
         if lay == 0:
             skip_in_grad = 1
 
+        # Check for target layer's input for diff calculation of Skipnode derivations
         target_layer = lay
-        if is_skipderivation: # Check for target layer's input for diff calculation of Skipnode derivations
+        if is_skipderivation: 
             for l in range(len(layers_l)):
                 if sumnode_connections[lay + l ] < 0:
                     break
                 else:
                     target_layer += 1
 
-        
-        f.write("\n\treset_dim();\n")
+        output_buffer = 1
+        if current_buffer == 1:
+            output_buffer = 0
 
-        if layers_l[lay] != 'Sumnode':
-            if layers_l[lay] == 'Skipnode':
-                f.write(f"\tload_input(&layer{target_layer}_in, 0);\n")
-            else:
-                f.write(f"\tload_input(&layer{target_layer}_in, 1);\n")
+        if next_is_skipderivation or layers_l[lay] == 'Sumnode':
+            next_buffer = current_buffer
+            next_input_buffer = output_buffer
+        else:
+            next_buffer = 1
+            next_input_buffer = 0
+            if current_buffer == 1:
+                next_buffer = 0
+                next_input_buffer = 1
 
-        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
-            f.write(f"\tload_coeff(&layer{lay}_wgt, 1);\n")
+        f.write("\n")
+        f.write(f"\t// Layer {lay} ({layers_l[lay]}, {current_buffer}, {next_buffer}, {next_input_buffer})\n")
 
-        f.write(f"\tload_output(&layer{lay}_out, 2);\n")
+        bytes_per_data = 2
+        if data_type_l[layer] == 'FP32':
+            bytes_per_data = 4 
+
 
         # Copy struct info 
-        if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU':
+        if not layers_l[lay] in ['Skipnode', 'Sumnode',  'ReLU']:
             f.write(f"\tcopy_struct_param((unsigned int) &l{lay}_args, (unsigned int) &{layers_l[lay]}_args, sizeof(l{lay}_args));\n")
+            f.write("\tpi_cl_dma_cmd_wait(cmd_struct);\n")
 
-        if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'ReLU':
-            f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'AvgPool':
-            f.write(ntemp.AvgPool_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'MaxPool':
-            f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay]))
-        elif layers_l[lay] == 'Skipnode':
-            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay], target_layer))
-        elif layers_l[lay] == 'Sumnode':
-            #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
-            f.write(f"\tstore_output(&layer{lay}_in, 0);\n")
+        # Adjust arguments for structures 
+        f.write(f"\tin = d{output_buffer}_blob;\n")
+        f.write(f"\twgt = w{output_buffer}_blob;\n")
+        f.write(f"\tout = d{current_buffer}_blob;\n")
+        if is_skipderivation and layers_l[lay] != 'Skipnode':
+            f.write(f"\tget_dim(&in, &w{current_buffer}_blob);\n")
+            f.write(f"\tin.diff = w{current_buffer}_blob.diff;\n")
+
+        # Store dOUT
+        if not is_skipderivation:
+            f.write(f"\tstore((uint32_t) d{current_buffer}_blob.diff, (uint32_t) layer{lay}_out.diff, {bytes_per_data}*layer{lay}_out.dim);\n")
         else:
-            print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
-            exit()
+            if not layers_l[lay] in ['ReLU', 'Skipnode']:
+                f.write(f"\tload((uint32_t) layer{lay}_wgt.data, (uint32_t) wgt.data, {bytes_per_data}*layer{lay}_wgt.dim);\n")
+            f.write(f"\tload((uint32_t) layer{lay}_out.diff, (uint32_t) out.diff, {bytes_per_data}*layer{lay}_out.dim);\n")
+            f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
+
+            
+
+
+        # Compute dW if needed
+        if not layers_l[lay] in ['Skipnode', 'Sumnode',  'ReLU']:
+            if layers_l[lay] == 'linear':
+                f.write(ntemp.linear_template_coeff_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'conv2d':
+                f.write(ntemp.conv2d_template_coeff_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'DW':
+                f.write(ntemp.DW_template_coeff_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'PW':
+                f.write(ntemp.PW_template_coeff_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'AvgPool':
+                f.write(ntemp.AvgPool_template_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'MaxPool':
+                f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay]))
+            
+
+            # Store dW 
+            f.write(f"\tstore((uint32_t) w{output_buffer}_blob.diff, (uint32_t) layer{lay}_wgt.diff, {bytes_per_data}*layer{lay}_wgt.dim);\n")
+
+        # Compute dIN
+        if not skip_in_grad:
+            if layers_l[lay] == 'linear':
+                f.write(ntemp.linear_template_in_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'conv2d':
+                f.write(ntemp.conv2d_template_in_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'DW':
+                f.write(ntemp.DW_template_in_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'PW':
+                f.write(ntemp.PW_template_in_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'ReLU':
+                f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'AvgPool':
+                f.write(ntemp.AvgPool_template_BW(lay, data_type_l[lay]))
+            elif layers_l[lay] == 'MaxPool':
+                f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay]))
+            
+
+            if is_skipderivation:
+                f.write(ntemp.sum(lay, layers_l[lay] == 'Skipnode', current_buffer, output_buffer, data_type_l[lay]))
+
+
+
+        # Load next layer's input and coefficients
+        if lay > 0:
+            f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
+            if layers_l[lay] == 'Sumnode':
+                f.write(f"\tload((uint32_t) layer{lay - 1}_out.data, (uint32_t) out.data, {bytes_per_data}*out.dim);\n")
+                f.write("\tpi_cl_dma_flush();\n")
+            f.write(f"\tget_dim( &layer{lay-1}_in, &d{next_input_buffer}_blob);\n")
+            f.write(f"\tload((uint32_t) layer{lay-1}_in.data, (uint32_t) d{next_input_buffer}_blob.data, {bytes_per_data}*layer{lay-1}_in.dim);\n")
+            if not layers_l[lay -1 ] in ['Skipnode', 'Sumnode',  'ReLU']:
+                f.write(f"\tget_dim( &layer{lay-1}_wgt, &w{next_input_buffer}_blob);\n")
+                f.write(f"\tload((uint32_t) layer{lay-1}_wgt.data, (uint32_t) w{next_input_buffer}_blob.data, {bytes_per_data}*layer{lay-1}_wgt.dim);\n")
+            f.write("\tpi_cl_dma_flush();\n")
+
+
+        current_buffer = next_buffer
+
+
+
+
+
+        '''
         # Insert casting operator for data type variation
         if lay < len(layers_l)-1 and lay > 0 and data_type_l[lay] != data_type_l[lay-1]:
             if data_type_l[lay] == 'FP32' and data_type_l[lay-1] == 'FP16':
@@ -977,6 +1117,7 @@ def GenerateNet(proj_folder_path, project_name,
 
         if lay > 0 and layers_l[lay] != 'Sumnode':
             f.write(f"\tstore_input(&layer{target_layer}_in, 0);\n")
+        '''
     f.write("}\n")
 
 
@@ -987,11 +1128,11 @@ def GenerateNet(proj_folder_path, project_name,
         float_size = 2
         if data_type_l[0] == 'FP32':
             float_size = 4
-        f.write("  loss_args.output = &output_blob;\n")
-        f.write("  loss_args.target = output_blob.diff;\n")
-        f.write("  loss_args.wr_loss = &loss;\n")
-        f.write(f"  pi_cl_dma_cmd((uint32_t) (LABEL), (uint32_t) (output_blob.diff), {float_size}*OUT_SIZE, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-        f.write("  pi_cl_dma_cmd_wait(cmd_load);\n")
+        f.write("\tloss_args.output = &out;\n")
+        f.write("\tloss_args.target = out.diff;\n")
+        f.write("\tloss_args.wr_loss = &loss;\n")
+        f.write(f"\tload((uint32_t) LABEL, (uint32_t) out.diff, {float_size}*OUT_SIZE);\n")
+        f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
 
         if data_type_l[-1] == 'FP32':
             f.write("  pulp_MSELoss(&loss_args);\n")
@@ -1000,7 +1141,7 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deplyment_utils.GenerateNet]: Invalid loss type!")
             exit()
-        f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+        f.write(f"\tstore((uint32_t) out.diff, (uint32_t) layer{len(layers_l)-1}_out.diff, {float_size}*OUT_SIZE);\n")
     else:
         print("[deployment_utils.GenerateNet]: Loss function not valid for PULP deployment!!")
         exit()
@@ -1010,29 +1151,109 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\n// Function to update the network\n")
     f.write("void update_weights()\n{\n")
-
+    '''
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'linear' or layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW' or layers_l[layer] == 'PW':
+        if layers_l[layer] in ['conv2d', 'PW', 'DW', 'linear']:
+
+            f.write("\n\tpi_cl_dma_flush();\n")
+
+            bytes_per_data = 2
             if data_type_l[layer] == 'FP32':
+                bytes_per_data = 4
                 f.write("  struct optim_args opt_l"+str(layer)+";\n")
             elif data_type_l[layer] == 'FP16':
                 f.write("  struct optim_args_fp16 opt_l"+str(layer)+";\n")
+
+            f.write(f"\tget_dim(&layer{layer}_wgt, &d0_blob);\n")
+            f.write("\topt_l"+str(layer)+f".weights = &d0_blob;\n")
+            f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n") 
+            f.write(f"  load((uint32_t) layer{layer}_wgt.data, (uint32_t) d0_blob.data, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+            f.write(f"  load((uint32_t) layer{layer}_wgt.diff, (uint32_t) d0_blob.diff, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+            f.write("\n\tpi_cl_dma_flush();\n")
+    
+            if data_type_l[layer] == 'FP32':
+                f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp16, &opt_l"+str(layer)+");\n")
+
+            f.write(f"\tstore((uint32_t) d0_blob.data, (uint32_t) layer{layer}_wgt.data, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+            
+    
+    '''
+    layers_with_weights = []
+    
+    for layer in range(len(layers_l)):
+        if layers_l[layer] in ['linear', 'conv2d', 'DW', 'PW']:
+            layers_with_weights.append(layer)
+    print(layers_with_weights)
+
+    idx = 0
+    buff = 0
+    next_buff = 1
+
+    f.write("\t// Creates all structures needed\n")
+
+    for layer in layers_with_weights:
+        if data_type_l[layer] == 'FP32':
+            f.write("\tstruct optim_args opt_l"+str(layer)+";\n")
+        elif data_type_l[layer] == 'FP16':
+            f.write("\tstruct optim_args_fp16 opt_l"+str(layer)+";\n")
+
+
+    for layer in layers_with_weights:
+
+        next_buff = 1
+        if buff == 1:
+            next_buff = 0
+
+        f.write("\n\tpi_cl_dma_flush();\n")
+        bytes_per_data = 2
+
+        if idx == 0:
+            if data_type_l[layer] == 'FP32':
+                bytes_per_data = 4
+
+            f.write(f"\tget_dim(&layer{layer}_wgt, &d{buff}_blob);\n")
+            f.write("\topt_l"+str(layer)+f".weights = &d{buff}_blob;\n")
+            f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n") 
+            f.write(f"\tload((uint32_t) layer{layer}_wgt.data, (uint32_t) d{buff}_blob.data, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+            f.write(f"\tload((uint32_t) layer{layer}_wgt.diff, (uint32_t) d{buff}_blob.diff, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+            f.write("\n\tpi_cl_dma_flush();\n")
+
+        
+        # Load next weight
+        if (idx + 1) < len(layers_with_weights):
+            if data_type_l[layers_with_weights[idx+1]] == 'FP32':
+                bytes_per_data = 4
+
+            f.write(f"\tget_dim(&layer{layers_with_weights[idx+1]}_wgt, &d{next_buff}_blob);\n")
+            f.write("\topt_l"+str(layers_with_weights[idx+1])+f".weights = &d{next_buff}_blob;\n")
+            f.write("\topt_l"+str(layers_with_weights[idx+1])+".learning_rate = LEARNING_RATE;\n")
+            f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
+            f.write(f"\tload((uint32_t) layer{layers_with_weights[idx+1]}_wgt.data, (uint32_t) d{next_buff}_blob.data, {bytes_per_data}*layer{layers_with_weights[idx+1]}_wgt.dim);\n")
+            f.write(f"\tload((uint32_t) layer{layers_with_weights[idx+1]}_wgt.diff, (uint32_t) d{next_buff}_blob.diff, {bytes_per_data}*layer{layers_with_weights[idx+1]}_wgt.dim);\n")
+        #f.write("\tpi_cl_dma_flush();\n")
+
+        # Compute gradient descent
+        if optimizer == "SGD":
+            if data_type_l[layer] == 'FP32':
+                f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp16, &opt_l"+str(layer)+");\n")
             else:
-                print("[deployment_utils.GenerateNet]: Invalid data type for optimizer structure generation @layer{}!".format(layer))  
-            f.write("  opt_l"+str(layer)+".weights = &weight_blob;\n")
-            f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
-            f.write(f"  load_coeff(&layer{layer}_wgt, 2);\n")
-            if optimizer == "SGD":
-                if data_type_l[layer] == 'FP32':
-                    f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
-                elif data_type_l[layer] == 'FP16':
-                    f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp16, &opt_l"+str(layer)+");\n")
-                else:
-                    print("[deployment_utils.GenerateNet]: Invalid data type for gradient descent @Layer{}!".format(layer))
-            else:
-                print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
-                exit()
-            f.write(f"  store_coeff(&layer{layer}_wgt, 2);\n\n")
+                print("[deployment_utils.GenerateNet]: Invalid data type for gradient descent @Layer{}!".format(layer))
+        else:
+            print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
+            exit()
+        # Store updated coefficients
+        bytes_per_data = 2
+        if data_type_l[layer] == 'FP32':
+                bytes_per_data = 4
+        f.write(f"\tstore((uint32_t) d{buff}_blob.data, (uint32_t) layer{layer}_wgt.data, {bytes_per_data}*layer{layer}_wgt.dim);\n")
+        f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
+        idx += 1
+        buff = next_buff
+        
     f.write("}\n")
 
 
@@ -1116,6 +1337,140 @@ def GenerateNet(proj_folder_path, project_name,
         data_size = 2
         suffix = "_fp16"
 
+
+
+
+    '''
+    f.write("\nvoid dma_handler(uint8_t do_store, uint8_t do_load, void * src_store, void * dst_store, void * src_load, void * dst_load){\n")
+    f.write("\t\tstruct blob * d;\n")
+    f.write("\t\tstruct blob * s;\n")
+    f.write("\t\tif (do_store){\n")
+    f.write("\t\t\td = (struct blob * ) dst_store;\n")
+    f.write("\t\t\ts = (struct blob * ) src_store;\n")
+    f.write("\t\t\tstore((uint32_t) s->data, (uint32_t) d->data, s->dim);}\n")
+    f.write("\t\tif (do_load){\n")
+    f.write("\t\t\td = (struct blob * ) dst_load;\n")
+    f.write("\t\t\ts = (struct blob * ) src_load;\n")
+    f.write("\t\t\tstore((uint32_t) s->data, (uint32_t) d->data, s->dim);} }\n")
+    '''
+
+    f.write("\nvoid load(uint32_t src, uint32_t dst, int dim){\n")
+    f.write("\tpi_cl_dma_cmd(src, dst, dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);}\n")
+
+    f.write("\nvoid store(uint32_t src, uint32_t dst, int dim){\n")
+    f.write("\tpi_cl_dma_cmd(dst, src, dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);}\n")
+
+    f.write("\nvoid get_dim(void * src_blob, void * dst_blob){\n")
+    f.write("\tstruct blob * s = (struct blob * ) src_blob;\n")
+    f.write("\tstruct blob * d = (struct blob * ) dst_blob;\n")
+    f.write("\td->dim = s->dim;\n")
+    f.write("\td->C = s->C;\n")
+    f.write("\td->H = s->H;\n")
+    f.write("\td->W = s->W;\n")
+    f.write("\tupdate();}\n")
+
+    f.write("\nvoid update(){\n")
+    f.write("\td0_blob.data = BUFF;\n")
+    f.write("\td0_blob.diff = BUFF + d0_blob.dim;\n")
+    f.write("\tw0_blob.data = BUFF + 2*d0_blob.dim;\n")
+    f.write("\tw0_blob.diff = BUFF + 2*d0_blob.dim + w0_blob.dim;\n")
+    f.write("\td1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("\td1_blob.diff = BUFF + MAX_SIZE/2 + d1_blob.dim;\n")
+    f.write("\tw1_blob.data = BUFF + MAX_SIZE/2 + 2*d1_blob.dim;\n")
+    f.write("\tw1_blob.diff = BUFF + MAX_SIZE/2 + 2*d1_blob.dim + w1_blob.dim;}\n")
+
+    f.write("\nvoid reset_arguments(){\n")
+    f.write("\td0_blob.dim = 0;\n")
+    f.write("\tw0_blob.dim = 0;\n")
+    f.write("\td1_blob.dim = 0;\n")
+    f.write("\tw1_blob.dim = 0;\n")
+    f.write("\tlinear_args.output = &out;\n")
+    f.write("\tlinear_args.input = &in;\n")
+    f.write("\tlinear_args.coeff = &wgt;\n")
+
+    f.write("\tconv2d_args.output = &out;\n")
+    f.write("\tconv2d_args.input = &in;\n")
+    f.write("\tconv2d_args.coeff = &wgt;\n")
+
+    f.write("\tPW_args.output = &out;\n")
+    f.write("\tPW_args.input = &in;\n")
+    f.write("\tPW_args.coeff = &wgt;\n")
+
+    f.write("\tDW_args.output = &out;\n")
+    f.write("\tDW_args.input = &in;\n")
+    f.write("\tDW_args.coeff = &wgt;\n")
+
+    f.write("\tact_args.output = &out;\n")
+    f.write("\tact_args.input = &in;\n")
+
+    f.write("\tresconn_args.output = &out;\n")
+    f.write("\tresconn_args.lout = &in;\n")
+    f.write("\tresconn_args.skip = &wgt;\n")
+    f.write("}\n\n")
+
+    f.write("\nvoid copy_struct_param(unsigned int from, unsigned int to, int size){\n")
+    f.write("\tpi_cl_dma_cmd(from, to, size, PI_CL_DMA_DIR_EXT2LOC , cmd_struct);}\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    '''
     f.write("\n// Functions for DMA managment\n")
     f.write("\nvoid load_coeff(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
@@ -1130,6 +1485,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);} \n")
 
+
     f.write("\nvoid load_input(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_input_dim(src_blob);\n")
@@ -1143,6 +1499,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (IN_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);} \n")
 
+   
+    
     f.write("\nvoid load_output(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_output_dim(src_blob);\n")
@@ -1221,6 +1579,19 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tOUT_DATA = BUFF + 2*weight_blob.dim + 2*input_blob.dim;\n")
     f.write("\tupdate_blob();}\n")
    
+
+
+    f.write("\nvoid swap_in_out(){\n")
+    f.write("\tt = OUT_DATA;\n")
+    f.write("\tOUT_DATA = IN_DATA;\n")
+    f.write("\tIN_DATA = t;\n")
+    f.write("\tt = OUT_DIFF;\n")
+    f.write("\tOUT_DIFF = IN_DIFF;\n")
+    f.write("\tIN_DIFF = t; \n")
+    f.write("\ttemp_blob = output_blob;\n")
+    f.write("\toutput_blob = input_blob;\n")
+    f.write("\tinput_blob = temp_blob;}\n")
+
     f.write("\nvoid copy_struct_param(unsigned int from, unsigned int to, int size){\n")
     f.write("\tpi_cl_dma_cmd(from, to, size, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);}\n")
@@ -1262,7 +1633,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tinput_blob.dim = 0;\n")
     f.write("\tweight_blob.dim = 0;\n")
     f.write("\toutput_blob.dim = 0;}\n")
-
+        '''
     f.close()
 
 

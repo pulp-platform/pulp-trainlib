@@ -19,6 +19,7 @@ Authors: Davide Nadalini
 '''
 
 import utils.deployment_utils_single_buffer as utilsSB
+import utils.deployment_utils_double_buffer as utilsDB
 import utils.deployment_utils as utils
 
 """
@@ -28,12 +29,15 @@ memory
 
 
 
+MAX_LAYER_DIM = 0
 
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list, w_pad_list,
                         data_type_l, avail_mem_bytes, USE_DMA):
 
     total_memory_occupation_bytes = 0
     l2_occupation = 0
+    global MAX_LAYER_DIM 
+    l1_structs_mem = 0
     # Compute activation and weight memory occupation
     
     for layer in range(len(layers_l)):
@@ -42,7 +46,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
             is_last_layer = True
         if USE_DMA == 'NO':
             total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], is_last_layer)
-        elif USE_DMA == 'SB':
+        elif USE_DMA in ['SB', 'DB']:
             l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], is_last_layer)
     # Compute im2col memory occupation
     mem_im2col = 0
@@ -74,19 +78,61 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     l1_buff_size = 0
     if USE_DMA == 'SB':
         MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0])
-        l1_buff_size = 2*MAX_LAYER_DIM
+        l1_buff_size = MAX_LAYER_DIM
         if data_type_l[0] == 'FP32':
             l1_buff_size = l1_buff_size*4
         else:
             l1_buff_size = l1_buff_size*2
+        
 
-        total_memory_occupation_bytes += l1_buff_size + 300 # 300 bytes from struct declaration in L1
+        l1_structs_mem = 0
+        l1_structs_mem += 6*4 # 6 pointers IN_DATA, IN_DIFF ...
+        l1_structs_mem += 4*(6*4) # 4 blobs input_blob, output_blob ..
+        l1_structs_mem += 28 # linear_args
+        l1_structs_mem += 72 # conv2d_args
+        l1_structs_mem += 36 # PW_args
+        l1_structs_mem += 36 # DW_args
+        l1_structs_mem += 8 # act_args
+        l1_structs_mem += 16 # Skipconn_args
+        l1_structs_mem += 2*4 # 2 pi_cl_dma_cmd_t
+        l1_structs_mem += 2 # loss in fp16
+        if data_type_l[0] == 'FP32':
+            l1_structs_mem += 2 # loss in fp32
+        l1_structs_mem += 2*16 # 2 vect_sum_args
+        print(f"Size of structures in L1 (Single Buffer Mode): {l1_structs_mem} bytes")
+        total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
+
+    elif USE_DMA == 'DB':
+        
+        MAX_LAYER_DIM = utilsDB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0])
+        l1_buff_size = MAX_LAYER_DIM
+        if data_type_l[0] == 'FP32':
+            l1_buff_size = l1_buff_size*4
+        else:
+            l1_buff_size = l1_buff_size*2
+        
+
+        l1_structs_mem = 0
+        l1_structs_mem += 7*(6*4) # 4 blobs input_blob, output_blob ..
+        l1_structs_mem += 28 # linear_args
+        l1_structs_mem += 72 # conv2d_args
+        l1_structs_mem += 36 # PW_args
+        l1_structs_mem += 36 # DW_args
+        l1_structs_mem += 8 # act_args
+        l1_structs_mem += 16 # Skipconn_args
+        l1_structs_mem += 3*4 # 3 pi_cl_dma_cmd_t cmd_load, cmd_store and cmd_struct
+        l1_structs_mem += 2 # loss in fp16
+        if data_type_l[0] == 'FP32':
+            l1_structs_mem += 2 # loss in fp32
+        l1_structs_mem += 16 # vect_sum_args
+        print(f"Size of structures in L1 (Single Buffer Mode): {l1_structs_mem} bytes")
+        total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
 
     if total_memory_occupation_bytes > avail_mem_bytes:
         print("[DNN_Size_Checker]: DNN overflows PULP L1 memory!!\nExpected occupation: {} bytes vs {} available L1 ({}%)!".format(total_memory_occupation_bytes, avail_mem_bytes, (total_memory_occupation_bytes/avail_mem_bytes)*100))
         #exit()
 
-    if USE_DMA == 'SB':
+    if USE_DMA in ['SB', 'DB']:
         print(f"Total L2 memory occupation: {l2_occupation} bytes")
 
     return total_memory_occupation_bytes
@@ -156,18 +202,27 @@ def DNN_Composer (proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
                         epochs, batch_size, learning_rate, optimizer, loss_fn,
-                        data_type_l, sumnode_connections)
+                        data_type_l, sumnode_connections, USE_DMA)
 
-    # Generate the net.c and net.h files to run the training in L1 (for now)
+
+    global MAX_LAYER_DIM
+    # Generate the net.c and net.h files to run the training in L1
     if USE_DMA == 'NO':
         utils.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, sumnode_connections)
+        
     elif USE_DMA == 'SB':
-        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0]) # For single Buffer mode
         utilsSB.GenerateNet(proj_folder_path, project_name,
+                    layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
+                    h_str_l, w_str_l, h_pad_l, w_pad_l,
+                    epochs, batch_size, learning_rate, optimizer, loss_fn,
+                    data_type_l, sumnode_connections, MAX_LAYER_DIM)
+        
+    elif USE_DMA == 'DB':
+        utilsDB.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,

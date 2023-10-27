@@ -335,7 +335,7 @@ def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections):
+                data_type_l, sumnode_connections, USE_DMA):
     
     # Print DNN structure
     print("---------- DNN ARCHITECTURE ----------")
@@ -634,10 +634,13 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("f.write('// Input and Output data\\n')\n")
     f.write("f.write('#define IN_SIZE "+str(in_ch_l[0]*win_l[0]*hin_l[0])+"\\n')\n")
     # Fake input data definition
+    memory_loc = 'L1'
+    if USE_DMA == 'SB' or USE_DMA == 'DB':
+        memory_loc = 'L2'
     if data_type_l[0] == 'FP32':
-        f.write("f.write('PI_L1 float INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\\n')\n")
+        f.write(f"f.write('PI_{memory_loc} float INPUT[IN_SIZE] ="+" {'+dump.tensor_to_string(inp)+'};\\n')\n")
     elif data_type_l[0] == 'FP16':
-        f.write("f.write('PI_L1 fp16 INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\\n')\n")
+        f.write(f"f.write('PI_{memory_loc} fp16 INPUT[IN_SIZE] ="+" {'+dump.tensor_to_string(inp)+'};\\n')\n")
     else:
         print("[deployment_utils.GenerateGM] Invalid input data size!")
     f.write("out_size = (int(math.floor(l"+str(last_layer)+"_hin-l"+str(last_layer)+"_hk+2*l"+str(last_layer)+"_hpad+l"+str(last_layer)+"_hstr)/l"+str(last_layer)+"_hstr)) * (int(math.floor(l"+str(last_layer)+"_win-l"+str(last_layer)+"_wk+2*l"+str(last_layer)+"_wpad+l"+str(last_layer)+"_wstr)/l"+str(last_layer)+"_wstr)) * l"+str(last_layer)+"_out_ch\n") 
@@ -645,10 +648,10 @@ def GenerateGM(proj_folder_path, project_name,
     # Fake output data and label definition
     if data_type_l[-1] == 'FP32':
         f.write("f.write('PI_L2 float REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\\n')\n")
-        f.write("f.write('PI_L1 float LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\\n')\n")
+        f.write(f"f.write('PI_{memory_loc} float LABEL[OUT_SIZE] = "+"{'+dump.tensor_to_string(label)+'};\\n')\n")
     elif data_type_l[-1] == 'FP16':
         f.write("f.write('PI_L2 fp16 REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\\n')\n")
-        f.write("f.write('PI_L1 fp16 LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\\n')\n")    
+        f.write(f"f.write('PI_{memory_loc} fp16 LABEL[OUT_SIZE] = "+"{'+dump.tensor_to_string(label)+'};\\n')\n")    
     else:
         print("[deployment_utils.GenerateGM] Invalid output data size!")
     f.write("f.close()\n")
