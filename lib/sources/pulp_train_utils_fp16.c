@@ -647,3 +647,34 @@ inline v2f16 vfpack(fp16 a, fp16 b) {
   //asm ("pv.pack.ah %0, %1, %2" : "=f" (result): "f" (a), "f" (b) : );
   return result;
 }
+
+
+void pulp_mean_std_fp16_cl(void * mean_std_args)
+{
+    struct mean_std_args_fp16 * args = (struct mean_std_args_fp16 *) mean_std_args;
+
+    fp16 * data = args->input;
+    int D = args->dim;
+    fp16 * mean = args->mean;
+    fp16 * std = args->std;
+    fp16 * var = args->var;
+    fp16 epsilon = args->epsilon;
+
+    fp16 m=0;
+    fp16 v=0;
+    fp16 s=0;
+
+     for(int d=0; d<D; d++)
+        {
+            fp16 t = data[d];
+            m += t;
+            v += t*t;
+        }
+        m = m/D;
+        v = v/D;
+        v = v - m*m + epsilon;
+        if ((v)<0) v=epsilon;
+        *mean = m;
+        *var = v;
+        *std = sqrt(v);
+}

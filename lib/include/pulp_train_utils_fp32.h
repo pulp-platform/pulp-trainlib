@@ -354,6 +354,24 @@ struct scalar_mul_args{
 
 
 /**
+ * @brief Arguments for calculating mean, variance and standard deviation of a vector
+ * @param input   input vector
+ * @param mean    calculated mean
+ * @param var    calculated var
+ * @param std    calculated std
+ * @param epsilon small number used to avoid division by zero
+ * @param dim     dimension of input
+*/
+struct mean_std_args{
+  float* input;
+  float* mean;
+  float* var;
+  float* std;
+  float epsilon;
+  int dim;
+};
+
+/**
  * =====> FUNCTIONS <=====
  */
 
@@ -463,3 +481,10 @@ fasterexp (float p);
 
 static inline float
 fasterpow2 (float p);
+
+/**
+ * @brief Mean, Variance and standard deviation calculation of a vector
+ * @param (void *)  (struct mean_std_args void_args)
+ */
+void pulp_mean_std_fp32_cl(void * mean_std_args);
+

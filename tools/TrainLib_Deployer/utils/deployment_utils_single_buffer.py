@@ -189,6 +189,7 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 struct PointWise_Conv_args PW_args;\n")
         f.write("PI_L1 struct DepthWise_Conv_args DW_args;\n")
         f.write("PI_L1 struct act_args act_args;\n")
+        f.write("PI_L1 struct InstNorm_args InstNorm_args;\n")
         f.write("PI_L1 struct SkipConn_args resconn_args;\n")
         f.write("PI_L1 float * t;\n")
     elif data_type == 'FP16':
@@ -203,6 +204,7 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 struct PointWise_Conv_args_fp16 PW_args;\n")
         f.write("PI_L1 struct DepthWise_Conv_args_fp16 DW_args;\n")
         f.write("PI_L1 struct act_args_fp16 act_args;\n")
+        f.write("PI_L1 struct InstNorm_args_fp16 InstNorm_args;\n")
         f.write("PI_L1 struct SkipConn_args_fp16 resconn_args;\n")
         f.write("PI_L1 fp16 * t;\n")
     else:
@@ -259,6 +261,8 @@ def GenerateNet(proj_folder_path, project_name,
                 pass 
             elif layers_l[layer] == 'Sumnode':
                 f.write("PI_L2 struct SkipConn_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write(f"PI_L2 struct InstNorm_args l{layer}_args;\n")
             else:
                 print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
         # Define FP16 structure
@@ -281,6 +285,8 @@ def GenerateNet(proj_folder_path, project_name,
                 pass
             elif layers_l[layer] == 'Sumnode':
                 f.write("PI_L2 struct SkipConn_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write(f"PI_L2 struct InstNorm_args_fp16 l{layer}_args;\n")
             else:
                 print("[deployment_utils.GenerateNet] Layer "+str(layer)+" not recognized!!")
         # Invalid data type
@@ -313,6 +319,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L2 float l"+str(layer)+"_ker[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
+            elif layers_l[layer] == 'InstNorm':
+                f.write("PI_L2 float l"+str(layer)+f"_ker[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
         # Define FP16 tensors
@@ -321,6 +329,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
+            elif layers_l[layer] == 'InstNorm':
+                f.write("PI_L2 fp16 l"+str(layer)+f"_ker[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
         # Data type error
@@ -336,6 +346,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L2 float l"+str(layer)+"_ker_diff[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 pass
+            elif layers_l[layer] == 'InstNorm':
+                f.write("PI_L2 float l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
         # Define FP16 tensors
@@ -344,6 +356,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 pass
+            elif layers_l[layer] == 'InstNorm':
+                f.write("PI_L2 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
         # Data type error
@@ -577,8 +591,10 @@ def GenerateNet(proj_folder_path, project_name,
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  for(int i=0; i<Tin_C_l0*Tin_H_l0*Tin_W_l0; i++)\t\t\tl0_in[i] = INPUT[i];\n")
-            if layers_l[layer] != 'Skipnode' and layers_l[layer] != 'Sumnode':
+            if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm']:
                 f.write("  for(int i=0; i<Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0; i++)\t\tl0_ker[i] = init_WGT_l0[i];\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer > 0 and layer < len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
             if layers_l[layer] == 'DW':
@@ -587,12 +603,16 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  //   Pooling kernel (no parameters)\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 f.write("  //   Resconn layer (no parameters)\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
             else:
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
-            if layers_l[layer] != 'Skipnode' and layers_l[layer] != 'Sumnode':
+            if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm']:
                 f.write("  // Layer "+str(layer)+"\n")
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         else:
             print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
             exit()
@@ -632,6 +652,8 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_wgt.diff = l0_ker_diff;\n")
             if layers_l[layer] == 'DW':
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tker_H_l0*Tker_W_l0;\n")
+            elif layers_l[layer] == 'InstNorm':
+                f.write("  layer"+str(layer)+"_wgt.dim = 2*Tin_C_l0;\n")
             else:
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
             f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l0;\n")
@@ -656,6 +678,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
                 if layers_l[layer] == 'DW':
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                elif layers_l[layer] == 'InstNorm':
+                    f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
                 else:
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -707,6 +731,8 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
                     if layers_l[layer] == 'DW':
                         f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                    elif layers_l[layer] == 'InstNorm':
+                        f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
                     else:
                         f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                     f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -750,6 +776,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
                 if layers_l[layer] == 'DW':
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                elif layers_l[layer] == 'InstNorm':
+                    f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
                 else:
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -812,6 +840,8 @@ def GenerateNet(proj_folder_path, project_name,
             first_is_skip = False
         elif layers_l[layer] == 'Skipnode':
             pass
+        elif layers_l[layer] == 'InstNorm':
+            f.write(ntemp.InstNorm_config_template(layer, skip_inputgrad))
         else:
             print("[deployment_utils.GenerateNet] Undefined layer "+str(layer)+" (unable to write configuration structure)!!")
         if sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
@@ -871,6 +901,8 @@ def GenerateNet(proj_folder_path, project_name,
             pass
         elif layers_l[layer] == 'Sumnode':
             f.write(ntemp.residualconn_template_FW(layer, data_type_l[layer]))
+        elif layers_l[layer]  == 'InstNorm':
+            f.write(ntemp.InstNorm_template_FW(layer, data_type_l[layer]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
@@ -953,6 +985,8 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[lay] == 'Sumnode':
             #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
             f.write(f"\tstore_output(&layer{lay}_in, 0);\n")
+        elif layers_l[lay]  == 'InstNorm':
+            f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
@@ -1012,7 +1046,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void update_weights()\n{\n")
 
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'linear' or layers_l[layer] == 'conv2d' or layers_l[layer] == 'DW' or layers_l[layer] == 'PW':
+        if layers_l[layer] in ['linear', 'conv2d', 'DW', 'PW', 'InstNorm']:
             if data_type_l[layer] == 'FP32':
                 f.write("  struct optim_args opt_l"+str(layer)+";\n")
             elif data_type_l[layer] == 'FP16':
