@@ -784,3 +784,35 @@ void mm_manager (void * void_args)
     }
 
 }
+
+void pulp_mean_std_fp32_cl(void * mean_std_args)
+{
+    struct mean_std_args * args = (struct mean_std_args *) mean_std_args;
+
+    float * data = args->input;
+    int D = args->dim;
+    float * mean = args->mean;
+    float * std = args->std;
+    float * var = args->var;
+    float epsilon = args->epsilon;
+
+    float m=0;
+    float v=0;
+    float s=0;
+
+     for(int d=0; d<D; d++)
+        {
+            float t = data[d];
+            m += t;
+            v += t*t;
+        }
+        m = m/D;
+        v = v/D;
+        v = v - m*m + epsilon;
+        if ((v)<0) v=epsilon;
+        *mean = m;
+        *var = v;
+        *std = sqrt(v);
+}
+
+

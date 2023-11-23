@@ -363,7 +363,23 @@ struct scalar_mul_args_fp16{
   int dim;
 };
 
-
+/**
+ * @brief Arguments for calculating mean, variance and standard deviation of a vector
+ * @param input   input vector
+ * @param mean    calculated mean
+ * @param var    calculated var
+ * @param std    calculated std
+ * @param epsilon small number used to avoid division by zero
+ * @param dim     dimension of input
+*/
+struct mean_std_args_fp16{
+  fp16* input;
+  fp16* mean;
+  fp16* var;
+  fp16* std;
+  fp16 epsilon;
+  int dim;
+};
 /**
  * =====> FUNCTIONS <=====
  */
@@ -488,3 +504,10 @@ fp16 vfdotp(v2f16 a, v2f16 b);
  * @return v2f16 vector of packed element
  */
 v2f16 vfpack(fp16 a, fp16 b);
+
+
+/**
+ * @brief Mean, Variance and standard deviation calculation of a vector
+ * @param (void *)  (struct mean_std_args void_args)
+ */
+void pulp_mean_std_fp16_cl(void * mean_std_args);

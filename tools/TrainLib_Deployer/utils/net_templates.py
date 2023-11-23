@@ -214,6 +214,23 @@ def MaxPool_template_BW(layer_number, DATA_TYPE):
     return template
 
 
+'''
+NORM TEMPLATES
+'''
+def InstNorm_template_FW(layer_number, data_type):
+    if data_type == 'FP32':
+        template = "  pulp_instnorm_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
+    elif data_type == 'FP16':
+        template = "  pulp_instnorm_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
+    return template
+
+def InstNorm_template_BW(layer_number, data_type):
+    if data_type == 'FP32':
+        template = "  pulp_instnorm_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+    elif data_type == 'FP16':
+        template = "  pulp_instnorm_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+    return template
+
 """
 TYPE CHANGE TEMPLATES
 """
@@ -396,4 +413,12 @@ def sum(layer, data_type):
     else:
         print("\n[net_templates.py - sum] Invalid Data Type\n")
         exit()
+    return template
+
+
+def InstNorm_config_template(layer_number, skip_in_grad):
+    template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
+    template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
+    template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     return template
