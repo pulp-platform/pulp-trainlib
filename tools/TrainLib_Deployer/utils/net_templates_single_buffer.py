@@ -80,7 +80,7 @@ def DW_template_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
         template = "\tpulp_conv_dw_fp32_bw_cl(&DW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "\tpulp_conv_dw_fp16_bw_cl(DW_args);\n"
+        template = "\tpulp_conv_dw_fp16_bw_cl(&DW_args);\n"
     else:
         print("[net_templates.DW_template_BW]: Invalid data type!")
         exit()  

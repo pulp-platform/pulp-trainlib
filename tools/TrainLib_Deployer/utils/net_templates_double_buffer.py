@@ -96,7 +96,7 @@ def DW_template_coeff_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
         template = "\tpulp_conv_dw_fp32_bw_param_grads_cl(&DW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "\tpulp_conv_dw_fp16_bw_param_grads_cl(DW_args);\n"
+        template = "\tpulp_conv_dw_fp16_bw_param_grads_cl(&DW_args);\n"
     else:
         print("[net_templates.DW_template_BW]: Invalid data type!")
         exit()  
@@ -106,7 +106,7 @@ def DW_template_in_BW(layer_number, DATA_TYPE):
     if DATA_TYPE == 'FP32':
         template = "\tpulp_conv_dw_fp32_bw_input_grads_cl(&DW_args);\n"
     elif DATA_TYPE == 'FP16':
-        template = "\tpulp_conv_dw_fp16_bw_input_grads_cl(DW_args);\n"
+        template = "\tpulp_conv_dw_fp16_bw_input_grads_cl(&DW_args);\n"
     else:
         print("[net_templates.DW_template_BW]: Invalid data type!")
         exit()  
