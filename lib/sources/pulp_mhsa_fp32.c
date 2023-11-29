@@ -420,7 +420,7 @@ void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
         #endif
     }
 
-    float exp_max = 0.03125;
+    float exp_max = 0.03125f;
 
     struct div_args d_args;
     d_args.input = head_buffer;
@@ -458,7 +458,7 @@ void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
     softmax_arg.global_max = global_max;
     softmax_arg.partial_exp_sum = partial_exp_sum;
 
-    pi_cl_team_fork(NUM_CORES, pulp_partial_softmax_shift_fp32_fw_cl, &softmax_arg);
+    pi_cl_team_fork(NUM_CORES, pulp_partial_softmax_fp32_fw_cl, &softmax_arg);
 
     #ifdef DEBUG
     printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);

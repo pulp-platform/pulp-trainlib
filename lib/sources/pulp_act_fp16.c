@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
 */ 
 
 #include "pulp_train_utils_fp16.h"
@@ -62,11 +62,14 @@ void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
   const int stop = start + blockSize > args_tanh->dim ? args_tanh->dim : start+blockSize;
   */
 
-  fp16 sum = 0.0;
-  fp16 sum2 = 0.0;
-  fp16 max = 0.0;
-  fp16 maxes[NUM_CORES] = {0.0};
-  fp16 sums[NUM_CORES] = {0.0};
+  short s = 0;
+  fp16 zero = (fp16) s;
+
+  fp16 sum = zero;
+  fp16 sum2 = zero;
+  fp16 max = zero;
+  fp16 maxes[NUM_CORES] = {zero};
+  fp16 sums[NUM_CORES] = {zero};
 
   
   struct max_args_fp16 m_args;
@@ -109,10 +112,14 @@ void pulp_softmax_fp16_bw_cl( void * act_args_fp16 )
   fp16* inDiff = args->input->diff;
   fp16* outData = args->output->data;
   fp16* outDiff = args->output->diff;
-  fp16 sum = 0.0;
+
+  short s = 0;
+  fp16 zero = (fp16) s;
+
+  fp16 sum = zero;
 
   for(int j = 0; j < dim; j++){ // Cycle over the elements of the i-th head buffer
-      fp16 sum = 0.0;
+      fp16 sum = zero;
       const fp16 neg_sft_j  =  -(outData)[j]; 
       for(int z = 0; z < dim; ++z){ // Softmax involves all the elements of the i-th head buffer
           fp16 mul =  (outDiff)[z] * (outData)[z] * neg_sft_j;

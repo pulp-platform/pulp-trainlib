@@ -56,11 +56,11 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* inData = args->input->data;
   float* outData = args->output->data;
 
-  float sum = 0.0;
-  float sum2 = 0.0;
-  float max = 0.0;
-  float maxes[NUM_CORES] = {0.0};
-  float sums[NUM_CORES] = {0.0};
+  float sum = 0.0f;
+  float sum2 = 0.0f;
+  float max = 0.0f;
+  float maxes[NUM_CORES] = {0.0f};
+  float sums[NUM_CORES] = {0.0f};
 
   struct max_args m_args;
   m_args.input = inData;
@@ -114,10 +114,10 @@ void pulp_softmax_fp32_bw_cl( void * act_args )
   float* inDiff = args->input->diff;
   float* outData = args->output->data;
   float* outDiff = args->output->diff;
-  float sum = 0.0;
+  //float sum = 0.0f;
 
   for(int j = 0; j < dim; j++){ // Cycle over the elements of the i-th head buffer
-      float sum = 0.0;
+      float sum = 0.0f;
       const float neg_sft_j  =  -(outData)[j]; 
       for(int z = 0; z < dim; ++z){ // Softmax involves all the elements of the i-th head buffer
           float mul =  (outDiff)[z] * (outData)[z] * neg_sft_j;
@@ -171,8 +171,8 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
           global_max[j] = *pointer;
         }
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        float exp_sum = 1 / pow(2, shift); 
-        partial_exp_sum[j] = ((partial_exp_sum[j]) / pow(2, max_shift)) + exp_sum;
+        float exp_sum = 1.0f-0.5f*shift; 
+        partial_exp_sum[j] = (partial_exp_sum[j]) * (1.0f-0.5f* max_shift) + exp_sum;
         pointer++;
       }
     }
@@ -182,7 +182,7 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
     for(int j = 0; j < L; j++){
       for(int k = 0; k < L; k++){
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        (*out_pointer) = (1 / pow(2, shift))/partial_exp_sum[j];
+        (*out_pointer) = (1.0f-0.5f*shift)/partial_exp_sum[j];
         pointer++;
         out_pointer++;
       }
