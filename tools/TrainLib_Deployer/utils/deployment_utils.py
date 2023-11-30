@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini
+Authors: Davide Nadalini, Giacomo Saporetti
 '''
 
 import os
@@ -413,8 +413,8 @@ def GenerateGM(proj_folder_path, project_name,
     if (layers_l[0] == 'linear'):
         f.write("inp = torch.div(torch.ones(l0_in_ch), 100000)\n")
     elif (layers_l[0] in ['conv2d', 'DW', 'PW', 'Skipnode', 'InstNorm']):
-        #f.write("inp = torch.torch.div(torch.ones(batch_size, l0_in_ch, l0_hin, l0_win), 1000)\n")
-        f.write("inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000)\n")
+        f.write("inp = torch.torch.div(torch.rand(batch_size, l0_in_ch, l0_hin, l0_win), 1000)\n")
+        #f.write("inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000)\n")
     # Throw error
     else:
         print("[deployment_utils.GenerateGM]: Input layer not valid!\n")
