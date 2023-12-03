@@ -487,4 +487,3 @@ fasterpow2 (float p);
  * @param (void *)  (struct mean_std_args void_args)
  */
 void pulp_mean_std_fp32_cl(void * mean_std_args);
-

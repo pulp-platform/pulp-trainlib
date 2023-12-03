@@ -655,6 +655,7 @@ void pulp_mean_std_fp16_cl(void * mean_std_args)
 
     fp16 * data = args->input;
     int D = args->dim;
+    fp16 D_inverse = (1/(fp16)D);
     fp16 * mean = args->mean;
     fp16 * std = args->std;
     fp16 * var = args->var;
@@ -664,17 +665,35 @@ void pulp_mean_std_fp16_cl(void * mean_std_args)
     fp16 v=0;
     fp16 s=0;
 
+    int var_was_infinite = 0;
+
      for(int d=0; d<D; d++)
         {
             fp16 t = data[d];
             m += t;
             v += t*t;
         }
-        m = m/D;
-        v = v/D;
-        v = v - m*m + epsilon;
+
+        m = m*D_inverse;
+        v = v*D_inverse;
+
+        // Test for infinite variance   
+        if (*(__int16_t *)&v == 0x7c00)
+        {
+            var_was_infinite=1;
+            v = 0;
+            for(int d=0; d<D; d++)
+            {
+                fp16 t = data[d];
+                fp16 temp = t - m;
+                v += temp*temp*D_inverse;
+            }
+        }
+
+        if(!var_was_infinite)   v -= m*m;
+        v = v + epsilon;
         if ((v)<0) v=epsilon;
         *mean = m;
         *var = v;
-        *std = sqrt(v);
+        *std = (fp16)sqrtf(v);
 }
