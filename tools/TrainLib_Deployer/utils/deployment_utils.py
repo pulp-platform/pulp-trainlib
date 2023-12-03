@@ -47,7 +47,7 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
 
     # If the layer is an activation, no weights!
     wgt_present = 1
-    if layer_type == 'ReLu' or layer_type == 'Skipnode' or layer_type == 'Sumnode':
+    if layer_type in ['ReLu', 'Skipnode', 'Sumnode']:
         wgt_present = 0
 
     byte_size = 4
@@ -67,7 +67,10 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     # Input act
     memocc_bytes += chin * hin * win * byte_size
     # Weights
-    memocc_bytes += chin * chout * hk * wk * byte_size * wgt_present
+    if  layer_type == 'InstNorm':
+        memocc_bytes += 2 * chin * byte_size
+    else:    
+        memocc_bytes += chin * chout * hk * wk * byte_size * wgt_present
     # Out act
     memocc_bytes += chout * hout * wout * byte_size * output_separate_occupation
 

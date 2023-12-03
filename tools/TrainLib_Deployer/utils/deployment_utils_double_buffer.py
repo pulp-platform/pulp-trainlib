@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini
+Authors: Davide Nadalini, Giacomo Saporetti
 '''
 
 import os
@@ -30,7 +30,7 @@ import utils.net_templates_double_buffer as ntemp
 DNN Size Checker backend functions
 """
 
-def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
+def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad):
     RES = 0
     temp1 = 0 #input
     temp2 = 0 #wgt
@@ -47,20 +47,25 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
             temp2 = cin_l[layer]*cout_l[layer]
         if layers_l[layer] == 'Sumnode':
             temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]
+        if layers_l[layer] == 'InstNorm':
+            temp2 = 2*cin_l[layer]
+        if layers_l[layer] in ['ReLU', 'Skipnode']:
+            temp2 = 0
 
         temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]
 
         tot = temp1 + temp2 
+        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Total: {tot}")
         if tot > RES:
             RES = tot
             max_layer = layer
 
-    RES = 4 * RES
+    RES = 2 * 2 * RES  #Considering 2 Buffers for both data and diff
     multiplier = 2
     if data == 'FP32':
         multiplier = 4
     print(f"Max Layer size (considering only input data and coefficients): {multiplier * RES} bytes @layer {max_layer}")
-    return RES
+    return multiplier*RES
 
 
 """

@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini
+Authors: Davide Nadalini, Giacomo Saporetti
 '''
 
 import os
@@ -59,7 +59,7 @@ def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
     return RES
 
 
-def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
+def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad):
     RES = 0
     temp1 = 0 #input
     temp2 = 0 #wgt
@@ -77,24 +77,31 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data):
             temp2 = cin_l[layer]*cout_l[layer]
         if layers_l[layer] == 'Sumnode':
             temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]
+        if layers_l[layer] == 'InstNorm':
+            temp2 = 2*cin_l[layer]
+        if layers_l[layer] in ['ReLU', 'Skipnode']:
+            temp2 = 0
 
         temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]
 
-        if layer + 1 < len(layers_l): 
-            temp3 = cin_l[layer + 1] * hin_l[layer + 1] * win_l[layer + 1] 
+        hout = int((hin_l[layer] - hk_l[layer] + 2*h_pad[layer])/h_str[layer] + 1)
+        wout = int((win_l[layer] - wk_l[layer] + 2*w_pad[layer])/w_str[layer] + 1)
+        if layers_l[layer] == 'linear':
+            temp3 = cout_l[layer]
         else:
-            temp3 = cout_l[layer] * hin_l[layer] * win_l[layer] 
-
+            temp3 = cout_l[layer] * hout * wout
+        
         tot = temp1 + temp2 + temp3
+        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Output: {temp3}, Total: {tot}")
         if tot > RES:
             RES = tot
             max_layer = layer
 
     multiplier = 2
-    RES = 2*RES
     if data  == 'FP32':
         multiplier = 4
-    print(f"Max Layer size (including data and gradients): {multiplier*RES} bytes   @layer {max_layer}")
+    RES = 2*multiplier*RES #The 2 factor accounts for for both data and diff storage
+    print(f"Max Layer size (including data and gradients): {RES} bytes   @layer {max_layer}")
     return RES
 
 
@@ -877,9 +884,9 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("\treset_dim();\n")
             f.write(f"\tload_input(&layer{layer}_in, 1);\n")
 
-        if layers_l[layer] != 'Skipnode' and layers_l[layer] != 'ReLU':
+        if layers_l[layer] not in ['Skipnode', 'ReLU']:
             f.write(f"\tload_coeff(&layer{layer}_wgt, 1);\n")
-            if layers_l[layer] != 'Sumnode':
+            if layers_l[layer] not in ['Sumnode', 'InstNorm']:
                 f.write(f"\tcopy_struct_param((unsigned int) &l{layer}_args, (unsigned int) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
         f.write(f"\tget_output_dim(&layer{layer}_out);\n")
         # Generate layer template
@@ -1282,6 +1289,10 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tresconn_args.output = &output_blob;\n")
     f.write("\tresconn_args.lout = &input_blob;\n")
     f.write("\tresconn_args.skip = &weight_blob;\n")
+
+    f.write("\tInstNorm_args.output = &output_blob;\n")
+    f.write("\tInstNorm_args.input = &input_blob;\n")
+    f.write("\tInstNorm_args.coeff = &weight_blob;\n")
     f.write("}\n\n")
 
     f.write("\nvoid update_blob(){\n")

@@ -77,12 +77,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     # Buffer memory allocation for Single Buffer mode
     l1_buff_size = 0
     if USE_DMA == 'SB':
-        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0])
+        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0], h_str_list, w_str_list, h_pad_list, w_pad_list)
         l1_buff_size = MAX_LAYER_DIM
-        if data_type_l[0] == 'FP32':
-            l1_buff_size = l1_buff_size*4
-        else:
-            l1_buff_size = l1_buff_size*2
         
 
         l1_structs_mem = 0
@@ -94,6 +90,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         l1_structs_mem += 36 # DW_args
         l1_structs_mem += 8 # act_args
         l1_structs_mem += 16 # Skipconn_args
+        l1_structs_mem += 16 # InstNorm_args
         l1_structs_mem += 2*4 # 2 pi_cl_dma_cmd_t
         l1_structs_mem += 2 # loss in fp16
         if data_type_l[0] == 'FP32':
@@ -104,12 +101,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
     elif USE_DMA == 'DB':
         
-        MAX_LAYER_DIM = utilsDB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0])
+        MAX_LAYER_DIM = utilsDB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0], h_str_list, w_str_list, h_pad_list, w_pad_list)
         l1_buff_size = MAX_LAYER_DIM
-        if data_type_l[0] == 'FP32':
-            l1_buff_size = l1_buff_size*4
-        else:
-            l1_buff_size = l1_buff_size*2
         
 
         l1_structs_mem = 0
@@ -125,7 +118,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         if data_type_l[0] == 'FP32':
             l1_structs_mem += 2 # loss in fp32
         l1_structs_mem += 16 # vect_sum_args
-        print(f"Size of structures in L1 (Single Buffer Mode): {l1_structs_mem} bytes")
+        print(f"Size of structures in L1 (Double Buffer Mode): {l1_structs_mem} bytes")
         total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
 
     if total_memory_occupation_bytes > avail_mem_bytes:
@@ -134,6 +127,11 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
     if USE_DMA in ['SB', 'DB']:
         print(f"Total L2 memory occupation: {l2_occupation} bytes")
+        if data_type_l[0] == 'FP32':
+            MAX_LAYER_DIM = MAX_LAYER_DIM/4
+        else:
+            MAX_LAYER_DIM = MAX_LAYER_DIM/2
+        MAX_LAYER_DIM = int(MAX_LAYER_DIM)
 
     return total_memory_occupation_bytes
 
