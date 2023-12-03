@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini, Giacomo Saporetti
+Authors: Giacomo Saporetti, Davide Nadalini
 '''
 
 import os

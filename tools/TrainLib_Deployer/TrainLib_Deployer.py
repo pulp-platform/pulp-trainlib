@@ -43,7 +43,7 @@ import utils.DNN_Composer   as composer
 
 # GENERAL PROPERTIES
 project_name    = 'Test_CNN'
-project_path    = './'
+project_path    = '../../DNN_Tests/'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
@@ -80,7 +80,7 @@ opt_mm_ig_list  = [ 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 
 #data_type_list   = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16','FP16', 'FP16', 'FP16']
 data_type_list   = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
 # Data layout list (CHW or HWC) 
-data_layout_list = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
+data_layout_list = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # ----- END OF NETWORK GRAPH -----
 
 
