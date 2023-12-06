@@ -319,6 +319,51 @@ void pulp_max_fp32_cl(void * void_args){
     args->maxes[pi_core_id()] = max;
 }
 
+void pulp_row_max_fp32_cl(void * void_args){
+    struct max_args* args = (struct max_args *) void_args;
+
+    float* input = args->input;
+    int dim = args->dim; // L
+    float* max = args->maxes;
+    int dim2 = args->dim2;
+    
+    const int blockSize=(dim2+ NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim2 ? dim2 : start+blockSize;
+
+    int row = 0;
+
+    for(int i=start; i<stop; i++){
+        row = i / dim;
+        if(max[row] < input[i])
+            max[row] = input[i];
+    }
+}
+
+void pulp_shift_sum_fp32_cl(void* void_args){
+    struct shift_sum_args* args = (struct shift_sum_args *) void_args;
+
+    float* input = args->input;
+    float* output = args->output;
+    float* sums = args->sums;
+    int dim = args->dim;
+    int dim2 = args->dim2;
+    float* maxes = args->maxes;
+
+    const int blockSize=(dim2+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim2 ? dim2 : start+blockSize;
+
+    int row = 0;
+
+    for(int i=start; i<stop; i++){
+        row = i / dim;
+        float o = 1.0f / pow(2, input[i] - maxes[row]);
+        output[i] = o;
+        sums[row] += o;
+    }
+}
+
 void pulp_exp_sum_fp32_cl(void* void_args){
     struct exp_sum_args* args = (struct exp_sum_args *) void_args;
 
@@ -370,6 +415,26 @@ void pulp_div_fp32_cl(void* void_args){
 
     for(int i=start; i<stop; i++){
         input[i] = input[i]/n;
+    }
+}
+
+void pulp_row_div_fp32_cl(void* void_args){
+    struct row_div_args* args = (struct row_div_args *) void_args;
+
+    float* input = args->input;
+    float* sums = args->sums;
+    int dim = args->dim;
+    int dim2 = args->dim2;
+
+    const int blockSize=(dim2+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim2 ? dim2 : start+blockSize;
+
+    int row = 0;
+
+    for(int i=start; i<stop; i++){
+        row = i / dim;
+        input[i] = input[i]/sums[row];
     }
 }
 

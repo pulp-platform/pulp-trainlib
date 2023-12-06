@@ -22,6 +22,18 @@
  * Activation functions configuration structure
  */
 
+#define LOG2    0.6931471805599453f
+#define LOG2_2  0.4804530139182014f
+#define LOG2_3  0.3330246519889294f
+#define LOG2_4  0.2308350985830834f
+#define LOG2_5  0.1600026977571413f
+#define T1      1.0f
+#define T2      0.5f
+#define T3      0.16f
+#define T4      0.0416f
+#define T5      0.008f     
+
+
 /**
  * @brief Structure for activation functions
  * @param input blob structure for the input data of the activation layer
@@ -46,6 +58,8 @@ struct softmax_args{
   int n_heads;
   float * global_max;
   float * partial_exp_sum;
+  float * maxes;
+  float * sums;
 };
 
 
@@ -85,11 +99,18 @@ void pulp_softmax_fp32_fw_cl( void * act_args );
 void pulp_softmax_fp32_bw_cl( void * act_args );
 
 /**
- * @brief Forward pass function, second version using partial algorithm.
+ * @brief Forward pass function, second version using partial algorithm
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_partial_softmax_fp32_fw_cl( void * act_args );
+
+/**
+ * @brief Forward pass function, second version using partial algorithm
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args );
 
 /**
  * @brief Forward pass function, second version using partial algorithm.
@@ -97,6 +118,13 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args );
  * @param output Output of softmax.
 */
 void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args );
+
+/**
+ * @brief Forward pass function, third version using partial algorithm and taylor approximation.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args);
 
 /**
  * @brief Forward pass function that parallelize the fastertanh function (below).

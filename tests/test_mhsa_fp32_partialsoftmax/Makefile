@@ -1,10 +1,10 @@
 APP = mhsa_fp32
 
 # User settings
-IN_H?=8 # Sequence Length
-IN_W?=8 # Token Size
-N_HEADS?=8
-ATT_DIM?=8 #Hidden dimension
+IN_H?=32 # Sequence Length
+IN_W?=32 # Token Size
+N_HEADS?=32
+ATT_DIM?=32 #Hidden dimension
 IN_CH?=1
 OUT_CH?=1
 NUM_CORES?=8
@@ -31,6 +31,7 @@ APP_CFLAGS += -O3 -g
 APP_CFLAGS += -DFABRIC 
 APP_CFLAGS += -DCLUSTER
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
+APP_CFLAGS += -DIN_H=$(IN_H)
 APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -mhwloopalign
