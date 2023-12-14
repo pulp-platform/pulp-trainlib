@@ -59,13 +59,13 @@ layer_list          = [ 'DW', 'PW', 'InstNorm', 'ReLU', 'DW', 'PW', 'InstNorm', 
 # Layer properties
 sumnode_connections = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 ]            # For Skipnode and Sumnode only, for each Skipnode-Sumnode couple choose a value and assign it to both, all other layer MUST HAVE 0
 
-in_ch_list          = [ 3,  3,  4,  4,  4,  4,  8,  8,  8,  8, 16, 16, 16, 16, 24, 24,  3456 ]         # Linear: size of input vector
+in_ch_list          = [ 3,  3,  4,  4,  4,  4,  8,  8,  8,  8, 16, 16, 16, 16, 24, 24,  2400 ]         # Linear: size of input vector
 out_ch_list         = [ 3,  4,  4,  4,  4,  8,  8,  8,  8, 16, 16, 16, 16, 24, 24, 24,  2 ]            # Linear: size of output vector
-hk_list             = [ 7,  1,  1,  1,  7,  1,  1,  1,  3,  1,  1,  1,  7,  1,  1,  1,  1 ]            # Linear: = 1
-wk_list             = [ 7,  1,  1,  1,  7,  1,  1,  1,  3,  1,  1,  1,  7,  1,  1,  1,  1 ]            # Linear: = 1
+hk_list             = [ 9,  1,  1,  1,  7,  1,  1,  1,  3,  1,  1,  1,  7,  1,  1,  1,  1 ]            # Linear: = 1
+wk_list             = [ 9,  1,  1,  1,  7,  1,  1,  1,  3,  1,  1,  1,  7,  1,  1,  1,  1 ]            # Linear: = 1
 # Input activations' properties
-hin_list            = [ 32, 26, 26, 26, 26, 20, 20, 20, 20, 18, 18, 18, 18, 12, 12, 12, 1 ]            # Linear: = 1
-win_list            = [ 32, 26, 26, 26, 26, 20, 20, 20, 20, 18, 18, 18, 18, 12, 12, 12, 1 ]            # Linear: = 1
+hin_list            = [ 32, 24, 24, 24, 24, 18, 18, 18, 18, 16, 16, 16, 16, 10, 10, 10, 1 ]            # Linear: = 1
+win_list            = [ 32, 24, 24, 24, 24, 18, 18, 18, 18, 16, 16, 16, 16, 10, 10, 10, 1 ]            # Linear: = 1
 # Convolutional strides
 h_str_list          = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
 w_str_list          = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
@@ -73,9 +73,9 @@ w_str_list          = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  
 h_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Only for conv2d, DW (NOT IMPLEMENTED)
 w_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Only for conv2d, DW (NOT IMPLEMENTED)
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
-opt_mm_fw_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 1 ]
-opt_mm_wg_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 1 ]
-opt_mm_ig_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 1 ]
+opt_mm_fw_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 10 ]
+opt_mm_wg_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 10 ]
+opt_mm_ig_list      = [ 1, 12, 1, 12, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 1, 10 ]
 # Data type list for layer-by-layer deployment (mixed precision)
 data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
 #data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
