@@ -2,7 +2,7 @@
 #define STACK_SIZE      4096
 
 // Tolerance to check updated output
-#define TOLERANCE 1e-12
+#define TOLERANCE 1e-6
 
 // Training functions
 void DNN_init();

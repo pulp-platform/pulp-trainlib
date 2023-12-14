@@ -259,6 +259,13 @@ void net_step()
   forward();
   compute_loss();
 
+  #ifdef FORWARD
+  printf("\nProfiling FORWARD step..\n");
+  #endif
+  #ifdef BACKWARD
+  printf("\nProfiling BACKWARD step..\n");
+  #endif
+
   #ifdef PROF_NET
   INIT_STATS();
   PRE_START_STATS();
