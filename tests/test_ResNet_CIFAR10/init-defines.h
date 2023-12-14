@@ -255,8 +255,8 @@
 
 // HYPERPARAMETERS
 #define LEARNING_RATE 0.01
-#define EPOCHS 50
-#define NUM_TRAIN 10
-#define NUM_TEST 4
+#define EPOCHS 1
+#define NUM_TRAIN 2
+#define NUM_TEST 2
 #define NUM_CLASSES 2
 #define IMG_SIZE 3072
