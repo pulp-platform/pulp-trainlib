@@ -48,19 +48,21 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
 
     float * in_data = in->data;
     float * out_data = out->data;
-    float mean=0;
-    float std=0;
+    float mean; //=0;
+    float std; //=0;
     float var;
 
-    float gamma=0;
-    float b=0;
+    float gamma; //=0;
+    float b; //=0;
+    gamma = 0.0f;
+    b = 0.0f;
 
     for(int c=start; c<stop; c++)
     {
         // Calculate Mean and Standard Deviation
         in_data = in->data + c*D;
-        mean=0;
-        std=0;
+        mean=0.0f;
+        std=0.0f;
         
         struct mean_std_args mean_std_args;
         mean_std_args.input = in_data;
@@ -129,13 +131,14 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
         float * in_data = in->data + c*D;
         float * out_diff = out->diff + c*D;
         float * in_diff = in->diff + c*D;
-        float mean=0;
-        float std=0; 
-        float var=0;
+        float mean; //=0;
+        float std; //=0; 
+        float var; //=0;
         float gamma = coeff->data[c];
 
-        mean=0;
-        std=0;
+        mean=0.0f;
+        std=0.0f;
+        var=0.0f;
 
         struct mean_std_args mean_std_args;
         mean_std_args.input = in_data;
@@ -184,8 +187,10 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
     struct blob * coeff = args->coeff;
     //struct blob * bias = args->bias;
 
-    float gamma_grad = 0;
-    float bias_grad = 0;
+    float gamma_grad; // = 0;
+    float bias_grad; // = 0;
+    gamma_grad = 0.0f;
+    bias_grad = 0.0f;
 
     int N = in->dim;
     int C = in->C;

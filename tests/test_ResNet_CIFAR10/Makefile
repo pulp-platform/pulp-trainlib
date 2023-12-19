@@ -64,7 +64,7 @@ MATMUL_TYPE_IG_L18?=12         # Selects which optimized matmul to be used in IN
 # End of user settings
 
 NUM_MATMULS?=24		# Available standard matmuls in the library
-TRAIN_LIB=./lib
+TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
 APP_SRCS = main.c net.c
 
