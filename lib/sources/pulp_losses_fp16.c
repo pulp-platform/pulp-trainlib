@@ -56,7 +56,7 @@ void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
   *wr_loss = loss;
 
   for(int i=0; i<size; i++){
-    outDiff[i] = (-target[i]+outData[i]);
+    outDiff[i] = (-target[i] / outData[i]);
     
     #ifdef DEBUG
     printf("target: %+.4f, out_diff: %+.4f, out_data:%+.4f\n", target[i], outDiff[i], outData[i]);
