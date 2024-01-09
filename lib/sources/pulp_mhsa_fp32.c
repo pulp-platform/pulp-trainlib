@@ -113,6 +113,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
+
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;
@@ -397,6 +398,7 @@ void pulp_mhsa_fp32_fw_cl_3(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
+    
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;

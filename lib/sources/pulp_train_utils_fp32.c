@@ -358,7 +358,7 @@ void pulp_shift_sum_fp32_cl(void* void_args){
 
     for(int i=start; i<stop; i++){
         row = i / dim;
-        float o = 1.0f / pow(2, input[i] - maxes[row]);
+        float o = 1.0f - 0.5f*(maxes[row] - input[i]);
         output[i] = o;
         sums[row] += o;
     }
