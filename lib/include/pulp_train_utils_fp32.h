@@ -22,6 +22,21 @@
 #include "pulp_train_defines.h"
 
 /**
+ * Constants for Taylor's propagation of 1/2^x 
+ */
+
+#define LOG2    0.6931471805599453f
+#define LOG2_2  0.4804530139182014f
+#define LOG2_3  0.3330246519889294f
+#define LOG2_4  0.2308350985830834f
+#define LOG2_5  0.1600026977571413f
+#define T1      1.0f
+#define T2      0.5f
+#define T3      0.16f
+#define T4      0.0416f
+#define T5      0.008f   
+
+/**
  * =====> BACKEND STRUCTURES <=====
  */
 
@@ -510,8 +525,21 @@ void pulp_row_div_fp32_cl(void* void_args);
  */
 void pulp_scalar_mul_fp32_cl(void* void_args);
 
+float threshold(float x);
+
 static inline float
 fasterexp (float p);
 
 static inline float
 fasterpow2 (float p);
+
+#define LOG2    0.6931471805599453f
+#define LOG2_2  0.4804530139182014f
+#define LOG2_3  0.3330246519889294f
+#define LOG2_4  0.2308350985830834f
+#define LOG2_5  0.1600026977571413f
+#define T1      1.0f
+#define T2      0.5f
+#define T3      0.16f
+#define T4      0.0416f
+#define T5      0.008f   

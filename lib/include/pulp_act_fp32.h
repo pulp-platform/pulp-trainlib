@@ -20,18 +20,7 @@
 
 /**
  * Activation functions configuration structure
- */
-
-#define LOG2    0.6931471805599453f
-#define LOG2_2  0.4804530139182014f
-#define LOG2_3  0.3330246519889294f
-#define LOG2_4  0.2308350985830834f
-#define LOG2_5  0.1600026977571413f
-#define T1      1.0f
-#define T2      0.5f
-#define T3      0.16f
-#define T4      0.0416f
-#define T5      0.008f     
+ */  
 
 
 /**

@@ -59,7 +59,6 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* outData = args->output->data;
 
   float sum = 0.0f;
-  float sum2 = 0.0f;
   float max = 0.0f;
   float maxes[NUM_CORES] = {0.0f};
   float sums[NUM_CORES] = {0.0f};
@@ -193,10 +192,10 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
   float * partial_exp_sum = args->partial_exp_sum + pi_core_id()*L;
   float * global_max = args->global_max + pi_core_id()*L;
 
-  float eps_max = 0.03125f;
+  const float eps_max = 0.03125f;
 
   float zero = 0.0f;
-  float minfloat = -340282346638528859811704183484516925440.0f;
+  const float minfloat = -340282346638528859811704183484516925440.0f;
 
   const int blockSize=(n_heads+NUM_CORES-1)/NUM_CORES;
   const int start = pi_core_id()*blockSize;
@@ -220,8 +219,8 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
           global_max[j] = *pointer;
         }
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        float exp_sum = 1.0f / pow(2.0f, shift); 
-        partial_exp_sum[j] = (partial_exp_sum[j]) * (1.0f / pow(2.0f, max_shift)) + exp_sum;
+        float exp_sum = 1.0f / powf(2.0f, shift); 
+        partial_exp_sum[j] = (partial_exp_sum[j]) * (1.0f / powf(2.0f, max_shift)) + exp_sum;
         pointer++;
       }
     }
@@ -231,7 +230,7 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
     for(int j = 0; j < L; j++){
       for(int k = 0; k < L; k++){
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        (*out_pointer) = (1.0f / pow(2.0f, shift))/partial_exp_sum[j];
+        (*out_pointer) = (1.0f / powf(2.0f, shift))/partial_exp_sum[j];
         pointer++;
         out_pointer++;
       }
@@ -297,27 +296,6 @@ void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
   }
 }
 
-
-float treshold(float x){
-  /*
-  float log2 = 0.6931471805599453f;
-  float log2_2 = 0.4804530139182014f;
-  float log2_3 = 0.3330246519889294f;
-  float log2_4 = 0.2308350985830834f;
-  float log2_5 = 0.1600026977571413f;
-  */
-
-  if(x >= 3.14f)
-    return 0.0f;
-
-  float x_2 = pow(x,2);
-  float x_3 = pow(x,3);
-  float x_4 = pow(x,4);
-  float x_5 = pow(x,5);
-
-  return (T1 - LOG2 * x + T2 * x_2 * LOG2_2 - T3 * x_3 * LOG2_3 + T4 * x_4 * LOG2_4 - T5 * x_5 * LOG2_5);
-}
-
 void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
   struct softmax_args * args = (struct softmax_args *) act_args;
 
@@ -356,8 +334,8 @@ void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
           global_max[j] = *pointer;
         }
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        float exp_sum = treshold(shift); 
-        partial_exp_sum[j] = (partial_exp_sum[j]) * (treshold(max_shift)) + exp_sum;
+        float exp_sum = threshold(shift); 
+        partial_exp_sum[j] = (partial_exp_sum[j]) * (threshold(max_shift)) + exp_sum;
         pointer++;
       }
     }
@@ -367,7 +345,7 @@ void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
     for(int j = 0; j < L; j++){
       for(int k = 0; k < L; k++){
         float shift = (global_max[j] - (*pointer)) * eps_max;
-        (*out_pointer) = (treshold(shift))/partial_exp_sum[j];
+        (*out_pointer) = (threshold(shift))/partial_exp_sum[j];
         pointer++;
         out_pointer++;
       }

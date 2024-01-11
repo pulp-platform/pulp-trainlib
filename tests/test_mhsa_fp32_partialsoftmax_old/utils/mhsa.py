@@ -51,10 +51,10 @@ def own_partial_softmax_simple_approximate(x):
     lines_max = np.max(x_copy, axis = -1)
     diff = np.repeat(lines_max, seq_length).reshape(n_heads, seq_length, seq_length) - x_copy
     
-    exp_sum = np.sum(threshold(diff.copy()), axis = -1)
+    exp_sum = np.sum(threshold(diff), axis = -1)
     exp_sum_inverse = 1 / exp_sum
     
-    return torch.from_numpy(np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length) * threshold(diff.copy()))
+    return torch.from_numpy(np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length) * threshold(diff))
 
 def own_partial_softmax(x):
     n_heads = x.shape[-3]
@@ -133,7 +133,7 @@ class MultiHeadedSelfAttention(nn.Module):
         self.head_dim = att_dim // num_heads
         self.scaling = (self.head_dim) ** -0.5
         self.scores = None # for visualization
-        self.softmax = own_partial_softmax_simple_approximate
+        self.softmax = own_partial_softmax
 
     def forward(self, x, tgt_len):
         q, k, v = self.proj_in(x).chunk(3, dim=-1)

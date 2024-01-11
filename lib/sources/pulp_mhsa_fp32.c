@@ -113,11 +113,12 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
-
+    /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    */
 
     // Cycle on the different heads
     for(int i = 0; i < n_heads; i++){
@@ -182,7 +183,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 
         /*
         ///------------------------------------------------------------------///
-        printf("\nSoftmax stats\n");
+        //printf("\nSoftmax stats\n");
         pi_perf_conf((1<<PI_PERF_CYCLES)); 
 
 
@@ -239,7 +240,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     printf("\n"); 
-    printf("[%d] cycles = %lu\n", id, _cycles); 
+    printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     */
 
@@ -398,11 +399,12 @@ void pulp_mhsa_fp32_fw_cl_3(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
-    
+    /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    */
 
     // Cycle on the different heads
     for(int i = 0; i < n_heads; i++){
@@ -469,23 +471,24 @@ void pulp_mhsa_fp32_fw_cl_3(void* Mhsa_args){
 
         
         ///------------------------------------------------------------------///
-        printf("\nSoftmax stats\n");
+        //printf("\nSoftmax stats\n");
+        /*
         pi_perf_conf((1<<PI_PERF_CYCLES)); 
 
 
         pi_perf_stop();
         pi_perf_reset(); 
         pi_perf_start();
-        
+        */
 
         pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 
-        
+        /*
         pi_perf_stop(); 
         _cycles   += pi_perf_read (PI_PERF_CYCLES); 
         id = pi_core_id(); 
         ///----------------------------------------------------------------///
-        
+        */
 
         // Multiply softmax result with the i-th head's V chunk
         struct matMul_args matMul_args3;
@@ -523,12 +526,12 @@ void pulp_mhsa_fp32_fw_cl_3(void* Mhsa_args){
     printf("\n");
     #endif
 
-    
+    /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     printf("\n"); 
-    printf("[%d] cycles = %lu\n", id, _cycles); 
+    printf("[%d] TOTAL cycles for softmax = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    
+    */
 
     // Final attention map projection
     struct matMul_args matMul_args4;
@@ -782,7 +785,7 @@ void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
     ///------------------------------------------------------------------///
     printf("\nSoftmax stats\n");
     pi_perf_conf((1<<PI_PERF_CYCLES)); 
-
+    
     
     unsigned long _cycles = 0; 
     int id = 0; 
@@ -799,10 +802,10 @@ void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
     _cycles   += pi_perf_read (PI_PERF_CYCLES); 
     id = pi_core_id(); 
     ///----------------------------------------------------------------///
-
+    
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     printf("\n"); 
-    printf("[%d] cycles = %lu\n", id, _cycles); 
+    printf("[%d] TOTAL SOFTMAX cycles = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     */
 

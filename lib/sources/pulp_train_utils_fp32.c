@@ -319,6 +319,26 @@ void pulp_max_fp32_cl(void * void_args){
     args->maxes[pi_core_id()] = max;
 }
 
+float threshold(float x){
+  /*
+  float log2 = 0.6931471805599453f;
+  float log2_2 = 0.4804530139182014f;
+  float log2_3 = 0.3330246519889294f;
+  float log2_4 = 0.2308350985830834f;
+  float log2_5 = 0.1600026977571413f;
+  */
+
+  if(x >= 3.14f)
+    return 0.0f;
+
+  float x_2 = x*x;
+  float x_3 = x*x*x;
+  float x_4 = x*x*x*x;
+  float x_5 = x*x*x*x*x;
+
+  return (T1 - LOG2 * x + T2 * x_2 * LOG2_2 - T3 * x_3 * LOG2_3 + T4 * x_4 * LOG2_4 - T5 * x_5 * LOG2_5);
+}
+
 void pulp_row_max_fp32_cl(void * void_args){
     struct max_args* args = (struct max_args *) void_args;
 
@@ -358,7 +378,7 @@ void pulp_shift_sum_fp32_cl(void* void_args){
 
     for(int i=start; i<stop; i++){
         row = i / dim;
-        float o = 1.0f - 0.5f*(maxes[row] - input[i]);
+        float o = 1.0f / powf(2, maxes[row] - input[i]);
         output[i] = o;
         sums[row] += o;
     }
