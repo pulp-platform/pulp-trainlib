@@ -22,6 +22,21 @@
 #include "pulp_train_defines.h"
 
 /**
+ * Constants for Taylor's propagation of 1/2^x 
+ */
+
+#define LOG2    0.6931471805599453f
+#define LOG2_2  0.4804530139182014f
+#define LOG2_3  0.3330246519889294f
+#define LOG2_4  0.2308350985830834f
+#define LOG2_5  0.1600026977571413f
+#define T1      1.0f
+#define T2      0.5f
+#define T3      0.16f
+#define T4      0.0416f
+#define T5      0.008f   
+
+/**
  * =====> BACKEND STRUCTURES <=====
  */
 
@@ -305,11 +320,13 @@ struct update_weight_args{
  * @param input   input vector on which we want to find the max
  * @param maxes   vector on which each core saves the max they have found
  * @param dim     dimension of input
+ * @param dim     dimension of input^2
 */
 struct max_args{
   float* input;
   float* maxes;
   int dim;
+  int dim2;
 };
 
 /**
@@ -329,6 +346,24 @@ struct exp_sum_args{
 };
 
 /**
+ * @brief Arguments for implementing parallelized exponential and sum on an input vector
+ * @param input   input vector on which we want to calculate the exponential and summatory
+ * @param sums    vector on which each core saves their sum
+ * @param output  vector where the exponential is saved
+ * @param dim     dimension of input
+ * @param dim     dimension of input^2
+ * @param maxes   maximum value for each row of the input map
+*/
+struct shift_sum_args{
+  float* input;
+  float* sums;
+  float* output;
+  int dim;
+  int dim2;
+  float* maxes;
+};
+
+/**
  * @brief Arguments for implementing parallelized division of an input vector and a scalar
  * @param input   input vector we want to divide
  * @param n       scalar value we want to divide the vector with
@@ -338,6 +373,20 @@ struct div_args{
   float* input;
   float n;
   int dim;
+};
+
+/**
+ * @brief Arguments for implementing parallelized division of an input vector and a vector
+ * @param input   input vector we want to divide
+ * @param sums    values we want to divide the vector with
+ * @param dim     dimension of input
+ * @param dim2    dimension of input^2
+*/
+struct row_div_args{
+  float* input;
+  float* sums;
+  int dim;
+  int dim2;
 };
 
 /**
@@ -441,10 +490,22 @@ void softmax (void * void_args);
 void pulp_max_fp32_cl(void * void_args);
 
 /**
+ * @brief Calculate the maxes for each row of a square matrix in parallelized fashion
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_row_max_fp32_cl(void * void_args);
+
+/**
  * @brief Calculate the exponential of each element and sum them
  * @param (void *)  (struct exp_sum_args void_args)
  */
 void pulp_exp_sum_fp32_cl(void* void_args);
+
+/**
+ * @brief Calculate the 1/2^diff of each element and sum them
+ * @param (void *)  (struct exp_sum_args void_args)
+ */
+void pulp_shift_sum_fp32_cl(void* void_args);
 
 /**
  * @brief Element-wise division of vector with a single constant
@@ -453,13 +514,32 @@ void pulp_exp_sum_fp32_cl(void* void_args);
 void pulp_div_fp32_cl(void* void_args);
 
 /**
+ * @brief Element-wise division of vector with values obtained by shit_sum
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_row_div_fp32_cl(void* void_args);
+
+/**
  * @brief Element-wise multiplication of vector with a single constant
  * @param (void *)  (struct scalar_mul_args void_args)
  */
 void pulp_scalar_mul_fp32_cl(void* void_args);
+
+float threshold(float x);
 
 static inline float
 fasterexp (float p);
 
 static inline float
 fasterpow2 (float p);
+
+#define LOG2    0.6931471805599453f
+#define LOG2_2  0.4804530139182014f
+#define LOG2_3  0.3330246519889294f
+#define LOG2_4  0.2308350985830834f
+#define LOG2_5  0.1600026977571413f
+#define T1      1.0f
+#define T2      0.5f
+#define T3      0.16f
+#define T4      0.0416f
+#define T5      0.008f   

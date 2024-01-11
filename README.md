@@ -163,7 +163,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
-- [ ] Residual connection
+- [X] Residual connection
 - [ ] Biases for all layers
 - [ ] Migration to graph-managed padding (TrainLib_Deployer)
 - [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
@@ -173,8 +173,7 @@ PULP-TrainLib's repository is organized with these branches:
 - AutoTuner working with "NUM_TILING_SOLUTIONS = 1"
 - Sporadic bugs in "mm_u2" in FP32 (mostly on leftovers)
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
-- Missing test for residual connections
-- Missing integration for both residual connections and RNN / MHSE in TrainLib_Deployer
+- Missing integration for RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
 - Missing integration of sigmoid function in TrainLib_Deployer
 
@@ -187,6 +186,7 @@ PULP-TrainLib's repository is organized with these branches:
 - Alberto Dequino (alberto.dequino@unibo.it, alberto.dequino@polito.it)
 - Manuele Rusci (manuele.rusci@kuleuven.be)
 - Francesco Conti (f.conti@unibo.it)
+- Giacomo Saporetti (giacomo.saporetti@studio.unibo.it)
 
 ## Past Contributors
 
@@ -198,4 +198,5 @@ PULP-TrainLib's repository is organized with these branches:
 
 > D. Nadalini, M. Rusci, L. Benini, and F. Conti, "Reduced Precision Floating-Point Optimization for Deep Neural Network On-Device Learning on MicroControllers" [ArXiv Pre-Print](https://arxiv.org/abs/2305.19167)
 > 
-> D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
+> D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf), [Springer Published Version](https://link.springer.com/chapter/10.1007/978-3-031-15074-6_13)
+
