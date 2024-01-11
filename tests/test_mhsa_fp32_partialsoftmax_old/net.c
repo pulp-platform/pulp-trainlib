@@ -52,8 +52,8 @@ PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
 PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
-PI_L1 float l0_sums[Tin_H_l1]; 
-PI_L1 float l0_maxes[Tin_H_l1];
+PI_L1 float l0_partial_exp_sum[NUM_CORES*Tin_H_l1]; 
+PI_L1 float l0_global_max[NUM_CORES*Tin_H_l1];
 #endif
 
 #ifdef BACKWARD
@@ -90,8 +90,8 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_h_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_softmax_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_temp[i] = zero_init; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
-  for (int i=0; i<Tin_H_l1; i++)                        l0_sums[i] = zero_init;
-  for (int i=0; i<Tin_H_l1; i++)                        l0_maxes[i] = min_float;
+  for (int i=0; i<Tin_H_l1*NUM_CORES; i++)              l0_partial_exp_sum[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*NUM_CORES; i++)              l0_global_max[i] = min_float;
 }
 
 static inline void connect_blobs() 
@@ -160,8 +160,8 @@ static inline void connect_blobs()
   mhsa_args.head_buffer = &layer0_h_buffer;
   mhsa_args.softmax_buffer = &layer0_softmax_buffer;
   mhsa_args.temp_buffer = l0_temp;
-  mhsa_args.sums = l0_sums;
-  mhsa_args.maxes = l0_maxes;
+  mhsa_args.partial_exp_sum = l0_partial_exp_sum;
+  mhsa_args.global_max = l0_global_max;
   mhsa_args.opt_matmul_type_fw = MATMUL_TYPE;
   mhsa_args.opt_matmul_type_wg = MATMUL_TYPE;
   mhsa_args.opt_matmul_type_ig = MATMUL_TYPE;
@@ -186,10 +186,10 @@ static inline void compute_memory_occupation(){
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L1_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
-  // sums buffer
-  L1_memocc_bytes += Tin_H_l1*sizeof(float);
-  // maxes buffer
-  L1_memocc_bytes += Tin_H_l1*sizeof(float);
+  // partial_exp_sum buffer
+  L1_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
+  // global_max buffer
+  L1_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
 
 
 
@@ -211,10 +211,11 @@ static inline void compute_memory_occupation(){
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L2_memocc_bytes += Tin_H_l1*Tatt_dim_l1*3*sizeof(float);
-  // sums buffer
-  L2_memocc_bytes += Tin_H_l1*sizeof(float);
-  // maxes buffer
-  L2_memocc_bytes += Tin_H_l1*sizeof(float);
+  // partial_exp_sum buffer
+  L2_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
+  // global_max buffer
+  L2_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
+
 }
 #endif
 
@@ -418,7 +419,7 @@ static inline void train(){
   
 
   #ifdef FORWARD
-  pulp_mhsa_fp32_fw_cl_3(&mhsa_args);
+  pulp_mhsa_fp32_fw_cl_2(&mhsa_args);
   #endif
 
   
