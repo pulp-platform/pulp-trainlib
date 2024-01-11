@@ -152,6 +152,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
 - [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
 - [X] ReLU activation function (FP32, FP16)
+- [X] Sigmoid activation function (FP32)
+- [ ] Sigmoid activation function (FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] RNN training primitives (FP32)
@@ -174,6 +176,7 @@ PULP-TrainLib's repository is organized with these branches:
 - Missing test for residual connections
 - Missing integration for both residual connections and RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
+- Missing integration of sigmoid function in TrainLib_Deployer
 
 
 # Contributors

@@ -22,6 +22,63 @@
 #include "pulp_act_fp32.h"
 #include "math.h"
 
+
+void pulp_sigmoid_fp32_fw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  pi_cl_team_fork(NUM_CORES, sigmoid_core_fw_fp32, act_args);
+}
+
+void pulp_sigmoid_fp32_bw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  pi_cl_team_fork(NUM_CORES, sigmoid_core_bw_fp32, act_args);
+}
+
+void sigmoid_core_fw_fp32( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* outData = args->output->data;
+
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i=start; i<stop; i++) {
+    float sigma = 0.0f;
+    sigma = 1 + expf(-inData[i]);
+    sigma = 1 / sigma;
+    outData[i] = sigma;
+  }
+}
+
+void sigmoid_core_bw_fp32( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* inDiff = args->input->diff;
+  float* outDiff = args->output->diff;
+
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i=start; i<stop; i++) {
+    float sigma = 0.0f;
+    float sigma_prime = 0.0f;
+    sigma = 1 + expf(-inData[i]);
+    sigma = 1 / sigma;
+    sigma_prime = sigma * (1.0f - sigma);
+    inDiff[i] = outDiff[i] * sigma_prime;
+  }
+}
+
+
+
+
 void pulp_relu_fp32_fw_cl( void * act_args )
 {
   struct act_args * args = (struct act_args *) act_args;
