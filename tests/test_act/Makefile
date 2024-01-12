@@ -7,7 +7,7 @@ IN_W?=4
 IN_C?=4
 VALUE?=0.05
 # General arguments
-DATA_TYPE?='FP32'	# FP32 or FP16
+DATA_TYPE?='FP16'	# FP32 or FP16
 NUM_CORES?=8
 # End of user settings
 

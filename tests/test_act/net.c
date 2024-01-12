@@ -60,6 +60,12 @@ PI_L1 fp16 softmout[OUT_SIZE];
 PI_L1 fp16 softmout_grad[OUT_SIZE];
 PI_L1 fp16 softmin_grad[IN_SIZE];
 
+PI_L1 struct blob_fp16 sigmoidin_blob;
+PI_L1 struct blob_fp16 sigmoidout_blob;
+PI_L1 fp16 sigmoidout[OUT_SIZE];
+PI_L1 fp16 sigmoidout_grad[OUT_SIZE];
+PI_L1 fp16 sigmoidin_grad[IN_SIZE];
+
 #else
 
 #endif
@@ -276,7 +282,7 @@ void net_step () {
     #if DATA_TYPE == FP32
     pulp_sigmoid_fp32_fw_cl(&act_args);
     #elif DATA_TYPE == FP16
-    // pulp_sigmoid_fp16_fw_cl(&act_args);
+    pulp_sigmoid_fp16_fw_cl(&act_args);
     #else
 
     #endif
@@ -304,7 +310,7 @@ void net_step () {
     #if DATA_TYPE == FP32
     pulp_sigmoid_fp32_bw_cl(&act_args);
     #elif DATA_TYPE == FP16
-    // pulp_sigmoid_fp16_bw_cl(&act_args);
+    pulp_sigmoid_fp16_bw_cl(&act_args);
     #else
 
     #endif

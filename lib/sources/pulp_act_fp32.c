@@ -60,6 +60,7 @@ void sigmoid_core_bw_fp32( void * act_args )
   int dim = args->input->dim;
   float* inData = args->input->data;
   float* inDiff = args->input->diff;
+  float* outData = args->output->data;
   float* outDiff = args->output->diff;
 
   const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
@@ -69,8 +70,9 @@ void sigmoid_core_bw_fp32( void * act_args )
   for (int i=start; i<stop; i++) {
     float sigma = 0.0f;
     float sigma_prime = 0.0f;
-    sigma = 1 + expf(-inData[i]);
-    sigma = 1 / sigma;
+    //sigma = 1 + expf(-inData[i]);
+    //sigma = 1 / sigma;
+    sigma = outData[i];
     sigma_prime = sigma * (1.0f - sigma);
     inDiff[i] = outDiff[i] * sigma_prime;
   }

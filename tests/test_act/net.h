@@ -18,8 +18,14 @@
 #define FP32 32
 #define FP16 16
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-9
-#define ERROR_TOLERANCE 1e-9
+#if DATA_TYPE == FP32
+    #define CHECK_TOLERANCE 1e-9
+    #define ERROR_TOLERANCE 1e-9
+#elif DATA_TYPE == FP16
+    #define CHECK_TOLERANCE 1e-3
+    #define ERROR_TOLERANCE 1e-3
+#endif
+
 
 // PULP DEFINES
 #define STACK_SIZE      4096
