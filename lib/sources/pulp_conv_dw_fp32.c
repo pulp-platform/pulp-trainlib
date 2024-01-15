@@ -33,6 +33,8 @@ void pulp_conv_dw_fp32_fw_cl ( void * DepthWise_Conv_args )
   ker_args.input = DW_args->input;
   ker_args.weights = DW_args->coeff;
   ker_args.output = DW_args->output;
+  ker_args.Hstride = DW_args->Hstride;
+  ker_args.Wstride = DW_args->Wstride;
 
   pi_cl_team_fork(NUM_CORES, dw_kernel_forward, &ker_args);
 
@@ -63,6 +65,8 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args )
   ker_args.input = DW_args->input;
   ker_args.weights = DW_args->coeff;
   ker_args.output = DW_args->output;
+  ker_args.Hstride = DW_args->Hstride;
+  ker_args.Wstride = DW_args->Wstride;
 
   pi_cl_team_fork(NUM_CORES, dw_kernel_weight_grad, &ker_args);
 
@@ -78,6 +82,8 @@ void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args )
   ker_args.input = DW_args->input;
   ker_args.weights = DW_args->coeff;
   ker_args.output = DW_args->output;
+  ker_args.Hstride = DW_args->Hstride;
+  ker_args.Wstride = DW_args->Wstride;
 
   pi_cl_team_fork(NUM_CORES, dw_kernel_input_grad, &ker_args);
 

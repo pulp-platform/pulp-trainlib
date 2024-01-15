@@ -287,6 +287,9 @@ void dw_kernel_forward(void * kernel_DW_args) {
   uint32_t H_out = args->output->H;
   uint32_t W_out = args->output->W;
 
+  uint32_t Hstr = args->Hstride;
+  uint32_t Wstr = args->Wstride;
+
   uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
@@ -303,6 +306,7 @@ void dw_kernel_forward(void * kernel_DW_args) {
           for (int wk=0; wk<pW; wk++)
           {
             temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
+            //temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo*Wstr+wk + (ho*Hstr+hk)*W_in + ch*H_in*W_in];
           }
         }
         outData[wo + ho*W_out + ch*H_out*W_out] = temp;
@@ -329,6 +333,9 @@ void dw_kernel_weight_grad(void * kernel_DW_args) {
   uint32_t pW = args->weights->W;
   uint32_t H_out = args->output->H;
   uint32_t W_out = args->output->W;
+
+  uint32_t Hstr = args->Hstride;
+  uint32_t Wstr = args->Wstride;
 
   uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;
@@ -372,6 +379,9 @@ void dw_kernel_input_grad(void * kernel_DW_args) {
   uint32_t pW = args->weights->W;
   uint32_t H_out = args->output->H;
   uint32_t W_out = args->output->W;
+
+  uint32_t Hstr = args->Hstride;
+  uint32_t Wstr = args->Wstride;
 
   uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   uint32_t start = pi_core_id()*blockSize;

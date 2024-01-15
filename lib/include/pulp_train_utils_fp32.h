@@ -266,11 +266,15 @@ struct matMul_args {
  * @param input pointer to the input blob
  * @param weight pointer to the weight blob
  * @param output pointer to the output blob
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
 */
 struct kernel_DW_args {
   struct blob * input;
   struct blob * weights;
   struct blob * output;
+  int Hstride;
+  int Wstride;
 };
 
 /**

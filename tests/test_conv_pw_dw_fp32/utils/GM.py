@@ -20,6 +20,7 @@ Authors: Davide Nadalini, Leonardo Ravaglia
 
 
 from copy import deepcopy
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -38,6 +39,8 @@ parser.add_argument( '--ch_out_pw', type=int, default=8)
 parser.add_argument( '--step', default='DW_FORWARD') # options: // DW_FORWARD, DW_BACKWARD_GRAD, DW_BACKWARD_ERROR, PW_FORWARD, PW_BACKWARD_GRAD, PW_BACKWARD_ERROR,
 parser.add_argument( '--pad_h', type=int, default='0')
 parser.add_argument( '--pad_w', type=int, default='0')
+parser.add_argument( '--stride_h', type=int, default='0')
+parser.add_argument( '--stride_w', type=int, default='0')
 parser.add_argument( '--HWC_layout', type=int, default='0')
 
 args = parser.parse_args()
@@ -54,6 +57,8 @@ image_width = args.image_width
 image_height = args.image_height
 pad_h = args.pad_h
 pad_w = args.pad_w
+str_h = args.stride_h
+str_w = args.stride_w
 step = args.step
 HWC_lay = args.HWC_layout
 
@@ -68,6 +73,8 @@ f.write('#define Tin_H_l1 '+str(image_height)+'\n')
 f.write('#define Tout_C_l1 Tin_C_l1\n')
 f.write('#define Tpad_H_l1 '+str(pad_h)+'\n')
 f.write('#define Tpad_W_l1 '+str(pad_w)+'\n')
+f.write('#define Tstride_H_l1 '+str(str_h)+'\n')
+f.write('#define Tstride_W_l1 '+str(str_w)+'\n')
 f.write('// PointWise Convolution shapes\n')
 f.write('#define weight_init '+str(weight_init)+'\n')
 f.write('#define Tker_H_l2 1\n')
@@ -95,7 +102,7 @@ class myNet(nn.Module):
   def __init__(self):
     super().__init__()
     self.convDW0 = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=ker1,  stride = 1, groups=dw_channel)
-    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = 1, groups=dw_channel, padding=(pad_h, pad_w))
+    self.convDW = nn.Conv2d(in_channels=dw_channel, out_channels=dw_channel, kernel_size=(ker2_h, ker2_w),  stride = (str_h, str_w), groups=dw_channel, padding=(pad_h, pad_w))
     self.convPW = nn.Conv2d(dw_channel, pw_channel, 1, stride = 1)
 
   def forward(self, x):
@@ -308,7 +315,12 @@ else:
       for wi in range(input_w):
         inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
 
-label = torch.ones(1, pw_channel, input_h-(ker1-1)-(ker2_h-1), input_w-(ker1-1)-(ker2_w-1))
+h_size = input_h-(ker1-1)
+h_size = int(np.ceil((h_size-ker2_h+2*pad_h+str_h)/str_h))
+w_size = input_w-(ker1-1)
+w_size = int(np.ceil((w_size-ker2_w+2*pad_w+str_w)/str_w))
+
+label = torch.ones(1, pw_channel, h_size, w_size)
 
 # Prepare weight tensors for init
 print("Shape of DW kernel:")

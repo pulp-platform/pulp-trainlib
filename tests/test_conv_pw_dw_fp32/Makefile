@@ -2,8 +2,8 @@ APP = dw_pw_fp32
 
 # User settings
 # Depthwise
-IMAGE_W?=8
-IMAGE_H?=8
+IMAGE_W?=9
+IMAGE_H?=9
 DW_KER_W?=3
 DW_KER_H?=3
 DW_IN_CH?=8
@@ -14,8 +14,8 @@ LPAD?=0
 RPAD?=0
 UPAD?=0
 DPAD?=0
-HSTR?=1
-WSTR?=1
+HSTR?=1				# Stride (in H) for the DepthWise Conv
+WSTR?=1				# Stride (in W) for the DepthWise Conv
 # Others
 NUM_CORES?=1
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
@@ -61,7 +61,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_pw_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 
 get_golden:
-	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} --pad_h ${UPAD} --pad_w ${LPAD} --HWC_layout ${HWC_layout}
+	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} --pad_h ${UPAD} --pad_w ${LPAD} --stride_h ${HSTR} --stride_w ${WSTR} --HWC_layout ${HWC_layout}
 
 profile_all_optim:
 	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${DW_KER_W} --ker_height ${DW_KER_H} --ch_in_dw ${DW_IN_CH} --ch_out_pw ${PW_OUT_CH} 

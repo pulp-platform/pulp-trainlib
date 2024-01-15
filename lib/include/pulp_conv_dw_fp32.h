@@ -32,6 +32,8 @@
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
@@ -43,6 +45,8 @@ struct DepthWise_Conv_args {
 	int Rpad;
 	int Upad;
 	int Dpad;
+	int Hstride;
+	int Wstride;
 	int skip_in_grad;
 	int HWC;
 };
@@ -65,6 +69,8 @@ struct DepthWise_Conv_args {
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
  * @param HWC tells the DW Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
 void pulp_conv_dw_fp32_fw_cl( void * DepthWise_Conv_args );
@@ -81,6 +87,8 @@ void pulp_conv_dw_fp32_fw_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
@@ -95,6 +103,8 @@ void pulp_conv_dw_fp32_bw_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
  * @param HWC tells the DW Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
 void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args );
@@ -108,6 +118,8 @@ void pulp_conv_dw_fp32_bw_param_grads_cl( void * DepthWise_Conv_args );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param Hstride vertical stride
+ * @param Wstride horizontal stride
  * @param HWC tells the DW Convolution if the output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
 void pulp_conv_dw_fp32_bw_input_grads_cl( void * DepthWise_Conv_args );
