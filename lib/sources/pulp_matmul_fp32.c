@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp32.h"
 
 #include "pmsis.h"
+#include "math.h"
 
 
 /**
@@ -305,8 +306,8 @@ void dw_kernel_forward(void * kernel_DW_args) {
         {
           for (int wk=0; wk<pW; wk++)
           {
-            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
-            //temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo*Wstr+wk + (ho*Hstr+hk)*W_in + ch*H_in*W_in];
+            //temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
+            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo*Wstr+wk + (ho*Hstr+hk)*W_in + ch*H_in*W_in];
           }
         }
         outData[wo + ho*W_out + ch*H_out*W_out] = temp;

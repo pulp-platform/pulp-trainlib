@@ -14,10 +14,10 @@ LPAD?=0
 RPAD?=0
 UPAD?=0
 DPAD?=0
-HSTR?=1				# Stride (in H) for the DepthWise Conv
-WSTR?=1				# Stride (in W) for the DepthWise Conv
+HSTR?=2				# Stride (in H) for the DepthWise Conv
+WSTR?=2				# Stride (in W) for the DepthWise Conv
 # Others
-NUM_CORES?=1
+NUM_CORES?=8
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization

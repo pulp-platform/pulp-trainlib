@@ -125,6 +125,8 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
+  DW_args.Hstride = Tstride_H_l1;
+  DW_args.Wstride = Tstride_W_l1;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
 }
