@@ -353,7 +353,8 @@ void dw_kernel_weight_grad(void * kernel_DW_args) {
         {
           for (int wo=0; wo<W_out; wo++) 
           {
-            temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
+            //temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
+            temp += inData[wo*Wstr+wk + (ho*Hstr+hk)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
           }
         }
         coeffDiff[wk + hk*pW + ch*pH*pW] = temp;
