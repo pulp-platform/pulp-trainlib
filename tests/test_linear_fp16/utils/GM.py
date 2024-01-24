@@ -34,7 +34,7 @@ parser.add_argument( '--in_size', type=int, default=1024 )
 parser.add_argument( '--out_size', type=int, default=8 )
 parser.add_argument( '--file_name', type=str, default='linear-data.h')
 parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
-parser.add_argument( '--bf16_format', type=int, default=0) # if == 1, data needs to be bfloat16 (no fp16 on that target)
+parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data needs to be bfloat16 (no fp16 on that target)
 
 args = parser.parse_args()
 

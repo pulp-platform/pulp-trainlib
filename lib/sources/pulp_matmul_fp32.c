@@ -389,6 +389,8 @@ void dw_kernel_input_grad(void * kernel_DW_args) {
   uint32_t start = pi_core_id()*blockSize;
   uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
+  //printf("\nH_out = %d, W_out = %d\n", H_out, W_out);
+
   // STRIDE = 1
   if (Hstr == 1 && Wstr == 1) 
   {
@@ -421,39 +423,29 @@ void dw_kernel_input_grad(void * kernel_DW_args) {
   {
     for (int ch=0; ch<C_in; ch++) 
     {
-      // Stride
-      int dy_h = 0;
-      int dy_x = 0;
-      // End stride
       for (int hin=0; hin<H_in; hin++)
       {
-        //int ho = hin - pH + 1;
-        int ho = (hin - pH + Hstr)/Hstr;
+        int ho = (int) floor(((float) hin - (float) pH + (float) Hstr)/(float) Hstr);
+        printf("hin = %d, ho = %d\n", hin, ho);
         for (int win=0; win<W_in; win++) 
         {
-          //int wo = win - pW + 1;
-          int wo = (win - pW + Wstr)/Wstr;
+          int wo = (int) floor(((float) win - (float) pW + (float) Wstr)/(float) Wstr);
+          printf("\twin = %d, wo = %d\n", win, wo);
           float temp = 0;
           for (int hk=0; hk<pH; hk++)
           {
-            // Stride 
-            int hox = 0;
-            // End stride
             for (int wk=0; wk<pW; wk++)
             {
-              // Stride
-              int wox = 0;
-              // End stride
               if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
-                //temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out];
-
-                // Stride
-                if ( !(hk % (pH-1)) & !(wk % (pW-1)) )
-                  temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
-                  // The indices of outDiff should increment when this condition is triggered
-                else 
-                  temp += 0; 
-                // End Stride
+                int dil_cond = ((wo+wk) % Wstr) && ((ho+hk) % Hstr);
+                printf("\t\tdil_cond = %d\n", dil_cond);
+                if (dil_cond) 
+                {
+                  int h_idx = (ho + (float) hk/(float) Hstr);
+                  int w_idx = (wo + (float) wk/(float) Wstr);
+                  int out_idx = w_idx + h_idx*W_out + ch*H_out*W_out;
+                  temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[out_idx];
+                }
               }
             }
           }

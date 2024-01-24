@@ -2,8 +2,8 @@ APP = dw_pw_fp32
 
 # User settings
 # Depthwise
-IMAGE_W?=9
-IMAGE_H?=9
+IMAGE_W?=5
+IMAGE_H?=5
 DW_KER_W?=3
 DW_KER_H?=3
 DW_IN_CH?=8
@@ -14,10 +14,10 @@ LPAD?=0
 RPAD?=0
 UPAD?=0
 DPAD?=0
-HSTR?=1				# Stride (in H) for the DepthWise Conv
-WSTR?=1				# Stride (in W) for the DepthWise Conv
+HSTR?=2				# Stride (in H) for the DepthWise Conv
+WSTR?=2				# Stride (in W) for the DepthWise Conv
 # Others
-NUM_CORES?=8
+NUM_CORES?=1
 STEP?='DW_FORWARD' 	# Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization
