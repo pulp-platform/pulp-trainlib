@@ -419,17 +419,18 @@ void dw_kernel_input_grad(void * kernel_DW_args) {
   }
 
   // OTHER STRIDE
+  // Use this as reference: https://medium.com/@mayank.utexas/backpropagation-for-convolution-with-strides-8137e4fc2710
   else 
   {
     for (int ch=0; ch<C_in; ch++) 
     {
       for (int hin=0; hin<H_in; hin++)
       {
-        int ho = (int) floor(((float) hin - (float) pH + (float) Hstr)/(float) Hstr);
+        int ho = (int) floor(((float) hin - (float) pH + (float) Hstr)/(float) Hstr); // Check condition
         printf("hin = %d, ho = %d\n", hin, ho);
         for (int win=0; win<W_in; win++) 
         {
-          int wo = (int) floor(((float) win - (float) pW + (float) Wstr)/(float) Wstr);
+          int wo = (int) floor(((float) win - (float) pW + (float) Wstr)/(float) Wstr); // Check condition
           printf("\twin = %d, wo = %d\n", win, wo);
           float temp = 0;
           for (int hk=0; hk<pH; hk++)
@@ -437,12 +438,12 @@ void dw_kernel_input_grad(void * kernel_DW_args) {
             for (int wk=0; wk<pW; wk++)
             {
               if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
-                int dil_cond = ((wo+wk) % Wstr) && ((ho+hk) % Hstr);
+                int dil_cond = ((wo+wk) % Wstr) && ((ho+hk) % Hstr);  // Check condition
                 printf("\t\tdil_cond = %d\n", dil_cond);
                 if (dil_cond) 
                 {
-                  int h_idx = (ho + (float) hk/(float) Hstr);
-                  int w_idx = (wo + (float) wk/(float) Wstr);
+                  int h_idx = (ho + (float) hk/(float) Hstr); // Check condition
+                  int w_idx = (wo + (float) wk/(float) Wstr); // Check condition
                   int out_idx = w_idx + h_idx*W_out + ch*H_out*W_out;
                   temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[out_idx];
                 }
