@@ -56,23 +56,29 @@ if data_type == 'FP32':
     # Fake output tensor
     reluinput = torch.ones(in_c, in_h, in_w)
     softminput = torch.ones(in_c, in_h, in_w)
+    sigmoidinput = torch.ones(in_c, in_h, in_w)
     with torch.no_grad():
         for k in range(in_c):
             for i in range(in_w):
                 for j in range(in_h):
                     reluinput[k, i, j] += (i+j+k)*value
                     softminput[k, i, j] += (i+j+k)*value
+                    sigmoidinput[k, i, j] += (i+j+k)*value
     # Fake label
     relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
     softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
+    sigmoidlabel = torch.ones(in_c, int((in_h)), int((in_w)))
 
     print("relulabel:")
     print(relulabel.size())
     print("softmlabel:")
     print(softmlabel.size())
+    print("sigmoidlabel:")
+    print(sigmoidlabel.size())
 
     reluinput.requires_grad = True
     softminput.requires_grad = True
+    sigmoidinput.requires_grad = True
 
     # Loss function
     loss_fn = nn.MSELoss()
@@ -95,28 +101,43 @@ if data_type == 'FP32':
             out = self.softmax(x)
             #out = F.softmax(x, dim=0)
             return out
+        
+    class Sigmoid (nn.Module):
+        def __init__(self):
+            super(Sigmoid, self).__init__()
+            self.sigmoid = nn.Sigmoid()
+        def forward(self, x):
+            out = self.sigmoid(x)
+            return out
 
 
     relu = ReLU()
     softmax = SoftMax()
+    sigmoid = Sigmoid()
 
     # Compute the output and the backward of both
     reluout = relu(reluinput)
     softmout = softmax(softminput)
+    sigmoidout = sigmoid(sigmoidinput)
 
     reluout.retain_grad()
     softmout.retain_grad()
+    sigmoidout.retain_grad()
 
     print("reluout: ")
     print(reluout.size())
     print("softmout: ")
     print(softmout.size())
+    print("sigmoidout: ")
+    print(sigmoidout.size())
 
     reluloss = loss_fn(reluout, relulabel)
     softmloss = loss_fn(softmout, softmlabel)
+    sigmoidloss = loss_fn(sigmoidout, sigmoidlabel)
 
     reluloss.backward()
     softmloss.backward()
+    sigmoidloss.backward()
 
     print("\n*** RELU DATA ***")
     print("ReLU out is:")
@@ -133,6 +154,14 @@ if data_type == 'FP32':
     print(softmout.grad)
     print("SoftMax in grad is:")
     print(softminput.grad)
+
+    print("\n*** SIGMOID DATA ***")
+    print("Sigmoid out is:")
+    print(sigmoidout)
+    print("Sigmoid out grad is:")
+    print(sigmoidout.grad)
+    print("Sigmoid in grad is:")
+    print(sigmoidinput.grad)
 
     # Write setup to file
     f = open("init_defines.h", "w")
@@ -167,6 +196,13 @@ if data_type == 'FP32':
     f.write("PI_L2 float SOFTMIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(softminput.grad)+"};\n")
     f.write("PI_L1 float SOFTMLABEL[OUT_SIZE] = {"+dump.tensor_to_string(softmlabel)+"};\n")
 
+    f.write("PI_L2 float SIGMOIDLOSS = {"+str(sigmoidloss.data.item())+"};\n")
+    f.write("PI_L2 float SIGMOIDOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidout)+"};\n")
+    f.write("PI_L2 float SIGMOIDOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidout.grad)+"};\n")
+    f.write("PI_L1 float SIGMOIDIN[IN_SIZE] = {"+dump.tensor_to_string(sigmoidinput)+"};\n")
+    f.write("PI_L2 float SIGMOIDIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(sigmoidinput.grad)+"};\n")
+    f.write("PI_L1 float SIGMOIDLABEL[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidlabel)+"};\n")
+
     f.close()
 
 
@@ -180,23 +216,29 @@ if data_type == 'FP16':
     # Fake output tensor
     reluinput = torch.ones(in_c, in_h, in_w)
     softminput = torch.ones(in_c, in_h, in_w)
+    sigmoidinput = torch.ones(in_c, in_h, in_w)
     with torch.no_grad():
         for k in range(in_c):
             for i in range(in_w):
                 for j in range(in_h):
                     reluinput[k, i, j] += (i+j+k)*value
                     softminput[k, i, j] += (i+j+k)*value
+                    sigmoidinput[k, i, j] += (i+j+k)*value
     # Fake label
     relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
     softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
+    sigmoidlabel = torch.ones(in_c, int((in_h)), int((in_w)))
 
     print("relulabel:")
     print(relulabel.size())
     print("softmlabel:")
     print(softmlabel.size())
+    print("sigmoidlabel:")
+    print(sigmoidlabel.size())
 
     reluinput.requires_grad = True
     softminput.requires_grad = True
+    sigmoidinput.requires_grad = True
 
     # Loss function
     loss_fn = nn.MSELoss()
@@ -219,28 +261,43 @@ if data_type == 'FP16':
             out = self.softmax(x)
             #out = F.softmax(x, dim=0)
             return out
+        
+    class Sigmoid (nn.Module):
+        def __init__(self):
+            super(Sigmoid, self).__init__()
+            self.sigmoid = nn.Sigmoid()
+        def forward(self, x):
+            out = self.sigmoid(x)
+            return out
 
 
     relu = ReLU()
     softmax = SoftMax()
+    sigmoid = Sigmoid()
 
     # Compute the output and the backward of both
     reluout = relu(reluinput)
     softmout = softmax(softminput)
+    sigmoidout = sigmoid(sigmoidinput)
 
     reluout.retain_grad()
     softmout.retain_grad()
+    sigmoidout.retain_grad()
 
     print("reluout: ")
     print(reluout.size())
     print("softmout: ")
     print(softmout.size())
+    print("sigmoidout: ")
+    print(sigmoidout.size())
 
     reluloss = loss_fn(reluout, relulabel)
     softmloss = loss_fn(softmout, softmlabel)
+    sigmoidloss = loss_fn(sigmoidout, sigmoidlabel)
 
     reluloss.backward()
     softmloss.backward()
+    sigmoidloss.backward()
 
     print("\n*** RELU DATA ***")
     print("ReLU out is:")
@@ -257,6 +314,14 @@ if data_type == 'FP16':
     print(softmout.grad)
     print("SoftMax in grad is:")
     print(softminput.grad)
+
+    print("\n*** SIGMOID DATA ***")
+    print("Sigmoid out is:")
+    print(sigmoidout)
+    print("Sigmoid out grad is:")
+    print(sigmoidout.grad)
+    print("Sigmoid in grad is:")
+    print(sigmoidinput.grad)
 
     # Write setup to file
     f = open("init_defines.h", "w")
@@ -290,5 +355,12 @@ if data_type == 'FP16':
     f.write("PI_L1 fp16 SOFTMIN[IN_SIZE] = {"+dump.tensor_to_string(softminput.half())+"};\n")
     f.write("PI_L2 fp16 SOFTMIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(softminput.grad.half())+"};\n")
     f.write("PI_L1 fp16 SOFTMLABEL[OUT_SIZE] = {"+dump.tensor_to_string(softmlabel.half())+"};\n")
+
+    f.write("PI_L2 fp16 SIGMOIDLOSS = {"+str(sigmoidloss.data.item())+"};\n")
+    f.write("PI_L2 fp16 SIGMOIDOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidout.half())+"};\n")
+    f.write("PI_L2 fp16 SIGMOIDOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidout.grad.half())+"};\n")
+    f.write("PI_L1 fp16 SIGMOIDIN[IN_SIZE] = {"+dump.tensor_to_string(sigmoidinput.half())+"};\n")
+    f.write("PI_L2 fp16 SIGMOIDIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(sigmoidinput.grad.half())+"};\n")
+    f.write("PI_L1 fp16 SIGMOIDLABEL[OUT_SIZE] = {"+dump.tensor_to_string(sigmoidlabel.half())+"};\n")
 
     f.close()

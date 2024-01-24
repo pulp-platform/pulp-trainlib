@@ -38,6 +38,35 @@ struct act_args_fp16 {
  * Activation functions, both FW and BW
  **/
 
+
+/**
+ * @brief Forward pass function. Configure and pass a act_args_fp16 structure pointer as argument.
+ * @param input Input for sigmoid.
+ * @param output Output of sigmoid.
+*/
+void pulp_sigmoid_fp16_fw_cl( void * act_args );
+
+/**
+ * @brief Backward pass function.
+ * @param input Input for sigmoid.
+ * @param output Output of sigmoid.
+*/
+void pulp_sigmoid_fp16_bw_cl( void * act_args );
+
+/**
+ * @brief Core function to implement the forward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_fw_fp16, &args)).
+ * @param act_args Input and output data (data only will be used)
+*/
+void sigmoid_core_fw_fp16( void * act_args );
+
+/**
+ * @brief Core function to implement the backward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_bw_fp16, &args)).
+ * @param act_args Input and output data (gradients only will be used)
+*/
+void sigmoid_core_bw_fp16( void * act_args );
+
+
+
 /**
  * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.
  * @param input Input for relu.

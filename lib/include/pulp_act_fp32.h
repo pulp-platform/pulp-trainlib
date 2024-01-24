@@ -57,6 +57,35 @@ struct softmax_args{
  * Activation functions, both FW and BW
  **/
 
+
+/**
+ * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.
+ * @param input Input for sigmoid.
+ * @param output Output of sigmoid.
+*/
+void pulp_sigmoid_fp32_fw_cl( void * act_args );
+
+/**
+ * @brief Backward pass function.
+ * @param input Input for sigmoid.
+ * @param output Output of sigmoid.
+*/
+void pulp_sigmoid_fp32_bw_cl( void * act_args );
+
+/**
+ * @brief Core function to implement the forward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_fw_fp32, &args)).
+ * @param act_args Input and output data (data only will be used)
+*/
+void sigmoid_core_fw_fp32( void * act_args );
+
+/**
+ * @brief Core function to implement the backward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_bw_fp32, &args)).
+ * @param act_args Input and output data (gradients only will be used)
+*/
+void sigmoid_core_bw_fp32( void * act_args );
+
+
+
 /**
  * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.
  * @param input Input for relu.
@@ -65,7 +94,7 @@ struct softmax_args{
 void pulp_relu_fp32_fw_cl( void * act_args );
 
 /**
- * @brief Bakcward pass function.
+ * @brief Backward pass function.
  * @param input Input for relu.
  * @param output Output of relu.
 */
