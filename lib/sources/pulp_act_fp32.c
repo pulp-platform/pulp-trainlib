@@ -109,51 +109,47 @@ void pulp_relu_fp32_bw_cl( void * act_args )
 
 void pulp_softmax_fp32_fw_cl( void * act_args )
 {
-  struct act_args * args = (struct act_args *) act_args;
+  struct softmax_args * args = (struct softmax_args *) act_args;
 
   int dim = args->input->dim;
   float* inData = args->input->data;
   float* outData = args->output->data;
 
-  float sum = 0.0f;
-  float max = 0.0f;
-  float maxes[NUM_CORES] = {0.0f};
-  float sums[NUM_CORES] = {0.0f};
+  float* maxes = args->maxes;
+  float* sums = args->sums;
+
+  for(int i=0; i<dim; i++){
+    maxes[i] = -340282346638528859811704183484516925440.0f;
+    sums[i] = 0.0f;
+  }
 
   struct max_args m_args;
   m_args.input = inData;
   m_args.maxes = maxes;
   m_args.dim = dim;
 
-  pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &m_args);
-
-  for(int i=0; i<NUM_CORES; i++)
-    if(max < maxes[i])
-      max = maxes[i];
+  pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &m_args);
   
   struct exp_sum_args e_s_args;
   e_s_args.input = inData;
   e_s_args.sums = sums;
   e_s_args.output = outData;
   e_s_args.dim = dim;
-  e_s_args.max = max;
+  e_s_args.maxes = maxes;
   
   pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &e_s_args);
 
-  for(int i=0; i<NUM_CORES; i++){
-    sum += sums[i];
-  }
 
-  struct div_args d_args;
-  d_args.input = outData;
-  d_args.n = sum;
-  d_args.dim = dim;
+  struct row_div_args r_d_args;
+  r_d_args.input = outData;
+  r_d_args.sums = sums;
+  r_d_args.dim = dim;
 
-  pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &d_args);
+  pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
 
   #ifdef DEBUG
     if(pi_core_id()==0){
-        int L = sqrt(dim);
+        int L = dim;
         printf("\nCurrent softmax output: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%((int)L))) printf("\n");
@@ -207,8 +203,6 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
   r_d_args.dim2 = dim2;
 
   pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
-
-
 }
 
 void pulp_softmax_fp32_bw_cl( void * act_args )

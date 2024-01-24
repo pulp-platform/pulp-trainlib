@@ -152,10 +152,13 @@ print("------------Input sequence------------")
 f = open("input-sequence.h", "w")
 f.write("#define INPUT_SIZE "+str(inp.numel())+'\n')
 print(inp)
+
+inp_copy = torch.transpose(inp, -1, -2)
+
 if current_step=='FORWARD':
-  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp_copy)+'};\n')
 else:
-  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp_copy)+'};\n')
 f.close()
 
 
@@ -175,7 +178,7 @@ with torch.no_grad():
     net.mhsa.proj_in.weight.data = deepcopy(in_wgt_init_tensor)
     #net.rnn.bias_ih_l0[:] = 0.0
 
-in_wgt_init_tensor = torch.transpose(in_wgt_init_tensor, 0, 1)
+#in_wgt_init_tensor = torch.transpose(in_wgt_init_tensor, 0, 1)
 
 # Print input weights to init file
 f = open("init-defines.h", 'a')
@@ -200,7 +203,7 @@ with torch.no_grad():
     net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
 
 
-#output_proj_wgt_init_tensor = torch.transpose(output_proj_wgt_init_tensor, 0, 1)
+output_proj_wgt_init_tensor = torch.transpose(output_proj_wgt_init_tensor, 0, 1)
 
 # Print input weights to init file
 f = open("init-defines.h", 'a')
@@ -217,9 +220,11 @@ print(label.size())
 print(out)
 loss = criterion(out, label)
 
+out_copy = torch.transpose(out, -1, -2)
+
 f = open("mhsa-output.h", "w")
 f.write('#define OUTPUT_SIZE '+str(out.numel())+'\n')
-f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(out)+'};\n')
+f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(out_copy)+'};\n')
 f.close()
 
 
