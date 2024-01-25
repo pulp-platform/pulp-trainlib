@@ -353,6 +353,7 @@ void pulp_row_max_fp32_cl(void * void_args){
     input = input + start * dim;
 
     for(int i=start; i<stop; i++){
+        max[i] = -340282346638528859811704183484516925440.0f;
         for(int j=0; j<dim; j++){
             if(max[i] < *input)
                 max[i] = *input;
@@ -377,9 +378,13 @@ void pulp_shift_sum_fp32_cl(void* void_args){
     int row = 0;
 
     for(int i=start; i<stop; i++){
+        sums[i] = 0;
         row = i * dim;
         for(int j=0; j<dim; j++){
             float o = threshold(maxes[i] - input[row + j]);
+            /*float o = 1.0f - 0.5f *(maxes[i] - input[row + j]);
+            if(o < 0.0f)
+                o = 0.0f;*/
             output[row + j] = o;
             sums[i] += o;    
         }   
@@ -427,9 +432,10 @@ void pulp_exp_sum_fp32_cl(void* void_args){
     output += start * dim;
 
     for(int i=start; i<stop; i++){
+        sums[i] = 0;
         for(int j=0; j<dim; j++){
-            //float o = fastexp_gist(*input - maxes[i]);
-            float o = expf(*input - maxes[i]);
+            float o = fastexp_gist(*input - maxes[i]);
+            //float o = expf(*input - maxes[i]);
             *output = o;
             sums[i] += o;
             input++;

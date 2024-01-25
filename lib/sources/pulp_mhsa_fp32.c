@@ -25,7 +25,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     float *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
     float *inputData = mhsa_args->input->data;                  //  Input vector (Transposed, E x L)
     float *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
-    float *head_buffer = mhsa_args->head_buffer->data;          //  Buffer containing the Q*Kt result (necessary to save for backward pass)
+    //float *head_buffer = mhsa_args->head_buffer->data;        //  Buffer containing the Q*Kt result (necessary to save for backward pass)
     float *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
     float *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
     float *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
@@ -107,12 +107,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     */
 
+
+
     //  Cycle on the different heads
     for(int i = 0; i < n_heads; i++){
+        /*
         //  Initialize the pointers to the correct starting positions for the i-th head
         float* current_head_buffer = head_buffer + i*L*L;
         float* current_softmax_buffer = softmax_buffer + i*L*L;
-        
+        */
+
         //  Transpose i-th head's K chunk
         struct transp_args transp_args2;
         transp_args2.matrix = k + L*i*H;
@@ -126,7 +130,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         struct matMul_args matMul_args2;
         matMul_args2.A = temp;
         matMul_args2.B = q + L*i*H;
-        matMul_args2.C = current_head_buffer;
+        matMul_args2.C = softmax_buffer;
         matMul_args2.N = L;
         matMul_args2.K = H;
         matMul_args2.M = L;
@@ -145,7 +149,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 
         //  Scale the current head values by a factor proportional to the head dimension
         struct scalar_mul_args s_m_args;
-        s_m_args.input = current_head_buffer;
+        s_m_args.input = softmax_buffer;
         s_m_args.scalar = scaling;
         s_m_args.dim = L*L;
 
@@ -155,7 +159,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         printf("\nCurrent head buffer Data: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", current_head_buffer[j]);
+            printf("%.8f ", softmax_buffer[j]);
         }
         printf("\n");
         #endif
@@ -164,27 +168,29 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
         struct transp_args transp_args4;
-        transp_args4.matrix = current_head_buffer;
+        transp_args4.matrix = softmax_buffer;
         transp_args4.transp_matrix = temp;
         transp_args4.N = L;
         transp_args4.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args4);
 
+        /*
         struct copy_args copy_args3;
         copy_args3.from = temp;
         copy_args3.to = current_head_buffer;
         copy_args3.size = L*L;
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
+        */
 
         //  Softmax algorithm
         struct softmax_args softmax_arg;
         struct blob input;
         struct blob output;
-        input.data = current_head_buffer;
+        input.data = temp;
         input.dim = L;
-        output.data = current_softmax_buffer;
+        output.data = softmax_buffer;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
         softmax_arg.maxes = maxes;
@@ -214,24 +220,26 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
         struct transp_args transp_args5;
-        transp_args5.matrix = current_softmax_buffer;
+        transp_args5.matrix = softmax_buffer;
         transp_args5.transp_matrix = temp;
         transp_args5.N = L;
         transp_args5.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args5);
 
+        /*
         struct copy_args copy_args4;
         copy_args4.from = temp;
         copy_args4.to = current_softmax_buffer;
         copy_args4.size = L*L;
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args4);
+        */
 
         //  Multiply softmax result with the i-th head's Vt chunk
         struct matMul_args matMul_args3;
         matMul_args3.A = v + L*i*H;
-        matMul_args3.B = current_softmax_buffer;
+        matMul_args3.B = temp;
         matMul_args3.C = attention_map + L*i*H;
         matMul_args3.N = H;
         matMul_args3.K = L;
