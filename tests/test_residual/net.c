@@ -52,21 +52,31 @@ void forward()
 
     #ifdef FLOAT32 
     pulp_conv2d_fp32_fw_cl(&conv1_args);
+        #ifdef PROF_NET
+        START_STATS();
+        #endif
     pulp_residualconn_fp32_fw(&residual_args);
+        #ifdef PROF_NET
+        STOP_STATS();
+        #endif
     pulp_relu_fp32_fw_cl(&relu_args);
     pulp_MSELoss(&loss_args);
     
     #else //FLOAT16
     pulp_conv2d_fp16_fw_cl(&conv1_args);
+        #ifdef PROF_NET
+        START_STATS();
+        #endif
     pulp_residualconn_fp16_fw(&residual_args);
+        #ifdef PROF_NET
+        STOP_STATS();
+        #endif
     pulp_relu_fp16_fw_cl(&relu_args);
     pulp_MSELoss_fp16(&loss_args);
     #endif
 
     #ifdef FORWARD
-    #ifdef PROF_NET
-    STOP_STATS();
-    #endif
+
     #endif
 
     calculated_loss = *(loss_args.wr_loss); 
@@ -96,20 +106,42 @@ void backward()
  
     #ifdef FLOAT32
     pulp_relu_fp32_bw_cl(&relu_args);
+        #ifdef PROF_NET
+        START_STATS();
+        #endif
     pulp_residualconn_fp32_bw(&residual_args);
+        #ifdef PROF_NET
+        pi_perf_stop();
+        #endif
     pulp_conv2d_fp32_bw_input_grads_cl(&conv1_args);
+        #ifdef PROF_NET
+        pi_perf_start();
+        #endif
     pulp_sumnode_fp32_bw(&residual_args);
+        #ifdef PROF_NET
+        STOP_STATS();
+        #endif
 
     #else //FLOAT16
     pulp_relu_fp16_bw_cl(&relu_args);
+        #ifdef PROF_NET
+        START_STATS();
+        #endif
     pulp_residualconn_fp16_bw(&residual_args);
+        #ifdef PROF_NET
+        pi_perf_stop();
+        #endif
     pulp_conv2d_fp16_bw_input_grads_cl(&conv1_args);
+        #ifdef PROF_NET
+        pi_perf_start();
+        #endif
     pulp_sumnode_fp16_bw(&residual_args);   
+        #ifdef PROF_NET
+        STOP_STATS();
+        #endif
     #endif
 
-    #ifdef PROF_NET
-    STOP_STATS();
-    #endif
+
 
     #ifdef DEBUG
     printf("Relu Gradient:\n");
@@ -158,16 +190,14 @@ void net_step()
     prepare_data();
 
     #ifdef BACKWARD
+    printf("Forward Computation....\n");
     forward();
-    #endif
-
-    #ifdef PROF_NET
-    START_STATS();
     #endif
 
     #ifdef FORWARD
     forward();
     #else
+    printf("Backward step's STATS:\n");
     backward();
     #endif
 

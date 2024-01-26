@@ -624,6 +624,8 @@ static inline void train(){
 
   #ifdef PROF_DW_FWD
   STOP_STATS();
+  int MACs = Tout_H_l1*Tout_W_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
   #endif
 
   #ifdef PROF_PW_FWD
@@ -637,6 +639,8 @@ static inline void train(){
 
   #ifdef PROF_PW_FWD
   STOP_STATS();
+  int MACs = Tout_H_l2*Tout_W_l2*Tin_C_l2*Tout_C_l2;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
   #endif
 
   #ifdef PROF_PW_BKWD
@@ -654,6 +658,13 @@ static inline void train(){
 
   #ifdef PROF_PW_BKWD
   STOP_STATS();
+  #ifdef PW_BACKWARD_GRAD
+  int MACs = Tout_H_l2*Tout_W_l2*Tin_C_l2*Tout_C_l2;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
+  #elif defined(PW_BACKWARD_ERROR)
+  int MACs = Tin_H_l2*Tin_W_l2*Tin_C_l2*Tout_C_l2;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
+  #endif
   #endif
 
   #ifdef PROF_DW_BKWD
@@ -672,6 +683,13 @@ static inline void train(){
 
   #ifdef PROF_DW_BKWD
   STOP_STATS();
+  #ifdef DW_BACKWARD_GRAD
+  int MACs = Tout_H_l1*Tout_W_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
+  #elif defined(DW_BACKWARD_ERROR)
+  int MACs = Tin_H_l1*Tin_W_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1;
+  printf("MAC/clk = %f\n", (float) MACs/_cycles);
+  #endif
   #endif
 
 

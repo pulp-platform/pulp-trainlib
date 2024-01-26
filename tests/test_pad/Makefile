@@ -2,9 +2,9 @@ APP = padder
 
 # User code
 NUM_CORES?=8
-CH_IN?=2
-H_IN?=3
-W_IN?=3
+CH_IN?=16
+H_IN?=16
+W_IN?=16
 LPAD?=1
 RPAD?=1
 UPAD?=1
