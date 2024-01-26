@@ -118,11 +118,6 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
   float* maxes = args->maxes;
   float* sums = args->sums;
 
-  for(int i=0; i<dim; i++){
-    maxes[i] = -340282346638528859811704183484516925440.0f;
-    sums[i] = 0.0f;
-  }
-
   struct max_args m_args;
   m_args.input = inData;
   m_args.maxes = maxes;
@@ -171,11 +166,6 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
 
   float* maxes = args->maxes;
   float* sums = args->sums;
-
-  for(int i=0; i<dim; i++){
-    maxes[i] = -340282346638528859811704183484516925440.0f;
-    sums[i] = 0.0f;
-  }
 
   struct max_args m_args;
   m_args.input = inData;

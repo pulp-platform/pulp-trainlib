@@ -203,7 +203,7 @@ with torch.no_grad():
     net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
 
 
-output_proj_wgt_init_tensor = torch.transpose(output_proj_wgt_init_tensor, 0, 1)
+#output_proj_wgt_init_tensor = torch.transpose(output_proj_wgt_init_tensor, 0, 1)
 
 # Print input weights to init file
 f = open("init-defines.h", 'a')

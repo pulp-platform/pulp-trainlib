@@ -135,7 +135,7 @@ void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
   m_args.maxes = maxes;
   m_args.dim = dim;
 
-  pi_cl_team_fork(NUM_CORES, pulp_max_fp16_cl, &m_args);
+  pi_cl_team_fork(NUM_CORES, pulp_row_max_fp16_cl, &m_args);
 
   for(int i=0; i<NUM_CORES; i++)
     if(max < maxes[i])
@@ -154,12 +154,12 @@ void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
     sum += sums[i];
   }
 
-  struct div_args_fp16 d_args;
+  struct row_div_args_fp16 d_args;
   d_args.input = outData;
   d_args.n = sum;
   d_args.dim = dim;
 
-  pi_cl_team_fork(NUM_CORES, pulp_div_fp16_cl, &d_args);
+  pi_cl_team_fork(NUM_CORES, pulp_row_div_fp16_cl, &d_args);
 }
 
 void pulp_softmax_fp16_bw_cl( void * act_args_fp16 )

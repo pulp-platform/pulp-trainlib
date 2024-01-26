@@ -15,7 +15,7 @@
 #include "pulp_act_fp16.h"
 #include <math.h>
 
-
+/*
 //FORWARD
 void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
@@ -159,6 +159,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         for(int j = 0; j < (L*L); j++)
             current_head_buffer[j] = current_head_buffer[j]*scaling;
         */
+/*
         struct act_args_fp16 softmax_arg;
         struct blob_fp16 input;
         struct blob_fp16 output;
@@ -245,6 +246,301 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     for (int j=0; j<L*E; j++){
         if(!(j%(L))) printf("\n");
         printf("%.8f ", outData[j]);
+    }
+    printf("\n");
+    #endif
+}
+*/
+
+//FORWARD
+void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
+    struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+    fp16 *coeffDataWin = mhsa_args->coeff_in->data;             //  Input Projection Weights
+    fp16 *coeffDataWout = mhsa_args->coeff_out->data;           //  Output Projection Weights (Already transposed from GM)
+    fp16 *attention_map = mhsa_args->attention_map->data;       //  Buffer saving the MHSA map before output projection
+    fp16 *outData = mhsa_args->output->data;                    //  Output sequence (Transposed, E x L)
+    fp16 *inputData = mhsa_args->input->data;                   //  Input vector (Transposed, E x L)
+    fp16 *temp = mhsa_args->temp_buffer;                        //  Support buffer used in the attention head loop
+    //float *head_buffer = mhsa_args->head_buffer->data;        //  Buffer containing the Q*Kt result (necessary to save for backward pass)
+    fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;     //  Buffer containing the softmax results (necessary to save for backward pass)
+    fp16 *maxes = mhsa_args->maxes;                             //  Buffer containing the row-wise maxes in the softmax process
+    fp16 *sums = mhsa_args->sums;                               //  Buffer containing the row-wise exponential sums in the softmax process
+    fp16 *qkv = mhsa_args->qkv->data;                           //  Matrix containing the transposed Q, K and V (3*F x L)
+    fp16 *q = mhsa_args->qkv->data;                             //  Pointer to the first element of Q
+    fp16 *k = mhsa_args->qkv->data;                             //  Pointer to the first element of K 
+    fp16 *v = mhsa_args->qkv->data;                             //  Pointer to the first element of V
+    int n_heads = mhsa_args->n_heads;                           //  Number of heads used for MHSA
+
+    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
+
+    int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
+    int E = mhsa_args->input->W;                                //  Input Sequence element size
+    int F = mhsa_args->attention_map->W;                        //  Hidden dimension of attention (N. Heads * Head dimension)
+
+    #ifdef DEBUG
+    printf("\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
+    #endif
+
+    int H = F / n_heads;                                        //  Head dimension
+    fp16 scaling = 1/sqrt(H);                                   //  Scaling factor to avoid vanishing gradients
+
+    // Projecting input sequence into Q, K, V
+    struct matMul_args_fp16 matMul_args1;
+    matMul_args1.A = coeffDataWin;                              //  3F x E
+    matMul_args1.B = inputData;                                 //  E x L 
+    matMul_args1.C = qkv;                                       //  Q, K, V are saved contiguously, in the same matrix. 
+                                                                //  It is transposed so that the elements of the same head are contiguous in memory. 
+    matMul_args1.N = 3*F;                                       
+    matMul_args1.K = E;
+    matMul_args1.M = L;
+    matMul_args1.trans_B = 0;
+
+    #ifdef DEBUG
+    printf("\ninputData: %d %d\n", E, L);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args1.A[j]);
+    }
+    printf("\n");
+
+    printf("\nWin: %d %d\n", 3*F, E);
+    for (int j=0; j<E*3*F; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  matMul_args1.B[j]);
+    }
+    printf("\n");
+    #endif
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args1);
+    #else
+    struct mm_manager_args_fp16 man_args1;
+    man_args1.mm_args = &matMul_args1;
+    man_args1.layer_type = LAYER_LINEAR;
+    man_args1.step_type = STEP_FW;
+    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nQKV Data: %d %d\n", 3*F, L);
+    for (int j=0; j<L*3*F; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args1.C[j]);
+    }
+    printf("\n");
+    #endif
+
+    // Separate Q, K and V entry points in the QKV matrix. Q, K and V are F x L vectors.
+    q = qkv;
+    k = qkv + L*F;
+    v = qkv + L*2*F;
+
+    /*
+    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    unsigned long _cycles = 0; 
+    int id = 0;
+    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    */
+
+
+
+    //  Cycle on the different heads
+    for(int i = 0; i < n_heads; i++){
+        /*
+        //  Initialize the pointers to the correct starting positions for the i-th head
+        float* current_head_buffer = head_buffer + i*L*L;
+        float* current_softmax_buffer = softmax_buffer + i*L*L;
+        */
+
+        //  Transpose i-th head's K chunk
+        struct transp_args_fp16 transp_args2;
+        transp_args2.matrix = k + L*i*H;
+        transp_args2.transp_matrix = temp;
+        transp_args2.N = H;
+        transp_args2.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
+
+        //  Multiply it with the i-th head's Q chunk
+        struct matMul_args_fp16 matMul_args2;
+        matMul_args2.A = temp;
+        matMul_args2.B = q + L*i*H;
+        matMul_args2.C = softmax_buffer;
+        matMul_args2.N = L;
+        matMul_args2.K = H;
+        matMul_args2.M = L;
+        matMul_args2.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args2);
+        #else
+        struct mm_manager_args man_args2;
+        man_args2.mm_args = &matMul_args2;
+        man_args2.layer_type = LAYER_LINEAR;
+        man_args2.step_type = STEP_FW;
+        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
+        #endif
+
+        //  Scale the current head values by a factor proportional to the head dimension
+        struct scalar_mul_args_fp16 s_m_args;
+        s_m_args.input = softmax_buffer;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp16_cl, &s_m_args);
+
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", softmax_buffer[j]);
+        }
+        printf("\n");
+        #endif
+
+        //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+        //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+        //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+        struct transp_args_fp16 transp_args4;
+        transp_args4.matrix = softmax_buffer;
+        transp_args4.transp_matrix = temp;
+        transp_args4.N = L;
+        transp_args4.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
+
+        /*
+        struct copy_args copy_args3;
+        copy_args3.from = temp;
+        copy_args3.to = current_head_buffer;
+        copy_args3.size = L*L;
+
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
+        */
+
+        //  Softmax algorithm
+        struct softmax_args_fp16 softmax_arg;
+        struct blob input;
+        struct blob output;
+        input.data = temp;
+        input.dim = L;
+        output.data = softmax_buffer;
+        softmax_arg.input = &input;
+        softmax_arg.output = &output;
+        softmax_arg.maxes = maxes;
+        softmax_arg.sums = sums;
+
+        /*
+        ///------------------------------------------------------------------///
+        //printf("\nSoftmax stats\n");
+        pi_perf_conf((1<<PI_PERF_CYCLES)); 
+
+
+        pi_perf_stop();
+        pi_perf_reset(); 
+        pi_perf_start();
+        */
+
+        pulp_softmax_fp16_fw_cl(&softmax_arg);
+        //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
+
+        /*
+        pi_perf_stop(); 
+        _cycles   += pi_perf_read (PI_PERF_CYCLES); 
+        id = pi_core_id(); 
+        ///----------------------------------------------------------------///
+        */
+
+        //  Each head result has to be appended to the full attention map, to do so we require to store the current
+        //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+        struct transp_args_fp16 transp_args5;
+        transp_args5.matrix = softmax_buffer;
+        transp_args5.transp_matrix = temp;
+        transp_args5.N = L;
+        transp_args5.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args5);
+
+        /*
+        struct copy_args copy_args4;
+        copy_args4.from = temp;
+        copy_args4.to = current_softmax_buffer;
+        copy_args4.size = L*L;
+
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args4);
+        */
+
+        //  Multiply softmax result with the i-th head's Vt chunk
+        struct matMul_args_fp16 matMul_args3;
+        matMul_args3.A = v + L*i*H;
+        matMul_args3.B = temp;
+        matMul_args3.C = attention_map + L*i*H;
+        matMul_args3.N = H;
+        matMul_args3.K = L;
+        matMul_args3.M = L;
+        matMul_args3.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args3);
+        #else
+        struct mm_manager_args_fp16 man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
+        #endif
+    }
+
+    #ifdef DEBUG
+    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
+    for (int j=0; j<n_heads; j++){
+        printf("\n\n");
+        for(int i=0; i<L*L; i++){
+            if(!(i%L))
+                printf("\n");
+            printf("%.8f ", softmax_buffer[j*L*L+i]);
+        }
+        
+    }
+    printf("\n");
+    #endif
+
+    /*
+    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    printf("\n"); 
+    printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
+    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
+    */
+
+    //  Final attention map projection
+    struct matMul_args_fp16 matMul_args4;
+    matMul_args4.A = coeffDataWout;
+    matMul_args4.B = attention_map;
+    matMul_args4.C = outData;
+    matMul_args4.N = E;
+    matMul_args4.K = F;
+    matMul_args4.M = L;
+    matMul_args4.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args4);
+    #else
+    struct mm_manager_args_fp16 man_args4;
+    man_args4.mm_args = &matMul_args4;
+    man_args4.layer_type = LAYER_LINEAR;
+    man_args4.step_type = STEP_FW;
+    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nTransposed Output sequence Data: %d %d\n", E, L);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args4.C[j]);
     }
     printf("\n");
     #endif
