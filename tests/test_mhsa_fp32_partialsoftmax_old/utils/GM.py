@@ -24,7 +24,7 @@ import argparse
 import dump_utils as dump
 import numpy as np  # Matrix and vector computation package
 import random
-import mhsa
+import mhsa_partial_softmax as mhsa
 
 # Set the seed for reproducability
 np.random.seed(seed=1) # <----- Sneed

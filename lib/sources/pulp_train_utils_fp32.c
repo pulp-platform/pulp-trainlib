@@ -319,20 +319,101 @@ void pulp_max_fp32_cl(void * void_args){
     args->maxes[pi_core_id()] = max;
 }
 
+float threshold(float x){
+  /*
+  float log2 = 0.6931471805599453f;
+  float log2_2 = 0.4804530139182014f;
+  float log2_3 = 0.3330246519889294f;
+  float log2_4 = 0.2308350985830834f;
+  float log2_5 = 0.1600026977571413f;
+  */
+
+  if(x >= 3.14f)
+    return 0.0f;
+
+  float x_2 = x*x;
+  float x_3 = x*x*x;
+  float x_4 = x*x*x*x;
+  float x_5 = x*x*x*x*x;
+
+  return (T1 - LOG2 * x + T2 * x_2 * LOG2_2 - T3 * x_3 * LOG2_3 + T4 * x_4 * LOG2_4 - T5 * x_5 * LOG2_5);
+}
+
+void pulp_row_max_fp32_cl(void * void_args){
+    struct max_args* args = (struct max_args *) void_args;
+
+    float* input = args->input;
+    int dim = args->dim; // L
+    float* max = args->maxes;
+    
+    const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    input = input + start * dim;
+
+    for(int i=start; i<stop; i++){
+        max[i] = -340282346638528859811704183484516925440.0f;
+        for(int j=0; j<dim; j++){
+            if(max[i] < *input)
+                max[i] = *input;
+            input++;    
+        }    
+    }
+}
+
+void pulp_shift_sum_fp32_cl(void* void_args){
+    struct shift_sum_args* args = (struct shift_sum_args *) void_args;
+
+    float* input = args->input;
+    float* output = args->output;
+    float* sums = args->sums;
+    int dim = args->dim;
+    float* maxes = args->maxes;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    int row = 0;
+
+    for(int i=start; i<stop; i++){
+        sums[i] = 0;
+        row = i * dim;
+        for(int j=0; j<dim; j++){
+            float o = threshold(maxes[i] - input[row + j]);
+            /*float o = 1.0f - 0.5f *(maxes[i] - input[row + j]);
+            if(o < 0.0f)
+                o = 0.0f;*/
+            output[row + j] = o;
+            sums[i] += o;    
+        }   
+    }
+}
+
+float fastexp_gist(float x) {
+    x = GIST_A * x + GIST_B;
+
+    if (x < GIST_C || x > GIST_D)
+        x = (x < GIST_C) ? 0.0f : GIST_D;
+
+    uint32_t n = (uint32_t) (x);
+    return *(float*) &n;
+}
+
 void pulp_exp_sum_fp32_cl(void* void_args){
     struct exp_sum_args* args = (struct exp_sum_args *) void_args;
 
     float* input = args->input;
     float* output = args->output;
-    float sum = args->sums[pi_core_id()];
+    float* sums = args->sums;
     int dim = args->dim;
-    float max = args->max;
+    float* maxes = args->maxes;
     
 
     #ifdef DEBUG
-
     if(pi_core_id()==0){
-        int L = sqrt(dim);
+        int L = dim;
         printf("\nCurrent input - max in softmax: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%((int)L))) printf("\n");
@@ -347,14 +428,20 @@ void pulp_exp_sum_fp32_cl(void* void_args){
     const int start = pi_core_id()*blockSize;
     const int stop = start + blockSize > dim ? dim : start+blockSize;
 
+    input += start * dim;
+    output += start * dim;
 
     for(int i=start; i<stop; i++){
-        float o = expf(input[i] - max);
-        output[i] = o;
-        sum += o;
+        sums[i] = 0;
+        for(int j=0; j<dim; j++){
+            float o = fastexp_gist(*input - maxes[i]);
+            //float o = expf(*input - maxes[i]);
+            *output = o;
+            sums[i] += o;
+            input++;
+            output++;    
+        }   
     }
-    
-    args->sums[pi_core_id()] = sum;
 }
 
 void pulp_div_fp32_cl(void* void_args){
@@ -370,6 +457,27 @@ void pulp_div_fp32_cl(void* void_args){
 
     for(int i=start; i<stop; i++){
         input[i] = input[i]/n;
+    }
+}
+
+void pulp_row_div_fp32_cl(void* void_args){
+    struct row_div_args* args = (struct row_div_args *) void_args;
+
+    float* input = args->input;
+    float* sums = args->sums;
+    int dim = args->dim;
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    int row = 0;
+
+    for(int i=start; i<stop; i++){
+        row = i * dim;
+        for(int j=0; j<dim; j++){
+            input[row + j] = input[row + j]/sums[i];    
+        }   
     }
 }
 

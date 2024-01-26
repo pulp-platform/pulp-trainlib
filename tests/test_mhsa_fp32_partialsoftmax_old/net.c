@@ -24,7 +24,6 @@
 #include "stats.h"
 
 #include "step-check.h"
-#include "stats.h"
 
 #include "net.h"
 
@@ -216,6 +215,7 @@ static inline void compute_memory_occupation(){
   L2_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
   // global_max buffer
   L2_memocc_bytes += NUM_CORES*Tin_H_l1*sizeof(float);
+
 }
 #endif
 
@@ -409,25 +409,24 @@ int check_tensor(float * tensor_out, float * tensor_ref, int size){
 static inline void train(){
 
   
-  pi_perf_conf((1<<PI_PERF_CYCLES) | (1<<PI_PERF_INSTR)  | (1<<PI_PERF_LD)  | (1<<PI_PERF_ACTIVE_CYCLES) );
-  pi_perf_stop();
-  pi_perf_reset();
-  pi_perf_start();
- 
+  
 
-
+  
   #ifdef PROF_FWD
   printf("\nForward stats\n");
   START_STATS();
   #endif
+  
 
   #ifdef FORWARD
   pulp_mhsa_fp32_fw_cl_2(&mhsa_args);
   #endif
 
+  
   #ifdef PROF_FWD
   STOP_STATS();
   #endif
+  
 
   #ifdef BACKWARD
 
@@ -453,26 +452,9 @@ static inline void train(){
   STOP_STATS();
   #endif
   #endif
-
   
 
-
-  pi_perf_stop();
-
-  int instr_count=pi_perf_read (PI_PERF_INSTR);
-  int cycles_count=pi_perf_read (PI_PERF_CYCLES);
-  int load_count=pi_perf_read (PI_PERF_LD);
-  int active_cycles_count=pi_perf_read (PI_PERF_ACTIVE_CYCLES);
-
-  printf("\nperformance\n");
-  printf("\nCycles count %d \n", cycles_count);
-  printf("Instruction Count %d\n", instr_count);
-  printf("Active Cycles Count %d\n", active_cycles_count);
-  printf("Load Count %d\n", load_count);
-  printf("Cycles/Instruction %f\n", (float)cycles_count/instr_count);
   
-
-
   #ifdef FORWARD
   printf("\nFORWARD CHECK: \n");
   compare_tensors(l0_out, OUTPUT, OUTPUT_SIZE);

@@ -352,6 +352,18 @@ struct div_args_fp16{
 };
 
 /**
+ * @brief Arguments for implementing parallelized division of an input vector and a vector
+ * @param input   input vector we want to divide
+ * @param sums    values we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct row_div_args_fp16{
+  fp16* input;
+  fp16* sums;
+  int dim;
+};
+
+/**
  * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
  * @param input   input vector we want to multiply
  * @param scalar  scalar value we want to divide the vector with
@@ -468,6 +480,13 @@ void softmax_fp16 (void * void_args);
 void pulp_max_fp16_cl(void * void_args);
 
 /**
+ * @brief Calculate the maxes for each row of a square matrix in parallelized fashion
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_row_max_fp16_cl(void * void_args);
+
+
+/**
  * @brief Calculate the exponential of each element and sum them
  * @param (void *)  (struct exp_sum_args_fp16 void_args)
  */
@@ -478,6 +497,12 @@ void pulp_exp_sum_fp16_cl(void* void_args);
  * @param (void *)  (struct div_args_fp16 void_args)
  */
 void pulp_div_fp16_cl(void* void_args);
+
+/**
+ * @brief Element-wise division of vector with values obtained by shit_sum
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_row_div_fp16_cl(void* void_args);
 
 /**
  * @brief Element-wise multiplication of vector with a single constant

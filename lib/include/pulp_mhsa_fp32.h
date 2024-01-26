@@ -60,6 +60,8 @@ struct Mhsa_args {
     struct blob * softmax_buffer;
     float * global_max;
     float * partial_exp_sum;
+    float * maxes;
+    float * sums;
 };
 
 

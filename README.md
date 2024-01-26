@@ -152,6 +152,7 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
 - [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
 - [X] ReLU activation function (FP32, FP16)
+- [X] Sigmoid activation function (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] RNN training primitives (FP32)
@@ -175,6 +176,8 @@ PULP-TrainLib's repository is organized with these branches:
 - Missing integration for RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
 - FP32 and FP16 InstanceNorm's output do not perfectly match PyTorch ones (need bugfixing)
+- Missing integration of sigmoid function in TrainLib_Deployer
+- Performances of FP16 sigmoid may need to be optimized with FP16 exponenetial (e.g., https://github.com/0xBYTESHIFT/fp16/blob/master/include/half/half.hpp)
 
 
 # Contributors
@@ -197,4 +200,5 @@ PULP-TrainLib's repository is organized with these branches:
 
 > D. Nadalini, M. Rusci, L. Benini, and F. Conti, "Reduced Precision Floating-Point Optimization for Deep Neural Network On-Device Learning on MicroControllers" [ArXiv Pre-Print](https://arxiv.org/abs/2305.19167)
 > 
-> D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf)
+> D. Nadalini, M. Rusci, G. Tagliavini, L. Ravaglia, L. Benini, and F. Conti, "PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning" [SAMOS Pre-Print Version](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf), [Springer Published Version](https://link.springer.com/chapter/10.1007/978-3-031-15074-6_13)
+
