@@ -35,7 +35,9 @@ void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
     struct blob_fp16 * out = args->output;
 
     if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!, got %d , %d and %d (%d, %d, %d), (%d, %d, %d) and (%d, %d, %d)\n",skip->dim, lout->dim, out->dim, skip->C, skip->H, skip->W, lout->C, lout->H, lout->W, out->C, out->H, out->W ); 
+        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!"); 
+               printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",skip->dim,skip->C,skip->H,skip->W,lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
+
         return;
     }
 
@@ -60,12 +62,13 @@ void pulp_sumnode_fp16_bw( void * SkipConn_args_fp16 )
     struct blob_fp16 * skip = args->skip;
     struct blob_fp16 * lout = args->lout;
     struct blob_fp16 * out = args->output;
-    int skip_grad = args->skip_in_grad;
   
-    if (skip_grad==0)
+    if (args->skip_in_grad==0)
    {
-    if (skip->dim != lout->dim) {
-        printf("[pulp_sumnode_fp16_fw]: Sizes of input and output activations not matching!!"); return;
+    if (skip->dim != out->dim) {
+        printf("[pulp_sumnode_fp16_bw]: Sizes of input and output activations not matching!!");
+                printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",skip->dim,skip->C,skip->H,skip->W,lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
+ return;
     }
 
     struct vect_sum_args_fp16 args_sum;
@@ -82,12 +85,14 @@ void pulp_sumnode_fp16_bw( void * SkipConn_args_fp16 )
 void pulp_residualconn_fp16_bw( void * SkipConn_args_fp16 )
 {
     struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 * skip = args->skip;
+  //  struct blob_fp16 * skip = args->skip;
     struct blob_fp16 * lout = args->lout;
     struct blob_fp16 * out = args->output;
 
-    if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output activations not matching!!"); return;
+    if (lout->dim != out->dim) {
+        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output activations not matching!!"); 
+                printf("\ngot (NCHW)  Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
+return;
     }
 
     // Copy gradient into the input

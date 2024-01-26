@@ -892,3 +892,53 @@ void mm_manager (void * void_args)
     }
 
 }
+
+void pulp_mean_std_fp32_cl(void * mean_std_args)
+{
+    struct mean_std_args * args = (struct mean_std_args *) mean_std_args;
+
+    float * data = args->input;
+    int D = args->dim;
+    float D_inverse = (1/(float)D);
+    float * mean = args->mean;
+    float * std = args->std;
+    float * var = args->var;
+    float epsilon = args->epsilon;
+
+    float m=0;
+    float v=0;
+    float s=0;
+
+    int var_was_infinite = 0;
+
+    for(int d=0; d<D; d++)
+        {
+            float t = data[d];
+            m += t;
+            v += t*t;
+        }
+        m = m*D_inverse;
+        v = v*D_inverse;
+
+        // Test for infinite variance
+        if (*(int *)&v == 0x7f80000)
+        {
+            var_was_infinite = 1;
+            v = 0;
+            for(int d=0; d<D; d++)
+            {
+                float t = data[d];
+                float temp = t - m;
+                v += temp*temp*D_inverse;
+            }
+        }
+
+        if(!var_was_infinite)   v -= m*m;
+        v = v + epsilon;
+        if ((v)<0) v=epsilon;
+        *mean = m;
+        *var = v;
+        *std = sqrtf(v);
+}
+
+

@@ -157,12 +157,13 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] RNN training primitives (FP32)
 - [X] Multihead Self Attention training primitives (FP32)
+- [X] Residual connection (FP32, FP16)
+- [X] InstanceNorm (FP32, FP16)
 - [ ] Padding operators for DepthWise and 2D Convolution
 - [ ] HWC data layout management for DepthWise Convolution (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
-- [X] Residual connection
 - [ ] Biases for all layers
 - [ ] Migration to graph-managed padding (TrainLib_Deployer)
 - [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
@@ -174,8 +175,9 @@ PULP-TrainLib's repository is organized with these branches:
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
 - Missing integration for RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
+- FP32 and FP16 InstanceNorm's output do not perfectly match PyTorch ones (need bugfixing)
 - Missing integration of sigmoid function in TrainLib_Deployer
-- Performances of FP16 sigmoid need to be optimized with FP16 exponenetial (e.g., https://github.com/0xBYTESHIFT/fp16/blob/master/include/half/half.hpp)
+- Performances of FP16 sigmoid may need to be optimized with FP16 exponenetial (e.g., https://github.com/0xBYTESHIFT/fp16/blob/master/include/half/half.hpp)
 
 
 # Contributors

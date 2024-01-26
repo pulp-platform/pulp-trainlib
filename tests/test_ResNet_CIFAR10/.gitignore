@@ -1,0 +1,5 @@
+BUILD/
+cifar*
+log.csv
+init-defines.h
+io_data.h

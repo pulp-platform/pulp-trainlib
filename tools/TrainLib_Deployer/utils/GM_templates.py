@@ -118,3 +118,12 @@ def Skipnode_template(layer):
 def Sumnode_template(layer, ls):                                        
     template= "\t\tself.l"+str(layer) +f"= Sumnode({ls}) #Sumnode layer\n"
     return template                                             
+
+
+'''
+NORMALIZATION TEMPLATE
+'''
+
+def InstNorm_template(layer, ch):
+    template = f"\t\tself.l{layer}= nn.InstanceNorm2d(num_features={ch}, eps=1e-10, momentum=0, affine=True)\n"
+    return template

@@ -234,9 +234,9 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
   float * global_max = args->global_max + pi_core_id()*L;
 
   const float eps_max = 0.03125f;
-
-  float zero = 0.0f;
-  const float minfloat = -340282346638528859811704183484516925440.0f;
+  
+  float zerox = 0.0f;
+  float minfloat = -340282346638528859811704183484516925440.0f;
 
   const int blockSize=(n_heads+NUM_CORES-1)/NUM_CORES;
   const int start = pi_core_id()*blockSize;
@@ -247,14 +247,14 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
     //STAGE 1: Calculate the denominator
     if(i != start){
       for(int l=0; l < L; l++){
-        partial_exp_sum[l] = zero;
+        partial_exp_sum[l] = zerox;
         global_max[l] = minfloat;
       }
     }
     float* pointer = inData + i*L*L;
     for(int j = 0; j < L; j++){
       for(int k = 0; k < L; k++){
-        float max_shift = zero;
+        float max_shift = zerox;
         if(global_max[j] < (*pointer)){
           max_shift = ((*pointer) - global_max[j]) * eps_max; 
           global_max[j] = *pointer;
@@ -293,7 +293,7 @@ void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
 
   float eps_max = 0.03125f;
 
-  float zero = 0.0f;
+  float zerox = 0.0f;
   float minfloat = -340282346638528859811704183484516925440.0f;
 
   const int blockSize=(n_heads+NUM_CORES-1)/NUM_CORES;
@@ -305,14 +305,14 @@ void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
     //STAGE 1: Calculate the denominator
     if(i != start){
       for(int l=0; l < L; l++){
-        partial_exp_sum[l] = zero;
+        partial_exp_sum[l] = zerox;
         global_max[l] = minfloat;
       }
     }
     float* pointer = inData + i*L*L;
     for(int j = 0; j < L; j++){
       for(int k = 0; k < L; k++){
-        float max_shift = zero;
+        float max_shift = zerox;
         if(global_max[j] < (*pointer)){
           max_shift = ((*pointer) - global_max[j]) * eps_max; 
           global_max[j] = *pointer;
