@@ -32,6 +32,22 @@ struct act_args_fp16 {
     struct blob_fp16 * output;
 };
 
+/**
+ * @brief Arguments for exponential and softmax in parallel
+ * @param input   pointer to input vector
+ * @param dim     dimension vector
+ * @param output  pointer to output vector
+ * @param sum     final sum value of all exponentials
+*/
+struct softmax_args{
+  struct blob_fp16 * input;
+  struct blob_fp16 * output;
+  int L;
+  int n_heads;
+  fp16 * maxes;
+  fp16 * sums;
+};
+
 
 
 /**

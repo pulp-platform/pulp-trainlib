@@ -44,6 +44,7 @@
  * 
  */
 
+/*
 struct Mhsa_args_fp16 {
     struct blob_fp16 * input;
     int 	n_heads; 
@@ -59,6 +60,25 @@ struct Mhsa_args_fp16 {
     fp16 * grad;
     struct blob_fp16 * head_buffer;
     struct blob_fp16 * softmax_buffer;
+};*/
+
+struct Mhsa_args_fp16 {
+    struct blob_fp16 * input;
+    int     n_heads; 
+    int opt_matmul_type_fw;
+    int opt_matmul_type_wg;
+    int opt_matmul_type_ig;
+    struct blob_fp16 * output;
+    struct blob_fp16 * coeff_in;
+    struct blob_fp16 * coeff_out;
+    struct blob_fp16 * qkv;
+    struct blob_fp16 * attention_map;
+    fp16 * temp_buffer;
+    fp16 * grad;
+    struct blob_fp16 * head_buffer;
+    struct blob_fp16 * softmax_buffer;
+    fp16 * maxes;
+    fp16 * sums;
 };
 
 
