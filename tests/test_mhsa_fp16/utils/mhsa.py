@@ -7,10 +7,10 @@ import torch
 from torch.nn import functional as F
 
 def own_softmax(x):
-    maxes = torch.amax(x, (1,2), keepdim=True)
-
+    maxes = torch.max(x, -1, keepdim=True)[0]
+    #maxes = torch.swapaxes(maxes, -2, -1) 
     x_exp = torch.exp((x-maxes))
-    x_exp_sum = torch.sum(x_exp, (1,2), keepdim=True)
+    x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
 
     return x_exp/x_exp_sum
 

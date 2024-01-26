@@ -21,6 +21,11 @@
 #include "pmsis.h"
 #include "pulp_train_defines.h"
 
+#define GIST_A  12102203.17133801f
+#define GIST_B  1064986823.010288f
+#define GIST_C  8388608
+#define GIST_D  2139095040  
+
 /**
  * =====> BACKEND STRUCTURES <=====
  */
@@ -286,20 +291,6 @@ struct tanh_args_fp16{
 
 
 /**
- * @brief Arguments for exponential and softmax in parallel
- * @param input   pointer to input vector
- * @param dim     dimension vector
- * @param output  pointer to output vector
- * @param sum     final sum value of all exponentials
-*/
-struct softmax_args_fp16{
-  fp16* input;
-  int dim;
-  fp16* output;
-  fp16 sum;
-};
-
-/**
  * @brief Arguments weight updates output=output + gradient
  * @param accum    pointer to weight gradient accumulators
  * @param grad    pointer to weight gradient of the current timestep
@@ -336,7 +327,7 @@ struct exp_sum_args_fp16{
   fp16* sums;
   fp16* output;
   int dim;
-  fp16 max;
+  fp16* maxes;
 };
 
 /**

@@ -39,7 +39,7 @@ struct act_args_fp16 {
  * @param output  pointer to output vector
  * @param sum     final sum value of all exponentials
 */
-struct softmax_args{
+struct softmax_args_fp16{
   struct blob_fp16 * input;
   struct blob_fp16 * output;
   int L;

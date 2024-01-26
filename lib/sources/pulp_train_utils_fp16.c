@@ -364,6 +364,17 @@ void pulp_row_max_fp16_cl(void * void_args){
     }
 }
 
+
+float fastexp_gist(float x) {
+    x = GIST_A * x + GIST_B;
+
+    if (x < GIST_C || x > GIST_D)
+        x = (x < GIST_C) ? 0.0f : GIST_D;
+
+    uint32_t n = (uint32_t) (x);
+    return *(float*) &n;
+}
+
 void pulp_exp_sum_fp16_cl(void* void_args){
     struct exp_sum_args_fp16* args = (struct exp_sum_args_fp16 *) void_args;
 
@@ -397,8 +408,8 @@ void pulp_exp_sum_fp16_cl(void* void_args){
     for(int i=start; i<stop; i++){
         sums[i] = 0;
         for(int j=0; j<dim; j++){
-            fp16 o = fastexp_gist(*input - maxes[i]);
-            //float o = expf(*input - maxes[i]);
+            fp16 o = (fp16)(fastexp_gist((float)(*input - maxes[i])));
+            //fp16 o = (fp16)expf((float)(*input - maxes[i]));
             *output = o;
             sums[i] += o;
             input++;

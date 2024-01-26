@@ -375,7 +375,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args2);
         #else
-        struct mm_manager_args man_args2;
+        struct mm_manager_args_fp16 man_args2;
         man_args2.mm_args = &matMul_args2;
         man_args2.layer_type = LAYER_LINEAR;
         man_args2.step_type = STEP_FW;
@@ -422,8 +422,8 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
 
         //  Softmax algorithm
         struct softmax_args_fp16 softmax_arg;
-        struct blob input;
-        struct blob output;
+        struct blob_fp16 input;
+        struct blob_fp16 output;
         input.data = temp;
         input.dim = L;
         output.data = softmax_buffer;
