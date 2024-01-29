@@ -43,7 +43,7 @@ parser.add_argument( '--ch_out', type=int, default=1)
 parser.add_argument( '--n_heads', type=int, default=8)
 parser.add_argument( '--weight', type=float, default=0.1)
 parser.add_argument( '--att_dim', type=int, default=8)
-parser.add_argument( '--bf16_format', type=int, default=0) # if == 1, data format if bfloat16, if 0 is float16
+parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data format if bfloat16, if 0 is float16
 parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 
 args = parser.parse_args()

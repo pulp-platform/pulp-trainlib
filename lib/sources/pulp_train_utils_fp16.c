@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
 */ 
 
 #include "pmsis.h"
@@ -356,8 +356,10 @@ void pulp_row_max_fp16_cl(void * void_args){
     input = input + start * dim;
 
     for(int i=start; i<stop; i++){
-        for(int j=0; j<dim; j++){
-            if(max[i] < *input || j==0)
+        max[i] = *input;
+        input++;
+        for(int j=1; j<dim; j++){
+            if(max[i] < *input)
                 max[i] = *input;
             input++;    
         }    

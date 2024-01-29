@@ -344,6 +344,7 @@ void pulp_row_max_fp32_cl(void * void_args){
 
     float* input = args->input;
     int dim = args->dim; // L
+    int i, j;
     float* max = args->maxes;
     
     const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
@@ -352,9 +353,10 @@ void pulp_row_max_fp32_cl(void * void_args){
 
     input = input + start * dim;
 
-    for(int i=start; i<stop; i++){
-        max[i] = -340282346638528859811704183484516925440.0f;
-        for(int j=0; j<dim; j++){
+    for(i=start; i<stop; i++){
+        max[i] = *input;
+        input++;
+        for(j=1; j<dim; j++){
             if(max[i] < *input)
                 max[i] = *input;
             input++;    

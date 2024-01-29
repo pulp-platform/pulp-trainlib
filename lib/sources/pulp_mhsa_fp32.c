@@ -207,6 +207,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         pi_perf_start();
         */
 
+        //pi_cl_team_fork(NUM_CORES, pulp_softmax_fp32_fw_cl, &softmax_arg);
         pulp_softmax_fp32_fw_cl(&softmax_arg);
         //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 
