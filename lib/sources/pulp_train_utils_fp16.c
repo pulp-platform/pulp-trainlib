@@ -377,6 +377,22 @@ float fastexp_gist(float x) {
     return *(float*) &n;
 }
 
+float q_rsqrt(float number)
+{
+  long i;
+  float x2, y;
+  const float threehalfs = 1.5f;
+
+  x2 = number * 0.5f;
+  y  = number;
+  i  = * ( long * ) &y;                       // evil floating point bit level hacking
+  i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+  y  = * ( float * ) &i;
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+
+  return y;
+}
+
 void pulp_exp_sum_fp16_cl(void* void_args){
     struct exp_sum_args_fp16* args = (struct exp_sum_args_fp16 *) void_args;
 
@@ -469,7 +485,7 @@ void pulp_scalar_mul_fp16_cl(void* void_args){
     const int stop = start + blockSize > dim ? dim : start+blockSize;
 
     for(int i=start; i<stop; i++){
-        input[i] = input[i]*scalar;
+        input[i] = (fp16) (input[i]*scalar);
     }
 }
 

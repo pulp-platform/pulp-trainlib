@@ -23,6 +23,22 @@ def fastexp_gist(x):
     
     return result
 
+def q_rsqrt(x):
+    with torch.no_grad():
+        y = np.asarray((x,), dtype=np.float32)
+        x2 = y * 0.5
+        i = y.view(np.int32)
+        i = np.right_shift(i, 1)
+        i = 0x5f3759df - i
+        y = i.view(np.float32)
+        y = y * (1.5 - (x2 * y * y))
+
+        result = torch.from_numpy(y)
+
+    return result
+
+
+
 def own_softmax_fastexp(x):
     maxes = torch.max(x, -1, keepdim=True)[0]
     #maxes = torch.swapaxes(maxes, -2, -1) 
@@ -95,7 +111,8 @@ class MultiHeadedSelfAttention(nn.Module):
         self.att_dim = att_dim
         self.n_heads = num_heads
         self.head_dim = att_dim // num_heads
-        self.scaling = (self.head_dim) ** -0.5
+        #self.scaling = (self.head_dim) ** -0.5
+        self.scaling = q_rsqrt(self.head_dim)
         self.scores = None # for visualization
         #self.softmax = own_softmax
         #self.softmax = own_partial_softmax_simple
@@ -112,6 +129,7 @@ class MultiHeadedSelfAttention(nn.Module):
         assert list(scores.size()) == [self.n_heads, tgt_len, tgt_len]
 
         scores = scores * self.scaling
+        
         scores = self.softmax(scores)
 
         scores = torch.bmm(scores, v)

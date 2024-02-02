@@ -28,6 +28,7 @@ import mhsa
 
 # Set the seed for reproducability
 np.random.seed(seed=1) # <----- Sneed
+torch.manual_seed(0)
 
 
 ##################################################################################################################################
@@ -43,7 +44,7 @@ parser.add_argument( '--ch_out', type=int, default=1)
 parser.add_argument( '--n_heads', type=int, default=8)
 parser.add_argument( '--weight', type=float, default=0.1)
 parser.add_argument( '--att_dim', type=int, default=8)
-parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data format if bfloat16, if 0 is float16
+parser.add_argument( '--bf16_format', type=int, default=0) # if == 1, data format if bfloat16, if 0 is float16
 parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 
 args = parser.parse_args()
@@ -142,7 +143,7 @@ def hook_fn2(m, i, o):
 
 gradsRnn = net.mhsa.register_full_backward_hook(hook_fn1)
 
-
+'''
 if bf16_format == 1:
   inp = torch.div(torch.ones(ch_in, in_h, in_w), 1000).bfloat16()
   label = torch.ones(in_h, in_w).bfloat16()
@@ -157,6 +158,12 @@ else:
     for hi in range(in_h):
       for wi in range(in_w):
         inp[cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
+'''
+
+if bf16_format == 1:
+  inp = torch.randn(ch_in, in_h, in_w).bfloat16()
+else:
+  inp = torch.randn(ch_in, in_h, in_w).half()
 
 inp.requires_grad = True
 
@@ -189,6 +196,8 @@ print("Shape input weights:")
 print(net.mhsa.proj_in.weight.shape)
 print(net.mhsa.proj_in.weight.data)
 print("\n")
+
+'''
 if bf16_format == 1:
   in_wgt_init_tensor = torch.zeros(att_dim * 3, in_w).bfloat16()
 else:
@@ -196,6 +205,13 @@ else:
 for hk in range(att_dim * 3):
     for wk in range(in_w):
         in_wgt_init_tensor[hk, wk] = (hk+wk)*weight_init
+'''
+
+if bf16_format == 1:
+  in_wgt_init_tensor = torch.randn(att_dim * 3, in_w).bfloat16()
+else:
+  in_wgt_init_tensor = torch.randn(att_dim * 3, in_w).half()
+
 #Initialize input weights
 with torch.no_grad():
     #net.conv.weight[:, :] = weight_init
@@ -218,6 +234,7 @@ print("Shape output projection weights:")
 print(net.mhsa.proj_out.weight.data.shape)
 print(net.mhsa.proj_out.weight.data)
 print("\n")
+'''
 if bf16_format == 1:
   output_proj_wgt_init_tensor = torch.zeros(in_w, att_dim).bfloat16()
 else:
@@ -225,6 +242,17 @@ else:
 for hk in range(in_w):
     for wk in range(att_dim):
         output_proj_wgt_init_tensor[hk, wk] = (hk+wk)*weight_init
+'''
+
+if bf16_format == 1:
+  output_proj_wgt_init_tensor = torch.randn(in_w, att_dim).bfloat16()
+else:
+  output_proj_wgt_init_tensor = torch.randn(in_w, att_dim).half()
+
+if bf16_format == 1:
+  output_proj_wgt_init_tensor = output_proj_wgt_init_tensor.bfloat16()
+else:
+  output_proj_wgt_init_tensor = output_proj_wgt_init_tensor.half()
 #Initialize output weights
 with torch.no_grad():
     net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
