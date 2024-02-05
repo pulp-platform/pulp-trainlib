@@ -84,16 +84,33 @@ void sigmoid_core_bw_fp32( void * act_args )
 void pulp_relu_fp32_fw_cl( void * act_args )
 {
   struct act_args * args = (struct act_args *) act_args;
+  pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, act_args);
+}
+
+void pulp_relu_fp32_bw_cl( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
+  pi_cl_team_fork(NUM_CORES, relu_core_bw_fp32, act_args);
+}
+
+void relu_core_fw_fp32( void * act_args )
+{
+  struct act_args * args = (struct act_args *) act_args;
   int dim = args->input->dim;
   float* inData = args->input->data;
   float* outData = args->output->data;
 
-  for (int i = 0; i < dim; i++) {
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
     outData[i] = inData[i] > 0 ? inData[i] : 0;
   }
+
 }
 
-void pulp_relu_fp32_bw_cl( void * act_args )
+void relu_core_bw_fp32( void * act_args )
 {
   struct act_args * args = (struct act_args *) act_args;
   int dim = args->input->dim;
@@ -101,10 +118,16 @@ void pulp_relu_fp32_bw_cl( void * act_args )
   float* inDiff = args->input->diff;
   float* outDiff = args->output->diff;
 
-  for (int i = 0; i < dim; i++) {
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
     inDiff[i] = inData[i] > 0 ? outDiff[i] : 0;
   }
 }
+
+
 
 
 void pulp_softmax_fp32_fw_cl( void * act_args )
