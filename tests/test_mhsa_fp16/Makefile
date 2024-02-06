@@ -1,16 +1,16 @@
 APP = mhsa_fp16
 
 # User settings
-IN_H?=8 # Sequence Length
-IN_W?=8 # Token Size
+IN_H?=66 # Sequence Length
+IN_W?=16 # Token Size
 N_HEADS?=8
-ATT_DIM?=8 #Hidden dimension
+ATT_DIM?=16 #Hidden dimension
 IN_CH?=1
 OUT_CH?=1
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=0
+MATMUL_TYPE?=3
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings

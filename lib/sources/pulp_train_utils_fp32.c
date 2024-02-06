@@ -344,6 +344,7 @@ void pulp_row_max_fp32_cl(void * void_args){
 
     float* input = args->input;
     int dim = args->dim; // L
+    int i, j;
     float* max = args->maxes;
     
     const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
@@ -352,9 +353,10 @@ void pulp_row_max_fp32_cl(void * void_args){
 
     input = input + start * dim;
 
-    for(int i=start; i<stop; i++){
-        max[i] = -340282346638528859811704183484516925440.0f;
-        for(int j=0; j<dim; j++){
+    for(i=start; i<stop; i++){
+        max[i] = *input;
+        input++;
+        for(j=1; j<dim; j++){
             if(max[i] < *input)
                 max[i] = *input;
             input++;    
@@ -399,6 +401,22 @@ float fastexp_gist(float x) {
 
     uint32_t n = (uint32_t) (x);
     return *(float*) &n;
+}
+
+float q_rsqrt(float number)
+{
+  long i;
+  float x2, y;
+  const float threehalfs = 1.5f;
+
+  x2 = number * 0.5f;
+  y  = number;
+  i  = * ( long * ) &y;                       // evil floating point bit level hacking
+  i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+  y  = * ( float * ) &i;
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+
+  return y;
 }
 
 void pulp_exp_sum_fp32_cl(void* void_args){

@@ -155,6 +155,60 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
     #endif
 }
 
+/*
+void pulp_softmax_fp32_fw_cl( void * act_args ){
+  struct softmax_args * args = (struct softmax_args *) act_args;
+
+  int dim = args->input->dim;
+  int i, j;
+  float* inData = args->input->data;
+  float* outData = args->output->data;
+
+  float* maxes = args->maxes;
+  float* sums = args->sums;
+
+  const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  float* input = inData + start * dim;
+  float* output = outData + start * dim;
+
+  for(i=start; i<stop; i++){
+    for(j=0; j<dim; j++){
+      if(maxes[i] < *input || j==0)
+        maxes[i] = *input;
+      input++;    
+    }
+  }
+
+  input = inData + start * dim;
+  float o;
+
+  for(i=start; i<stop; i++){
+    sums[i] = 0;
+    for(j=0; j<dim; j++){
+      o = fastexp_gist(*input - maxes[i]);
+      //float o = expf(*input - maxes[i]);
+      *output = o;
+      sums[i] += o;
+      input++;
+      output++;    
+    }   
+  }
+
+  output = outData + start * dim;
+
+  
+  for(int i=start; i<stop; i++){
+    for(int j=0; j<dim; j++){
+      *output = *output/sums[i];
+      output++;    
+    }
+  }
+}
+*/
+
 void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
 {
   struct softmax_args * args = (struct softmax_args *) act_args;

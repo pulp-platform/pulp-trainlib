@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
 */ 
 
 #include "pmsis.h"
@@ -356,12 +356,41 @@ void pulp_row_max_fp16_cl(void * void_args){
     input = input + start * dim;
 
     for(int i=start; i<stop; i++){
-        for(int j=0; j<dim; j++){
-            if(max[i] < *input || j==0)
+        max[i] = *input;
+        input++;
+        for(int j=1; j<dim; j++){
+            if(max[i] < *input)
                 max[i] = *input;
             input++;    
         }    
     }
+}
+
+
+float fastexp_gist(float x) {
+    x = GIST_A * x + GIST_B;
+
+    if (x < GIST_C || x > GIST_D)
+        x = (x < GIST_C) ? 0.0f : GIST_D;
+
+    uint32_t n = (uint32_t) (x);
+    return *(float*) &n;
+}
+
+float q_rsqrt(float number)
+{
+  long i;
+  float x2, y;
+  const float threehalfs = 1.5f;
+
+  x2 = number * 0.5f;
+  y  = number;
+  i  = * ( long * ) &y;                       // evil floating point bit level hacking
+  i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+  y  = * ( float * ) &i;
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+
+  return y;
 }
 
 void pulp_exp_sum_fp16_cl(void* void_args){
@@ -397,8 +426,8 @@ void pulp_exp_sum_fp16_cl(void* void_args){
     for(int i=start; i<stop; i++){
         sums[i] = 0;
         for(int j=0; j<dim; j++){
-            fp16 o = fastexp_gist(*input - maxes[i]);
-            //float o = expf(*input - maxes[i]);
+            fp16 o = (fp16)(fastexp_gist((float)(*input - maxes[i])));
+            //fp16 o = (fp16)expf((float)(*input - maxes[i]));
             *output = o;
             sums[i] += o;
             input++;
@@ -456,7 +485,7 @@ void pulp_scalar_mul_fp16_cl(void* void_args){
     const int stop = start + blockSize > dim ? dim : start+blockSize;
 
     for(int i=start; i<stop; i++){
-        input[i] = input[i]*scalar;
+        input[i] = (fp16) (input[i]*scalar);
     }
 }
 

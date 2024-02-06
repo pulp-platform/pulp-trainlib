@@ -568,4 +568,6 @@ void pulp_mean_std_fp32_cl(void * mean_std_args);
  */
 float fastexp_gist(float x);
 
+float q_rsqrt(float number);
+
 

@@ -15,243 +15,6 @@
 #include "pulp_act_fp16.h"
 #include <math.h>
 
-/*
-//FORWARD
-void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
-    struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
-    fp16 *coeffDataWin = mhsa_args->coeff_in->data; // Input Projection Weights
-    fp16 *coeffDataWout = mhsa_args->coeff_out->data; // Output Projection Weights
-    fp16 *attention_map = mhsa_args->attention_map->data; // Buffer saving the MHSA map before projection
-    fp16 *outData = mhsa_args->output->data;  
-    fp16 *inputData = mhsa_args->input->data;
-    fp16 *temp = mhsa_args->temp_buffer;
-    fp16 *head_buffer = mhsa_args->head_buffer->data;
-    fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;
-    fp16 *qkv = mhsa_args->qkv->data;
-    fp16 *q = mhsa_args->qkv->data;
-    fp16 *k = mhsa_args->qkv->data;
-    fp16 *v = mhsa_args->qkv->data;
-    int n_heads = mhsa_args->n_heads;
-
-    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;
-
-    int L = mhsa_args->input->H; // Input/Output Sequence length
-    int E = mhsa_args->input->W; // Input Sequence element size
-    int F = mhsa_args->attention_map->W; // Hidden dimension of attention
-
-    #ifdef DEBUG
-    printf("\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
-    #endif
-
-    int H = F / n_heads; // Size of head chunks
-    fp16 scaling = 1/sqrt(H);
-
-    // Projecting input sequence into Q, K, V
-    struct matMul_args_fp16 matMul_args1;
-    matMul_args1.A = inputData;
-    matMul_args1.B = coeffDataWin; 
-    matMul_args1.C = qkv; // Q, K, V are saved contiguously, in the same matrix
-    matMul_args1.N = L;
-    matMul_args1.K = E;
-    matMul_args1.M = 3*F;
-    matMul_args1.trans_B = 0;
-
-    #ifdef DEBUG
-    printf("\ninputData: %d %d\n", L, E);
-    for (int j=0; j<L*E; j++){
-        if(!(j%(E))) printf("\n");
-        printf("%.8f ", matMul_args1.A[j]);
-    }
-    printf("\n");
-
-    printf("\nWin: %d %d\n", E, 3*F);
-    for (int j=0; j<E*3*F; j++){
-        if(!(j%(3*F))) printf("\n");
-        printf("%.8f ",  matMul_args1.B[j]);
-    }
-    printf("\n");
-    #endif
-
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args1);
-    #else
-    struct mm_manager_args_fp16 man_args1;
-    man_args1.mm_args = &matMul_args1;
-    man_args1.layer_type = LAYER_LINEAR;
-    man_args1.step_type = STEP_FW;
-    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
-    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1);
-    #endif
-
-    #ifdef DEBUG
-    printf("\nQKV Data: %d %d\n", L, 3*F);
-    for (int j=0; j<L*3*F; j++){
-        if(!(j%(3*F))) printf("\n");
-        printf("%.8f ", matMul_args1.C[j]);
-    }
-    printf("\n");
-    #endif
-
-    // Transpose Projections (L x 3F -> 3F x L) to facilitate division in chunks for the multiple heads. Copy of temporary buffer required because transpose is NOT inplace
-    struct transp_args_fp16 transp_args1;
-    transp_args1.matrix = qkv;
-    transp_args1.transp_matrix = temp;
-    transp_args1.N = L;
-    transp_args1.M = 3*F;
-
-    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args1);
-
-    struct copy_args_fp16 copy_args1;
-    copy_args1.from = temp;
-    copy_args1.to = qkv;
-    copy_args1.size = L*3*F;
-
-    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args1);
-
-    // Separate Q, K and V entry points in the QKV matrix
-    q = qkv;
-    k = qkv + L*F;
-    v = qkv + L*2*F;
-
-    // Cycle on the different heads
-    for(int i = 0; i < n_heads; i++){
-        fp16* current_head_buffer = head_buffer + i*L*L;
-        fp16* current_softmax_buffer = softmax_buffer + i*L*L;
-        // Transpose i-th head's K chunk
-        struct transp_args_fp16 transp_args2;
-        transp_args2.matrix = k + L*i*H;
-        transp_args2.transp_matrix = temp;
-        transp_args2.N = H;
-        transp_args2.M = L;
-
-        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
-
-        // Multiply it with the i-th head's Q chunk
-        struct matMul_args_fp16 matMul_args2;
-        matMul_args2.A = temp;
-        matMul_args2.B = q + L*i*H;
-        matMul_args2.C = current_head_buffer;
-        matMul_args2.N = L;
-        matMul_args2.K = H;
-        matMul_args2.M = L;
-        matMul_args2.trans_B = 0;
-
-        #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args2);
-        #else
-        struct mm_manager_args_fp16 man_args2;
-        man_args2.mm_args = &matMul_args2;
-        man_args2.layer_type = LAYER_LINEAR;
-        man_args2.step_type = STEP_FW;
-        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
-        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
-        #endif
-
-
-        struct scalar_mul_args_fp16 s_m_args;
-        s_m_args.input = current_head_buffer;
-        s_m_args.scalar = scaling;
-        s_m_args.dim = L*L;
-
-        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp16_cl, &s_m_args);
-
-        /*
-        for(int j = 0; j < (L*L); j++)
-            current_head_buffer[j] = current_head_buffer[j]*scaling;
-        */
-/*
-        struct act_args_fp16 softmax_arg;
-        struct blob_fp16 input;
-        struct blob_fp16 output;
-        input.data = current_head_buffer;
-        input.dim = L*L;
-        output.data = current_softmax_buffer;
-        softmax_arg.input = &input;
-        softmax_arg.output = &output;
-
-        pulp_softmax_fp16_fw_cl(&softmax_arg);
-
-        //pi_cl_team_fork(1, pulp_softmax_fp16_fw_cl, &softmax_arg); //TODO: actually parallelize this function
-
-        // Multiply softmax result with the i-th head's V chunk
-        struct matMul_args_fp16 matMul_args3;
-        matMul_args3.A = v + L*i*H;
-        matMul_args3.B = current_softmax_buffer;
-        matMul_args3.C = attention_map + L*i*H;
-        matMul_args3.N = H;
-        matMul_args3.K = L;
-        matMul_args3.M = L;
-        matMul_args3.trans_B = 0;
-
-        #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args3);
-        #else
-        struct mm_manager_args_fp16 man_args3;
-        man_args3.mm_args = &matMul_args3;
-        man_args3.layer_type = LAYER_LINEAR;
-        man_args3.step_type = STEP_FW;
-        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
-        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
-        #endif
-    }
-
-    // Final attention map projection
-    struct matMul_args_fp16 matMul_args4;
-    matMul_args4.A = coeffDataWout;
-    matMul_args4.B = attention_map;
-    matMul_args4.C = outData;
-    matMul_args4.N = E;
-    matMul_args4.K = F;
-    matMul_args4.M = L;
-    matMul_args4.trans_B = 0;
-
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args4);
-    #else
-    struct mm_manager_args_fp16 man_args4;
-    man_args4.mm_args = &matMul_args4;
-    man_args4.layer_type = LAYER_LINEAR;
-    man_args4.step_type = STEP_FW;
-    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
-    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
-    #endif
-
-    #ifdef DEBUG
-    printf("\nTransposed Output sequence Data: %d %d\n", E, L);
-    for (int j=0; j<L*E; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args4.C[j]);
-    }
-    printf("\n");
-    #endif
-
-    // Transpose back to original dimension
-    struct transp_args_fp16 transp_args3;
-    transp_args3.matrix = outData;
-    transp_args3.transp_matrix = temp;
-    transp_args3.N = E;
-    transp_args3.M = L;
-
-    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args3);
-
-    struct copy_args_fp16 copy_args2;
-    copy_args2.from = temp;
-    copy_args2.to = outData;
-    copy_args2.size = L*E;
-
-    pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args2);
-    
-    #ifdef DEBUG
-    printf("\nOutput Data map Data: %d %d\n", E, L);
-    for (int j=0; j<L*E; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", outData[j]);
-    }
-    printf("\n");
-    #endif
-}
-*/
-
 //FORWARD
 void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
@@ -282,7 +45,8 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     #endif
 
     int H = F / n_heads;                                        //  Head dimension
-    fp16 scaling = 1/sqrt(H);                                   //  Scaling factor to avoid vanishing gradients
+    //fp16 scaling = (fp16) (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
+    float scaling = q_rsqrt((float)H);
 
     // Projecting input sequence into Q, K, V
     struct matMul_args_fp16 matMul_args1;
@@ -375,21 +139,13 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args2);
         #else
-        struct mm_manager_args man_args2;
+        struct mm_manager_args_fp16 man_args2;
         man_args2.mm_args = &matMul_args2;
         man_args2.layer_type = LAYER_LINEAR;
         man_args2.step_type = STEP_FW;
         man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
         #endif
-
-        //  Scale the current head values by a factor proportional to the head dimension
-        struct scalar_mul_args_fp16 s_m_args;
-        s_m_args.input = softmax_buffer;
-        s_m_args.scalar = scaling;
-        s_m_args.dim = L*L;
-
-        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp16_cl, &s_m_args);
 
         #ifdef DEBUG
         printf("\nCurrent head buffer Data: %d %d\n", L, L);
@@ -419,11 +175,32 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
         */
+        
+        /*
+        if(i==(n_heads-1)){
+            printf("\nCurrent head buffer Data: %d %d\n", L, L);
+            for (int j=0; j<L*L; j++){
+                if(!(j%(L))) printf("\n\n");
+                printf("%.8f ", temp[j]);
+            }
+            printf("\n");
+            exit(1);
+        }*/
+
+        //  Scale the current head values by a factor proportional to the head dimension
+        struct scalar_mul_args_fp16 s_m_args;
+        s_m_args.input = temp;
+        s_m_args.scalar = (fp16) scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp16_cl, &s_m_args);
+
+        
 
         //  Softmax algorithm
         struct softmax_args_fp16 softmax_arg;
-        struct blob input;
-        struct blob output;
+        struct blob_fp16 input;
+        struct blob_fp16 output;
         input.data = temp;
         input.dim = L;
         output.data = softmax_buffer;

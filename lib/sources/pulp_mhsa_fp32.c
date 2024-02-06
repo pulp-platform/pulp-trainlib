@@ -46,7 +46,8 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     #endif
 
     int H = F / n_heads;                                        //  Head dimension
-    float scaling = 1/sqrt(H);                                  //  Scaling factor to avoid vanishing gradients
+    float scaling = q_rsqrt((float)H);                          //  Scaling factor to avoid vanishing gradients
+    //float scaling = 1/sqrt(H);
 
     // Projecting input sequence into Q, K, V
     struct matMul_args matMul_args1;
@@ -207,6 +208,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         pi_perf_start();
         */
 
+        //pi_cl_team_fork(NUM_CORES, pulp_softmax_fp32_fw_cl, &softmax_arg);
         pulp_softmax_fp32_fw_cl(&softmax_arg);
         //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 

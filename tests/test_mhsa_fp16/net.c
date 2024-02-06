@@ -92,7 +92,7 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tin_H_l1; i++)               l0_softmax_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tin_H_l1; i++)               l0_temp[i] = zero_init; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
   for (int i=0; i<Tin_H_l1; i++)                        l0_sums[i] = zero_init;
-  for (int i=0; i<Tin_H_l1; i++)                        l0_maxes[i] = min_float;
+  for (int i=0; i<Tin_H_l1; i++)                        l0_maxes[i] = zero_init;
   printf("Finished initializing the things\n");
 }
 

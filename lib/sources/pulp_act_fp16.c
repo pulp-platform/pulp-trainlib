@@ -108,27 +108,14 @@ void pulp_relu_fp16_bw_cl( void * act_args_fp16 )
 
 void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
 {
-  struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
+  struct softmax_args_fp16 * args = (struct softmax_args_fp16 *) act_args_fp16;
 
   int dim = args->input->dim;
   fp16* inData = args->input->data;
   fp16* outData = args->output->data;
 
-  /*
-  const int blockSize=(args_tanh->dim+NUM_CORES-1)/NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start + blockSize > args_tanh->dim ? args_tanh->dim : start+blockSize;
-  */
-
-  short s = 0;
-  fp16 zero = (fp16) s;
-
-  fp16 sum = zero;
-  fp16 sum2 = zero;
-  fp16 max = zero;
-  fp16 maxes[NUM_CORES] = {zero};
-  fp16 sums[NUM_CORES] = {zero};
-
+  fp16* maxes = args->maxes;
+  fp16* sums = args->sums;
   
   struct max_args_fp16 m_args;
   m_args.input = inData;
@@ -136,27 +123,19 @@ void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
   m_args.dim = dim;
 
   pi_cl_team_fork(NUM_CORES, pulp_row_max_fp16_cl, &m_args);
-
-  for(int i=0; i<NUM_CORES; i++)
-    if(max < maxes[i])
-      max = maxes[i];
   
   struct exp_sum_args_fp16 e_s_args;
   e_s_args.input = inData;
   e_s_args.sums = sums;
   e_s_args.output = outData;
   e_s_args.dim = dim;
-  e_s_args.max = max;
+  e_s_args.maxes = maxes;
   
   pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp16_cl, &e_s_args);
 
-  for(int i=0; i<NUM_CORES; i++){
-    sum += sums[i];
-  }
-
   struct row_div_args_fp16 d_args;
   d_args.input = outData;
-  d_args.n = sum;
+  d_args.sums = sums;
   d_args.dim = dim;
 
   pi_cl_team_fork(NUM_CORES, pulp_row_div_fp16_cl, &d_args);
