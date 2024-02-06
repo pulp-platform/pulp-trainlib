@@ -22,6 +22,7 @@ import os
 import shutil
 import math
 
+import torch 
 from torch import mm
 import utils.GM_templates as Gtemp
 import utils.net_templates as ntemp
@@ -341,6 +342,9 @@ def GenerateGM(proj_folder_path, project_name,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, sumnode_connections, USE_DMA):
+
+    # Check if GPU is available, else keep fake FP16
+    cuda_is_on = torch.cuda.is_available()
     
     # Print DNN structure
     print("---------- DNN ARCHITECTURE ----------")
@@ -358,6 +362,12 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("import dump_utils as dump\n")
     f.write("import math\n")
     f.write("\n")
+
+    f.write("# Set device\n")
+    f.write("if torch.cuda.is_available():\n")
+    f.write("\tdevice = torch.device('cuda')\n")
+    f.write("else:\n")
+    f.write("\tdevice = torch.device('cpu')\n")  
 
     # Define hyperparameters
     f.write("# Define hyperparameters\n")
@@ -414,10 +424,9 @@ def GenerateGM(proj_folder_path, project_name,
     # Create input data and label
     f.write("\n# Simple input data \n")
     if (layers_l[0] == 'linear'):
-        f.write("inp = torch.div(torch.ones(l0_in_ch), 1e6)\n")
+        f.write("inp = torch.div(torch.ones(l0_in_ch), 1)\n")
     elif (layers_l[0] in ['conv2d', 'DW', 'PW', 'Skipnode', 'InstNorm']):
-        f.write("inp = torch.torch.div(torch.rand(batch_size, l0_in_ch, l0_hin, l0_win), 1e6)\n")
-        #f.write("inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000)\n")
+        f.write("inp = torch.torch.div(torch.rand(batch_size, l0_in_ch, l0_hin, l0_win), 1).to(device)\n")
     # Throw error
     else:
         print("[deployment_utils.GenerateGM]: Input layer not valid!\n")
@@ -428,67 +437,6 @@ def GenerateGM(proj_folder_path, project_name,
         f.write("inp = inp.half()\n")
 
 
-    '''
-    --------------------------------- MIXED PRECISION NON-WORKING - GENERATES A NON-WORKING DNN IN PYTORCH --------------------------------- 
-
-    # Generate DNN model
-    f.write("class DNN(nn.Module):\n")
-    f.write("\tdef __init__(self):\n")
-    f.write("\t\tsuper().__init__()\n")
-    # Create neural network model
-    for layer in range(len(layers_l)):
-        # Layers
-        if layers_l[layer] == "linear":
-            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False", data_type_l[layer]))
-        elif layers_l[layer] == "conv2d":
-            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", data_type_l[layer]))
-        elif layers_l[layer] == "DW":
-            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", data_type_l[layer]))
-        elif layers_l[layer] == "PW":
-            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False", data_type_l[layer]))
-        # Activations
-        elif layers_l[layer] == "ReLU":
-            f.write(Gtemp.ReLU_template(layer, data_type_l[layer]))
-        # Pooling
-        elif layers_l[layer] == "MaxPool":
-            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], data_type_l[layer]))
-        elif layers_l[layer] == "AvgPool":
-            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], data_type_l[layer]))
-        # Throw error
-        else:
-            print("[deployment_utils.GenerateGM]: Layer {} not recognized!!\n".format(layer))
-            exit()
-    # Create Forward
-    f.write("\n")
-    f.write("\tdef forward(self, x):")
-    for layer in range(len(layers_l)):
-        # Vectorize inputs in case of linear layer
-        if layers_l[layer] == 'linear':
-            f.write("\n\t\tx = torch.reshape(x, (-1,))")
-        # Set data format for each layer
-        if layer == 0 and data_type_l[layer] == 'FP16':
-            f.write("\n\t\tx = x.half()")
-        elif data_type_l[layer] == 'FP32' and data_type_l[layer-1] != data_type_l[layer]:
-            f.write("\n\t\tx = x.float()")
-        elif data_type_l[layer] == 'FP16' and data_type_l[layer-1] != data_type_l[layer]:
-            f.write("\n\t\tx = x.half()")
-        # Forward layers 
-        # (ReLU works with FP32 only)
-        if layers_l[layer] == 'ReLU' and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
-            f.write("\n\t\tx = self.l"+str(layer)+"(x.float()).half()")
-        # Last layer
-        elif layer == len(layers_l)-1:
-            f.write("\n\t\tx = self.l"+str(layer)+"(x).float()")
-        else:
-            f.write("\n\t\tx = self.l"+str(layer)+"(x)")
-    f.write("\n\t\treturn x\n")
-    print("[deployment_utils.GenerateNet]: Setting last layer's output to float for PyTorch compatibility with loss function backward (future fix).")
-    '''
-
-
-    '''
-    --------------------------------- WORKAROUND - FAKE FP16 FOR ALL DNN --------------------------------- 
-    '''
     #Sumnode and Skipnode class generation 
     f.write("\nclass Sumnode():\n") 
     f.write("\tdef __init__(self, ls):\n") 
@@ -507,23 +455,27 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("\t\tsuper().__init__()\n")
     # Create neural network model
     for layer in range(len(layers_l)):
+        if cuda_is_on:
+            current_type = data_type_l[layer]
+        else:
+            current_type = 'FP32'
         # Layers
         if layers_l[layer] == "linear":
-            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False", 'FP32'))
+            f.write(Gtemp.linear_template(layer, in_ch_l[layer], out_ch_l[layer], "False", current_type))
         elif layers_l[layer] == "conv2d":
-            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", 'FP32'))
+            f.write(Gtemp.conv2d_template(layer, in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", current_type))
         elif layers_l[layer] == "DW":
-            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", 'FP32'))
+            f.write(Gtemp.DW_template(layer, in_ch_l[layer], hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], h_pad_l[layer], w_pad_l[layer], "False", current_type))
         elif layers_l[layer] == "PW":
-            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False", 'FP32'))
+            f.write(Gtemp.PW_template(layer, in_ch_l[layer], out_ch_l[layer], "False", current_type))
         # Activations
         elif layers_l[layer] == "ReLU":
-            f.write(Gtemp.ReLU_template(layer, 'FP32'))
+            f.write(Gtemp.ReLU_template(layer, current_type))
         # Pooling
         elif layers_l[layer] == "MaxPool":
-            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], 'FP32'))
+            f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], current_type))
         elif layers_l[layer] == "AvgPool":
-            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], 'FP32'))
+            f.write(Gtemp.AvgPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], current_type))
         #Skipconn
         elif layers_l[layer] == "Skipnode": 
             f.write(Gtemp.Skipnode_template(layer)) 
@@ -531,7 +483,7 @@ def GenerateGM(proj_folder_path, project_name,
             f.write(Gtemp.Sumnode_template(layer, sumnode_connections[layer])) 
         #Normalization
         elif layers_l[layer] == "InstNorm":
-            f.write(Gtemp.InstNorm_template(layer, in_ch_l[layer]))
+            f.write(Gtemp.InstNorm_template(layer, in_ch_l[layer], current_type))
         # Throw error
         else:
             print("[deployment_utils.GenerateGM]: Layer {} not recognized!!\n".format(layer))
@@ -550,15 +502,24 @@ def GenerateGM(proj_folder_path, project_name,
             f.write(f"\n\t\t{variable} = torch.reshape(x, (-1,))")
         # Set data format for each layer
         if layer == 0 and data_type_l[layer] == 'FP16':
-            f.write(f"\n\t\tx = x.float()")
+            if cuda_is_on: 
+                f.write(f"\n\t\tx = x")
+            else:    
+                f.write(f"\n\t\tx = x.float()")
         elif data_type_l[layer] == 'FP32' and data_type_l[layer-1] != data_type_l[layer]:
             f.write(f"\n\t\tx = x.float()")
         elif data_type_l[layer] == 'FP16' and data_type_l[layer-1] != data_type_l[layer]:
-            f.write(f"\n\t\tx = x.float()")
+            if cuda_is_on:
+                f.write(f"\n\t\tx = x.half()")
+            else:    
+                f.write(f"\n\t\tx = x.float()")
         # Forward layers 
         # (ReLU works with FP32 only)
-        if layers_l[layer] == 'ReLU' and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
-            f.write(f"\n\t\t{variable} = self.l"+str(layer)+f"({variable})")
+        if layers_l[layer] == 'ReLU': # and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
+            if cuda_is_on:
+                f.write(f"\n\t\t{variable} = self.l"+str(layer)+f"({variable})")
+            else:
+                f.write(f"\n\t\t{variable} = self.l"+str(layer)+f"({variable}.float())")
         #Skipconn
         elif sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
             f.write(f"\n\t\t{variable} = self.l{layer}(x)")
@@ -566,30 +527,30 @@ def GenerateGM(proj_folder_path, project_name,
             f.write(f"\n\t\tx = y{layer} + x\t# Sumnode") 
         # Last layer
         elif layer == len(layers_l)-1:
-            f.write(f"\n\t\t{variable} = self.l"+str(layer)+"(x).float()")
+            if cuda_is_on:
+                f.write(f"\n\t\t{variable} = self.l"+str(layer)+"(x)")
+            else:
+                f.write(f"\n\t\t{variable} = self.l"+str(layer)+"(x).float()")
         else:
             f.write("\n\t\tx = self.l"+str(layer)+"(x)")
         
     f.write("\n\t\treturn x\n")
     print("[deployment_utils.GenerateNet]: Setting last layer's output to float for PyTorch compatibility with loss function backward (future fix).")
 
-    '''
-    ---------------------------------   END OF WORKAROUND --------------------------------- 
-    '''
 
     last_layer = len(layers_l) - 1
 
     # Initialize network
     f.write("\n# Initialize network\n")
-    f.write("net = DNN()\n")
+    f.write("net = DNN().to(device)\n")
     f.write("for p in net.parameters():\n")
     f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
     f.write("net.zero_grad()\n\n")
 
     # Write all-ones sample label
     f.write("\n# All-ones fake label \n")
-    f.write("output_test = net(inp)\n")
-    f.write("label = torch.ones_like(output_test)\n")
+    f.write("output_test = net(inp).to(device)\n")
+    f.write("label = torch.ones_like(output_test).to(device)\n")
 
     # Write init weights to header file
     f.write("f = open('io_data.h', 'w')\n")

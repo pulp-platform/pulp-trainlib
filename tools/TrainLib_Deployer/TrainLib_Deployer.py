@@ -43,13 +43,13 @@ import utils.DNN_Composer   as composer
 
 # GENERAL PROPERTIES
 project_name    = 'Test_CNN'
-project_path    = '../../DNN_Tests/'
+project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 10
+epochs          = 5
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
-learning_rate   = 0.01
+learning_rate   = 0.0001
 optimizer       = "SGD"                # Name of PyTorch's optimizer
 loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 

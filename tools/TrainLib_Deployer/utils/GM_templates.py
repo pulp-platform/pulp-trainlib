@@ -124,6 +124,9 @@ def Sumnode_template(layer, ls):
 NORMALIZATION TEMPLATE
 '''
 
-def InstNorm_template(layer, ch):
-    template = f"\t\tself.l{layer}= nn.InstanceNorm2d(num_features={ch}, eps=1e-10, momentum=0, affine=True)\n"
+def InstNorm_template(layer, ch, data_type):
+    if data_type == 'FP32':
+        template = f"\t\tself.l{layer}= nn.InstanceNorm2d(num_features={ch}, eps=1e-10, momentum=0, affine=True)\n"
+    else:
+        template = f"\t\tself.l{layer}= nn.InstanceNorm2d(num_features={ch}, eps=1e-10, momentum=0, affine=True).half()\n"
     return template
