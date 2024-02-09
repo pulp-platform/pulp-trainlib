@@ -137,7 +137,7 @@ void pulp_maxpool_fp16_fw_cl(void * pool_args_fp16) {
 
   // Internal variables
   uint32_t Hact = (H-Hker+Hstr)/Hstr; //H / Hker;
-  uint32_t Wact = (W-Wker+Hstr)/Wstr; //W / Wker;
+  uint32_t Wact = (W-Wker+Wstr)/Wstr; //W / Wker;
   if (Hact!=Ho || Wact!=Wo)   {printf("\n[pulp_maxpool_fp16_fw_cl] Invalid pooling kernel size or output size!\n"); return;}
   int HW = H*W;
   int HWk = Hker*Wker;
@@ -183,7 +183,7 @@ void pulp_maxpool_fp16_bw_cl(void * pool_args_fp16){
 
   // Internal variables
   uint32_t Hact = (H-Hker+Hstr)/Hstr;
-  uint32_t Wact = (W-Wker+Hstr)/Wstr;
+  uint32_t Wact = (W-Wker+Wstr)/Wstr;
   if (Hact!=Ho || Wact!=Wo)   {printf("\n[pulp_maxpool_fp16_bw_cl] Invalid pooling kernel size or output size!\n"); return;}
   int HW = H*W;
   int HWk = Hker*Wker;
