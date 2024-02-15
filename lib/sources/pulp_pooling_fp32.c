@@ -38,7 +38,7 @@ void pulp_avgpool_fp32_fw_cl(void * pool_args) {
 
   // Internal variables
   uint32_t Hact = (H-Hker+Hstr)/Hstr; //H / Hker;
-  uint32_t Wact = (W-Wker+Hstr)/Wstr; //W / Wker;
+  uint32_t Wact = (W-Wker+Wstr)/Wstr; //W / Wker;
   if (Hact!=Ho || Wact!=Wo)   {printf("\n[pulp_avgpool_fp32_fw_cl] Invalid pooling kernel size or output size!\n"); return;}
   int HW = H*W;
   int HWk = Hker*Wker;
@@ -83,7 +83,7 @@ void pulp_avgpool_fp32_bw_cl(void * pool_args){
 
   // Internal variables
   uint32_t Hact = (H-Hker+Hstr)/Hstr; //H / Hker;
-  uint32_t Wact = (W-Wker+Hstr)/Wstr; //W / Wker;
+  uint32_t Wact = (W-Wker+Wstr)/Wstr; //W / Wker;
   if (Hact!=Ho || Wact!=Wo)   {printf("\n[pulp_avgpool_fp32_bw_cl] Invalid pooling kernel size or output size!\n"); return;}
   int HW = H*W;
   int HWk = Hker*Wker;

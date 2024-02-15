@@ -198,6 +198,8 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 struct act_args act_args;\n")
         f.write("PI_L1 struct InstNorm_args InstNorm_args;\n")
         f.write("PI_L1 struct SkipConn_args resconn_args;\n")
+        f.write("PI_L1 struct pool_args MaxPool_args;\n")
+        f.write("PI_L1 struct pool_args AvgPool_args;\n")
         f.write("PI_L1 float * t;\n")
     elif data_type == 'FP16':
         f.write("PI_L1 fp16 * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * OUT_DATA, * OUT_DIFF;\n")
@@ -213,6 +215,8 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 struct act_args_fp16 act_args;\n")
         f.write("PI_L1 struct InstNorm_args_fp16 InstNorm_args;\n")
         f.write("PI_L1 struct SkipConn_args_fp16 resconn_args;\n")
+        f.write("PI_L1 struct pool_args_fp16 MaxPool_args;\n")
+        f.write("PI_L1 struct pool_args_fp16 AvgPool_args;\n")
         f.write("PI_L1 fp16 * t;\n")
     else:
         print("[deployment_utils.GenerateNet] Invalid last layer data type!")
@@ -310,9 +314,9 @@ def GenerateNet(proj_folder_path, project_name,
         for layer in range(len(layers_l)):
             if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
                 if data_type_l[layer] == 'FP32':
-                    f.write("PI_L2 struct pool_args l"+str(layer)+"_pool_args;\n")
+                    f.write("PI_L2 struct pool_args l"+str(layer)+"_args;\n")
                 elif data_type_l[layer] == 'FP16':
-                    f.write("PI_L2 struct pool_args_fp16 l"+str(layer)+"_pool_args;\n")
+                    f.write("PI_L2 struct pool_args_fp16 l"+str(layer)+"_args;\n")
                 else:
                     print("[deployment_utils.GenerateNet] Invalid data type for pooling initialization @Layer{}!".format(layer))
                     exit()
@@ -865,12 +869,12 @@ def GenerateNet(proj_folder_path, project_name,
         for layer in range(len(layers_l)):
             if (layers_l[layer] == 'AvgPool' or layers_l[layer] == 'MaxPool'):
                 f.write("  // Layer "+str(layer)+"\n")
-                f.write("  l"+str(layer)+"_pool_args.input = &layer"+str(layer)+"_in;\n")
-                f.write("  l"+str(layer)+"_pool_args.output = &layer"+str(layer)+"_out;\n")
-                f.write("  l"+str(layer)+"_pool_args.Hker = Tker_H_l"+str(layer)+";\n")
-                f.write("  l"+str(layer)+"_pool_args.Wker = Tker_W_l"+str(layer)+";\n")
-                f.write("  l"+str(layer)+"_pool_args.Hstride = Tstr_H_l"+str(layer)+";\n")
-                f.write("  l"+str(layer)+"_pool_args.Wstride = Tstr_W_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_args.input = &layer"+str(layer)+"_in;\n")
+                f.write("  l"+str(layer)+"_args.output = &layer"+str(layer)+"_out;\n")
+                f.write("  l"+str(layer)+"_args.Hker = Tker_H_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_args.Wker = Tker_W_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_args.Hstride = Tstr_H_l"+str(layer)+";\n")
+                f.write("  l"+str(layer)+"_args.Wstride = Tstr_W_l"+str(layer)+";\n")
     f.write("}\n\n")
 
 
