@@ -112,3 +112,10 @@ void pulp_softmax_fp16_fw_cl( void * act_args_fp16 );
  * @param output Output of softmax.
 */
 void pulp_softmax_fp16_bw_cl( void * act_args_fp16 );
+
+/**
+ * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.
+ * @param input Input for gelu.
+ * @param output Output of gelu.
+*/
+void pulp_gelu_fp16_fw_cl( void* act_args_fp16);
