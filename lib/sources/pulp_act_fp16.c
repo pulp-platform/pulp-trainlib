@@ -105,6 +105,50 @@ void pulp_relu_fp16_bw_cl( void * act_args_fp16 )
   }
 }
 
+void pulp_gelu_fp16_fw_cl( void* act_args_fp16)
+{
+  struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
+  int dim = args->input->dim;
+  fp16* inData = args->input->data;
+  fp16* outData = args->output->data;
+
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  printf("Entering the correct function\n");
+  printf("Dim: %d \n", dim);
+  printf("Start: %d \n", start);
+  printf("Stop: %d \n", stop);
+
+  for (int i = start; i < stop; i++){
+    fp16 x = inData[i];
+    fp16 halfx = (fp16) 0.5f * x;
+
+    fp16 val = (fp16) (((x * x * x * 0.044715f) + x) * 0.7978f);
+    
+    fp16 val2 = val * val;
+    
+
+    fp16 a = (fp16) ((((val2 + 378.0f) * val2 + 17325.0f) * val2 + 135135.0f) * val);
+    printf("a: %f\n", a);
+    fp16 b = (fp16) (((28.0f * val2 + 3150.0f) * val2 + 62370.0f) * val2 + 135135.0f);
+    printf("b: %f\n", b);
+    val = (fp16) (a / b);
+
+    if(val > 1)
+      val = 1;
+    else if(val < -1)
+      val = -1;
+
+    val = (fp16) (val * halfx + halfx);
+
+
+
+    outData[i] = val;
+  }
+}
+
 
 void pulp_softmax_fp16_fw_cl( void * act_args_fp16 )
 {
@@ -169,3 +213,4 @@ void pulp_softmax_fp16_bw_cl( void * act_args_fp16 )
       inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
   }
 }
+
