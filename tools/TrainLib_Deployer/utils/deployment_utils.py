@@ -424,7 +424,7 @@ def GenerateGM(proj_folder_path, project_name,
     # Create input data and label
     f.write("\n# Simple input data \n")
     if (layers_l[0] == 'linear'):
-        f.write("inp = torch.div(torch.ones(l0_in_ch), 1e6)\n")
+        f.write("inp = torch.div(torch.ones(l0_in_ch), 1e6).to(device)\n")
     elif (layers_l[0] in ['conv2d', 'DW', 'PW', 'Skipnode', 'InstNorm']):
         f.write("inp = torch.torch.div(torch.rand(batch_size, l0_in_ch, l0_hin, l0_win), 1e6).to(device)\n")
     # Throw error

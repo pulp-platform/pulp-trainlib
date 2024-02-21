@@ -79,19 +79,19 @@ if bf16_format == 1:
 else: 
     initial_weights = torch.zeros(out_size, in_size).half()
 
-temp_value = -10
+temp_value = -0.1
 if simple_kernel:
-    initial_weights[0:out_size] = 1e-12
+    initial_weights[0:out_size] = 1e-5
 else:
     for i in range(out_size):
         for j in range(in_size):
             initial_weights[i][j] = temp_value
-            temp_value = temp_value + 1e-12
+            temp_value = temp_value + 1e-5
 
 if bf16_format == 1:
-    indata = torch.div(torch.ones(in_size), -1e-9).bfloat16()
+    indata = torch.div(torch.ones(in_size), 1e4).bfloat16()
 else:
-    indata = torch.div(torch.ones(in_size), 1e-9).half()
+    indata = torch.div(torch.ones(in_size), 1e4).half()
     
 indata.requires_grad = True
 print("\nInput data is: ", indata, indata.shape, indata.dtype)
