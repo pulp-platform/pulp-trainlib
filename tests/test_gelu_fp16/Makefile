@@ -1,13 +1,11 @@
-APP = mhsa_fp16
+APP = gelu_fp16
 
 # User settings
-IN_H?=32 # Sequence Length
-IN_W?=32 # Token Size
-N_HEADS?=8
-ATT_DIM?=32 #Hidden dimension
-IN_CH?=1
-OUT_CH?=1
-NUM_CORES?=1
+IN_H?=7 
+IN_W?=7 
+IN_CH?=160
+OUT_CH?=160
+NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=3
@@ -19,9 +17,6 @@ TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
 APP_SRCS = main.c net.c
 
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_mhsa_fp16.c 
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp16.c
 
@@ -42,7 +37,7 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)
+	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH}
 
 profile_all_optim:
 	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)

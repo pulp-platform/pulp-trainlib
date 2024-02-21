@@ -18,19 +18,19 @@ TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
 APP_SRCS += main.c net.c
 
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_residual_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_residual_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_residual_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp16.c
+#APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp16.c
 
 
 APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
