@@ -644,7 +644,8 @@ def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections):
+                data_type_l, sumnode_connections,
+                PROFILE_SINGLE_LAYERS):
 
     # Generate net.h
     f = open(proj_folder_path+'net.h', 'w')
@@ -1295,10 +1296,23 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("}\n\n")
 
 
+
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
 
+    # Profiling options: single layer or all
+    if PROFILE_SINGLE_LAYERS == True:
+        f.write("  printf(\"\\nFORWARD PROFILING:\\n\");\n")
+
     for layer in range(len(layers_l)):
+
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  printf(\"\\nLayer "+str(layer)+"\\n\");\n")
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  START_STATS();\n")
+            f.write("  #endif\n")      
+
         # Generate layer template
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_template_FW(layer, data_type_l[layer]))
@@ -1331,15 +1345,35 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(ntemp.cast_fp16_to_fp32_template(layer, "FW", data_type_l[layer]))
             else:
                 print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[layer], data_type_l[layer+1], layer))
+        
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  STOP_STATS();\n")
+            f.write("  #endif\n")  
     f.write("}\n")
+
 
 
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
+
+    # Profiling options: single layer or all
+    if PROFILE_SINGLE_LAYERS == True:
+        f.write("  printf(\"\\nBACKWARD PROFILING:\\n\");\n")
+
     prev_sumnode = 0 #For Skip Connections
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
         # Generate backward layer template
+
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  printf(\"\\nLayer "+str(lay)+"\\n\");\n")
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  START_STATS();\n")
+            f.write("  #endif\n")    
+
         skip_in_grad = 0
         if lay == 0:
             skip_in_grad = 1
@@ -1377,6 +1411,12 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[lay], data_type_l[lay-1], lay))
         if sumnode_connections[lay] != -1 and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and skip_in_grad==0:
             f.write(ntemp.sum(lay, data_type_l[lay]))
+
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  STOP_STATS();\n")
+            f.write("  #endif\n")  
     f.write("}\n")
 
 
@@ -1474,9 +1514,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("  forward();\n")
     f.write("  print_output();\n\n")
 
-    f.write("  #ifdef PROF_NET\n")
-    f.write("  INIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
-    f.write("  #endif\n\n")
+    # Profile layer by layer?
+    if PROFILE_SINGLE_LAYERS == False:
+        f.write("  #ifdef PROF_NET\n")
+        f.write("  INIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
+        f.write("  #endif\n\n")
 
     f.write("  for (int epoch=0; epoch<EPOCHS; epoch++)\n  {\n")
     f.write("    forward();\n")
@@ -1485,9 +1527,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("    update_weights();\n")
     f.write("  }\n\n")
 
-    f.write("  #ifdef PROF_NET\n")
-    f.write("  STOP_STATS();\n")
-    f.write("  #endif\n\n")
+    # Profile layer by layer?
+    if PROFILE_SINGLE_LAYERS == False:
+        f.write("  #ifdef PROF_NET\n")
+        f.write("  STOP_STATS();\n")
+        f.write("  #endif\n\n")
 
     f.write("  // Check and print updated output\n")
     f.write("  forward();\n")
