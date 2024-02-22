@@ -1365,7 +1365,6 @@ def GenerateNet(proj_folder_path, project_name,
     prev_sumnode = 0 #For Skip Connections
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
-        # Generate backward layer template
 
         # Profile layer by layer?
         if PROFILE_SINGLE_LAYERS == True:
@@ -1374,6 +1373,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  START_STATS();\n")
             f.write("  #endif\n")    
 
+        # Generate backward layer template
         skip_in_grad = 0
         if lay == 0:
             skip_in_grad = 1

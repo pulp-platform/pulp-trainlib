@@ -89,9 +89,9 @@ data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', '
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 60*(2**10)
-USE_DMA = 'NO'  # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'DB'  # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # PROFILING OPTIONS
-PROFILE_SINGLE_LAYERS = True
+PROFILE_SINGLE_LAYERS = False          # If True, profiles forward and backward layer-by-layer
 # OTHER PROPERTIES
 # Select if to read the network from an external source
 READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
