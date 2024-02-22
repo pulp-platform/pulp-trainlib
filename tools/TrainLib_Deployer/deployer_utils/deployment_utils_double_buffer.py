@@ -23,7 +23,7 @@ import shutil
 import math
 
 from torch import mm
-import utils.net_templates_double_buffer as ntemp
+import deployer_utils.net_templates_double_buffer as ntemp
 
 
 """

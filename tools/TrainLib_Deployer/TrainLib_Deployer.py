@@ -34,8 +34,8 @@ Available DNN layer names:
 'InstNorm'  -> instance Normalization layer
 """
 
-import utils.DNN_Reader     as reader
-import utils.DNN_Composer   as composer
+import deployer_utils.DNN_Reader     as reader
+import deployer_utils.DNN_Composer   as composer
 
 # ---------------------
 # --- USER SETTINGS ---

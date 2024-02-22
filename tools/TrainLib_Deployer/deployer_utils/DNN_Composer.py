@@ -18,9 +18,9 @@ limitations under the License.
 Authors: Davide Nadalini
 '''
 
-import utils.deployment_utils_single_buffer as utilsSB
-import utils.deployment_utils_double_buffer as utilsDB
-import utils.deployment_utils as utils
+import deployer_utils.deployment_utils_single_buffer as utilsSB
+import deployer_utils.deployment_utils_double_buffer as utilsDB
+import deployer_utils.deployment_utils as utils
 
 """
 The DNN Size Checker checks if the DNN fits the available PULP
