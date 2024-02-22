@@ -116,7 +116,7 @@ def GenerateNet(proj_folder_path, project_name,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                PROFILE_SINGLE_LAYERS):
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
 
 
     data_type = data_type_l[0]
@@ -983,8 +983,10 @@ def GenerateNet(proj_folder_path, project_name,
             is_skipderivation = True
 
         skip_in_grad = 0
+        FIRST_LAYER = False
         if lay == 0:
             skip_in_grad = 1
+            FIRST_LAYER = True
 
         target_layer = lay
         if is_skipderivation: # Check for target layer's input for diff calculation of Skipnode derivations
@@ -1013,13 +1015,13 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(f"\tcopy_struct_param((unsigned int) &l{lay}_args, (unsigned int) &{layers_l[lay]}_args, sizeof(l{lay}_args));\n")
 
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, data_type_l[lay]))
+            f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay]))
+            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, data_type_l[lay]))
+            f.write(ntemp.DW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, data_type_l[lay]))
+            f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER))
         elif layers_l[lay] == 'ReLU':
             f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'AvgPool':

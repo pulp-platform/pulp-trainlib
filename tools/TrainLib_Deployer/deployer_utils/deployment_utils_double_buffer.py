@@ -79,7 +79,7 @@ def GenerateNet(proj_folder_path, project_name,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                PROFILE_SINGLE_LAYERS):
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
 
 
     data_type = data_type_l[0]

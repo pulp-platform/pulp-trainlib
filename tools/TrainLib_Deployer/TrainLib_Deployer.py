@@ -89,9 +89,11 @@ data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', '
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 60*(2**10)
-USE_DMA = 'DB'  # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+# BACKWARD SETTINGS
+SEPARATE_BACKWARD_STEPS = False          # If True, writes separate weight and input gradient in backward step
 # PROFILING OPTIONS
-PROFILE_SINGLE_LAYERS = False          # If True, profiles forward and backward layer-by-layer
+PROFILE_SINGLE_LAYERS = False           # If True, profiles forward and backward layer-by-layer
 # OTHER PROPERTIES
 # Select if to read the network from an external source
 READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
@@ -135,7 +137,7 @@ else:
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
                             epochs, batch_size, learning_rate, optimizer, loss_fn,
                             NUM_CORES, data_type_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections, 
-                            USE_DMA, PROFILE_SINGLE_LAYERS)
+                            USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
 
     print("PULP project generation successful!")
 
