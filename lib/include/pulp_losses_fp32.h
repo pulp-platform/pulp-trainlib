@@ -25,7 +25,7 @@
 
 /**
  * @brief Structure to configure the activation functions
- * @param output pointer to the blob structure of the output data to calculate the output gradient
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
  * @param target current sample's label
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
@@ -42,17 +42,33 @@ struct loss_args {
  */
 
 /**
- * @brief Standard Cross Entropy Loss function 
- * @param output pointer to output data
+ * @brief Cross Entropy Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
  * @param target output label
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
 void pulp_CrossEntropyLoss( void * loss_args );
 
 /**
- * @brief Standard Mean Squared Error Loss function 
- * @param output pointer to output data
+ * @brief Computation of the output gradient for the Cross Entropy Loss function
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ */
+void pulp_CrossEntropyLoss_backward( void * loss_args );
+
+/**
+ * @brief Mean Squared Error Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
  * @param target output label
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
 void pulp_MSELoss( void * loss_args );
+
+/**
+ * @brief Mean Squared Error Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ */
+void pulp_MSELoss_backward( void * loss_args );

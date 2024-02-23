@@ -32,6 +32,13 @@ Available DNN layer names:
 'Skipnode'  -> node at which data is taken and passes forward, to add an additional layer after the skip derivation simply substitute 'Skipnode' with any kind of layer
 'Sumnode'   -> node at which data from Skipnode is summed 
 'InstNorm'  -> instance Normalization layer
+
+Available losses:
+'MSELoss'           -> Mean Square Error loss
+'CrossEntropyLoss'  -> CrossEntropy loss
+
+Available optimizers:
+'SGD'       -> Stochastic Gradient Descent
 """
 
 import deployer_utils.DNN_Reader     as reader
@@ -47,7 +54,7 @@ project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 5
+epochs          = 1
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.001
 optimizer       = "SGD"                # Name of PyTorch's optimizer
@@ -89,7 +96,7 @@ data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', '
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 60*(2**10)
-USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'DB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = False          # If True, writes separate weight and input gradient in backward step
 # PROFILING OPTIONS
