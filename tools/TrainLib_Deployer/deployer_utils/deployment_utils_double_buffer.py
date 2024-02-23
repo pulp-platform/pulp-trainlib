@@ -23,7 +23,7 @@ import shutil
 import math
 
 from torch import mm
-import utils.net_templates_double_buffer as ntemp
+import deployer_utils.net_templates_double_buffer as ntemp
 
 
 """
@@ -78,7 +78,8 @@ def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections, MAX_LAYER_DIM):
+                data_type_l, sumnode_connections, MAX_LAYER_DIM,
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
 
 
     data_type = data_type_l[0]
@@ -855,8 +856,14 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("}\n\n")
 
 
+
     f.write("\n// Forward pass function\n")
     f.write("void forward(){\n")
+
+    # Profiling options: single layer or all
+    if PROFILE_SINGLE_LAYERS == True:
+        f.write("  printf(\"\\nFORWARD PROFILING:\\n\\n\");\n")
+
     f.write("\tpi_cl_dma_flush();\n")
     f.write("\treset_arguments();\n")
     current_buffer = 0
@@ -879,6 +886,12 @@ def GenerateNet(proj_folder_path, project_name,
 
     for layer in range(len(layers_l)):
 
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  printf(\"\\nLayer "+str(layer)+"\\n\");\n")
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  START_STATS();\n")
+            f.write("  #endif\n")  
 
         is_skipder = True
         if sumnode_connections[layer] < 0 or layers_l[layer] == 'Sumnode':
@@ -902,20 +915,16 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             bytes_per_data = 4        
 
-
         # Get layers informations 
         if not (layers_l[layer] in ['Skipnode', 'ReLU', 'Sumnode']):
             f.write(f"\tcopy_struct_param((uint32_t) &l{layer}_args, (uint32_t) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
   
-
         # Get data dimensions to adjust array pointers     
         f.write(f"\tget_dim(&layer{layer}_out, &d{output_buffer}_blob);\n")
         if layer < len(layers_l) - 1:
             if (not is_skipder) or (layers_l[layer] == 'Skipnode'):
                 if not (layers_l[layer + 1] in ['Skipnode', 'ReLU']):
                     f.write(f"\tget_dim(&layer{layer+1}_wgt, &w{next_buffer}_blob);\n")
-
-        
 
         # Adjust arguments for structures 
         f.write(f"\tin = d{current_buffer}_blob;\n")
@@ -934,7 +943,6 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(f"\tload((uint32_t) layer{layer+1}_wgt.data, (uint32_t) w{next_buffer}_blob.data, {bytes_per_data}*layer{layer+1}_wgt.dim);\n")
         if layers_l[layer] == 'Skipnode':
             f.write(f"\tload((uint32_t) layer{layer+1}_wgt.data, (uint32_t) w{next_buffer}_blob.data, {bytes_per_data}*layer{layer+1}_wgt.dim);\n")
-
 
         # Generate layer template
         if layers_l[layer] == 'linear':
@@ -961,8 +969,6 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
 
-
-
         # Insert casting operator for data type variation
         if layer < len(layers_l)-1 and data_type_l[layer] != data_type_l[layer+1]:
             if data_type_l[layer] == 'FP32' and data_type_l[layer+1] == 'FP16':
@@ -977,7 +983,6 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(f"\n\tstore((uint32_t) out.data, (uint32_t) layer{layer}_out.data, {bytes_per_data}*layer{layer}_out.dim);\n")
             f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
 
-        
         do_store = True
         if is_skipder:
             if layers_l[layer] != 'Skipnode':
@@ -994,16 +999,32 @@ def GenerateNet(proj_folder_path, project_name,
             previous_out  = output_buffer
         current_buffer = next_buffer
 
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  STOP_STATS();\n")
+            f.write("  #endif\n\n")  
     f.write("}\n")
+
 
 
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
     
+    # Profiling options: single layer or all
+    if PROFILE_SINGLE_LAYERS == True:
+        f.write("  printf(\"\\nBACKWARD PROFILING:\\n\\n\");\n")
+
     next_input_buffer = 0
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
-        # Generate backward layer template
+
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  printf(\"\\nLayer "+str(lay)+"\\n\");\n")
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  START_STATS();\n")
+            f.write("  #endif\n")  
 
         # Bool for Skipnode and layer after Skipnodes detection
         is_skipderivation = False
@@ -1071,9 +1092,6 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(f"\tload((uint32_t) layer{lay}_out.diff, (uint32_t) out.diff, {bytes_per_data}*layer{lay}_out.dim);\n")
             f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
 
-            
-
-
         # Compute dW if needed
         if not layers_l[lay] in ['Skipnode', 'Sumnode',  'ReLU']:
             if layers_l[lay] == 'linear':
@@ -1116,8 +1134,6 @@ def GenerateNet(proj_folder_path, project_name,
             if is_skipderivation:
                 f.write(ntemp.sum(lay, layers_l[lay] == 'Skipnode', current_buffer, output_buffer, data_type_l[lay]))
 
-
-
         # Load next layer's input and coefficients
         if lay > 0:
             f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
@@ -1131,12 +1147,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(f"\tload((uint32_t) layer{lay-1}_wgt.data, (uint32_t) w{next_input_buffer}_blob.data, {bytes_per_data}*layer{lay-1}_wgt.dim);\n")
             f.write("\tpi_cl_dma_flush();\n")
 
-
         current_buffer = next_buffer
-
-
-
-
 
         '''
         # Insert casting operator for data type variation
@@ -1147,8 +1158,6 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(ntemp.cast_fp16_to_fp32_template(lay, "BW", data_type_l[lay]))
             else:
                 print("[deployment_utils.GenerateNet]: Unable to convert {} to {} @layer{}!".format(data_type_l[lay], data_type_l[lay-1], lay))
-
-
 
         if sumnode_connections[lay] != -1 and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and skip_in_grad==0:
             f.write(f"\tload_output(&layer{target_layer}_in, 0);\n")
@@ -1161,6 +1170,11 @@ def GenerateNet(proj_folder_path, project_name,
         if lay > 0 and layers_l[lay] != 'Sumnode':
             f.write(f"\tstore_input(&layer{target_layer}_in, 0);\n")
         '''
+        # Profile layer by layer?
+        if PROFILE_SINGLE_LAYERS == True:
+            f.write("  #ifdef PROF_NET\n")
+            f.write("  STOP_STATS();\n")
+            f.write("  #endif\n\n")  
     f.write("}\n")
 
 
@@ -1347,9 +1361,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("  forward();\n")
     f.write("  print_output();\n\n")
 
-    f.write("  #ifdef PROF_NET\n")
-    f.write("  INIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
-    f.write("  #endif\n\n")
+    # Profile layer by layer?
+    if PROFILE_SINGLE_LAYERS == False:
+        f.write("  #ifdef PROF_NET\n")
+        f.write("  INIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
+        f.write("  #endif\n\n")
 
     f.write("  for (int epoch=0; epoch<EPOCHS; epoch++)\n  {\n")
     f.write("    forward();\n")
@@ -1358,9 +1374,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("    update_weights();\n")
     f.write("  }\n\n")
 
-    f.write("  #ifdef PROF_NET\n")
-    f.write("  STOP_STATS();\n")
-    f.write("  #endif\n\n")
+    # Profile layer by layer?
+    if PROFILE_SINGLE_LAYERS == False:
+        f.write("  #ifdef PROF_NET\n")
+        f.write("  STOP_STATS();\n")
+        f.write("  #endif\n\n")
 
     f.write("  // Check and print updated output\n")
     f.write("  forward();\n")
