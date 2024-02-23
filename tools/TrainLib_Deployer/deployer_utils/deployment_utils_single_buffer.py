@@ -965,21 +965,35 @@ def GenerateNet(proj_folder_path, project_name,
 
     # Compute loss
     if loss_fn == "MSELoss":
-        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
-        f.write("  loss_args.target = LABEL;\n")
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        f.write("  loss_args.output = &output_blob;\n")
+        f.write("  loss_args.target = temp_blob.data;\n")
         f.write("  loss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
             f.write("  pulp_MSELoss_backward(&loss_args);\n")   
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_MSELoss_backward_fp16(&loss_args);\n") 
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
     elif loss_fn == 'CrossEntropyLoss':
-        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
-        f.write("  loss_args.target = LABEL;\n")
-        f.write("  loss_args.wr_loss = &loss;\n")
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        f.write("  loss_args.output = &output_blob;\n")
+        f.write("  loss_args.target = temp_blob.data;\n")
+        f.write("  loss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
             f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
     else:
         print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
 
