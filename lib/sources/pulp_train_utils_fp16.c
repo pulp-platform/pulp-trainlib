@@ -367,7 +367,7 @@ void pulp_row_max_fp16_cl(void * void_args){
 }
 
 
-float fastexp_gist(float x) {
+float fastexp_gist_fp16(float x) {
     x = GIST_A * x + GIST_B;
 
     if (x < GIST_C || x > GIST_D)
@@ -377,7 +377,7 @@ float fastexp_gist(float x) {
     return *(float*) &n;
 }
 
-float q_rsqrt(float number)
+float q_rsqrt_fp16(float number)
 {
   long i;
   float x2, y;
@@ -426,7 +426,7 @@ void pulp_exp_sum_fp16_cl(void* void_args){
     for(int i=start; i<stop; i++){
         sums[i] = 0;
         for(int j=0; j<dim; j++){
-            fp16 o = (fp16)(fastexp_gist((float)(*input - maxes[i])));
+            fp16 o = (fp16)(fastexp_gist_fp16((float)(*input - maxes[i])));
             //fp16 o = (fp16)expf((float)(*input - maxes[i]));
             *output = o;
             sums[i] += o;

@@ -46,7 +46,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
 
     int H = F / n_heads;                                        //  Head dimension
     //fp16 scaling = (fp16) (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
-    float scaling = q_rsqrt((float)H);
+    float scaling = q_rsqrt_fp16((float)H);
 
     // Projecting input sequence into Q, K, V
     struct matMul_args_fp16 matMul_args1;

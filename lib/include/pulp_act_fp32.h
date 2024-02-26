@@ -100,6 +100,18 @@ void pulp_relu_fp32_fw_cl( void * act_args );
 */
 void pulp_relu_fp32_bw_cl( void * act_args );
 
+/**
+ * @brief Core function to implement the forward of ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &args)).
+ * @param act_args Input and output data (data only will be used)
+*/
+void relu_core_fw_fp32( void * act_args );
+
+/**
+ * @brief Core function to implement the backward of ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, relu_core_bw_fp32, &args)).
+ * @param act_args Input and output data (gradients only will be used)
+*/
+void relu_core_bw_fp32( void * act_args );
+
 
 
 /**

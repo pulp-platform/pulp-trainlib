@@ -528,4 +528,4 @@ v2f16 vfpack(fp16 a, fp16 b);
  */
 void pulp_mean_std_fp16_cl(void * mean_std_args);
 
-float q_rsqrt(float number);
+float q_rsqrt_fp16(float number);

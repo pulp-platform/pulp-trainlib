@@ -48,7 +48,7 @@ PULP-TrainLib is the first open-source training library for RISC-V-based multico
 
 ![PULP-TrainLib's Primitives](./assets/img/pulp-trainlib-primitives.png)
 
-Note that every training step for most of the layers is implemented as a Matrix Multiplication (MM) between tensor data. E.g., for a Conv2D and Fully-Connected Layer, the structure and sizes of the involved matrices can be represented as follows:
+Note that every training step for most of the layers are implemented as a Matrix Multiplication (MM) between tensor data. E.g., for a Conv2D and Fully-Connected Layer, the structure and sizes of the involved matrices can be represented as follows:
 
 ![MM-based training primitives](./assets/img/pulp-trainlib-mm-flow.png)
 
