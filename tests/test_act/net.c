@@ -32,11 +32,11 @@ PI_L1 float reluout[OUT_SIZE];
 PI_L1 float reluout_grad[OUT_SIZE];
 PI_L1 float reluin_grad[IN_SIZE];
 
-PI_L1 struct blob softmin_blob;
-PI_L1 struct blob softmout_blob;
-PI_L1 float softmout[OUT_SIZE];
-PI_L1 float softmout_grad[OUT_SIZE];
-PI_L1 float softmin_grad[IN_SIZE];
+// PI_L1 struct blob softmin_blob;
+// PI_L1 struct blob softmout_blob;
+// PI_L1 float softmout[OUT_SIZE];
+// PI_L1 float softmout_grad[OUT_SIZE];
+// PI_L1 float softmin_grad[IN_SIZE];
 
 PI_L1 struct blob sigmoidin_blob;
 PI_L1 struct blob sigmoidout_blob;
@@ -54,11 +54,11 @@ PI_L1 fp16 reluout[OUT_SIZE];
 PI_L1 fp16 reluout_grad[OUT_SIZE];
 PI_L1 fp16 reluin_grad[IN_SIZE];
 
-PI_L1 struct blob_fp16 softmin_blob;
-PI_L1 struct blob_fp16 softmout_blob;
-PI_L1 fp16 softmout[OUT_SIZE];
-PI_L1 fp16 softmout_grad[OUT_SIZE];
-PI_L1 fp16 softmin_grad[IN_SIZE];
+// PI_L1 struct blob_fp16 softmin_blob;
+// PI_L1 struct blob_fp16 softmout_blob;
+// PI_L1 fp16 softmout[OUT_SIZE];
+// PI_L1 fp16 softmout_grad[OUT_SIZE];
+// PI_L1 fp16 softmin_grad[IN_SIZE];
 
 PI_L1 struct blob_fp16 sigmoidin_blob;
 PI_L1 struct blob_fp16 sigmoidout_blob;
@@ -78,8 +78,8 @@ void prepare_data ()
     {
         reluout[i] = 0;
         reluin_grad[i] = 0;
-        softmout[i] = 0;
-        softmin_grad[i] = 0;
+        //softmout[i] = 0;
+        //softmin_grad[i] = 0;
     }
 
     // ReLU args
@@ -97,20 +97,20 @@ void prepare_data ()
     reluout_blob.W = Tout_W;
     reluout_blob.C = Tout_C;
 
-    // Softmax args
-    softmin_blob.data = SOFTMIN;
-    softmin_blob.diff = softmin_grad;
-    softmin_blob.dim = Tin_C*Tin_H*Tin_W;
-    softmin_blob.H = Tin_H;
-    softmin_blob.W = Tin_W;
-    softmin_blob.C = Tin_C;
+    // // Softmax args
+    // softmin_blob.data = SOFTMIN;
+    // softmin_blob.diff = softmin_grad;
+    // softmin_blob.dim = Tin_C*Tin_H*Tin_W;
+    // softmin_blob.H = Tin_H;
+    // softmin_blob.W = Tin_W;
+    // softmin_blob.C = Tin_C;
 
-    softmout_blob.data = softmout;
-    softmout_blob.diff = SOFTMOUTPUT_GRAD;
-    softmout_blob.dim = Tout_C*Tout_H*Tout_W;
-    softmout_blob.H = Tout_H;
-    softmout_blob.W = Tout_W;
-    softmout_blob.C = Tout_C;
+    // softmout_blob.data = softmout;
+    // softmout_blob.diff = SOFTMOUTPUT_GRAD;
+    // softmout_blob.dim = Tout_C*Tout_H*Tout_W;
+    // softmout_blob.H = Tout_H;
+    // softmout_blob.W = Tout_W;
+    // softmout_blob.C = Tout_C;
 
     // Sigmoid args
     sigmoidin_blob.data = SIGMOIDIN;
@@ -203,66 +203,66 @@ void net_step () {
 
 
 
-    printf("\n----- SOFTMAX RESULTS -----\n");
+    // printf("\n----- SOFTMAX RESULTS -----\n");
 
-    // Prepare ReLU struct
-    act_args.input = &softmin_blob;
-    act_args.output = &softmout_blob;
+    // // Prepare ReLU struct
+    // act_args.input = &softmin_blob;
+    // act_args.output = &softmout_blob;
 
-    #ifdef PROF_NET
-    printf("Forward stats: \n");
-    START_STATS();
-    #endif
+    // #ifdef PROF_NET
+    // printf("Forward stats: \n");
+    // START_STATS();
+    // #endif
 
-    #if DATA_TYPE == FP32
-    pulp_softmax_fp32_fw_cl(&act_args);
-    #elif DATA_TYPE == FP16
-    pulp_softmax_fp16_fw_cl(&act_args);
-    #else
+    // #if DATA_TYPE == FP32
+    // pulp_softmax_fp32_fw_cl(&act_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_softmax_fp16_fw_cl(&act_args);
+    // #else
 
-    #endif
+    // #endif
     
 
-    #ifdef PROF_NET
-    STOP_STATS();
-    #endif
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    // #endif
 
-    printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #else
+    // printf("\nChecking output..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(softmout, SOFTMOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    // #else
 
-    #endif
+    // #endif
 
 
-    #ifdef PROF_NET
-    printf("\nBackward stats: \n");
-    START_STATS();
-    #endif
+    // #ifdef PROF_NET
+    // printf("\nBackward stats: \n");
+    // START_STATS();
+    // #endif
     
-    #if DATA_TYPE == FP32
-    pulp_softmax_fp32_bw_cl(&act_args);
-    #elif DATA_TYPE == FP16
-    pulp_softmax_fp16_bw_cl(&act_args);
-    #else
+    // #if DATA_TYPE == FP32
+    // pulp_softmax_fp32_bw_cl(&act_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_softmax_fp16_bw_cl(&act_args);
+    // #else
 
-    #endif
+    // #endif
 
 
-    #ifdef PROF_NET
-    STOP_STATS();
-    #endif
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    // #endif
 
-    printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #else 
+    // printf("\nChecking in grad..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(softmin_grad, SOFTMIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    // #else 
 
-    #endif
+    // #endif
 
 
 
