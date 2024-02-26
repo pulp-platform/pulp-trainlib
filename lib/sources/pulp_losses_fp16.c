@@ -27,7 +27,6 @@ void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
 {
   struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
   fp16 * outData = args->output->data;
-  fp16 * outDiff = args->output->diff;
   fp16 * target = args->target;
   fp16 * wr_loss = args->wr_loss;
   int size = args->output->dim;
@@ -54,6 +53,17 @@ void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
   #endif  
 
   *wr_loss = loss;
+}
+
+
+void pulp_CrossEntropyLoss_backward_fp16 ( void * loss_args_fp16 )
+{
+  struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
+  fp16 * outData = args->output->data;
+  fp16 * outDiff = args->output->diff;
+  fp16 * target = args->target;
+  fp16 * wr_loss = args->wr_loss;
+  int size = args->output->dim;
 
   for(int i=0; i<size; i++){
     outDiff[i] = (-target[i] / outData[i]);
@@ -65,11 +75,12 @@ void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
 }
 
 
+
+
 void pulp_MSELoss_fp16 ( void * loss_args_fp16 ) 
 {
   struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
   fp16 * outData = args->output->data;
-  fp16 * outDiff = args->output->diff;
   fp16 * target = args->target;
   fp16 * wr_loss = args->wr_loss;
   int size = args->output->dim;
@@ -103,6 +114,20 @@ void pulp_MSELoss_fp16 ( void * loss_args_fp16 )
   #endif  
 
   *wr_loss = loss;
+}
+
+
+void pulp_MSELoss_backward_fp16 ( void * loss_args_fp16 ) 
+{
+  struct loss_args_fp16 * args = (struct loss_args_fp16 *) loss_args_fp16;
+  fp16 * outData = args->output->data;
+  fp16 * outDiff = args->output->diff;
+  fp16 * target = args->target;
+  fp16 * wr_loss = args->wr_loss;
+  int size = args->output->dim;
+  int off = 0;
+
+  fp16 meanval = 1.0f / size;
 
   for(int i=0; i<size; i++){
     outDiff[i] = meanval * 2.0f *(-target[i]+outData[i]);
@@ -111,5 +136,4 @@ void pulp_MSELoss_fp16 ( void * loss_args_fp16 )
     printf("target: %+.4f, out_diff: %+.4f, out_data:%+.4f\n", target[i], outDiff[i], outData[i]);
     #endif
   }
-
 }

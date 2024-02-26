@@ -1011,6 +1011,40 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
     
+    # Compute loss
+    if loss_fn == "MSELoss":
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    loss_args.output = &d1_blob;\n") 
+        f.write("    loss_args.target = w1_blob.data;\n") 
+        f.write("    loss_args.wr_loss = &loss;\n") 
+        if data_type_l[-1] == 'FP32':
+            f.write("    pulp_MSELoss_backward(&loss_args);\n")   
+        elif data_type_l[-1] == 'FP16':
+            f.write("    pulp_MSELoss_backward_fp16(&loss_args);\n") 
+        f.write("    store((uint32_t) d1_blob.diff, (uint32_t) layer"+str(len(layers_l)-1)+"_out.diff, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+    elif loss_fn == 'CrossEntropyLoss':
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    loss_args.output = &d1_blob;\n") 
+        f.write("    loss_args.target = w1_blob.data;\n") 
+        f.write("    loss_args.wr_loss = &loss;\n") 
+        if data_type_l[-1] == 'FP32':
+            f.write("    pulp_CrossEntropyLoss_backward(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("    pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
+        f.write("    store((uint32_t) d1_blob.diff, (uint32_t) layer"+str(len(layers_l)-1)+"_out.diff, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+    else:
+        print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
+
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
         f.write("  printf(\"\\nBACKWARD PROFILING:\\n\\n\");\n")

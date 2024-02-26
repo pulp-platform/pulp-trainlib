@@ -1358,6 +1358,26 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
 
+    # Compute loss
+    if loss_fn == "MSELoss":
+        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
+        f.write("  loss_args.target = LABEL;\n")
+        f.write("  loss_args.wr_loss = &loss;\n") 
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_MSELoss_backward(&loss_args);\n")   
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_MSELoss_backward_fp16(&loss_args);\n") 
+    elif loss_fn == 'CrossEntropyLoss':
+        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
+        f.write("  loss_args.target = LABEL;\n")
+        f.write("  loss_args.wr_loss = &loss;\n")
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
+    else:
+        print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
+
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
         f.write("  printf(\"\\nBACKWARD PROFILING:\\n\");\n")
@@ -1433,6 +1453,17 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  pulp_MSELoss(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_MSELoss_fp16(&loss_args);\n")
+        else:
+            print("[deplyment_utils.GenerateNet]: Invalid loss type!")
+            exit()
+    elif loss_fn == "CrossEntropyLoss":
+        f.write("  loss_args.output = &layer"+str(len(layers_l)-1)+"_out;\n")
+        f.write("  loss_args.target = LABEL;\n")
+        f.write("  loss_args.wr_loss = &loss;\n")
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_CrossEntropyLoss(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_CrossEntropyLoss_fp16(&loss_args);\n")
         else:
             print("[deplyment_utils.GenerateNet]: Invalid loss type!")
             exit()

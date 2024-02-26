@@ -23,16 +23,16 @@
 
 
 // DATA DEFINITION
-#ifndef FLOAT32
-#define FLOAT32
+#ifndef FLOAT16
+#define FLOAT16
 #endif
 
-#ifdef FLOAT32
-PI_L1 struct loss_args loss_args;
-PI_L1 float out[OUT_SIZE];
-PI_L1 float out_diff[OUT_SIZE];
-PI_L1 float loss = 0;
-PI_L1 struct blob out_blob;
+#ifdef FLOAT16
+PI_L1 struct loss_args_fp16 loss_args;
+PI_L1 fp16 out[OUT_SIZE];
+PI_L1 fp16 out_diff[OUT_SIZE];
+PI_L1 fp16 loss = 0;
+PI_L1 struct blob_fp16 out_blob;
 #endif
 
 
@@ -57,9 +57,11 @@ void prepare_data ()
 void compute_loss ()
 {
     #if LOSS_FN == MSE
-    pulp_MSELoss(&loss_args);
+    pulp_MSELoss_fp16(&loss_args);
+    pulp_MSELoss_backward_fp16(&loss_args);
     #elif LOSS_FN == CrossEntropy
-    pulp_CrossEntropyLoss(&loss_args);
+    pulp_CrossEntropyLoss_fp16(&loss_args);
+    pulp_CrossEntropyLoss_backward_fp16(&loss_args);
     #else 
     printf("\nInvalid Loss Function selection!!\n");
     #endif
@@ -86,7 +88,7 @@ void net_step () {
     #endif
 
     #ifdef FLOAT32
-    printf("Data type is float32.\nOUT_SIZE = %d.\n", OUT_SIZE);
+    printf("Data type is float16.\nOUT_SIZE = %d.\n", OUT_SIZE);
     #endif
 
     prepare_data();
@@ -106,10 +108,10 @@ void net_step () {
     print_tensors();
     printf("\nLoss is %f, expected loss is %f\n", loss, LOSS);
     printf("\nChecking output..\n");
-    verify_tensor(out, OUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    verify_tensor_fp16(out, OUTPUT, OUT_SIZE, ERROR_TOLERANCE);
     printf("Check complete.");
     printf("\nChecking out diff..\n");
-    verify_tensor(out_diff, OUTPUT_GRAD, OUT_SIZE, ERROR_TOLERANCE);
+    verify_tensor_fp16(out_diff, OUTPUT_GRAD, OUT_SIZE, ERROR_TOLERANCE);
     printf("Check complete.");
 
     return;
