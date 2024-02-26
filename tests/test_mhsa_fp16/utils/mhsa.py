@@ -12,7 +12,7 @@ def own_softmax(x):
     x_copy = x.float()
     #maxes = torch.swapaxes(maxes, -2, -1) 
     x_exp = torch.exp((x_copy-maxes))
-    x_exp = x_exp.half()
+    x_exp = x_exp.bfloat16()
     x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
     return x_exp/x_exp_sum
 
@@ -40,7 +40,7 @@ class MultiHeadedSelfAttention(nn.Module):
         self.att_dim = att_dim
         self.n_heads = num_heads
         self.head_dim = att_dim // num_heads
-        self.scaling = q_rsqrt(self.head_dim).half()
+        self.scaling = q_rsqrt(self.head_dim).bfloat16()
         self.scores = None # for visualization
         self.softmax = own_softmax
 

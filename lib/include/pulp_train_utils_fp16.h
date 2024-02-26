@@ -21,11 +21,6 @@
 #include "pmsis.h"
 #include "pulp_train_defines.h"
 
-#define GIST_A  12102203.17133801f
-#define GIST_B  1064986823.010288f
-#define GIST_C  8388608
-#define GIST_D  2139095040  
-
 /**
  * =====> BACKEND STRUCTURES <=====
  */

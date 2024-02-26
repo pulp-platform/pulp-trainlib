@@ -140,11 +140,6 @@ void pulp_gelu_fp16_fw_cl( void* act_args_fp16)
   const int start = pi_core_id()*blockSize;
   const int stop = start + blockSize > dim ? dim : start+blockSize;
 
-  printf("Entering the correct function\n");
-  printf("Dim: %d \n", dim);
-  printf("Start: %d \n", start);
-  printf("Stop: %d \n", stop);
-
   for (int i = start; i < stop; i++){
     fp16 x = inData[i];
     fp16 halfx = (fp16) 0.5f * x;
@@ -155,9 +150,7 @@ void pulp_gelu_fp16_fw_cl( void* act_args_fp16)
     
 
     fp16 a = (fp16) ((((val2 + 378.0f) * val2 + 17325.0f) * val2 + 135135.0f) * val);
-    printf("a: %f\n", a);
     fp16 b = (fp16) (((28.0f * val2 + 3150.0f) * val2 + 62370.0f) * val2 + 135135.0f);
-    printf("b: %f\n", b);
     val = (fp16) (a / b);
 
     if(val > 1)
