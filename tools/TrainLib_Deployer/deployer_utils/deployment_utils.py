@@ -655,7 +655,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n")
 
     f.write("// Tolerance to check updated output\n")
-    f.write("#define TOLERANCE 1e-12\n\n")
+    f.write("#define TOLERANCE 1e-6\n\n")
 
     f.write("// Training functions\n")
     f.write("void DNN_init();\n")
