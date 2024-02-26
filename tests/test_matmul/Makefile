@@ -2,9 +2,9 @@ APP = test_matmul
 
 # User settings
 # Standard matmul arguments
-IN_CH?=120			# Used also to define the number of channels of DW Conv
-MID_CH?=40
-OUT_CH?=10
+IN_CH?=32			# Used also to define the number of channels of DW Conv
+MID_CH?=32
+OUT_CH?=32
 # General arguments
 DATA_TYPE?='float' 	# float, fp16 (=>float16), bf16 (=>float16alt)  to select the desired format
 DIVIDER?=100000000	# Scaling factor for data initialization in golden model

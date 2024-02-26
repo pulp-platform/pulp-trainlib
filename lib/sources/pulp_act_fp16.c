@@ -83,16 +83,33 @@ void sigmoid_core_bw_fp16( void * act_args )
 void pulp_relu_fp16_fw_cl( void * act_args_fp16 )
 {
   struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
+  pi_cl_team_fork(NUM_CORES, relu_core_fw_fp16, act_args_fp16);
+}
+
+void pulp_relu_fp16_bw_cl( void * act_args_fp16 )
+{
+  struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
+  pi_cl_team_fork(NUM_CORES, relu_core_bw_fp16, act_args_fp16);
+}
+
+void relu_core_fw_fp16( void * act_args_fp16 )
+{
+  struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
   int dim = args->input->dim;
   fp16* inData = args->input->data;
   fp16* outData = args->output->data;
 
-  for (int i = 0; i < dim; i++) {
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
     outData[i] = inData[i] > 0 ? inData[i] : 0;
   }
+
 }
 
-void pulp_relu_fp16_bw_cl( void * act_args_fp16 )
+void relu_core_bw_fp16( void * act_args_fp16 )
 {
   struct act_args_fp16 * args = (struct act_args_fp16 *) act_args_fp16;
   int dim = args->input->dim;
@@ -100,10 +117,17 @@ void pulp_relu_fp16_bw_cl( void * act_args_fp16 )
   fp16* inDiff = args->input->diff;
   fp16* outDiff = args->output->diff;
 
-  for (int i = 0; i < dim; i++) {
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
     inDiff[i] = inData[i] > 0 ? outDiff[i] : 0;
   }
 }
+
+
+
 
 void pulp_gelu_fp16_fw_cl( void* act_args_fp16)
 {

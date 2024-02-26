@@ -963,6 +963,40 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Backward pass function\n")
     f.write("void backward()\n{\n")
 
+    # Compute loss
+    if loss_fn == "MSELoss":
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        f.write("  loss_args.output = &output_blob;\n")
+        f.write("  loss_args.target = temp_blob.data;\n")
+        f.write("  loss_args.wr_loss = &loss;\n") 
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_MSELoss_backward(&loss_args);\n")   
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_MSELoss_backward_fp16(&loss_args);\n") 
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+    elif loss_fn == 'CrossEntropyLoss':
+        if data_type_l[-1] == 'FP32':
+            bytes_per_data = 4
+        elif data_type_l[-1] == 'FP16':
+            bytes_per_data = 2
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        f.write("  loss_args.output = &output_blob;\n")
+        f.write("  loss_args.target = temp_blob.data;\n")
+        f.write("  loss_args.wr_loss = &loss;\n") 
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
+        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+    else:
+        print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
+
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
         f.write("  printf(\"\\nBACKWARD PROFILING:\\n\\n\");\n")
@@ -1085,6 +1119,24 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  pulp_MSELoss(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_MSELoss_fp16(&loss_args);\n")
+        else:
+            print("[deplyment_utils.GenerateNet]: Invalid loss type!")
+            exit()
+        f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+    elif loss_fn == "CrossEntropyLoss":
+        float_size = 2
+        if data_type_l[0] == 'FP32':
+            float_size = 4
+        f.write("  loss_args.output = &output_blob;\n")
+        f.write("  loss_args.target = output_blob.diff;\n")
+        f.write("  loss_args.wr_loss = &loss;\n")
+        f.write(f"  pi_cl_dma_cmd((uint32_t) (LABEL), (uint32_t) (output_blob.diff), {float_size}*OUT_SIZE, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
+        f.write("  pi_cl_dma_cmd_wait(cmd_load);\n")
+
+        if data_type_l[-1] == 'FP32':
+            f.write("  pulp_CrossEntropyLoss(&loss_args);\n")
+        elif data_type_l[-1] == 'FP16':
+            f.write("  pulp_CrossEntropyLoss_fp16(&loss_args);\n")
         else:
             print("[deplyment_utils.GenerateNet]: Invalid loss type!")
             exit()
