@@ -100,12 +100,12 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
-    /*
+    
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    */
+    
 
 
 
@@ -209,7 +209,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         softmax_arg.maxes = maxes;
         softmax_arg.sums = sums;
 
-        /*
+        
         ///------------------------------------------------------------------///
         //printf("\nSoftmax stats\n");
         pi_perf_conf((1<<PI_PERF_CYCLES)); 
@@ -218,17 +218,17 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         pi_perf_stop();
         pi_perf_reset(); 
         pi_perf_start();
-        */
+        
 
         pulp_softmax_fp16_fw_cl(&softmax_arg);
         //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 
-        /*
+        
         pi_perf_stop(); 
         _cycles   += pi_perf_read (PI_PERF_CYCLES); 
         id = pi_core_id(); 
         ///----------------------------------------------------------------///
-        */
+        
 
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
@@ -285,12 +285,12 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     printf("\n");
     #endif
 
-    /*
+    
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     printf("\n"); 
     printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    */
+    
 
     //  Final attention map projection
     struct matMul_args_fp16 matMul_args4;
