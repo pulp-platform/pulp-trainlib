@@ -36,7 +36,7 @@ void pulp_CrossEntropyLoss_fp16 ( void * loss_args_fp16 )
     loss += -target[i]*((fp16) logf((float) outData[i]));
     
     #ifdef DEBUG
-      printf("target: %f, out_diff: %f, out_data:%f\n", target[i], outDiff[i], outData[i]);
+      printf("target: %f, out_data:%f\n", target[i], outData[i]);
       printf("loss:%f \n",loss);
     #endif
   }
@@ -97,7 +97,7 @@ void pulp_MSELoss_fp16 ( void * loss_args_fp16 )
     loss += meanval * (outData[i] - target[i]) * (outData[i] - target[i]);
 
     #ifdef DEBUG
-    printf("target: %f, out_diff: %f, out_data:%f\n", target[i], outDiff[i], outData[i]);
+    printf("target: %f, out_data:%f\n", target[i], outData[i]);
     printf("loss:%f \n",loss);
     #endif
   }
