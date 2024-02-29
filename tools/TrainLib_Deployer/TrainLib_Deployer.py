@@ -49,8 +49,8 @@ import deployer_utils.DNN_Composer   as composer
 # ---------------------
 
 # GENERAL PROPERTIES
-project_name    = 'Test_CNN'
-project_path    = './'
+project_name    = 'CNN_FP32'
+project_path    = '../../../Ex01-TrainLib_Deployer/'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
