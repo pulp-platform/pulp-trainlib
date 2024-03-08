@@ -178,6 +178,23 @@ void forward()
   pulp_conv_pw_fp16_fw_cl(&l2_args);
 }
 
+void forward_print()
+{
+  pulp_conv_pw_fp16_fw_cl(&l0_args);
+
+  #ifdef PROF_NET
+  printf("\nForward Stats:\n");
+  START_STATS();
+  #endif
+  pulp_instnorm_fp16_fw_cl(&l1_args);
+  #ifdef PROF_NET
+  STOP_STATS();
+  #endif
+
+  pulp_conv_pw_fp16_fw_cl(&l2_args);
+}
+
+
 // Backward pass function
 void backward()
 {
@@ -185,6 +202,32 @@ void backward()
   pulp_instnorm_fp16_bw_cl(&l1_args);
   pulp_conv_pw_fp16_bw_cl(&l0_args);
 }
+
+void backward_print()
+{
+  pulp_conv_pw_fp16_bw_cl(&l2_args);
+
+  #if defined(PROF_NET) && defined(BACKWARD_GRAD)
+  printf("\nBackward Stats:\n");
+  START_STATS();
+  #endif
+  pulp_instnorm_fp16_bw_param_grads_cl(&l1_args);
+  #if defined(PROF_NET) && defined(BACKWARD_GRAD)
+  STOP_STATS();
+  #endif
+
+  #if defined(PROF_NET) && defined(BACKWARD_ERROR)
+  printf("\nBackward Stats:\n");
+  START_STATS();
+  #endif
+  pulp_instnorm_fp16_bw_input_grads_cl(&l1_args);
+  #if defined(PROF_NET) && defined(BACKWARD_ERROR)
+  STOP_STATS();
+  #endif
+
+  pulp_conv_pw_fp16_bw_cl(&l0_args);
+}
+
 
 // Compute loss and output gradient
 void compute_loss()
@@ -262,27 +305,22 @@ void net_step()
   #ifdef FORWARD
   printf("\nProfiling FORWARD step..\n");
   #endif
-  #ifdef BACKWARD
+  #if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
   printf("\nProfiling BACKWARD step..\n");
   #endif
 
   #ifdef PROF_NET
   INIT_STATS();
   PRE_START_STATS();
-  START_STATS();
   #endif
 
   #ifdef FORWARD
-  forward();
+  forward_print();
   #endif
 
-  #ifdef BACKWARD
-  backward();
+  #if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
+  backward_print();
   update_weights();
-  #endif
-
-  #ifdef PROF_NET
-  STOP_STATS();
   #endif
 
   // Check and print updated output
