@@ -1,8 +1,8 @@
 APP = test_instnorm_fp32
 
-CI?=16
-HI?=8
-WI?=8
+CI?=8
+HI?=16
+WI?=16
 KER?=1
 NUM_CORES?=8
 HWC?=0

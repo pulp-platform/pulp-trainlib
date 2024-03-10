@@ -197,13 +197,23 @@ void forward_print()
 // Backward pass function
 void backward()
 {
+  loss_args.output = &layer2_out;
+  loss_args.target = LABEL;
+  loss_args.wr_loss = &loss;
+  pulp_MSELoss_backward(&loss_args);
   pulp_conv_pw_fp32_bw_cl(&l2_args);
-  pulp_instnorm_fp32_bw_cl(&l1_args);
+  //pulp_instnorm_fp32_bw_cl(&l1_args);
+  pulp_instnorm_fp32_bw_param_grads_cl(&l1_args);
+  pulp_instnorm_fp32_bw_input_grads_cl(&l1_args);
   pulp_conv_pw_fp32_bw_cl(&l0_args);
 }
 
 void backward_print()
 {
+  loss_args.output = &layer2_out;
+  loss_args.target = LABEL;
+  loss_args.wr_loss = &loss;
+  pulp_MSELoss_backward(&loss_args);
   pulp_conv_pw_fp32_bw_cl(&l2_args);
 
   #if defined(PROF_NET) && defined(BACKWARD_GRAD)
@@ -283,6 +293,17 @@ void check_post_training_output()
     printf("\n*** UPDATED OUTPUT NOT MATCHING GOLDEN MODEL ***\n");
 }
 
+// Checks forward, weight and input grads of the InstanceNorm
+void check_instancenorm() 
+{
+  int integrity_check = 0;
+  #ifdef BACKWARD_ERROR
+  integrity_check = verify_tensor(l1_in_diff, INSTN_IN_GRAD, Tin_C_l1*Tin_H_l1*Tin_W_l1, TOLERANCE);
+  #elif defined(BACKWARD_GRAD)
+  integrity_check = verify_tensor(l1_ker_diff, INSTN_WGT_GRAD, 2*Tin_C_l1, TOLERANCE);
+  #endif
+}
+
 
 
 /**
@@ -323,6 +344,10 @@ void net_step()
   // Check and print updated output
   forward();
   printf("Checking updated output..\n");
+  #ifdef FORWARD
   check_post_training_output();
+  #else
+  check_instancenorm();
+  #endif
   print_output();
 }

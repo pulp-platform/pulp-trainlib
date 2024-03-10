@@ -91,9 +91,10 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
 
         pi_cl_team_fork(NUM_CORES, pulp_normalize_fp32_cl, &normalize_args);*/
         gamma = gamma/std;
-        for(int d=0; d<D; d++)
+        for(int d=0; d<D; d++) {
             out_data[d] = gamma*(in_data[d] - mean) + b;
-
+            //printf("out_data[%d] = %f\n", d, out_data[d]);
+        }
     }
 
     return;
@@ -158,15 +159,15 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
             {
 
                 grad -= out_diff[i]*(1 + (in_data[i] - mean)*(in_data[d] - mean)/var);
-
-                //grad += out_diff[i]*(1 + N*(out_data[i])*(out_data[d])/(N - 1));
+                //grad -= out_diff[d]*(1 + (in_data[d] - mean)*(in_data[d] - mean)/var);
+                //printf("out_diff[%d] = %f, in_data[%d] = %f, in_data[%d] = %f\n",
+                //    i, out_diff[i], i, in_data[i], d, in_data[d]);
             }
             grad += D*out_diff[d];
-            grad = grad*gamma/(D*std);
-            //grad -= out_diff[d]*N;
-            //grad = -grad*gamma/(N*(std + epsilon));
+            grad = (grad*gamma)/(D*std);
 
             in_diff[d] = grad;
+            //printf("in_diff[%d] = %f\n", d, in_diff[d]);
         }
 
     }
