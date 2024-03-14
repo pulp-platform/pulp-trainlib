@@ -456,87 +456,85 @@ void mm_conv2d_in_grad (void * matMul_args)
 
 
 
-void naive_conv2d_fw_kernel_CHW (void * matMul_args) 
-{
-  struct matMul_args* args = (struct matMul_args *)matMul_args;
-  float * __restrict__ inData = args->A;
-  float * __restrict__ coeffData = args->B;
-  float * __restrict__ outData = args->C;
+void naive_conv2d_fw_kernel_CHW (void * matMul_args) {
+    struct matMul_args *args = (struct matMul_args *) matMul_args;
+    float *__restrict__ inData = args->A;
+    float *__restrict__ coeffData = args->B;
+    float *__restrict__ outData = args->C;
 
-  const uint32_t H_in = args->H;
-  const uint32_t W_in = args->W;
-  const uint32_t pW = args->pW;
-  const uint32_t pH = args->pH;
-  const uint32_t C_in = args->pCin;
-  const uint32_t C_out = args->pCout;
+    float *__restrict__ biasData = args->bias;
+    const uint32_t USE_BIASES = args->USE_BIASES;
 
-  uint32_t h_str = args->stride_h;
-  uint32_t w_str = args->stride_w;
-  uint32_t Lpad = args->Lpad;
-  uint32_t Rpad = args->Rpad;
-  uint32_t Upad = args->Upad;
-  uint32_t Dpad = args->Dpad;
+    const uint32_t H_in = args->H;
+    const uint32_t W_in = args->W;
+    const uint32_t pW = args->pW;
+    const uint32_t pH = args->pH;
+    const uint32_t C_in = args->pCin;
+    const uint32_t C_out = args->pCout;
 
-  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
-  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+    uint32_t h_str = args->stride_h;
+    uint32_t w_str = args->stride_w;
+    uint32_t Lpad = args->Lpad;
+    uint32_t Rpad = args->Rpad;
+    uint32_t Upad = args->Upad;
+    uint32_t Dpad = args->Dpad;
 
-  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+    const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+    const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
 
-  int padding = Lpad + Rpad + Upad + Dpad;
+    const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
+    const uint32_t start = pi_core_id() * blockSize;
+    const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
 
-  if (padding == 0) {
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          // Receptive field
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-              }
-            }
-          }
-          outData[wo+ho*W_out+co*H_out*W_out] = temp;
-          //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
-        }
-      }
-    } 
-  }
-  else {
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          // Receptive field
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                // Padding conditions
-                int h_padded = h_str*ho + hk - Upad;
-                int w_padded = w_str*wo + wk - Lpad;
-                // Insert zeros
-                if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out+pH-Dpad) || (w_padded > W_out+pW-Rpad)) {
-                  temp += 0;
+    int padding = Lpad + Rpad + Upad + Dpad;
+
+    for (uint32_t co = start; co < stop; co++) {
+        for (uint32_t ho = 0; ho < H_out; ho++) {
+            for (uint32_t wo = 0; wo < W_out; wo++) {
+                float temp = 0;
+                // Receptive field
+                for (uint32_t ci = 0; ci < C_in; ci++) {
+                    for (uint32_t hk = 0; hk < pH; hk++) {
+                        for (uint32_t wk = 0; wk < pW; wk++) {
+                            if (padding == 0) {
+                                temp += inData[w_str * wo + wk + (h_str * ho + hk) * W_in + ci * H_in * W_in] *
+                                        coeffData[wk + hk * pW + ci * pH * pW + co * C_in * pH * pW];
+                            } else {
+                                // Padding conditions
+                                int h_padded = h_str * ho + hk - Upad;
+                                int w_padded = w_str * wo + wk - Lpad;
+
+                                // Insert zeros
+                                if ((h_padded < 0) || (w_padded < 0) || (h_padded > H_out + pH - Dpad) ||
+                                    (w_padded > W_out + pW - Rpad)) {
+                                    temp += 0;
+                                } else {
+                                    temp += inData[w_padded + (h_padded) * W_in + ci * H_in * W_in] *
+                                            coeffData[wk + hk * pW + ci * pH * pW + co * C_in * pH * pW];
+                                    //temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+                                }
+                            }
+                        }
+                    }
                 }
-                else { 
-                  temp += inData[w_padded+(h_padded)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-                  //temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
+
+                // Update outData
+                outData[wo + ho * W_out + co * H_out * W_out] = temp;
+
+                // Handle biases
+                if (USE_BIASES == 1) {
+                    outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
                 }
-              }
+                //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
             }
-          }
-          outData[wo+ho*W_out+co*H_out*W_out] = temp;
-          //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
         }
-      }
     }
-  }
 
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+               USE_BIASES);
+    }
 }
-
 
 
 void naive_conv2d_param_grad_kernel_CHW (void * matMul_args) 
@@ -689,9 +687,83 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
 }
 
 
+void im2col_conv2d_fw_kernel (void * matMul_args) {
+    struct matMul_args *args = (struct matMul_args *) matMul_args;
+    float *__restrict__ inData = args->A;
+    float *__restrict__ coeffData = args->B;
+    float *__restrict__ outData = args->C;
+
+    float *__restrict__ biasData = args->bias;
+    const uint32_t USE_BIASES = args->USE_BIASES;
+
+    const uint32_t H_in = args->H;
+    const uint32_t W_in = args->W;
+    const uint32_t pW = args->pW;
+    const uint32_t pH = args->pH;
+    const uint32_t C_in = args->pCin;
+    const uint32_t C_out = args->pCout;
+
+    uint32_t h_str = args->stride_h;
+    uint32_t w_str = args->stride_w;
+    uint32_t Lpad = args->Lpad;
+    uint32_t Rpad = args->Rpad;
+    uint32_t Upad = args->Upad;
+    uint32_t Dpad = args->Dpad;
+
+    const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+    const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+
+    const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
+    const uint32_t start = pi_core_id() * blockSize;
+    const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
+
+    const uint32_t HWC = args->HWC;
+
+    int padding = Lpad + Rpad + Upad + Dpad;
+
+    // Perform simple matrix multiplication
+    #ifndef OPTIMIZE
+    mm(matMul_args);
+    #else
+    struct mm_manager_args man_args;
+
+    man_args.mm_args = args;
+    man_args.layer_type = LAYER_CONV2D;
+    man_args.step_type = STEP_FW;
+    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+
+    mm_manager(man_args);
+    #endif
 
 
+    // Handle biases
+    for (uint32_t co = start; co < stop; co++) {
+        for (uint32_t ho = 0; ho < H_out; ho++) {
+            for (uint32_t wo = 0; wo < W_out; wo++) {
+                if (USE_BIASES == 1) {
+                    if (HWC == 0) {
+                        // CHW layout
+                        outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+                    } else if (HWC == 1) {
+                        // HWC layout
+                        outData[co + wo * C_out + ho * W_out * C_out] += biasData[co];
+                    }
+                }
+            }
+        }
+    }
 
+    if (HWC != 0 && HWC != 1) {
+        // Unsupported layout
+        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
+               HWC);
+    }
+
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+               USE_BIASES);
+    }
+}
 
 
 /**
