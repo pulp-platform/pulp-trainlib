@@ -33,6 +33,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
     int pW = C2D_args->coeff->W;
     int pH = C2D_args->coeff->H;
     float *coeffData = C2D_args->coeff->data;
+    float *biasData = C2D_args->bias->data;
     float *outData = C2D_args->output->data;
     float *inData = C2D_args->input->data;
 
@@ -53,6 +54,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
     float * i2c_buffer = C2D_args->i2c_buffer;
 
     int HWC_layout = C2D_args->HWC;
+    int USE_BIASES = C2D_args->USE_BIASES;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int USE_DMA = C2D_args->USE_DMA_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_fw;
@@ -90,17 +92,9 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
         matMul_args.K = pW*pH*C_in;
         matMul_args.M = (W_in-pW+stride_w+Lpad+Rpad)/stride_w*(H_in-pH+stride_h+Upad+Dpad)/stride_h;
         matMul_args.trans_B = 1;
+        matMul_args.HWC = HWC_layout;
 
-        #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-        #else
-        struct mm_manager_args man_args;
-        man_args.mm_args = &matMul_args;
-        man_args.layer_type = LAYER_CONV2D;
-        man_args.step_type = STEP_FW;
-        man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-        #endif
+        pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &matMul_args);
       }
 
     /**
@@ -131,17 +125,9 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       matMul_args.K = pW*pH*C_in;
       matMul_args.M = C_out; 
       matMul_args.trans_B = 1;
+      matMul_args.HWC = HWC_layout;
 
-      #ifndef OPTIMIZE
-      pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-      #else
-      struct mm_manager_args man_args;
-      man_args.mm_args = &matMul_args;
-      man_args.layer_type = LAYER_CONV2D;
-      man_args.step_type = STEP_FW;
-      man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-      #endif     
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &matMul_args);
     }
     else {
       printf("[pulp_conv2d_fp32_fw_cl:] Invalid data layout format (HWC or CHW)!\n");
@@ -160,6 +146,10 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       matMul_args.A = inData;
       matMul_args.B = coeffData;
       matMul_args.C = outData;
+
+      matMul_args.bias = biasData;
+      matMul_args.USE_BIASES = USE_BIASES;
+
       matMul_args.H = H_in;
       matMul_args.W = W_in;
       matMul_args.pCin = C_in;
