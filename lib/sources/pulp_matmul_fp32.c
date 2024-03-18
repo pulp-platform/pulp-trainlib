@@ -687,8 +687,10 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
 }
 
 
-void im2col_conv2d_fw_kernel (void * matMul_args) {
-    struct matMul_args *args = (struct matMul_args *) matMul_args;
+void im2col_conv2d_fw_kernel (void * void_args) {
+    struct mm_manager_args *man_args = (struct mm_manager_args *) void_args;
+    struct matMul_args *args = man_args->mm_args;
+
     float *__restrict__ inData = args->A;
     float *__restrict__ coeffData = args->B;
     float *__restrict__ outData = args->C;
@@ -710,8 +712,11 @@ void im2col_conv2d_fw_kernel (void * matMul_args) {
     uint32_t Upad = args->Upad;
     uint32_t Dpad = args->Dpad;
 
-    const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
-    const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+    // const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+    // const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+
+    const uint32_t H_out = pH;
+    const uint32_t W_out = pW;
 
     const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
     const uint32_t start = pi_core_id() * blockSize;
@@ -723,24 +728,17 @@ void im2col_conv2d_fw_kernel (void * matMul_args) {
 
     // Perform simple matrix multiplication
     #ifndef OPTIMIZE
-    mm(matMul_args);
+    mm(args);
     #else
-    struct mm_manager_args man_args;
-
-    man_args.mm_args = args;
-    man_args.layer_type = LAYER_CONV2D;
-    man_args.step_type = STEP_FW;
-    man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-
     mm_manager(man_args);
     #endif
 
 
     // Handle biases
-    for (uint32_t co = start; co < stop; co++) {
-        for (uint32_t ho = 0; ho < H_out; ho++) {
-            for (uint32_t wo = 0; wo < W_out; wo++) {
-                if (USE_BIASES == 1) {
+    if (USE_BIASES == 1) {
+        for (uint32_t co = start; co < stop; co++) {
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
                     if (HWC == 0) {
                         // CHW layout
                         outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];

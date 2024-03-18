@@ -106,7 +106,7 @@ void naive_conv2d_in_grad_kernel_CHW(
 
 /**
  * @brief Conv2d kernel for forward propagation to be used on inputs that have been transformed through the im2col operation
- * @param matMul_args pointer to a matMul_args structure
+ * @param man_args pointer to a mm_manager_args structure
  */
 void im2col_conv2d_fw_kernel(
         void * matMul_args

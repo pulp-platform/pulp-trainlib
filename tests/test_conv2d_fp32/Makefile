@@ -23,6 +23,7 @@ NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
 HWC_LAYOUT?=1		# Choose if data layout is CHW (=0) or HWC (=1)
+USE_BIASES?=1		# Choose whether to include biases or not
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -40,6 +41,7 @@ APP_CFLAGS += -mhwloopalign
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -DIM2COL=$(IM2COL)
+APP_CFLAGS += -DUSE_BIAS=$(USE_BIASES)
 APP_CFLAGS += -DPAD_R=$(PAD_R)
 APP_CFLAGS += -DPAD_L=$(PAD_L)
 APP_CFLAGS += -DPAD_U=$(PAD_U)
@@ -61,7 +63,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 
 get_golden:
-	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_LAYOUT}
+	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_LAYOUT} --USE_BIASES ${USE_BIASES}
 
 profile_all_optim:
 	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH}
