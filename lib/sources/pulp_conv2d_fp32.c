@@ -85,6 +85,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 
         pi_cl_team_fork(NUM_CORES, pulp_im2row_fp32, &im2col_args);
 
+        // Perform matmul
         matMul_args.A = coeffData;
         matMul_args.B = i2c_buffer;
         matMul_args.C = outData;
@@ -108,7 +109,6 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
         man_args.layer_type = LAYER_CONV2D;
         man_args.step_type = STEP_FW;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
 
         pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &man_args);
       }
@@ -157,7 +157,6 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       man_args.layer_type = LAYER_CONV2D;
       man_args.step_type = STEP_FW;
       man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
 
       pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &man_args);
     }
