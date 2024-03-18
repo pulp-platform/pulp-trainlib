@@ -93,8 +93,24 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
         matMul_args.M = (W_in-pW+stride_w+Lpad+Rpad)/stride_w*(H_in-pH+stride_h+Upad+Dpad)/stride_h;
         matMul_args.trans_B = 1;
         matMul_args.HWC = HWC_layout;
+        matMul_args.bias = biasData;
+        matMul_args.USE_BIASES = USE_BIASES;
 
-        pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &matMul_args);
+        matMul_args.H = H_in;
+        matMul_args.W = W_in;
+        matMul_args.pCin = C_in;
+        matMul_args.pCout = C_out;
+        matMul_args.pH = H_out;
+        matMul_args.pW = W_out;
+
+        struct mm_manager_args man_args;
+        man_args.mm_args = &matMul_args;
+        man_args.layer_type = LAYER_CONV2D;
+        man_args.step_type = STEP_FW;
+        man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+
+        pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &man_args);
       }
 
     /**
@@ -126,8 +142,24 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       matMul_args.M = C_out; 
       matMul_args.trans_B = 1;
       matMul_args.HWC = HWC_layout;
+      matMul_args.bias = biasData;
+      matMul_args.USE_BIASES = USE_BIASES;
 
-      pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &matMul_args);
+      matMul_args.H = H_in;
+      matMul_args.W = W_in;
+      matMul_args.pCin = C_in;
+      matMul_args.pCout = C_out;
+      matMul_args.pH = H_out;
+      matMul_args.pW = W_out;
+
+      struct mm_manager_args man_args;
+      man_args.mm_args = &matMul_args;
+      man_args.layer_type = LAYER_CONV2D;
+      man_args.step_type = STEP_FW;
+      man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
+      pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel, &man_args);
     }
     else {
       printf("[pulp_conv2d_fp32_fw_cl:] Invalid data layout format (HWC or CHW)!\n");
