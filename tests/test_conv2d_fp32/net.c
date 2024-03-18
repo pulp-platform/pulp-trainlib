@@ -146,8 +146,10 @@ static inline void compute_memory_occupation(){
   //printf("Im2Col: %d bytes\n", IM2COL_SIZE*sizeof(float));
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
   //printf("Weights: %d bytes\n", Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float));
-  L1_memocc_bytes += Tout_C_l1 * sizeof(float);
-  //printf("Biases: %d bytes\n", Tout_C_l1*sizeof(float));
+  if (USE_BIAS == 1) {
+    L1_memocc_bytes += Tout_C_l1 * sizeof(float);
+    //printf("Biases: %d bytes\n", Tout_C_l1*sizeof(float));
+  }
   L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
   //printf("Output: %d bytes\n", Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float));
   L1_memocc_bytes += INPUT_SIZE*sizeof(float);
@@ -156,6 +158,7 @@ static inline void compute_memory_occupation(){
 
   L2_memocc_bytes += G_IN_SIZE*sizeof(float);
   L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
+  if (USE_BIAS == 1) L2_memocc_bytes += G_BIAS_SIZE * sizeof(float);
   L2_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
   L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
 }

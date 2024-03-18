@@ -114,6 +114,17 @@ net.zero_grad()
 
 
 def hook_fn1(m, i, o):
+  """
+  Backward hook that prints to conv2d-grads.h and to standard output details about layer dimensions.
+
+  PyTorch documentation on the topic of backward hooks:
+  https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
+
+  :param m: module
+  :param i: grad_input
+  :param o: grad_output
+  :return: None
+  """
 
   cont = 0
   input_grad = []
@@ -121,7 +132,7 @@ def hook_fn1(m, i, o):
   output_grad = []
   f = open("conv2d-grads.h", "w")
 
-  for grad in i:
+  for cont, grad in enumerate(i):
     try:
       if cont==0:
         input_grad = grad
@@ -152,7 +163,17 @@ def hook_fn1(m, i, o):
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
-      cont += 1
+
+      if cont==2 and use_biases == 1:
+        bias_grad = grad
+
+        if bias_grad is None:
+          print("[utils/GM.py] Biases required but not found in PyTorch layer!")
+          exit()
+
+        f.write('#define G_BIAS_SIZE '+str(bias_grad.numel())+'\n')
+        f.write('PI_L2 float BIAS_GRAD[G_BIAS_SIZE] = {'+dump.tensor_to_string(bias_grad)+'};\n')
+        print(bias_grad)
 
     except AttributeError:
       print("None found for Gradient (input)")
