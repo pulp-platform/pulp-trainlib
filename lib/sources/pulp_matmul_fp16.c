@@ -52,7 +52,7 @@ void mm_fp16(void * void_args) {
         {
           C[i*M+j] = A[i*K] * B[j];
           #ifdef DEBUG
-          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
+          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i*K], B[j]);
           #endif
         }
       }
@@ -88,7 +88,7 @@ void mm_fp16(void * void_args) {
         {
           C[i*M+j] = A[i*K] * B[j*K];
           #ifdef DEBUG
-          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, k+j*K, C[i*M+j], A[i*K+k], B[k+j*K]);
+          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K, j*K, C[i*M+j], A[i*K], B[j*K]);
           #endif
         } 
       } 

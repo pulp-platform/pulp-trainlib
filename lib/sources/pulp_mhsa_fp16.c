@@ -45,8 +45,8 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     #endif
 
     int H = F / n_heads;                                        //  Head dimension
-    //fp16 scaling = (fp16) (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
-    float scaling = q_rsqrt_fp16((float)H);
+    fp16 scaling = (fp16) (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
+    //float scaling = q_rsqrt_fp16((float)H);
 
     // Projecting input sequence into Q, K, V
     struct matMul_args_fp16 matMul_args1;
@@ -63,14 +63,14 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     printf("\ninputData: %d %d\n", E, L);
     for (int j=0; j<L*E; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.A[j]);
+        printf("%.8f ", matMul_args1.B[j]);
     }
     printf("\n");
 
     printf("\nWin: %d %d\n", 3*F, E);
     for (int j=0; j<E*3*F; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ",  matMul_args1.B[j]);
+        printf("%.8f ",  matMul_args1.A[j]);
     }
     printf("\n");
     #endif
@@ -100,12 +100,12 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     k = qkv + L*F;
     v = qkv + L*2*F;
 
-    
+    /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     unsigned long _cycles = 0; 
     int id = 0;
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    
+    */
 
 
 
@@ -147,15 +147,6 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
         #endif
 
-        #ifdef DEBUG
-        printf("\nCurrent head buffer Data: %d %d\n", L, L);
-        for (int j=0; j<L*L; j++){
-            if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_buffer[j]);
-        }
-        printf("\n");
-        #endif
-
         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
@@ -166,6 +157,15 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         transp_args4.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
+
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", temp[j]);
+        }
+        printf("\n");
+        #endif
 
         /*
         struct copy_args copy_args3;
@@ -209,7 +209,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         softmax_arg.maxes = maxes;
         softmax_arg.sums = sums;
 
-        
+        /*
         ///------------------------------------------------------------------///
         //printf("\nSoftmax stats\n");
         pi_perf_conf((1<<PI_PERF_CYCLES)); 
@@ -218,17 +218,17 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         pi_perf_stop();
         pi_perf_reset(); 
         pi_perf_start();
-        
+        */
 
         pulp_softmax_fp16_fw_cl(&softmax_arg);
         //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 
-        
+        /*
         pi_perf_stop(); 
         _cycles   += pi_perf_read (PI_PERF_CYCLES); 
         id = pi_core_id(); 
         ///----------------------------------------------------------------///
-        
+        */
 
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
@@ -272,25 +272,22 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     }
 
     #ifdef DEBUG
-    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
-    for (int j=0; j<n_heads; j++){
-        printf("\n\n");
-        for(int i=0; i<L*L; i++){
-            if(!(i%L))
-                printf("\n");
-            printf("%.8f ", softmax_buffer[j*L*L+i]);
-        }
-        
-    }
+    printf("\nAttention results: %d %d\n", F, L);
+    printf("\n\n");
+    for(int i=0; i<F*L; i++){
+        if(!(i%L))
+            printf("\n");
+        printf("%.8f ", attention_map[i]);
+    } 
     printf("\n");
     #endif
 
-    
+    /*
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     printf("\n"); 
     printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    
+    */
 
     //  Final attention map projection
     struct matMul_args_fp16 matMul_args4;
