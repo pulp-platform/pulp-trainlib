@@ -46,7 +46,7 @@ test_labels = torch.rand(CO, HI, WI)
 learning_rate = 0.01
 batch_size = 1
 epochs = 0
-if STEP=='BACKWARD':
+if STEP=='BACKWARD_GRAD' or STEP=='BACKWARD_ERROR':
 	epochs = 1
 
 # LAYER 0 SIZES
@@ -137,6 +137,30 @@ f.close()
 # Simple input data 
 inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000)
 
+def hook_fn(m, i, o):
+	print(m)
+	print("------------Input Grad------------")
+
+	for grad in i:
+		try:
+			print(grad.shape)
+			f = open('io_data.h', 'a')
+			f.write('#define INSTN_IN_G_SIZE '+str(grad.numel())+'\n')
+			f.write('PI_L2 float INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(grad)+'};\n')
+			f.close()
+
+		except AttributeError: 
+			print ("None found for Gradient")
+
+	print("------------Output Grad------------")
+	for grad in o:  
+		try:
+			print(grad.shape)
+		except AttributeError: 
+			print("None found for Gradient")
+		print("\n")
+  
+
 class Sumnode():
 	def __init__(self, ls):
 		self.MySkipNode = ls
@@ -157,16 +181,18 @@ class DNN(nn.Module):
 		self.l2 = nn.Conv2d(in_channels=l2_in_ch, out_channels=l2_out_ch, kernel_size=1, stride=1, bias=False)
 
 	def forward(self, x):
-		x = self.l0(x)
-		x = self.l1(x)
-		x = self.l2(x).float()
-		return x
+		x0 = self.l0(x)
+		x1 = self.l1(x0)
+		x2 = self.l2(x1).float()
+		return x2
 
 # Initialize network
 net = DNN()
 for p in net.parameters():
 	nn.init.normal_(p, mean=0.0, std=1.0)
 net.zero_grad()
+
+net.l1.register_backward_hook(hook_fn)
 
 
 # All-ones fake label 
@@ -191,6 +217,11 @@ for batch in range(epochs):
 	out = net(inp)
 	loss = loss_fn(out, label)
 	loss.backward()
+	# Print data to golden model's file
+	f = open('io_data.h', 'a')
+	f.write('#define INSTN_WGT_G_SIZE 2*'+str(net.l1.weight.data.numel())+'\n')
+	f.write('PI_L2 float INSTN_WGT_GRAD[INSTN_WGT_G_SIZE] = {'+dump.tensor_to_string(net.l1.weight.grad)+dump.tensor_to_string(net.l1.bias.grad)+'};\n')
+	f.close()
 	optimizer.step()
 
 # Inference once after training
