@@ -307,8 +307,9 @@ for o in range(out_ch):
         wgt_init_tensor[o, i, hk, wk] = (o+i+hk+wk)*weight_init
 
 bias_init_tensor = torch.zeros(out_ch)
-for co in range(out_ch):
-  bias_init_tensor[co] = co * bias_init
+if use_biases == 1:
+  for co in range(out_ch):
+    bias_init_tensor[co] = co * bias_init
 
 #print("!--- wgt_init_tensor ---!")
 #print(wgt_init_tensor)
@@ -318,7 +319,7 @@ for co in range(out_ch):
 #print(bias_init_tensor)
 #print("!-----------------------!")
 
-# Initialize weights
+# Initialize weights and biases
 with torch.no_grad():
     #net.conv.weight[:, :] = weight_init
     net.conv.weight.data = deepcopy(wgt_init_tensor)

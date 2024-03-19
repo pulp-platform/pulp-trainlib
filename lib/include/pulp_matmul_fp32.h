@@ -109,7 +109,16 @@ void naive_conv2d_in_grad_kernel_CHW(
  * @param man_args pointer to a mm_manager_args structure
  */
 void im2col_conv2d_fw_kernel(
-        void * matMul_args
+        void * void_args
+);
+
+/**
+ * @brief Conv2d kernel for the computation of the weight and bias gradient, to be used on inputs that have been
+ * transformed through the im2col operation
+ * @param man_args pointer to a mm_manager_args structure
+ */
+void im2col_conv2d_param_grad_kernel (
+        void * void_args
 );
 
 
