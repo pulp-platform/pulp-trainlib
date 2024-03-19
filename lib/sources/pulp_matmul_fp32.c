@@ -620,7 +620,7 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   }
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
-        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+        printf("[naive_conv2d_param_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
                USE_BIASES);
     }
 
@@ -634,6 +634,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -695,6 +697,11 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
       }
     }
   }
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[naive_conv2d_param_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+               USE_BIASES);
+    }
 
 }
 
@@ -765,12 +772,12 @@ void im2col_conv2d_fw_kernel (void * void_args) {
 
     if (HWC != 0 && HWC != 1) {
         // Unsupported layout
-        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
+        printf("[im2col_conv2d_fw_kernel:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
                HWC);
     }
 
     if (USE_BIASES != 0 && USE_BIASES != 1) {
-        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+        printf("[im2col_conv2d_fw_kernel:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
                USE_BIASES);
     }
 }
@@ -827,7 +834,6 @@ void im2col_conv2d_param_grad_kernel (void * void_args) {
                 for (uint32_t wo = 0; wo < pW; wo++) {
                     temp += inData[wo + ho * pW + co * pH * pW];
                 }
-
             }
             biasDiff[co] = temp;
         }
@@ -835,12 +841,12 @@ void im2col_conv2d_param_grad_kernel (void * void_args) {
 
     if (HWC != 0 && HWC != 1) {
         // Unsupported layout
-        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
+        printf("[im2col_conv2d_param_grad_kernel:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
                HWC);
     }
 
     if (USE_BIASES != 0 && USE_BIASES != 1) {
-        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+        printf("[im2col_conv2d_param_grad_kernel:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
                USE_BIASES);
     }
 }
