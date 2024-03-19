@@ -64,14 +64,14 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     printf("\ninputData: %d %d\n", E, L);
     for (int j=0; j<L*E; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.A[j]);
+        printf("%.8f ", matMul_args1.B[j]);
     }
     printf("\n");
 
     printf("\nWin: %d %d\n", 3*F, E);
     for (int j=0; j<E*3*F; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ",  matMul_args1.B[j]);
+        printf("%.8f ",  matMul_args1.A[j]);
     }
     printf("\n");
     #endif
@@ -93,6 +93,16 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         if(!(j%(L))) printf("\n");
         printf("%.8f ", matMul_args1.C[j]);
     }
+    printf("\n");
+    #endif
+
+    #ifdef DEBUG
+    printf("\nWout: %d %d\n", E, F);
+    for(int i=0; i<E*F; i++){
+        if(!(i%F))
+            printf("\n");
+        printf("%.8f ", coeffDataWout[i]);
+    }   
     printf("\n");
     #endif
 
@@ -156,14 +166,6 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
 
         pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
 
-        #ifdef DEBUG
-        printf("\nCurrent head buffer Data: %d %d\n", L, L);
-        for (int j=0; j<L*L; j++){
-            if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_buffer[j]);
-        }
-        printf("\n");
-        #endif
 
         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
@@ -175,6 +177,15 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         transp_args4.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args4);
+
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", temp[j]);
+        }
+        printf("\n");
+        #endif
 
         /*
         struct copy_args copy_args3;
@@ -261,16 +272,22 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     }
 
     #ifdef DEBUG
-    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
-    for (int j=0; j<n_heads; j++){
-        printf("\n\n");
-        for(int i=0; i<L*L; i++){
-            if(!(i%L))
-                printf("\n");
-            printf("%.8f ", softmax_buffer[j*L*L+i]);
-        }
-        
-    }
+    printf("\nAttention results: %d %d\n", F, L);
+    for(int i=0; i<F*L; i++){
+        if(!(i%L))
+            printf("\n");
+        printf("%.8f ", attention_map[i]);
+    }   
+    printf("\n");
+    #endif
+
+    #ifdef DEBUG
+    printf("\nWout: %d %d\n", E, F);
+    for(int i=0; i<E*F; i++){
+        if(!(i%F))
+            printf("\n");
+        printf("%.8f ", coeffDataWout[i]);
+    }   
     printf("\n");
     #endif
 

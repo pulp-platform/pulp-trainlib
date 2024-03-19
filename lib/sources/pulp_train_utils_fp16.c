@@ -401,20 +401,6 @@ void pulp_exp_sum_fp16_cl(void* void_args){
     fp16* sums = args->sums;
     int dim = args->dim;
     fp16* maxes = args->maxes;
-    
-
-    #ifdef DEBUG
-    if(pi_core_id()==0){
-        int L = dim;
-        printf("\nCurrent input - max in softmax: %d %d\n", L, L);
-        for (int j=0; j<L*L; j++){
-            if(!(j%((int)L))) printf("\n");
-            printf("%.8f ", (input[j] - max));
-        }
-    }
-    printf("\n");
-    #endif
-
 
     const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
     const int start = pi_core_id()*blockSize;
