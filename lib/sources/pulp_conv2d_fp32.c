@@ -482,8 +482,8 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
   float * inDiff = C2D_args->input->diff;
   float * coeffData = C2D_args->coeff->data;
   float * coeffDiff = C2D_args->coeff->diff;
-  float * outDiff = C2D_args->output->diff;
   float * outData = C2D_args->output->data;
+  float * outDiff = C2D_args->output->diff;
 
   float * i2c_buffer = C2D_args->i2c_buffer;
   float * temp_bt = C2D_args->bt_buffer;
@@ -496,6 +496,7 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
   int Dpad = C2D_args->Dpad;
 
   int HWC_layout = C2D_args->HWC;
+  int USE_BIASES = C2D_args->USE_BIASES;
   int USE_IM2COL = C2D_args->USE_IM2COL;
   int USE_DMA = C2D_args->USE_DMA_IM2COL;
   int opt_matmul_type = C2D_args->opt_matmul_type_ig;
@@ -614,6 +615,11 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
       printf("[pulp_conv2d_fp32_bw_input_grads_cl:] Invalid data layout format (HWC or CHW)!\n");
     }
 
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[pulp_conv2d_fp32_bw_input_grads_cl:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+               USE_BIASES);
+    }
+
   }
 
   /**
@@ -641,6 +647,9 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
       matMul_args.Rpad = Rpad;
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
+      
+      // Handle bias
+      matMul_args.USE_BIASES = USE_BIASES;
 
       #ifdef OPTIMIZE
       int padding = Lpad + Rpad + Upad + Dpad;
@@ -651,6 +660,7 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1, &matMul_args);
       else
       #endif
+
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW, &matMul_args);
     }
 

@@ -348,6 +348,7 @@ static inline void connect_blobs(){
   C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
   C2D_args.USE_IM2COL = IM2COL;
   C2D_args.USE_DMA_IM2COL = DMA;
+  C2D_args.USE_BIASES = USE_BIAS;
 }
 
 static inline void compute_memory_occupation(){
