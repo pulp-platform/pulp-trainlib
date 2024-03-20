@@ -55,12 +55,14 @@ void forward()
     pulp_residualconn_fp32_fw(&residual_args);
     pulp_relu_fp32_fw_cl(&relu_args);
     pulp_MSELoss(&loss_args);
+    pulp_MSELoss_backward(&loss_args);
     
     #else //FLOAT16
     pulp_conv2d_fp16_fw_cl(&conv1_args);
     pulp_residualconn_fp16_fw(&residual_args);
     pulp_relu_fp16_fw_cl(&relu_args);
     pulp_MSELoss_fp16(&loss_args);
+    pulp_MSELoss_backward_fp16(&loss_args);
     #endif
 
     #ifdef FORWARD
