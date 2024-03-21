@@ -611,8 +611,6 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   }
 }
 
-//#define DEBUG_NAIVE
-
 void naive_conv2d_in_grad_kernel_CHW (void * matMul_args) 
 {
   struct matMul_args* args = (struct matMul_args *)matMul_args;
@@ -642,31 +640,65 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
-  for (uint32_t ci=0; ci<C_in; ci++) {
-    for (uint32_t hi=0; hi<H_in; hi++) {
-      for (uint32_t wi=0; wi<W_in; wi++) {
-        float temp = 0;
-        for (uint32_t co=0; co<C_out; co++) {
-          for (uint32_t hk=0; hk<pH; hk++) {
-            for (uint32_t wk=0; wk<pW; wk++) {
-              // Padding conditions
-              int h_padded = hi + hk - (pH-1);
-              int w_padded = wi + wk - (pW-1);
-              // Indices
-              int ker_idx = (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in;
-              int out_idx = w_padded + (h_padded)*W_out + co*H_out*W_out;
+  int padding = Lpad + Rpad + Upad + Dpad;
 
-              if ((h_padded >= 0) && (w_padded >= 0) && (h_padded <= H_out - (pH-2-Dpad)) && (w_padded <= W_out - (pW-2-Rpad))) {
-                temp += coeffData[ker_idx] * outDiff[out_idx];
+  if (padding == 0) {
+
+    for (uint32_t ci=0; ci<C_in; ci++) {
+      for (uint32_t hi=0; hi<H_in; hi++) {
+        for (uint32_t wi=0; wi<W_in; wi++) {
+          float temp = 0;
+          for (uint32_t co=0; co<C_out; co++) {
+            for (uint32_t hk=0; hk<pH; hk++) {
+              for (uint32_t wk=0; wk<pW; wk++) {
+                // Padding conditions
+                int h_padded = hi + hk - (pH-1);
+                int w_padded = wi + wk - (pW-1);
+                // Indices
+                int ker_idx = (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in;
+                int out_idx = w_padded + (h_padded)*W_out + co*H_out*W_out;
+
+                if ((h_padded >= 0) && (w_padded >= 0) && (h_padded <= H_out - (pH-2)) && (w_padded <= W_out - (pW-2))) {
+                  temp += coeffData[ker_idx] * outDiff[out_idx];
+                }
               }
             }
           }
+          inDiff[wi+hi*W_in+ci*H_in*W_in] = temp;
         }
-        inDiff[wi+hi*W_in+ci*H_in*W_in] = temp;
       }
     }
-  }
 
+  }
+  else {
+
+    for (uint32_t ci=0; ci<C_in; ci++) {
+      for (uint32_t hi=0; hi<H_in; hi++) {
+        for (uint32_t wi=0; wi<W_in; wi++) {
+          float temp = 0;
+          for (uint32_t co=0; co<C_out; co++) {
+            for (uint32_t hk=0; hk<pH; hk++) {
+              for (uint32_t wk=0; wk<pW; wk++) {
+                // Padding conditions
+                int h_padded = hi + hk - (pH-1) + Upad;
+                int w_padded = wi + wk - (pW-1) + Lpad;
+                // Indices
+                int ker_idx = (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in;
+                int out_idx = w_padded + (h_padded)*W_out + co*H_out*W_out;
+
+                if ((h_padded >= 0) && (w_padded >= 0) && (h_padded < H_out - (pH-2-Dpad)) && (w_padded < W_out - (pW-2-Rpad))) {
+                  temp += coeffData[ker_idx] * outDiff[out_idx];
+                }
+              }
+            }
+          }
+          int in_idx = (wi) + (hi)*W_in + ci*H_in*W_in;
+          inDiff[in_idx] = temp;
+        }
+      }
+    }
+
+  }
 }
 
 
