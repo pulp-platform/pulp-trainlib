@@ -488,67 +488,71 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args) {
 
     int padding = Lpad + Rpad + Upad + Dpad;
 
-  if (padding == 0) {
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          // Receptive field
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                temp += inData[w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-              }
-            }
-          }
-          outData[wo+ho*W_out+co*H_out*W_out] = temp;
+    if (padding == 0) {
+        for (uint32_t co = start; co < stop; co++) {
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
+                    float temp = 0;
+                    // Receptive field
+                    for (uint32_t ci = 0; ci < C_in; ci++) {
+                        for (uint32_t hk = 0; hk < pH; hk++) {
+                            for (uint32_t wk = 0; wk < pW; wk++) {
+                                temp += inData[w_str * wo + wk + (h_str * ho + hk) * W_in + ci * H_in * W_in] *
+                                        coeffData[wk + hk * pW + ci * pH * pW + co * C_in * pH * pW];
+                            }
+                        }
+                    }
+                    outData[wo + ho * W_out + co * H_out * W_out] = temp;
 
-          // Handle biases
-          if (USE_BIASES == 1) {
-              outData[wo+ho*W_out+co*H_out*W_out] += biasData[co];
-          }
+                    // Handle biases
+                    if (USE_BIASES == 1) {
+                        outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+                    }
 
-          //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
-        }
-      }
-    } 
-  }
-  else {
-    
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          // Receptive field
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                // Pad conditions
-                int pad_cond_h = h_str*ho + hk - Upad;
-                int pad_cond_w = w_str*wo + wk - Lpad;
-                if ((pad_cond_h >= 0) && (pad_cond_w >= 0) && (pad_cond_h < H_in) && (pad_cond_w < W_in)) {
-                    int in_idx = (w_str*wo + wk - Lpad) + (h_str*ho + hk - Upad)*W_in + ci*H_in*W_in;
-                    int ker_idx = wk + hk*pW + ci*pH*pW + co*C_in*pH*pW;
-                    temp += inData[in_idx] * coeffData[ker_idx];
+                    //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
                 }
-                //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
             }
-          }
-          outData[wo+ho*W_out+co*H_out*W_out] = temp;
-
-          // Handle biases
-          if (USE_BIASES == 1) {
-              outData[wo+ho*W_out+co*H_out*W_out] += biasData[co];
-          }
         }
-      }
-    } 
+    } else {
 
-  }
+        for (uint32_t co = start; co < stop; co++) {
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
+                    float temp = 0;
+                    // Receptive field
+                    for (uint32_t ci = 0; ci < C_in; ci++) {
+                        for (uint32_t hk = 0; hk < pH; hk++) {
+                            for (uint32_t wk = 0; wk < pW; wk++) {
+                                // Pad conditions
+                                int pad_cond_h = h_str * ho + hk - Upad;
+                                int pad_cond_w = w_str * wo + wk - Lpad;
+                                if ((pad_cond_h >= 0) && (pad_cond_w >= 0) && (pad_cond_h < H_in) &&
+                                    (pad_cond_w < W_in)) {
+                                    int in_idx = (w_str * wo + wk - Lpad) + (h_str * ho + hk - Upad) * W_in +
+                                                 ci * H_in * W_in;
+                                    int ker_idx = wk + hk * pW + ci * pH * pW + co * C_in * pH * pW;
+                                    temp += inData[in_idx] * coeffData[ker_idx];
+                                }
+                                //printf("C2D_KER:   outData[%d] = %f\n", wo+ho*W_out+co*H_out*W_out, outData[wo+ho*W_out+co*H_out*W_out]);
+                            }
+                        }
+                        outData[wo + ho * W_out + co * H_out * W_out] = temp;
 
-  if (USE_BIASES != 0 && USE_BIASES != 1) {
-    printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n", USE_BIASES);
-  }
+                        // Handle biases
+                        if (USE_BIASES == 1) {
+                            outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+               USE_BIASES);
+    }
 }
 
 
