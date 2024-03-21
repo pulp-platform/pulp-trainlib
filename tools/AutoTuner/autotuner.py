@@ -49,8 +49,9 @@ KER_H       = 1
 KER_W       = 1                                   
 OUT_CH      = 64
 PADDING     = 0                                            
-STRIDE      = 1   
-NUM_CORES   = 8                                     
+STRIDE      = 1
+USE_BIAS    = 1
+NUM_CORES   = 8
 # Tiler settings
 NUM_TILING_SOLUTIONS    = 5
 NUM_INPUT_BITS          = 32
@@ -135,6 +136,7 @@ C_in, C_out, H_in, H_out, W_in, W_out, Obj, NUM_FOUND_SOLUTIONS = get_tiling(
                                                                 filter_size1=KER_H,
                                                                 filter_size2=KER_W,
                                                                 stride=STRIDE,
+                                                                use_bias=USE_BIAS,
                                                                 padding_top=PADDING,
                                                                 padding_bottom=PADDING,
                                                                 padding_left=PADDING,
@@ -174,6 +176,8 @@ f.write("--------------- NETWORK STRUCTURE: ----------------\n")
 f.write("Layer type: " + layer_type + '\n')
 f.write("Input ({} bit): C = {}, H = {}, W = {}\n".format(NUM_INPUT_BITS, IN_CH, INPUT_H, INPUT_W))
 f.write("Kernel ({} bit, with {} bit activation): Cin = {}, H = {}, W = {}, Cout = {}\n".format(NUM_KERNEL_BITS, NUM_ACTIVATION_BITS, IN_CH, KER_H, KER_W, OUT_CH))
+if USE_BIAS == 1:
+    f.write("Bias ({} bit, with {} bit activation): Size = {}\n".format(NUM_KERNEL_BITS, NUM_ACTIVATION_BITS, OUT_CH))
 f.write("Output ({} bit): C = {}, H = {}, W = {}\n".format(NUM_OUTPUT_BITS, OUT_CH, (INPUT_H-KER_H+1), (INPUT_W-KER_W+1)))
 f.write("---------------------------------------------------\n\n\n")
 f.write("---------------- TILING CANDIDATES ----------------\n")
@@ -182,7 +186,7 @@ for idx in range(NUM_FOUND_SOLUTIONS):
     # Write solutions to file
     if NUM_FOUND_SOLUTIONS == 1:
         # Compute the memory occupation of the layer
-        memocc_bytes = compute_memory_footprint(layer_type, C_in, H_in, W_in, C_out, H_out, W_out, int(NUM_INPUT_BITS/8), int(NUM_KERNEL_BITS/8), int(NUM_OUTPUT_BITS/8))
+        memocc_bytes = compute_memory_footprint(layer_type, C_in, H_in, W_in, C_out, H_out, W_out, int(NUM_INPUT_BITS/8), int(NUM_KERNEL_BITS/8), int(NUM_OUTPUT_BITS/8), USE_BIAS=USE_BIAS)
         f.write("{})\tInput: C={}, H={}, W={},\t\tOutput: C={}, H={}, W={}\t\t\tMemory footprint (bytes): FW={}, WGT_G={}, IN_G={}".format(idx, C_in, H_in, W_in, C_out, H_out, W_out, memocc_bytes[0], memocc_bytes[1], memocc_bytes[2]))
         # Compute the total number of tiles
         Cin_pieces = int(floor(IN_CH/C_in)); Cin_remainder = IN_CH % C_in
@@ -210,7 +214,7 @@ for idx in range(NUM_FOUND_SOLUTIONS):
         f.write("\t\tNUM_FULL_TILES={}, BORDER_TILES={}\n".format(total_full_tiles, total_border_tiles))
     else:
         # Compute the memory occupation of the layer
-        memocc_bytes = compute_memory_footprint(layer_type, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx], int(NUM_INPUT_BITS/8), int(NUM_KERNEL_BITS/8), int(NUM_OUTPUT_BITS/8))
+        memocc_bytes = compute_memory_footprint(layer_type, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx], int(NUM_INPUT_BITS/8), int(NUM_KERNEL_BITS/8), int(NUM_OUTPUT_BITS/8), USE_BIAS=USE_BIAS)
         f.write("{})\t\tInput: C={}, H={}, W={},\t\tOutput: C={}, H={}, W={}\t\t\tMemory footprint (bytes): FW={}, WGT_G={}, IN_G={}".format(idx, C_in[idx], H_in[idx], W_in[idx], C_out[idx], H_out[idx], W_out[idx], memocc_bytes[0], memocc_bytes[1], memocc_bytes[2]))
         # Compute the total number of tiles
         Cin_pieces = int(floor(IN_CH/C_in[idx])); Cin_remainder = IN_CH % C_in[idx]
@@ -406,7 +410,7 @@ if WRITE_YML_FILE == True:
                 step_int = "BACKWARD_GRAD"
             elif step=="IN_G":
                 step_int = "BACKWARD_ERROR"
-            make_f.write("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='{}'\n".format(num_cores, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W, step_int))
+            make_f.write("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='{}' USE_BIASES={}\n".format(num_cores, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W, step_int, USE_BIAS))
 
         # FW N Cores
         if IGNORE_FW == False:
@@ -595,7 +599,7 @@ if FIND_FASTEST_MATMUL == True:
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # Results with N CORES
                 # FWD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='FORWARD'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='FORWARD' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W, USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):
@@ -608,7 +612,7 @@ if FIND_FASTEST_MATMUL == True:
             tiling_idx_list = []; matmul_names_list = []; matmul_cycles_list = []; num_cores_list = []; passes_list = []
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # WGT GRAD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='BACKWARD_GRAD'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='BACKWARD_GRAD' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W, USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):
@@ -621,7 +625,7 @@ if FIND_FASTEST_MATMUL == True:
             tiling_idx_list = []; matmul_names_list = []; matmul_cycles_list = []; num_cores_list = []; passes_list = []        
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # IN GRAD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='BACKWARD_ERROR'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} STEP='BACKWARD_ERROR' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], H_in[idx], W_in[idx], KER_H, KER_W, USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):
