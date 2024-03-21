@@ -37,6 +37,11 @@ conv2d_in_H = 16
 conv2d_ker_W = 1
 conv2d_ker_H = 1
 conv2d_out_ch = 64
+conv2d_use_bias = 1
+
+if data_type not in ["fp32"]:
+    print("Bias not implemented for selected data type. It will be ignored.")
+    conv2d_use_bias = 0
 
 # Depthwise Convolution
 dw_inout_ch = 64
@@ -97,21 +102,27 @@ CONV2D
 # Compute Conv2D memory occupation (FORWARD)
 in_act  = conv2d_in_ch * conv2d_in_H * conv2d_in_W
 ker     = conv2d_ker_H * conv2d_ker_W * conv2d_in_ch * conv2d_out_ch
+bias    = conv2d_use_bias * conv2d_out_ch
 im2colF = conv2d_in_ch * conv2d_ker_H * conv2d_ker_W * (conv2d_in_W-conv2d_ker_W+1) * (conv2d_in_H-conv2d_ker_H+1) 
 out_act = (conv2d_in_W-conv2d_ker_W+1) * (conv2d_in_H-conv2d_ker_H+1) * conv2d_out_ch
-tot_FW  = in_act + ker + im2colF + out_act
+tot_FW  = in_act + ker + bias + im2colF + out_act
+
 f.write("-------------------------------------------\n")
 f.write("###              CONV2D LAYER           ###\n")
 f.write("-------------------------------------------\n")
 f.write("| ### SIZES ###\n|\n")
 f.write("| IN: \tH={}, W={}, C={}\n".format(conv2d_in_H, conv2d_in_W, conv2d_in_ch))
 f.write("| KER: \tH={}, W={}, C_IN={}, C_OUT={}\n".format(conv2d_ker_H, conv2d_ker_W, conv2d_in_ch, conv2d_out_ch))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \tSIZE={}\n".format(conv2d_out_ch))
 f.write("| OUT: \tH={}, W={}, C={}\n".format((conv2d_in_H-conv2d_ker_H+1), (conv2d_in_W-conv2d_ker_W+1), conv2d_in_ch))
 f.write("-------------------------------------------\n")
 f.write("| ### FORWARD ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colF, im2colF*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT: \t\t\t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL FORWARD: \t{} ({} bytes)\n".format(tot_FW, tot_FW*data_size))
 f.write("-------------------------------------------\n")
@@ -125,6 +136,8 @@ f.write("| ### WEIGHT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colW, im2colW*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL WGT GRAD: \t{} ({} bytes)\n".format(tot_WGT, tot_WGT*data_size))
 f.write("-------------------------------------------\n")
@@ -138,6 +151,8 @@ f.write("| ### INPUT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colI, im2colI*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL IN GRAD: \t{} ({} bytes)\n".format(tot_ING, tot_ING*data_size))
 f.write("-------------------------------------------\n")
