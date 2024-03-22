@@ -33,7 +33,7 @@ memory
 MAX_LAYER_DIM = 0
 
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list, w_pad_list,
-                        data_type_l, update_layer_l, avail_mem_bytes, USE_DMA, CONV2D_USE_IM2COL):
+                        data_type_l, bias_l, update_layer_l, avail_mem_bytes, USE_DMA, CONV2D_USE_IM2COL):
 
     total_memory_occupation_bytes = 0
     l2_occupation = 0
@@ -60,9 +60,9 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         if layer == len(layers_l) - 1:
             is_last_layer = True
         if USE_DMA == 'NO':
-            total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
+            total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
         elif USE_DMA in ['SB', 'DB']:
-            l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
+            l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
     # Compute im2col memory occupation
     mem_im2col = 0
     idx_im2col = 0
@@ -92,7 +92,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     # Buffer memory allocation for Single Buffer mode
     l1_buff_size = 0
     if USE_DMA == 'SB':
-        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0], h_str_list, w_str_list, h_pad_list, w_pad_list)
+        MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0], h_str_list, w_str_list, h_pad_list, w_pad_list, bias_l)
         l1_buff_size = MAX_LAYER_DIM
         
         l1_structs_mem = 0
@@ -208,7 +208,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, data_type_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
+                  NUM_CORES, data_type_l, bias_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
                   sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Initialize project (copy the prefab files and create folder)
@@ -222,7 +222,7 @@ def DNN_Composer (proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
                         epochs, batch_size, learning_rate, optimizer, loss_fn,
-                        data_type_l, update_layer_l, sumnode_connections, USE_DMA)
+                        data_type_l, bias_l, update_layer_l, sumnode_connections, USE_DMA)
 
 
     global MAX_LAYER_DIM
@@ -232,7 +232,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, update_layer_l, sumnode_connections, 
+                    data_type_l, bias_l, update_layer_l, sumnode_connections, 
                     PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'SB':
@@ -240,7 +240,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                    data_type_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
                     PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'DB':
@@ -248,7 +248,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                    data_type_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
                     PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
     else:
         print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
