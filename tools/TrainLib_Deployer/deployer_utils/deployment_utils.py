@@ -87,37 +87,38 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     return memocc_bytes
 
 
-def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_l, w_pad_l, h_str_l, w_str_l, data_type_l):
+def compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_l, w_pad_l, h_str_l, w_str_l, data_type_l, CONV2D_USE_IM2COL):
 
     memocc_bytes = 0
 
     max_im2col_size = 0
     max_im2col_index = 0
     for layer in range(len(layers_l)):
-        # Check layer data type
-        byte_size = 4
-        if data_type_l[layer] == 'FP32':
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True:
+            # Check layer data type
             byte_size = 4
-        elif data_type_l[layer] == 'FP16':
-            byte_size = 2
-        else:
-            print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
-            exit()      
-        # Output H and W
-        hout = math.floor( (hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer] )
-        wout = math.floor( (win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer] )
-        # Find max im2col size
-        if layers_l[layer] == 'conv2d': # or layers_l[layer] == 'DW':
-            im2col_size = 0
-            size_FW = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * hout * wout * byte_size
-            size_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer] * byte_size
-            if size_FW > size_BW:
-                im2col_size = size_FW
+            if data_type_l[layer] == 'FP32':
+                byte_size = 4
+            elif data_type_l[layer] == 'FP16':
+                byte_size = 2
             else:
-                im2col_size = size_BW
-            if im2col_size > max_im2col_size:
-                max_im2col_size = im2col_size
-                max_im2col_index = layer
+                print("[deployment_utils.compute_im2col_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
+                exit()      
+            # Output H and W
+            hout = math.floor( (hin_l[layer]-hk_l[layer]+2*h_pad_l[layer]+h_str_l[layer])/h_str_l[layer] )
+            wout = math.floor( (win_l[layer]-wk_l[layer]+2*w_pad_l[layer]+w_str_l[layer])/w_str_l[layer] )
+            # Find max im2col size
+            if layers_l[layer] == 'conv2d': # or layers_l[layer] == 'DW':
+                im2col_size = 0
+                size_FW = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * hout * wout * byte_size
+                size_BW = out_ch_l[layer] * hk_l[layer] * wk_l[layer] * hin_l[layer] * win_l[layer] * byte_size
+                if size_FW > size_BW:
+                    im2col_size = size_FW
+                else:
+                    im2col_size = size_BW
+                if im2col_size > max_im2col_size:
+                    max_im2col_size = im2col_size
+                    max_im2col_index = layer
     
     #print("Max im2col size (@layer {}): {}".format(max_im2col_index, max_im2col_size))
     memocc_bytes += max_im2col_size
@@ -170,7 +171,7 @@ def compute_cast_buffer_memocc_bytes (layers_l, chin_l, chout_l, hk_l, wk_l, hin
     return memocc_bytes, max_act_index, act_inout
 
 
-def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l):
+def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l, CONV2D_USE_IM2COL):
 
     memocc_bytes = 0
 
@@ -189,7 +190,7 @@ def compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_
             print("[deployment_utils.compute_bt_memocc_bytes]: Invalid data type @Layer{}!!".format(layer))
             exit()
         # Find max blocktransp size
-        if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
+        if ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer > 0:
             bt_size = hk_l[layer] * wk_l[layer] * in_ch_l[layer] * out_ch_l[layer] * byte_size
             if bt_size > max_bt_size:
                 max_bt_size = bt_size
@@ -645,7 +646,7 @@ def GenerateNet(proj_folder_path, project_name,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, sumnode_connections,
-                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL):
 
     # Generate net.h
     f = open(proj_folder_path+'net.h', 'w')
@@ -868,7 +869,7 @@ def GenerateNet(proj_folder_path, project_name,
     im2col_byte_length = 0
     im2col_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'conv2d': # or layers_l[layer] == 'DW':
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True: # or layers_l[layer] == 'DW':
             if data_type_l[layer] == 'FP32':
                 im2col_byte_length = 4
             elif data_type_l[layer] == 'FP16':
@@ -906,6 +907,13 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
                 exit()
+    # No im2col buffer
+    allocate_no_im2col = False
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == False: 
+            allocate_no_im2col = True
+    if allocate_no_im2col == True:
+        f.write("PI_L1 float im2col_buffer[1];\n")
 
     # Write in grad transposition / blocktranspose buffer
     bt_flag = False
@@ -916,10 +924,10 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Check layer data layout
         data_layout = 'CHW'     # Change to input list of data layouts
-        if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer == 0:
+        if ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer == 0:
             bt_flag = True
             bt_layer_index = 0
-        elif (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
+        elif ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer > 0:
             bt_flag = True
             bt_mem = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * out_ch_l[layer]
             if bt_mem > bt_max_memocc:
@@ -960,6 +968,11 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for pw transp buffer definition!\n")
             exit()
+    # No blocktranspose buffer
+    if (bt_flag == False):
+        print("No blockstranspose buffer detected\n")
+        f.write("PI_L1 float bt_buffer[1];\n")
+
 
 
     # Define tensors to backpropagate the output error
@@ -1253,7 +1266,10 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer]))
+            IM2COL_USEIT = 1
+            if CONV2D_USE_IM2COL == False:
+                IM2COL_USEIT = 0
+            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer], IM2COL_USEIT))
         elif layers_l[layer] == 'PW':
             f.write(ntemp.PW_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'DW':

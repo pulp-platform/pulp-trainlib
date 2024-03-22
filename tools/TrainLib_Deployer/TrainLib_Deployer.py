@@ -77,8 +77,8 @@ win_list            = [ 32, 24, 24, 24, 18, 18, 18, 16, 16, 16, 8,  8, 1 ]      
 h_str_list          = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
 w_str_list          = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
 # Padding (bilateral, adds the specified padding to both image sides)
-h_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Only for conv2d, DW (NOT IMPLEMENTED)
-w_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Only for conv2d, DW (NOT IMPLEMENTED)
+h_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Implemented for Conv2D (naive kernel), DW TO DO
+w_pad_list          = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Implemented for Conv2D (naive kernel), DW TO DO
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
 opt_mm_fw_list      = [ 1, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 10 ]
 opt_mm_wg_list      = [ 1, 12, 12, 12, 12, 12, 12, 12, 12, 1, 12, 1, 10 ]
@@ -95,12 +95,14 @@ data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', '
 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
-L1_SIZE_BYTES   = 60*(2**10)
+L1_SIZE_BYTES   = 64*(2**10)
 USE_DMA = 'DB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = False          # If True, writes separate weight and input gradient in backward step
 # PROFILING OPTIONS
 PROFILE_SINGLE_LAYERS = False           # If True, profiles forward and backward layer-by-layer
+# CONV2D SETUPS
+CONV2D_USE_IM2COL = True                # Choose if the Conv2D layers should use Im2Col or not
 # OTHER PROPERTIES
 # Select if to read the network from an external source
 READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
@@ -134,7 +136,7 @@ else:
     # Check if the network training fits L1
     memocc = composer.DNN_Size_Checker(layer_list, in_ch_list, out_ch_list, hk_list, wk_list, hin_list, win_list, 
                                 h_str_list, w_str_list, h_pad_list, w_pad_list,
-                                data_type_list, L1_SIZE_BYTES, USE_DMA)
+                                data_type_list, L1_SIZE_BYTES, USE_DMA, CONV2D_USE_IM2COL)
 
     print("DNN memory occupation: {} bytes of {} available L1 bytes ({}%).".format(memocc, L1_SIZE_BYTES, (memocc/L1_SIZE_BYTES)*100))
 
@@ -144,7 +146,7 @@ else:
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
                             epochs, batch_size, learning_rate, optimizer, loss_fn,
                             NUM_CORES, data_type_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections, 
-                            USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                            USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
 
     print("PULP project generation successful!")
 

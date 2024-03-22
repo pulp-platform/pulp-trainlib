@@ -347,7 +347,7 @@ def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, CONV2D_USE_IM2COL):
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
@@ -371,7 +371,11 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
-    template += "  l"+str(layer_number)+"_args.USE_IM2COL = 1;\n"
+    # Temporary fix to use padding (naive kernel)
+    if pad_h > 0 or pad_w > 0:
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = 0;\n"
+    else:
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = "+str(CONV2D_USE_IM2COL)+";\n"
     template += "  l"+str(layer_number)+"_args.USE_DMA_IM2COL = 0;\n"
     return template
 

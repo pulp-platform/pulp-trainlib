@@ -32,7 +32,7 @@ memory
 MAX_LAYER_DIM = 0
 
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list, w_pad_list,
-                        data_type_l, avail_mem_bytes, USE_DMA):
+                        data_type_l, avail_mem_bytes, USE_DMA, CONV2D_USE_IM2COL):
 
     total_memory_occupation_bytes = 0
     l2_occupation = 0
@@ -51,7 +51,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     # Compute im2col memory occupation
     mem_im2col = 0
     idx_im2col = 0
-    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_list, w_pad_list, h_str_list, w_str_list, data_type_l)
+    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_list, w_pad_list, h_str_list, w_str_list, data_type_l, CONV2D_USE_IM2COL)
     total_memory_occupation_bytes += mem_im2col
 
     if mem_im2col > 0:
@@ -60,7 +60,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     # Compute transpose and blocktranspose memory occupation 
     mem_blocktransp = 0
     idx_blocktransp = 0
-    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l)
+    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l, CONV2D_USE_IM2COL)
     total_memory_occupation_bytes += mem_blocktransp
 
     if mem_blocktransp > 0:
@@ -188,7 +188,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
                   NUM_CORES, data_type_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections, 
-                  USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
+                  USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -212,7 +212,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, sumnode_connections, 
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
         
     elif USE_DMA == 'SB':
         utilsSB.GenerateNet(proj_folder_path, project_name,
@@ -220,7 +220,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
         
     elif USE_DMA == 'DB':
         utilsDB.GenerateNet(proj_folder_path, project_name,
@@ -228,7 +228,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
     else:
         print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
 
