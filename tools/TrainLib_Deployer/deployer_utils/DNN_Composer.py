@@ -80,7 +80,6 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         MAX_LAYER_DIM = utilsSB.max_layer_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l[0], h_str_list, w_str_list, h_pad_list, w_pad_list)
         l1_buff_size = MAX_LAYER_DIM
         
-
         l1_structs_mem = 0
         l1_structs_mem += 6*4 # 6 pointers IN_DATA, IN_DIFF ...
         l1_structs_mem += 4*(6*4) # 4 blobs input_blob, output_blob ..
@@ -98,6 +97,13 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         l1_structs_mem += 2*16 # 2 vect_sum_args
         print(f"Size of structures in L1 (Single Buffer Mode): {l1_structs_mem} bytes")
         total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
+
+        # Label storage memory
+        h_out_net = floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
+        w_out_net = floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
+        labels_mem = out_ch_l[-1] * h_out_net * w_out_net
+        print(f"Size of allocated memory for labels (Single Buffer Mode): {labels_mem} bytes")
+        total_memory_occupation_bytes += labels_mem
 
     elif USE_DMA == 'DB':
         

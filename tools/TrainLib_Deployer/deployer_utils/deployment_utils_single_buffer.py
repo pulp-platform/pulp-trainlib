@@ -513,6 +513,8 @@ def GenerateNet(proj_folder_path, project_name,
         print("No blockstranspose buffer detected\n")
         f.write("PI_L1 float bt_buffer[1];\n")
 
+    # Define label buffer
+    f.write("PI_L1 float label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_L"+str(len(layers_l)-1)+"];\n")
 
     # Define tensors to backpropagate the output error
     f.write("\n// Define error propagation tensors\n")
@@ -984,7 +986,10 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        #f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+        f.write("  temp_blob.data = label_temp;\n")
+        f.write("  temp_blob.dim = output_blob.dim;\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
         f.write("  loss_args.output = &output_blob;\n")
         f.write("  loss_args.target = temp_blob.data;\n")
         f.write("  loss_args.wr_loss = &loss;\n") 
@@ -999,7 +1004,10 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
+        #f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+        f.write("  temp_blob.data = label_temp;\n")
+        f.write("  temp_blob.dim = output_blob.dim;\n")
+        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
         f.write("  loss_args.output = &output_blob;\n")
         f.write("  loss_args.target = temp_blob.data;\n")
         f.write("  loss_args.wr_loss = &loss;\n") 
