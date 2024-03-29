@@ -96,8 +96,8 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
 
   #ifdef DEBUG
   printf("FORWARD PW LAYER \n\n");
-  for (int i=0; i<Cout*output->W*output->H; i++) {
-    if ((i+1)%output->W==0) {
+  for (int i=0; i<Cout*pW*pH; i++) {
+    if ((i+1)%pW==0) {
       printf(" %f \n\n", i, outData[i]);
     }
     else
