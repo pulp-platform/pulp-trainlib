@@ -578,15 +578,15 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// DNN initialization function\n")
     f.write("void DNN_init()\n{\n")
     f.write("\n// Assign pointers in L1\n")
-    f.write("d0_blob.data = BUFF;\n")
-    f.write("d0_blob.diff = BUFF;\n")
-    f.write("w0_blob.data = BUFF;\n")
-    f.write("w0_blob.diff = BUFF;\n")
-    f.write("d1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("d1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("reset_arguments();\n\n")
+    f.write("  d0_blob.data = BUFF;\n")
+    f.write("  d0_blob.diff = BUFF;\n")
+    f.write("  w0_blob.data = BUFF;\n")
+    f.write("  w0_blob.diff = BUFF;\n")
+    f.write("  d1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  d1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  reset_arguments();\n\n")
     for layer in range(len(layers_l)):
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
@@ -619,7 +619,7 @@ def GenerateNet(proj_folder_path, project_name,
 
     # Mixed precision check
     C_data_type = 'float'
-    f.write("\n  // Connect tensors to blobs\n")
+    f.write("\n// Connect tensors to blobs\n")
     previous_was_skip = 0
     
     for layer in range(len(layers_l)):
