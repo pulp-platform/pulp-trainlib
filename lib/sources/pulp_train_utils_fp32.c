@@ -435,7 +435,7 @@ void pulp_exp_sum_fp32_cl(void* void_args){
         printf("\nCurrent input - max in softmax: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%((int)L))) printf("\n");
-            printf("%.8f ", (input[j] - max));
+            printf("%.8f ", (input[j] - maxes[j]));
         }
     }
     printf("\n");

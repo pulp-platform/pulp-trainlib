@@ -54,7 +54,7 @@ void pulp_linear_fp32_fw_cl( void * Linear_args )
 
   #ifdef DEBUG 
     printf("\nLinear OutData: %d\n", matMul_args.N);
-    for (int i=0; i<output->dim; i++){
+    for (int i=0; i<FC_args->output->dim; i++){
       printf("%4.2e ", outData[i]);
     }
     printf("\n");
@@ -91,7 +91,7 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 
 #ifdef DEBUG
   printf("\nLinear outDiff\n");
-  for(int i=0; i<output->dim; i++)
+  for(int i=0; i<FC_args->output->dim; i++)
     printf("%4.2e ", outDiff[i]);
   printf("\n");
 #endif
@@ -117,8 +117,8 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
 
   #ifdef DEBUG 
   printf("\nLinear coeffDiff ");
-    for (int i=0; i<input->dim*output->dim; i++){
-      if(!(i%(output->dim))) printf("\n");
+    for (int i=0; i<FC_args->input->dim*FC_args->output->dim; i++){
+      if(!(i%(FC_args->output->dim))) printf("\n");
       printf("%4.2e (i=%d)", coeffDiff[i], i);
     }
     printf("\n");
@@ -142,7 +142,7 @@ void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
 
 #ifdef DEBUG
   printf("\nLinear outDiff\n");
-  for(int i=0; i<output->dim; i++)
+  for(int i=0; i<FC_args->output->dim; i++)
     printf("%4.2e ", outDiff[i]);
   printf("\n");
 #endif
@@ -169,8 +169,8 @@ void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
   #ifdef DEBUG 
   printf("\nLinear outDiff (coeffData.T * inDiff)");
 
-    for (int i=0; i<output->dim/*+2*/; i++){
-      if(!(i%(coeff->H))) printf("\n");
+    for (int i=0; i<FC_args->output->dim/*+2*/; i++){
+      if(!(i%(FC_args->coeff->H))) printf("\n");
       printf("%4.2e ", outDiff[i]);
     }
     printf("\n");
