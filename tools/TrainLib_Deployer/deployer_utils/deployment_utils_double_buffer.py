@@ -578,15 +578,15 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// DNN initialization function\n")
     f.write("void DNN_init()\n{\n")
     f.write("\n// Assign pointers in L1\n")
-    f.write("d0_blob.data = BUFF;\n")
-    f.write("d0_blob.diff = BUFF;\n")
-    f.write("w0_blob.data = BUFF;\n")
-    f.write("w0_blob.diff = BUFF;\n")
-    f.write("d1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("d1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("reset_arguments();\n\n")
+    f.write("  d0_blob.data = BUFF;\n")
+    f.write("  d0_blob.diff = BUFF;\n")
+    f.write("  w0_blob.data = BUFF;\n")
+    f.write("  w0_blob.diff = BUFF;\n")
+    f.write("  d1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  d1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  reset_arguments();\n\n")
     for layer in range(len(layers_l)):
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
@@ -619,7 +619,7 @@ def GenerateNet(proj_folder_path, project_name,
 
     # Mixed precision check
     C_data_type = 'float'
-    f.write("\n  // Connect tensors to blobs\n")
+    f.write("\n// Connect tensors to blobs\n")
     previous_was_skip = 0
     
     for layer in range(len(layers_l)):
@@ -1031,8 +1031,8 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
-        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) layer"+str(len(layers_l)-1)+"_out.data, (uint32_t) d1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) LABEL, (uint32_t) w1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
         f.write("    loss_args.output = &d1_blob;\n") 
         f.write("    loss_args.target = w1_blob.data;\n") 
         f.write("    loss_args.wr_loss = &loss;\n") 
@@ -1046,8 +1046,8 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
-        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) layer"+str(len(layers_l)-1)+"_out.data, (uint32_t) d1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) LABEL, (uint32_t) w1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
         f.write("    loss_args.output = &d1_blob;\n") 
         f.write("    loss_args.target = w1_blob.data;\n") 
         f.write("    loss_args.wr_loss = &loss;\n") 
