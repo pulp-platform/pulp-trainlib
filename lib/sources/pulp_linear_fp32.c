@@ -65,9 +65,14 @@ void pulp_linear_fp32_fw_cl( void * Linear_args )
 void pulp_linear_fp32_bw_cl( void * Linear_args )
 {
   struct Linear_args * FC_args = (struct Linear_args *) Linear_args;
+  int skip_wg_grad = FC_args->skip_wg_grad;
   int skip_in_grad = FC_args->skip_in_grad;
 
-  pulp_linear_fp32_bw_param_grads_cl(Linear_args);
+  if (skip_wg_grad == 0)
+  {
+    pulp_linear_fp32_bw_param_grads_cl(Linear_args);
+  }
+  
   if (skip_in_grad == 0) 
   {
     pulp_linear_fp32_bw_input_grads_cl(Linear_args); 

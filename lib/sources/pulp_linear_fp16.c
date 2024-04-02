@@ -65,9 +65,14 @@ void pulp_linear_fp16_fw_cl( void * Linear_args_fp16 )
 void pulp_linear_fp16_bw_cl( void * Linear_args_fp16 )
 {
   struct Linear_args_fp16 * FC_args = (struct Linear_args_fp16 *) Linear_args_fp16;
+  int skip_wg_grad = FC_args->skip_wg_grad;
   int skip_in_grad = FC_args->skip_in_grad;
 
-  pulp_linear_fp16_bw_param_grads_cl(Linear_args_fp16);
+  if (skip_wg_grad == 0)
+  {
+    pulp_linear_fp16_bw_param_grads_cl(Linear_args_fp16);
+  }
+  
   if (skip_in_grad == 0) 
   {
     pulp_linear_fp16_bw_input_grads_cl(Linear_args_fp16); 

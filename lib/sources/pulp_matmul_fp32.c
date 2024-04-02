@@ -641,8 +641,9 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
   int padding = Lpad + Rpad + Upad + Dpad;
+  int stride = h_str + w_str;
 
-  if (padding == 0) {
+  if ((padding == 0) && (stride <= 2)) {
 
     for (uint32_t ci=0; ci<C_in; ci++) {
       for (uint32_t hi=0; hi<H_in; hi++) {
