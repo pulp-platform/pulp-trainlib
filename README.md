@@ -188,10 +188,11 @@ PULP-TrainLib's repository is organized with these branches:
 - Alberto Dequino (alberto.dequino@unibo.it, alberto.dequino@polito.it)
 - Manuele Rusci (manuele.rusci@kuleuven.be)
 - Francesco Conti (f.conti@unibo.it)
-- Giacomo Saporetti (giacomo.saporetti@studio.unibo.it)
+- Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
 
 ## Past Contributors
 
+- Giacomo Saporetti (giacomo.saporetti@studio.unibo.it)
 - Francesco Conoscenti (francesco.conoscenti@studio.unibo.it)
 - Leonardo Ravaglia (leonardo.ravaglia2@unibo.it)
 
