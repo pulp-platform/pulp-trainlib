@@ -250,11 +250,16 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
 void pulp_instnorm_fp32_bw_cl( void * InstNorm_args )
 {
     struct InstNorm_args * args = (struct InstNorm_args *) InstNorm_args;
-    int skip = args->skip_in_grad;
-    //pulp_instnorm_fp32_bw_param_grads_cl(args);
-    pi_cl_team_fork(NUM_CORES, pulp_instnorm_parallelized_fp32_bw_param_grads_cl, InstNorm_args);
+    int skip_wg_grad = args->skip_wg_grad;
+    int skip_in_grad = args->skip_in_grad;
 
-    if(skip == 0)
-       //pulp_instnorm_fp32_bw_input_grads_cl(args);
+    if (skip_wg_grad == 0)
+    {
+        pi_cl_team_fork(NUM_CORES, pulp_instnorm_parallelized_fp32_bw_param_grads_cl, InstNorm_args);
+    }
+
+    if(skip_in_grad == 0)
+    {
         pi_cl_team_fork(NUM_CORES, pulp_instnorm_parallelized_fp32_bw_input_grads_cl, InstNorm_args);
+    }
 }

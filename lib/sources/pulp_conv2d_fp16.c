@@ -191,9 +191,14 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
 void pulp_conv2d_fp16_bw_cl( void * Conv2D_args_fp16 )
 {
     struct Conv2D_args_fp16 * C2D_args = (struct Conv2D_args_fp16 *) Conv2D_args_fp16;
+    int skip_wg_grad = C2D_args->skip_wg_grad;
     int skip_in_grad = C2D_args->skip_in_grad;
 
-    pulp_conv2d_fp16_bw_param_grads_cl(Conv2D_args_fp16); 
+    if (skip_wg_grad == 0)
+    {
+      pulp_conv2d_fp16_bw_param_grads_cl(Conv2D_args_fp16); 
+    }
+    
     if (skip_in_grad == 0)
     {
       pulp_conv2d_fp16_bw_input_grads_cl(Conv2D_args_fp16); 

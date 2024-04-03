@@ -125,6 +125,7 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
+  DW_args.skip_wg_grad = 0;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
 }
@@ -206,6 +207,7 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
+  DW_args.skip_wg_grad = 0;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
 }
@@ -282,6 +284,7 @@ static inline void connect_blobs(){
   DW_args.Rpad = RPAD;
   DW_args.Upad = UPAD;
   DW_args.Dpad = DPAD;
+  DW_args.skip_wg_grad = 0;
   DW_args.skip_in_grad = 0;
   DW_args.HWC = HWC_LAYOUT;
 }
@@ -354,6 +357,7 @@ static inline void connect_blobs(){
   PW_args.input = &layer2_in;
   PW_args.coeff = &layer2_wgt;
   PW_args.output = &layer2_out;
+  PW_args.skip_wg_grad = 0;
   PW_args.skip_in_grad = 0;
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -433,6 +437,7 @@ static inline void connect_blobs(){
   PW_args.input = &layer2_in;
   PW_args.coeff = &layer2_wgt;
   PW_args.output = &layer2_out;
+  PW_args.skip_wg_grad = 0;
   PW_args.skip_in_grad = 0;
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -510,6 +515,7 @@ static inline void connect_blobs(){
   PW_args.input = &layer2_in;
   PW_args.coeff = &layer2_wgt;
   PW_args.output = &layer2_out;
+  PW_args.skip_wg_grad = 0;
   PW_args.skip_in_grad = 0;
   PW_args.opt_matmul_type_fw = MATMUL_TYPE;
   PW_args.opt_matmul_type_wg = MATMUL_TYPE;

@@ -78,8 +78,8 @@ def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
+                data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL):
 
 
     data_type = data_type_l[0]
@@ -385,7 +385,7 @@ def GenerateNet(proj_folder_path, project_name,
     im2col_byte_length = 0
     im2col_max_data_type = 'FP32'
     for layer in range(len(layers_l)):
-        if layers_l[layer] == 'conv2d': # or layers_l[layer] == 'DW':
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True: # or layers_l[layer] == 'DW':
             if data_type_l[layer] == 'FP32':
                 im2col_byte_length = 4
             elif data_type_l[layer] == 'FP16':
@@ -423,6 +423,13 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
                 exit()
+    # No im2col buffer
+    allocate_no_im2col = False
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == False: 
+            allocate_no_im2col = True
+    if allocate_no_im2col == True:
+        f.write("PI_L1 float im2col_buffer[1];\n")
 
     # Write in grad transposition / blocktranspose buffer
     bt_flag = False
@@ -433,10 +440,10 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Check layer data layout
         data_layout = 'CHW'     # Change to input list of data layouts
-        if (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer == 0:
+        if ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer == 0:
             bt_flag = True
             bt_layer_index = 0
-        elif (layers_l[layer] == 'conv2d' or layers_l[layer] == 'PW') and layer > 0:
+        elif ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer > 0:
             bt_flag = True
             bt_mem = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * out_ch_l[layer]
             if bt_mem > bt_max_memocc:
@@ -477,6 +484,10 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for pw transp buffer definition!\n")
             exit()
+    # No blocktranspose buffer
+    if (bt_flag == False):
+        print("No blockstranspose buffer detected\n")
+        f.write("PI_L1 float bt_buffer[1];\n")
 
 
     # Define tensors to backpropagate the output error
@@ -567,15 +578,15 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// DNN initialization function\n")
     f.write("void DNN_init()\n{\n")
     f.write("\n// Assign pointers in L1\n")
-    f.write("d0_blob.data = BUFF;\n")
-    f.write("d0_blob.diff = BUFF;\n")
-    f.write("w0_blob.data = BUFF;\n")
-    f.write("w0_blob.diff = BUFF;\n")
-    f.write("d1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("d1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.data = BUFF + MAX_SIZE/2;\n")
-    f.write("w1_blob.diff = BUFF + MAX_SIZE/2;\n")
-    f.write("reset_arguments();\n\n")
+    f.write("  d0_blob.data = BUFF;\n")
+    f.write("  d0_blob.diff = BUFF;\n")
+    f.write("  w0_blob.data = BUFF;\n")
+    f.write("  w0_blob.diff = BUFF;\n")
+    f.write("  d1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  d1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.data = BUFF + MAX_SIZE/2;\n")
+    f.write("  w1_blob.diff = BUFF + MAX_SIZE/2;\n")
+    f.write("  reset_arguments();\n\n")
     for layer in range(len(layers_l)):
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
@@ -608,7 +619,7 @@ def GenerateNet(proj_folder_path, project_name,
 
     # Mixed precision check
     C_data_type = 'float'
-    f.write("\n  // Connect tensors to blobs\n")
+    f.write("\n// Connect tensors to blobs\n")
     previous_was_skip = 0
     
     for layer in range(len(layers_l)):
@@ -813,7 +824,10 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer]))
+            IM2COL_USEIT = 1
+            if CONV2D_USE_IM2COL == False:
+                IM2COL_USEIT = 0
+            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer], IM2COL_USEIT))
         elif layers_l[layer] == 'PW':
             f.write(ntemp.PW_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'DW':
@@ -1017,8 +1031,8 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
-        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) layer"+str(len(layers_l)-1)+"_out.data, (uint32_t) d1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) LABEL, (uint32_t) w1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
         f.write("    loss_args.output = &d1_blob;\n") 
         f.write("    loss_args.target = w1_blob.data;\n") 
         f.write("    loss_args.wr_loss = &loss;\n") 
@@ -1032,8 +1046,8 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("    load((uint32_t) d1_blob.data, (uint32_t) layer"+str(len(layers_l)-1)+"_out.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
-        f.write("    load((uint32_t) w1_blob.data, (uint32_t) LABEL, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) layer"+str(len(layers_l)-1)+"_out.data, (uint32_t) d1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
+        f.write("    load((uint32_t) LABEL, (uint32_t) w1_blob.data, "+str(bytes_per_data)+"*layer"+str(len(layers_l)-1)+"_out.dim);\n")
         f.write("    loss_args.output = &d1_blob;\n") 
         f.write("    loss_args.target = w1_blob.data;\n") 
         f.write("    loss_args.wr_loss = &loss;\n") 

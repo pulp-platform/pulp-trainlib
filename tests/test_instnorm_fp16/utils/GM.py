@@ -7,6 +7,10 @@ import argparse
 import random
 import math
 
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-CI", type=int, default=2)
@@ -46,7 +50,7 @@ test_labels = torch.rand(CO, HI, WI)
 learning_rate = 0.01
 batch_size = 1
 epochs = 0
-if STEP=='BACKWARD':
+if STEP=='BACKWARD_GRAD' or STEP=='BACKWARD_ERROR':
 	epochs = 1
 
 # LAYER 0 SIZES
@@ -135,7 +139,31 @@ f.close()
 
 
 # Simple input data 
-inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000)
+inp = torch.torch.div(torch.randint(1000, [batch_size, l0_in_ch, l0_hin, l0_win]), 1000).half().to(device)
+
+def hook_fn(m, i, o):
+	print(m)
+	print("------------Input Grad------------")
+
+	for grad in i:
+		try:
+			print(grad.shape)
+			f = open('io_data.h', 'a')
+			f.write('#define INSTN_IN_G_SIZE '+str(grad.numel())+'\n')
+			f.write('PI_L2 fp16 INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(grad)+'};\n')
+			f.close()
+
+		except AttributeError: 
+			print ("None found for Gradient")
+
+	print("------------Output Grad------------")
+	for grad in o:  
+		try:
+			print(grad.shape)
+		except AttributeError: 
+			print("None found for Gradient")
+		print("\n")
+
 
 class Sumnode():
 	def __init__(self, ls):
@@ -159,14 +187,16 @@ class DNN(nn.Module):
 	def forward(self, x):
 		x = self.l0(x)
 		x = self.l1(x)
-		x = self.l2(x).float()
+		x = self.l2(x) #.float()
 		return x
 
 # Initialize network
-net = DNN()
+net = DNN().half().to(device)
 for p in net.parameters():
 	nn.init.normal_(p, mean=0.0, std=1.0)
 net.zero_grad()
+
+net.l1.register_backward_hook(hook_fn)
 
 
 # All-ones fake label 
@@ -191,6 +221,11 @@ for batch in range(epochs):
 	out = net(inp)
 	loss = loss_fn(out, label)
 	loss.backward()
+	# Print data to golden model's file
+	f = open('io_data.h', 'a')
+	f.write('#define INSTN_WGT_G_SIZE 2*'+str(net.l1.weight.data.numel())+'\n')
+	f.write('PI_L2 fp16 INSTN_WGT_GRAD[INSTN_WGT_G_SIZE] = {'+dump.tensor_to_string(net.l1.weight.grad)+dump.tensor_to_string(net.l1.bias.grad)+'};\n')
+	f.close()
 	optimizer.step()
 
 # Inference once after training

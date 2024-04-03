@@ -32,27 +32,31 @@ def linear_template_FW(layer_number, DATA_TYPE):
         exit()
     return template
 
-def linear_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def linear_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == 'FP32':
-            template  = "  pulp_linear_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_linear_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_linear_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         elif DATA_TYPE == 'FP16':
-            template  = "  pulp_linear_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_linear_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_linear_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         else:
             print("[net_templates.linear_template_BW]: Invalid data type!")
             exit()
     else:
-        if DATA_TYPE == 'FP32':
-            template = "  pulp_linear_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
-        elif DATA_TYPE == 'FP16':
-            template = "  pulp_linear_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
-        else:
-            print("[net_templates.linear_template_BW]: Invalid data type!")
-            exit()
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if DATA_TYPE == 'FP32':
+                template = "  pulp_linear_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif DATA_TYPE == 'FP16':
+                template = "  pulp_linear_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+            else:
+                print("[net_templates.linear_template_BW]: Invalid data type!")
+                exit()
     return template
 
 
@@ -67,27 +71,31 @@ def conv2d_template_FW(layer_number, DATA_TYPE):
         exit()    
     return template
 
-def conv2d_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def conv2d_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == 'FP32':
-            template  = "  pulp_conv2d_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_conv2d_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv2d_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         elif DATA_TYPE == 'FP16':
-            template  = "  pulp_conv2d_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_conv2d_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv2d_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         else:
             print("[net_templates.conv2d_template_BW]: Invalid data type!")
             exit()          
     else:
-        if DATA_TYPE == 'FP32':
-            template = "  pulp_conv2d_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
-        elif DATA_TYPE == 'FP16':
-            template = "  pulp_conv2d_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
-        else:
-            print("[net_templates.conv2d_template_BW]: Invalid data type!")
-            exit()  
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if DATA_TYPE == 'FP32':
+                template = "  pulp_conv2d_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif DATA_TYPE == 'FP16':
+                template = "  pulp_conv2d_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+            else:
+                print("[net_templates.conv2d_template_BW]: Invalid data type!")
+                exit()  
     return template
 
 
@@ -102,27 +110,31 @@ def DW_template_FW(layer_number, DATA_TYPE):
         exit()  
     return template
 
-def DW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def DW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == 'FP32':
-            template  = "  pulp_conv_dw_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_conv_dw_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv_dw_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         elif DATA_TYPE == 'FP16':
-            template  = "  pulp_conv_dw_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template  = "  pulp_conv_dw_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv_dw_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         else:
             print("[net_templates.DW_template_BW]: Invalid data type!")
             exit()  
     else:
-        if DATA_TYPE == 'FP32':
-            template = "  pulp_conv_dw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
-        elif DATA_TYPE == 'FP16':
-            template = "  pulp_conv_dw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
-        else:
-            print("[net_templates.DW_template_BW]: Invalid data type!")
-            exit()  
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if DATA_TYPE == 'FP32':
+                template = "  pulp_conv_dw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif DATA_TYPE == 'FP16':
+                template = "  pulp_conv_dw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+            else:
+                print("[net_templates.DW_template_BW]: Invalid data type!")
+                exit()  
     return template
 
 
@@ -137,27 +149,31 @@ def PW_template_FW(layer_number, DATA_TYPE):
         exit()  
     return template
 
-def PW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def PW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == 'FP32':
-            template = "  pulp_conv_pw_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template = "  pulp_conv_pw_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv_pw_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         elif DATA_TYPE == 'FP16':
-            template = "  pulp_conv_pw_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if UPDATE_LAYER == 1:
+                template = "  pulp_conv_pw_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
             if FIRST_LAYER == False:
                 template += "  pulp_conv_pw_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
         else:
             print("[net_templates.PW_template_BW]: Invalid data type!")
             exit()  
     else:
-        if DATA_TYPE == 'FP32':
-            template = "  pulp_conv_pw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
-        elif DATA_TYPE == 'FP16':
-            template = "  pulp_conv_pw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
-        else:
-            print("[net_templates.PW_template_BW]: Invalid data type!")
-            exit()  
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if DATA_TYPE == 'FP32':
+                template = "  pulp_conv_pw_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif DATA_TYPE == 'FP16':
+                template = "  pulp_conv_pw_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+            else:
+                print("[net_templates.PW_template_BW]: Invalid data type!")
+                exit()  
     return template
 
 
@@ -276,11 +292,25 @@ def InstNorm_template_FW(layer_number, data_type):
         template = "  pulp_instnorm_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
     return template
 
-def InstNorm_template_BW(layer_number, data_type):
-    if data_type == 'FP32':
-        template = "  pulp_instnorm_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
-    elif data_type == 'FP16':
-        template = "  pulp_instnorm_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
+def InstNorm_template_BW(layer_number, data_type, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
+    if SEPARATE_BACKWARD_STEPS == 1:
+        if data_type == 'FP32':
+            if UPDATE_LAYER == 1:
+                template = "  pulp_instnorm_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if FIRST_LAYER == True:
+                template = "  pulp_instnorm_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
+        elif data_type == 'FP16':
+            if UPDATE_LAYER == 1:
+                template = "  pulp_instnorm_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if FIRST_LAYER == False:
+                template = "  pulp_instnorm_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
+    else:
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if data_type == 'FP32':
+                template = "  pulp_instnorm_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif data_type == 'FP16':
+                template = "  pulp_instnorm_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
     return template
 
 """
@@ -337,20 +367,28 @@ def cast_fp16_to_fp32_template (layer_number, STEP, DATA_TYPE):
 CONFIGURATION STRUCTURE TEMPLATES
 """
 
-def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
+def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, CONV2D_USE_IM2COL, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -371,14 +409,22 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
-    template += "  l"+str(layer_number)+"_args.USE_IM2COL = 1;\n"
+    # Temporary fix to use padding (naive kernel)
+    if pad_h > 0 or pad_w > 0:
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = 0;\n"
+    else:
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = "+str(CONV2D_USE_IM2COL)+";\n"
     template += "  l"+str(layer_number)+"_args.USE_DMA_IM2COL = 0;\n"
     return template
 
-def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -397,7 +443,10 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
     #template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
+def PW_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     # &layer"+str(layer_number)+"_in, &layer"+str(layer_number)+"_wgt, &layer"+str(layer_number)+"_out, "+str(pad)+", MATMUL_TYPE_FW_L"+str(layer_number)+"
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
@@ -409,6 +458,7 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     else:
         print("[net_templates.PW_config_template]: Invalid data type!")
         exit()
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
@@ -468,9 +518,13 @@ def sum(layer, data_type):
     return template
 
 
-def InstNorm_config_template(layer_number, skip_in_grad):
+def InstNorm_config_template(layer_number, skip_in_grad, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     return template
