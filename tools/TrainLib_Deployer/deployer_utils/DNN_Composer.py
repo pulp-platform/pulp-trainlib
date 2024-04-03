@@ -208,7 +208,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
                   NUM_CORES, data_type_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
-                  sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL):
+                  sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -232,7 +232,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, 
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'SB':
         utilsSB.GenerateNet(proj_folder_path, project_name,
@@ -240,7 +240,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'DB':
         utilsDB.GenerateNet(proj_folder_path, project_name,
@@ -248,7 +248,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
     else:
         print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
 

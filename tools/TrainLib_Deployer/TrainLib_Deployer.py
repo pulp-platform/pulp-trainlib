@@ -54,7 +54,7 @@ project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 5
+epochs          = 1
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.001
 optimizer       = "SGD"                # Name of PyTorch's optimizer
@@ -89,7 +89,7 @@ data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', '
 # Data layout list (CHW or HWC) 
 data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # Sparse Update
-update_layer_list   = [ 0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
+update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
 # ----- END OF NETWORK GRAPH -----
 
 
@@ -105,6 +105,8 @@ SEPARATE_BACKWARD_STEPS = True          # If True, writes separate weight and in
 PROFILE_SINGLE_LAYERS = False           # If True, profiles forward and backward layer-by-layer
 # CONV2D SETUPS
 CONV2D_USE_IM2COL = False                # Choose if the Conv2D layers should use Im2Col or not
+# PRINT TRAIN LOSS
+PRINT_TRAIN_LOSS = True                 # Set to true if you want to print the train loss for each epoch
 # OTHER PROPERTIES
 # Select if to read the network from an external source
 READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
@@ -149,7 +151,7 @@ else:
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
                             epochs, batch_size, learning_rate, optimizer, loss_fn,
                             NUM_CORES, data_type_list, update_layer_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
-                            sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                            sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
 
     print("PULP project generation successful!")
 
