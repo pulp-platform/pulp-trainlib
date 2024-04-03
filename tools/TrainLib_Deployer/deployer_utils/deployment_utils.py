@@ -1657,10 +1657,10 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("    forward();\n")
     f.write("    compute_loss();\n")
     if PRINT_TRAIN_LOSS == True:
-        f.write("    pi_perf_stop();\n")
-        f.write("    if (epoch == 0) printf(\"\\n\");")
+        f.write("    /* Stop profiling */ pi_perf_stop();\n")
+        f.write("    if (epoch == 0) printf(\"\\n\");\n")
         f.write("    printf(\">>> EPOCH %d: train_loss = %f\\n\", epoch, loss);\n")
-        f.write("    pi_perf_start();\n")
+        f.write("    /* Continue profiling */ pi_perf_start();\n")
     f.write("    backward();\n")
     f.write("    update_weights();\n")
     f.write("  }\n\n")
