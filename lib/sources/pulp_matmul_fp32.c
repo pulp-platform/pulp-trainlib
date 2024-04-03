@@ -673,6 +673,9 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   }
   else {
 
+    int h_start = pH - 1 - Lpad;
+    int w_start = pW - 1 - Upad;
+
     for (uint32_t ci=0; ci<C_in; ci++) {
       for (uint32_t hi=0; hi<H_in; hi++) {
         for (uint32_t wi=0; wi<W_in; wi++) {
@@ -680,15 +683,19 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
           for (uint32_t co=0; co<C_out; co++) {
             for (uint32_t hk=0; hk<pH; hk++) {
               for (uint32_t wk=0; wk<pW; wk++) {
-                // Padding conditions
-                int h_padded = hi + hk - (pH-1) + Upad;
-                int w_padded = wi + wk - (pW-1) + Lpad;
                 // Indices
                 int ker_idx = (pHW-wk-hk*pW) + ci*pW*pH + co*pW*pH*C_in;
-                int out_idx = w_padded + (h_padded)*W_out + co*H_out*W_out;
-
-                if ((h_padded >= 0) && (w_padded >= 0) && (h_padded < H_out - (pH-2-Dpad)) && (w_padded < W_out - (pW-2-Rpad))) {
-                  temp += coeffData[ker_idx] * outDiff[out_idx];
+                // Border conditions
+                int bord_h = (hi + hk - h_start) / h_str;
+                int bord_w = (wi + wk - w_start) / w_str;
+                int borders = (bord_h < H_out) && (bord_w < W_out);
+                float o_grad = 0;
+                float k_dat = coeffData[ker_idx];
+                if (((hi+hk-h_start) % h_str == 0) && ((wi+wk-w_start) % w_str == 0) && borders == 1)
+                {
+                  int out_idx = bord_w + (bord_h)*W_out + co*H_out*W_out;
+                  o_grad = outDiff[out_idx];
+                  temp += k_dat * o_grad;
                 }
               }
             }
