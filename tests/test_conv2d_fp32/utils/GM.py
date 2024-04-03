@@ -220,6 +220,10 @@ inp.requires_grad = True
 
 
 label = torch.ones(1, out_ch, out_size_h, out_size_w)
+for c in range(out_ch):
+  for h in range(out_size_h):
+    for w in range(out_size_w):
+      label[0, c, h, w] += w*0.001
 
 
 # Write input image
