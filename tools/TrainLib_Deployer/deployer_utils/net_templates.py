@@ -252,14 +252,16 @@ def AvgPool_template_FW(layer_number, DATA_TYPE):
         exit()  
     return template
 
-def AvgPool_template_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == 'FP32':
-        template = "  pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
-    elif DATA_TYPE == 'FP16':
-        template = "  pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp16_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
-    else:
-        print("[net_templates.AvgPool_template_BW]: Invalid data type!")
-        exit()  
+def AvgPool_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ''
+    if FIRST_LAYER == False:
+        if DATA_TYPE == 'FP32':
+            template = "  pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
+        elif DATA_TYPE == 'FP16':
+            template = "  pi_cl_team_fork(NUM_CORES, pulp_avgpool_fp16_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
+        else:
+            print("[net_templates.AvgPool_template_BW]: Invalid data type!")
+            exit()  
     return template
 
 
@@ -273,14 +275,16 @@ def MaxPool_template_FW(layer_number, DATA_TYPE):
         exit()  
     return template
 
-def MaxPool_template_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == 'FP32':
-        template = "  pi_cl_team_fork(NUM_CORES, pulp_maxpool_fp32_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
-    elif DATA_TYPE == 'FP16':
-        template = "  pi_cl_team_fork(NUM_CORES, pulp_maxpool_fp16_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
-    else:
-        print("[net_templates.MaxPool_template_BW]: Invalid data type!")
-        exit()  
+def MaxPool_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ''
+    if FIRST_LAYER == False:
+        if DATA_TYPE == 'FP32':
+            template = "  pi_cl_team_fork(NUM_CORES, pulp_maxpool_fp32_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
+        elif DATA_TYPE == 'FP16':
+            template = "  pi_cl_team_fork(NUM_CORES, pulp_maxpool_fp16_bw_cl, &l"+str(layer_number)+"_pool_args);\n"
+        else:
+            print("[net_templates.MaxPool_template_BW]: Invalid data type!")
+            exit()  
     return template
 
 
@@ -432,24 +436,13 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Upad = "+str(pad_h)+";\n"
     template += "  l"+str(layer_number)+"_args.Dpad = "+str(pad_h)+";\n"
-    #if DATA_TYPE == 'FP32':
-    #    template += "  l"+str(layer_number)+"_args.i2c_buffer = (float*) im2col_buffer;\n"
-    #elif DATA_TYPE == 'FP16':
-    #    template += "  l"+str(layer_number)+"_args.i2c_buffer = (fp16*) im2col_buffer;\n"
-    #else:
-    #    print("[net_templates.DW_config_template]: Invalid data type!")
-    #    exit()
     template += "  l"+str(layer_number)+"_args.HWC = 0;\n"
-    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
-    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
-    #template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
 def PW_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
     skip_wg_grad = 0
     if update_layer == 0:
         skip_wg_grad = 1
-    # &layer"+str(layer_number)+"_in, &layer"+str(layer_number)+"_wgt, &layer"+str(layer_number)+"_out, "+str(pad)+", MATMUL_TYPE_FW_L"+str(layer_number)+"
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
@@ -486,18 +479,6 @@ def resconn_config_template(layer_number, skip_node, skip_input, layer_type):
         template += f"  l{layer_number}_args.skip_in_grad = 0;\n"
     return template
 
-# def MaxPool_config_template(layer_number):
-#     template  = "  l"+str(layer_number)+"_args. ;\n"
-#     template += "  l"+str(layer_number)+"_args. ;\n"
-#     template += "  l"+str(layer_number)+"_args. ;\n"
-#     template += "  l"+str(layer_number)+"_args. ;\n"
-#     template += "  l"+str(layer_number)+"_args. ;\n"
-#     template += "  l"+str(layer_number)+"_args. ;\n"
-#     return template
-
-# def AvgPool_config_template(layer_number):
-#     template = "  "
-#     return template
 
 
 def sum(layer, data_type):

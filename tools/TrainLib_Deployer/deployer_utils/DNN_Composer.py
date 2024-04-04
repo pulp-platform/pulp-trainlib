@@ -21,6 +21,7 @@ Authors: Davide Nadalini
 import deployer_utils.deployment_utils_single_buffer as utilsSB
 import deployer_utils.deployment_utils_double_buffer as utilsDB
 import deployer_utils.deployment_utils as utils
+import numpy as np
 
 """
 The DNN Size Checker checks if the DNN fits the available PULP
@@ -113,8 +114,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
 
         # Label storage memory
-        h_out_net = floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
-        w_out_net = floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
+        h_out_net = np.floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
+        w_out_net = np.floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
         labels_mem = out_ch_l[-1] * h_out_net * w_out_net
         print(f"Size of allocated memory for labels (Single Buffer Mode): {labels_mem} bytes")
         total_memory_occupation_bytes += labels_mem
