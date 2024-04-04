@@ -174,6 +174,13 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_fp16, &matMul_args);
     }
     
@@ -379,6 +386,13 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_fp16, &matMul_args);
     }
 
@@ -583,6 +597,13 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_fp16, &matMul_args);
     }
 
