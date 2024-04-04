@@ -59,6 +59,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp32.c
 
 get_golden:
 	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_LAYOUT}

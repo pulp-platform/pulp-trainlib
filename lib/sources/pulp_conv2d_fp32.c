@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_im2col_fp32.h"
 #include "pulp_conv2d_fp32.h"
+#include "pulp_conv_naive_fp32.h"
 
 void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 {

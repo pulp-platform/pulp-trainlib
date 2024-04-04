@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_im2col_fp32.h"
 #include "pulp_conv_dw_fp32.h"
+#include "pulp_conv_naive_fp32.h"
 #include "pulp_train_defines.h"
 
 

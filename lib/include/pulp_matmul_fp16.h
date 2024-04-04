@@ -40,61 +40,6 @@ void mm_M_fp16(
 	void * void_args
 );
 
-/**
- * @brief Naive core kernel for Depthwise Convolution (forward). Parallelizes on the channels.
- * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
-*/
-void dw_kernel_forward_fp16(
-    void * matMul_DW_args_fp16
-);
-
-/**
- * @brief Naive core kernel for Depthwise Convolution (weight gradient). Parallelizes on the channels.
- * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
-*/
-void dw_kernel_weight_grad_fp16(
-    void * matMul_DW_args_fp16
-);
-
-/**
- * @brief Naive core kernel for Depthwise Convolution (input gradient). Parallelizes on the channels.
- * @param matMul_DW_args_fp16  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp16.h)
-*/
-void dw_kernel_input_grad_fp16(
-    void * matMul_DW_args_fp16
-);
-
-/**
- * @brief Matrix multiply for 2D convolution (input grads calculation, flips A matrix).
- * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
- */
-void mm_conv2d_in_grad_fp16(
-    void * void_args
-);
-
-/**
- * @brief Naive conv2d kernel for forward propagation (CWH format)
- * @param matMul_args pointer to a matMul_args structure  
- */
-void naive_conv2d_fw_kernel_CHW_fp16(
-    void * matMul_args
-);
-
-/**
- * @brief Naive conv2d kernel for the computation of the weight gradient (CHW format)
- * @param matMul_args pointer to a matMul_args structure  
- */
-void naive_conv2d_param_grad_kernel_CHW_fp16(
-    void * matMul_args
-);
-
-/**
- * @brief Naive conv2d kernel for the computation of the input gradient (CHW format)
- * @param matMul_args pointer to a matMul_args structure  
- */
-void naive_conv2d_in_grad_kernel_CHW_fp16(
-    void * matMul_args
-);
 
 
 
