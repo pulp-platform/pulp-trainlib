@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp16.h"
 #include "pulp_im2col_fp16.h"
 #include "pulp_conv2d_fp16.h"
+#include "pulp_conv_naive_fp16.h"
 
 void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
 {
@@ -165,7 +166,21 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
       matMul_args.pCout = C_out;
       matMul_args.pH = pH;
       matMul_args.pW = pW;
+      // Stride and padding operators
+      matMul_args.stride_h = stride_h;
+      matMul_args.stride_w = stride_w;
+      matMul_args.Lpad = Lpad;
+      matMul_args.Rpad = Rpad;
+      matMul_args.Upad = Upad;
+      matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_fp16, &matMul_args);
     }
     
@@ -363,7 +378,21 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.pCout = C_out;
       matMul_args.pH = pH;
       matMul_args.pW = pW;
+      // Stride and padding operators
+      matMul_args.stride_h = stride_h;
+      matMul_args.stride_w = stride_w;
+      matMul_args.Lpad = Lpad;
+      matMul_args.Rpad = Rpad;
+      matMul_args.Upad = Upad;
+      matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_fp16, &matMul_args);
     }
 
@@ -560,7 +589,21 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.pCout = C_out;
       matMul_args.pH = pH;
       matMul_args.pW = pW;
+      // Stride and padding operators
+      matMul_args.stride_h = stride_h;
+      matMul_args.stride_w = stride_w;
+      matMul_args.Lpad = Lpad;
+      matMul_args.Rpad = Rpad;
+      matMul_args.Upad = Upad;
+      matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1_fp16, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_fp16, &matMul_args);
     }
 

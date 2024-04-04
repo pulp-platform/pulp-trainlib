@@ -25,7 +25,7 @@
  */
 
 /**
- * @brief Structure for 2D Convolution Training in FP32
+ * @brief Structure for 2D Convolution Training in FP16
  * @param input input feature maps for the conv2d layer
  * @param coeff weight matrix 
  * @param output output feature maps for the conv2d layer 

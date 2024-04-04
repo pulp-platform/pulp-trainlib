@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp16.h"
 #include "pulp_im2col_fp16.h"
 #include "pulp_conv_dw_fp16.h"
+#include "pulp_conv_naive_fp16.h"
 #include "pulp_train_defines.h"
 
 void pulp_conv_dw_fp16_fw_cl ( void * DepthWise_Conv_args_fp16 )

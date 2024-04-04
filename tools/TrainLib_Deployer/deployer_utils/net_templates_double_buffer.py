@@ -368,8 +368,8 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
-    # Temporary fix to use padding (naive kernel)
-    if pad_h > 0 or pad_w > 0:
+    # Temporary fix to use padding/stride (naive kernel)
+    if (pad_h > 0 or pad_w > 0) or (stride_h > 1 or stride_w > 1):
         template += "  l"+str(layer_number)+"_args.USE_IM2COL = 0;\n"
     else:
         template += "  l"+str(layer_number)+"_args.USE_IM2COL = "+str(CONV2D_USE_IM2COL)+";\n"
