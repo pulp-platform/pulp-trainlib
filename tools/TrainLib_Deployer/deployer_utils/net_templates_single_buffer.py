@@ -391,6 +391,10 @@ def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
     skip_wg_grad = 0
     if update_layer == 0:
         skip_wg_grad = 1
+def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
@@ -441,9 +445,14 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
     skip_wg_grad = 0
     if update_layer == 0:
         skip_wg_grad = 1
+def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"

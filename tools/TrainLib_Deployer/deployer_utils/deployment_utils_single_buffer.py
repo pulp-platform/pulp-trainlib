@@ -117,6 +117,7 @@ def GenerateNet(proj_folder_path, project_name,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
                 PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
 
     data_type = data_type_l[0]
@@ -776,8 +777,8 @@ def GenerateNet(proj_folder_path, project_name,
                     if sumnode_connections[layer] < 0 or layers_l[layer] == 'Sumnode':
                         f.write("  layer"+str(layer)+"_out.diff = l"+str(layer + 1 + lookahead)+"_in_diff;\n")   
                     elif layer >= last_updated_idx:
-                        f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
-                        #f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")
+                        #f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
+                        f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")
                 # End of assignment       
                 f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
@@ -1082,7 +1083,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  pulp_MSELoss_backward(&loss_args);\n")   
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_MSELoss_backward_fp16(&loss_args);\n") 
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+        f.write("  store_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
     elif loss_fn == 'CrossEntropyLoss':
         if data_type_l[-1] == 'FP32':
             bytes_per_data = 4
@@ -1100,7 +1101,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+        f.write("  store_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
     else:
         print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
 
@@ -1227,9 +1228,9 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             f.write("  pulp_MSELoss_fp16(&loss_args);\n")
         else:
-            print("[deplyment_utils.GenerateNet]: Invalid loss type!")
+            print("[deployment_utils.GenerateNet]: Invalid loss type!")
             exit()
-        f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
     elif loss_fn == "CrossEntropyLoss":
         float_size = 2
         if data_type_l[0] == 'FP32':
@@ -1247,7 +1248,7 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deplyment_utils.GenerateNet]: Invalid loss type!")
             exit()
-        f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
     else:
         print("[deployment_utils.GenerateNet]: Loss function not valid for PULP deployment!!")
         exit()
@@ -1279,7 +1280,7 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
                 exit()
-            f.write(f"  store_coeff(&layer{layer}_wgt, 2);\n\n")
+            f.write(f"  store_coeff(&layer{layer}_wgt, 1);\n\n")
     f.write("}\n")
 
 
@@ -1342,7 +1343,7 @@ def GenerateNet(proj_folder_path, project_name,
     if PRINT_TRAIN_LOSS == True:
         f.write("    /* Stop profiling */ pi_perf_stop();\n")
         f.write("    if (epoch == 0) printf(\"\\n\");\n")
-        f.write("    printf(\">>> EPOCH %d: train_loss = %f\\n\", epoch, loss);\n")
+        f.write("    printf(\">>> EPOCH %d: train_loss = %f (GM: %f)\\n\", epoch, loss, TRAIN_LOSS[epoch]);\n")
         f.write("    /* Continue profiling */ pi_perf_start();\n")
     f.write("    backward();\n")
     f.write("    update_weights();\n")
