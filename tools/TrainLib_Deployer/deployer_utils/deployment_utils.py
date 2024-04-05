@@ -692,7 +692,6 @@ def GenerateNet(proj_folder_path, project_name,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
                 data_type_l, update_layer_l, sumnode_connections,
                 PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
-                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Generate net.h
     f = open(proj_folder_path+'net.h', 'w')
