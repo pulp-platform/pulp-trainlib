@@ -21,6 +21,7 @@ Authors: Davide Nadalini
 import deployer_utils.deployment_utils_single_buffer as utilsSB
 import deployer_utils.deployment_utils_double_buffer as utilsDB
 import deployer_utils.deployment_utils as utils
+import numpy as np
 
 """
 The DNN Size Checker checks if the DNN fits the available PULP
@@ -113,8 +114,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
 
         # Label storage memory
-        h_out_net = floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
-        w_out_net = floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
+        h_out_net = np.floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
+        w_out_net = np.floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
         labels_mem = out_ch_l[-1] * h_out_net * w_out_net
         print(f"Size of allocated memory for labels (Single Buffer Mode): {labels_mem} bytes")
         total_memory_occupation_bytes += labels_mem
@@ -208,7 +209,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
                   NUM_CORES, data_type_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
-                  sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL):
+                  sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -232,7 +233,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, 
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'SB':
         utilsSB.GenerateNet(proj_folder_path, project_name,
@@ -240,7 +241,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'DB':
         utilsDB.GenerateNet(proj_folder_path, project_name,
@@ -248,7 +249,7 @@ def DNN_Composer (proj_folder_path, project_name,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
                     data_type_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL)
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
     else:
         print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
 
