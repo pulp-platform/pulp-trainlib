@@ -41,38 +41,38 @@ Tiler (Naive or DORY-based) which finds tiling schemes depending on the problem,
 
 # =====> USER SETTINGS <=====
 # Network setting                                         
-layer_type  = 'CONV2D'    # Options: 'PW', 'DW', 'LINEAR', 'CONV2D'  
-IN_CH       = 3
-INPUT_H     = 114                
-INPUT_W     = 114                       
-KER_H       = 3                                        
-KER_W       = 3                                   
-OUT_CH      = 32
+layer_type  = 'LINEAR'    # Options: 'PW', 'DW', 'LINEAR', 'CONV2D'  
+IN_CH       = 64
+INPUT_H     = 1               
+INPUT_W     = 1                       
+KER_H       = 1                                       
+KER_W       = 1                                   
+OUT_CH      = 64
 PADDING     = 0                                            
 STRIDE      = 1   
 NUM_CORES   = 8                                     
 # Tiler settings
 NUM_TILING_SOLUTIONS    = 5
-NUM_INPUT_BITS          = 16
+NUM_INPUT_BITS          = 32
 NUM_ACTIVATION_BITS     = NUM_INPUT_BITS
-NUM_KERNEL_BITS         = 16
-NUM_OUTPUT_BITS         = 16
+NUM_KERNEL_BITS         = 32
+NUM_OUTPUT_BITS         = 32
 # Select if to ignore FW and WGT GRAD
 IGNORE_FW = False
-IGNORE_WGT_GRAD = True
+IGNORE_WGT_GRAD = False
 # Select if to ignore input grads
-IGNORE_IN_GRAD = True
+IGNORE_IN_GRAD = False
 # Select if to use either the naive or the DORY-based tiler
 USE_NAIVE_TILER = True
 # Select if to compile locally after finding the tiling
-FIND_FASTEST_MATMUL = False
+FIND_FASTEST_MATMUL = True
 # Select if to write the file for server execution (specify trainlib's folder location on server)
-WRITE_YML_FILE = False
+WRITE_YML_FILE = True
 trainlib_path = '/home/Work/pulp-trainlib'
 # PULP settings
 NUM_STD_MATMUL      = 24
 NUM_DW_MATMUL       = 7
-TILING_BUFFER_SIZE  = 112*1024  #28*1024     # Standard = 64k
+TILING_BUFFER_SIZE  = 28*1024     # Standard = 64k
 # =====> END OF USER SETTINGS <=====
 
 
