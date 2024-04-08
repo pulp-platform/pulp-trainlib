@@ -8,7 +8,7 @@ OUT_CH?=32
 # General arguments
 DATA_TYPE?='float' 	# float, fp16 (=>float16), bf16 (=>float16alt)  to select the desired format
 DIVIDER?=100000000	# Scaling factor for data initialization in golden model
-TRANSP?=0			# Matrix B is transposed if = 1, not transposed if = 0.
+TRANSP?=0		# Matrix B is transposed if = 1, not transposed if = 0.
 NUM_CORES?=8
 # End of user settings
 

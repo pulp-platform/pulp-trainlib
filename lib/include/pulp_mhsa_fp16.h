@@ -44,24 +44,6 @@
  * 
  */
 
-/*
-struct Mhsa_args_fp16 {
-    struct blob_fp16 * input;
-    int 	n_heads; 
-    int opt_matmul_type_fw;
-    int opt_matmul_type_wg;
-    int opt_matmul_type_ig;
-    struct blob_fp16 * output;
-    struct blob_fp16 * coeff_in;
-    struct blob_fp16 * coeff_out;
-    struct blob_fp16 * qkv;
-    struct blob_fp16 * attention_map;
-    fp16 * temp_buffer;
-    fp16 * grad;
-    struct blob_fp16 * head_buffer;
-    struct blob_fp16 * softmax_buffer;
-};*/
-
 struct Mhsa_args_fp16 {
     struct blob_fp16 * input;
     int     n_heads; 
@@ -82,6 +64,39 @@ struct Mhsa_args_fp16 {
 };
 
 
+struct Mhsa_args_fp16_db {
+    struct blob_fp16 * input;
+    int     n_heads;
+    int     n_tiles; 
+    int opt_matmul_type_fw;
+    int opt_matmul_type_wg;
+    int opt_matmul_type_ig;
+    struct blob_fp16 * output;
+    struct blob_fp16 * coeff_in;
+    struct blob_fp16 * buff1_a;
+    struct blob_fp16 * buff1_b;
+    struct blob_fp16 * coeff_out;
+    struct blob_fp16 * qkv;
+    struct blob_fp16 * buff2_a;
+    struct blob_fp16 * buff2_b;
+    struct blob_fp16 * attention_map;
+    struct blob_fp16 * attention_map_l2;
+    fp16 * temp_buffer;
+    fp16 * grad;
+    struct blob_fp16 * head_buffer;
+    struct blob_fp16 * softmax_buffer;
+    fp16 * maxes;
+    fp16 * sums;
+};
+
+// Support struct
+struct zero_tensor_args {
+  fp16 * tensor;
+  int size;
+  fp16 zero_init;
+};
+
+
 
 
 /**
@@ -97,6 +112,13 @@ struct Mhsa_args_fp16 {
 void pulp_mhsa_fp16_fw_cl(void * Mhsa_args_fp16);
 
 
+/**
+ * @brief Forward pass function, forked on PULP cluster, with double buffering strategy
+ * @param Mhsa_args_fp16 structure configuring the MHSA layer.
+ */
+void pulp_mhsa_fp16_fw_cl_dblbuffer(void* Mhsa_args_fp16_db);
+
+
 // BACKWARD FUNCTIONS
 
 /**
@@ -104,3 +126,7 @@ void pulp_mhsa_fp16_fw_cl(void * Mhsa_args_fp16);
  * @param Mhsa_args_fp16 structure configuring the MHSA layer.
  */
 void pulp_mhsa_fp16_bw_cl(void * Mhsa_args_fp16);
+
+
+
+

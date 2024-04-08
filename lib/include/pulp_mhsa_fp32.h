@@ -74,14 +74,14 @@ struct Mhsa_args {
 // FORWARD FUNCTIONS
 
 /**
- * @brief Forward pass function, forked on PULP cluster.
+ * @brief Forward pass function, forked on PULP cluster. (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, pulp_mhsa_fp32_fw_cl, &args)).
  * @param Mhsa_args structure configuring the MHSA layer.
  */
 void pulp_mhsa_fp32_fw_cl(void * Mhsa_args);
 
 
 /**
- * @brief Forward pass function, forked on PULP cluster, using partial softmax.
+ * @brief Forward pass function, forked on PULP cluster, using partial softmax. (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, pulp_mhsa_fp32_fw_cl_2, &args)).
  * @param Mhsa_args structure configuring the MHSA layer.
  */
 void pulp_mhsa_fp32_fw_cl_2(void * Mhsa_args);

@@ -508,3 +508,65 @@ fastpow2 (float p)
 
   return v.f;
 }
+
+void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsigned int size){ 
+  struct max_args ma;
+  ma.input = in;
+  ma.maxes = buffer_n_cores;
+  ma.dim = size;
+
+  pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &ma);
+
+  float max = ma.maxes[0];
+
+  for(int i=1;i<NUM_CORES; i++)
+    if(ma.maxes[i] > max)
+      max = ma.maxes[i];
+  
+  struct vector_exp_sum_args vesa;
+  vesa.input = in;
+  vesa.output = out;
+  vesa.max = max;
+  vesa.sums = buffer_n_cores;
+  vesa.dim = size;
+  
+  pi_cl_team_fork(NUM_CORES, vector_exp_sum_fp32_cl, &vesa);
+
+  float sum = 0;
+
+  for(int i=0; i<NUM_CORES; i++)
+    sum += vesa.sums[i];
+
+  struct div_args da;
+  da.input = out;
+  da.n = sum;
+  da.dim = size;
+
+  pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &da); 
+}
+
+
+void pulp_swiglu_fp32_cl(void *swiglu_args){
+  struct swiglu_args* args = (struct swiglu_args*) swiglu_args;
+  float* in1 = args->in1;
+  float* in2 = args->in2;
+  float* out = args->out;
+  int size = args->dim;
+
+  const uint32_t blockSize = (size+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > size ? size : start+blockSize;
+
+  for(int i=start; i<stop; i++){
+    float val = in1[i];
+
+    #ifdef FASTEXPF
+    val *= (1.0f / (1.0f + fastexp_gist(-val)));
+    #else
+    val *= (1.0f / (1.0f + expf(-val)));
+    #endif
+
+    val *= in2[i];
+    out[i] = val;
+  }
+}

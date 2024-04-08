@@ -406,6 +406,22 @@ struct mean_std_args{
 };
 
 /**
+ * @brief Arguments for calculating the sum(exp(input - max(input)))
+ * @param input   input vector
+ * @param sums    support buffer of the sums (1 for each core)
+ * @param output  exp(input - max(input))
+ * @param dim     dimension of input
+ * @param max     max(input)
+*/
+struct vector_exp_sum_args{
+  float* input;
+  float* sums;
+  float* output;
+  int dim;
+  float max;
+};
+
+/**
  * =====> FUNCTIONS <=====
  */
 
@@ -487,47 +503,51 @@ void exponential (void * void_args);
 void softmax (void * void_args);
 
 /**
- * @brief Calculate the maxes of a vector in parallelized fashion
+ * @brief Calculate the maxes of a vector in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct max_args void_args)
  */
 void pulp_max_fp32_cl(void * void_args);
 
 /**
- * @brief Calculate the maxes for each row of a square matrix in parallelized fashion
+ * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct max_args void_args)
  */
 void pulp_row_max_fp32_cl(void * void_args);
 
 /**
- * @brief Calculate the exponential of each element and sum them
+ * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct exp_sum_args void_args)
  */
 void pulp_exp_sum_fp32_cl(void* void_args);
 
 /**
- * @brief Calculate the 1/2^diff of each element and sum them
- * @param (void *)  (struct exp_sum_args void_args)
+ * @brief Calculate the 1/2^diff of each element and sum them. Set up the arguments by using a "struct shift_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_shift_sum_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct shift_sum_args void_args)
  */
 void pulp_shift_sum_fp32_cl(void* void_args);
 
 /**
- * @brief Element-wise division of vector with a single constant
+ * @brief Element-wise division of vector with a single constant. Set up the arguments by using a "struct div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct div_args void_args)
  */
 void pulp_div_fp32_cl(void* void_args);
 
 /**
- * @brief Element-wise division of vector with values obtained by shit_sum
+ * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct div_args void_args)
  */
 void pulp_row_div_fp32_cl(void* void_args);
 
 /**
- * @brief Element-wise multiplication of vector with a single constant
+ * @brief Element-wise multiplication of vector with a single constant. Set up the arguments by using a "struct scalar_mul_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct scalar_mul_args void_args)
  */
 void pulp_scalar_mul_fp32_cl(void* void_args);
 
+/**
+ * @brief Simple thresholding function. x > threshold ? threshold : x. Also applies Taylor's series approximation of exponential to it.
+ * @param float x
+ */
 float threshold(float x);
 
 static inline float
@@ -548,6 +568,17 @@ void pulp_mean_std_fp32_cl(void * mean_std_args);
  */
 float fastexp_gist(float x);
 
+/**
+ * @brief Approximated version of the inverse square root, AKA the "fastinversesquareroot" (https://en.wikipedia.org/wiki/Fast_inverse_square_root).
+ * @param x floating-point number to be fast-inverse-square-rooted
+ */
 float q_rsqrt(float number);
+
+/**
+ * @brief sum(exp(input - max(input))). Set up the arguments by using a "struct vector_exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vector_exp_sum_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct mean_std_args void_args)
+ */
+void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
+
 
 
