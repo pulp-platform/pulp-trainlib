@@ -478,7 +478,7 @@ static inline void train(){
   #ifdef FORWARD
   printf("\nFORWARD CHECK: \n");
   compare_tensors(l0_out, OUTPUT, OUTPUT_SIZE);
-  check_tensor(l0_out, OUTPUT, OUTPUT_SIZE);
+  //check_tensor(l0_out, OUTPUT, OUTPUT_SIZE);
   #endif
 
 

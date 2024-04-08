@@ -4,7 +4,26 @@ from torch import nn
 from torch import Tensor 
 from torch import cuda
 import torch
+import math
 from torch.nn import functional as F
+
+#define GIST_A  12102203.17133801f
+#define GIST_B  1064986823.010288f
+#define GIST_C  8388608
+#define GIST_D  2139095040 
+
+def fastexp_gist(x):
+    with torch.no_grad():
+        x_copy = x.type(torch.float32)
+        x_copy = x_copy * 12102203.17133801 + 1064986823.010288
+        x_copy = torch.where(x_copy < 8388608, 0, x_copy).type(torch.float32)
+        x_copy = torch.where(x_copy > 2139095040, 2139095040, x_copy).type(torch.float32)
+        n = x_copy.cpu().numpy().astype(np.uint32).view(np.float32)
+        
+        result = torch.from_numpy(n)
+    
+    return result
+
 
 def own_softmax(x):
     maxes = torch.max(x, -1, keepdim=True)[0]
@@ -15,6 +34,19 @@ def own_softmax(x):
     x_exp = x_exp.bfloat16()
     x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
     return x_exp/x_exp_sum
+
+def own_softmax_fastexp(x):
+    maxes = torch.max(x, -1, keepdim=True)[0]
+    maxes = maxes.float()
+    x_copy = x.float()
+    #maxes = torch.swapaxes(maxes, -2, -1) 
+    x_exp = fastexp_gist((x_copy-maxes))
+    x_exp = x_exp.bfloat16()
+    x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
+
+    return x_exp/x_exp_sum
+
+
 
 def q_rsqrt(x):
     with torch.no_grad():
@@ -40,9 +72,10 @@ class MultiHeadedSelfAttention(nn.Module):
         self.att_dim = att_dim
         self.n_heads = num_heads
         self.head_dim = att_dim // num_heads
-        self.scaling = q_rsqrt(self.head_dim).bfloat16()
+        #self.scaling = q_rsqrt(self.head_dim).bfloat16()
+        self.scaling= (1 / math.sqrt(self.head_dim))
         self.scores = None # for visualization
-        self.softmax = own_softmax
+        self.softmax = own_softmax_fastexp
 
     def forward(self, x, tgt_len):
         q, k, v = self.proj_in(x).chunk(3, dim=-1)
