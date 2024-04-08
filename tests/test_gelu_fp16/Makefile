@@ -1,10 +1,10 @@
 APP = gelu_fp16
 
 # User settings
-IN_H?=56 
-IN_W?=56 
-IN_CH?=32
-OUT_CH?=32
+IN_H?=7 
+IN_W?=7 
+IN_CH?=160
+OUT_CH?=160
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
 APP_CFLAGS += -DOPTIMIZE
