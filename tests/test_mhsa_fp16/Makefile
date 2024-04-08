@@ -1,13 +1,13 @@
 APP = mhsa_fp16
 
 # User settings
-IN_H?=32 # Sequence Length
-IN_W?=32 # Token Size
-N_HEADS?=8
-ATT_DIM?=32 #Hidden dimension
+IN_H?=196 # Sequence Length
+IN_W?=160 # Token Size
+N_HEADS?=5
+ATT_DIM?=160 #Hidden dimension
 IN_CH?=1
 OUT_CH?=1
-NUM_CORES?=1
+NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=3

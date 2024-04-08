@@ -689,11 +689,12 @@ static inline void train(){
   check_tensor(l1_out, DW_OUTPUT, Tout_H_l1*Tout_W_l1*Tout_C_l1);
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer1_in, &layer1_wgt, &layer1_out);
-  for (int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
+  /*for (int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
     if (!(index%Tout_H_l1)) printf("\n");
     printf("%f ", l1_out[index]);
   }
   printf("\n");
+  */
   #endif
 
   #ifdef DW_BACKWARD_GRAD
@@ -729,6 +730,7 @@ static inline void train(){
   check_tensor(l2_out, PW_OUTPUT, Tout_H_l2*Tout_W_l2*Tout_C_l2);
   // TEST
   printf("\nADDR\nIN: %x, WGT: %x, OUT: %x\n", &layer2_in, &layer2_wgt, &layer2_out);
+  /*
   for (int index=0; index<Tout_H_l2*Tout_W_l2*Tout_C_l2; index++) {
     #if HWC_LAYOUT == 0
     if (!(index%Tout_W_l2)) printf("\n");
@@ -738,6 +740,7 @@ static inline void train(){
     printf("%f ", l2_out[index]);
   }
   printf("\n");
+  */
   #endif
 
   #ifdef PW_BACKWARD_GRAD

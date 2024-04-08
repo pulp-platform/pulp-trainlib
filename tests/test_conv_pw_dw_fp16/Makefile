@@ -2,13 +2,13 @@ APP = dw_pw_fp16
 
 # User settings
 # Depthwise
-IMAGE_W?=8
-IMAGE_H?=8
-DW_KER_W?=3
-DW_KER_H?=3
-DW_IN_CH?=8
+IMAGE_W?=7
+IMAGE_H?=7
+DW_KER_W?=1
+DW_KER_H?=1
+DW_IN_CH?=320
 # Pointwise
-PW_OUT_CH?=8
+PW_OUT_CH?=100
 # Depthwise Padding and stride
 LPAD?=0
 RPAD?=0
@@ -18,11 +18,11 @@ HSTR?=1
 WSTR?=1
 # Others
 NUM_CORES?=8
-STEP?='DW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
+STEP?='PW_FORWARD' # Steps: 'DW_FORWARD', 'DW_BACKWARD_GRAD', 'DW_BACKWARD_ERROR', 'PW_FORWARD', 'PW_BACKWARD_GRAD', 'PW_BACKWARD_ERROR'
 HWC_layout?=0				# Choose if data layout is CHW (=0) or HWC (=1)
 # Optimization
 APP_CFLAGS += -DOPTIMIZE
-MATMUL_TYPE?=0
+MATMUL_TYPE?=3
 NUM_MATMULS?=6	# When profiling with multiple matmul algorithms
 NUM_SIZES?=3	# When profiling multiple sizes of the network
 APP_CFLAGS += -DCHECK_PRINT

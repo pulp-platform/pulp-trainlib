@@ -83,6 +83,8 @@ f.write('#define Tin_C_l2 Tout_C_l1\n')
 f.write('#define Tout_C_l2 '+str(pw_channel)+'\n')
 f.close()
 
+print("ARGS STEP = " + args.step)
+
 f = open("step-check.h", "w")
 f.write('#define '+args.step+'\n')
 f.close()
