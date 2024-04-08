@@ -74,6 +74,7 @@ static inline void connect_blobs()
   FC_args.input = &layer0_in;
   FC_args.coeff = &layer0_wgt;
   FC_args.output = &layer0_out;
+  FC_args.skip_wg_grad = 0;
   FC_args.skip_in_grad = 0;
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -126,6 +127,7 @@ static inline void connect_blobs()
   FC_args.input = &layer0_in;
   FC_args.coeff = &layer0_wgt;
   FC_args.output = &layer0_out;
+  FC_args.skip_wg_grad = 0;
   FC_args.skip_in_grad = 0;
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;
@@ -178,6 +180,7 @@ static inline void connect_blobs()
   FC_args.input = &layer0_in;
   FC_args.coeff = &layer0_wgt;
   FC_args.output = &layer0_out;
+  FC_args.skip_wg_grad = 0;
   FC_args.skip_in_grad = 0;
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;

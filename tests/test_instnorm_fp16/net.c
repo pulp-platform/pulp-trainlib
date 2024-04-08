@@ -162,6 +162,7 @@ void DNN_init()
   l2_args.coeff = &layer2_wgt;
   l2_args.output = &layer2_out;
   l2_args.transpose_buffer = (fp16*) bt_buffer;
+  l2_args.skip_wg_grad = 0;
   l2_args.skip_in_grad = 0;
   l2_args.opt_matmul_type_fw = 0;
   l2_args.opt_matmul_type_wg = 0;
@@ -198,13 +199,23 @@ void forward_print()
 // Backward pass function
 void backward()
 {
+  loss_args.output = &layer2_out;
+  loss_args.target = LABEL;
+  loss_args.wr_loss = &loss;
+  pulp_MSELoss_backward_fp16(&loss_args);
   pulp_conv_pw_fp16_bw_cl(&l2_args);
-  pulp_instnorm_fp16_bw_cl(&l1_args);
+  //pulp_instnorm_fp16_bw_cl(&l1_args);
+  pulp_instnorm_fp16_bw_param_grads_cl(&l1_args);
+  pulp_instnorm_fp16_bw_input_grads_cl(&l1_args);
   pulp_conv_pw_fp16_bw_cl(&l0_args);
 }
 
 void backward_print()
 {
+  loss_args.output = &layer2_out;
+  loss_args.target = LABEL;
+  loss_args.wr_loss = &loss;
+  pulp_MSELoss_backward_fp16(&loss_args);
   pulp_conv_pw_fp16_bw_cl(&l2_args);
 
   #if defined(PROF_NET) && defined(BACKWARD_GRAD)
@@ -285,6 +296,17 @@ void check_post_training_output()
     printf("\n*** UPDATED OUTPUT NOT MATCHING GOLDEN MODEL ***\n");
 }
 
+// Checks forward, weight and input grads of the InstanceNorm
+void check_instancenorm() 
+{
+  int integrity_check = 0;
+  #ifdef BACKWARD_ERROR
+  integrity_check = verify_tensor_fp16(l1_in_diff, INSTN_IN_GRAD, Tin_C_l1*Tin_H_l1*Tin_W_l1, TOLERANCE);
+  #elif defined(BACKWARD_GRAD)
+  integrity_check = verify_tensor_fp16(l1_ker_diff, INSTN_WGT_GRAD, 2*Tin_C_l1, TOLERANCE);
+  #endif
+}
+
 
 
 /**
@@ -295,7 +317,6 @@ void check_post_training_output()
 void net_step()
 {
    
- 
   printf("Initializing network..\n");
   DNN_init();
   printf("Initializing Instance Normalization test\n");
@@ -326,6 +347,10 @@ void net_step()
   // Check and print updated output
   forward();
   printf("Checking updated output..\n");
+  #ifdef FORWARD
   check_post_training_output();
+  #else
+  check_instancenorm();
+  #endif
   print_output();
 }

@@ -33,12 +33,14 @@
  * @param input input feauture maps for the depthwise layer
  * @param output output feature maps for the depthwise layer
  * @param coeff coefficients to compute normalization, bias are included
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  */
 struct InstNorm_args_fp16 {
 	struct blob_fp16 * input;
 	struct blob_fp16 * output; 
 	struct blob_fp16 * coeff;
+	int skip_wg_grad;
 	int skip_in_grad;
 };
 

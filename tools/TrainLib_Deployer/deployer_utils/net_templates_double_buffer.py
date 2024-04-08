@@ -334,20 +334,28 @@ def cast_fp16_to_fp32_template (layer_number, STEP, DATA_TYPE):
 CONFIGURATION STRUCTURE TEMPLATES
 """
 
-def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
+def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, CONV2D_USE_IM2COL, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -368,14 +376,22 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
-    template += "  l"+str(layer_number)+"_args.USE_IM2COL = 1;\n"
+    # Temporary fix to use padding/stride (naive kernel)
+    if (pad_h > 0 or pad_w > 0) or (stride_h > 1 or stride_w > 1):
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = 0;\n"
+    else:
+        template += "  l"+str(layer_number)+"_args.USE_IM2COL = "+str(CONV2D_USE_IM2COL)+";\n"
     template += "  l"+str(layer_number)+"_args.USE_DMA_IM2COL = 0;\n"
     return template
 
-def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &out;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
     template += "  l"+str(layer_number)+"_args.Rpad = "+str(pad_w)+";\n"
@@ -394,7 +410,10 @@ def DW_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_g
     #template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
+def PW_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     # &layer"+str(layer_number)+"_in, &layer"+str(layer_number)+"_wgt, &layer"+str(layer_number)+"_out, "+str(pad)+", MATMUL_TYPE_FW_L"+str(layer_number)+"
     template  = "  l"+str(layer_number)+"_args.input = &in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &wgt;\n"
@@ -406,6 +425,7 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE):
     else:
         print("[net_templates.PW_config_template]: Invalid data type!")
         exit()
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"

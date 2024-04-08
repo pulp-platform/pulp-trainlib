@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp16.h"
 #include "pulp_im2col_fp16.h"
 #include "pulp_conv_dw_fp16.h"
+#include "pulp_conv_naive_fp16.h"
 #include "pulp_train_defines.h"
 
 void pulp_conv_dw_fp16_fw_cl ( void * DepthWise_Conv_args_fp16 )
@@ -43,9 +44,13 @@ void pulp_conv_dw_fp16_fw_cl ( void * DepthWise_Conv_args_fp16 )
 void pulp_conv_dw_fp16_bw_cl( void * DepthWise_Conv_args_fp16 )
 {
   struct DepthWise_Conv_args_fp16 * DW_args = (struct DepthWise_Conv_args_fp16 *) DepthWise_Conv_args_fp16;
+  int skip_wg_grad = DW_args->skip_wg_grad;
   int skip_in_grad = DW_args->skip_in_grad;
 
-  pulp_conv_dw_fp16_bw_param_grads_cl(DepthWise_Conv_args_fp16); 
+  if (skip_wg_grad == 0)
+  {
+    pulp_conv_dw_fp16_bw_param_grads_cl(DepthWise_Conv_args_fp16); 
+  }
   if (skip_in_grad == 0)
   {
     pulp_conv_dw_fp16_bw_input_grads_cl(DepthWise_Conv_args_fp16); 

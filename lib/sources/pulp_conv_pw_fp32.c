@@ -94,8 +94,8 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
 
   #ifdef DEBUG
   printf("FORWARD PW LAYER \n\n");
-  for (int i=0; i<Cout*output->W*output->H; i++) {
-    if ((i+1)%output->W==0) {
+  for (int i=0; i<Cout*pW*pH; i++) {
+    if ((i+1)%pW==0) {
       printf(" %f \n\n", i, outData[i]);
     }
     else
@@ -112,9 +112,14 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args )
 void pulp_conv_pw_fp32_bw_cl( void * PointWise_Conv_args )
 {
   struct PointWise_Conv_args * PW_args = (struct PointWise_Conv_args *) PointWise_Conv_args;
+  int skip_wg_grad = PW_args->skip_wg_grad;
   int skip_in_grad = PW_args->skip_in_grad;
 
-  pulp_conv_pw_fp32_bw_param_grads_cl(PointWise_Conv_args); 
+  if (skip_wg_grad == 0)
+  {
+    pulp_conv_pw_fp32_bw_param_grads_cl(PointWise_Conv_args); 
+  }
+  
   if (skip_in_grad == 0)
   {
     pulp_conv_pw_fp32_bw_input_grads_cl(PointWise_Conv_args); 

@@ -22,6 +22,7 @@
 #include "pulp_matmul_fp32.h"
 #include "pulp_im2col_fp32.h"
 #include "pulp_conv2d_fp32.h"
+#include "pulp_conv_naive_fp32.h"
 
 void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 {
@@ -173,6 +174,13 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW, &matMul_args);
     }
 
@@ -198,9 +206,14 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
 void pulp_conv2d_fp32_bw_cl( void * Conv2D_args )
 {
     struct Conv2D_args * C2D_args = (struct Conv2D_args *) Conv2D_args;
+    int skip_wg_grad = C2D_args->skip_wg_grad;
     int skip_in_grad = C2D_args->skip_in_grad;
 
-    pulp_conv2d_fp32_bw_param_grads_cl(Conv2D_args); 
+    if (skip_wg_grad == 0)
+    {
+      pulp_conv2d_fp32_bw_param_grads_cl(Conv2D_args); 
+    }
+
     if (skip_in_grad == 0)
     {
       pulp_conv2d_fp32_bw_input_grads_cl(Conv2D_args); 
@@ -372,6 +385,13 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW, &matMul_args);
     }
 
@@ -575,6 +595,13 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      #ifdef OPTIMIZE
+      int padding = Lpad + Rpad + Upad + Dpad;
+      int stride = stride_h + stride_w;
+      if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else
+      #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW, &matMul_args);
     }
 
