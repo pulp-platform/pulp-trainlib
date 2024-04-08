@@ -1043,7 +1043,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Define error propagation tensors\n")
     previous_was_skip = False
     for layer in range(len(layers_l)):
-        if (not previous_was_skip) and (layer > last_updated_idx):
+        if (not previous_was_skip) and (layer >= last_updated_idx):
             # Define FP32 tensors
             if data_type_l[layer] == 'FP32':
                 if layer > 0:
@@ -1489,20 +1489,25 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  START_STATS();\n")
             f.write("  #endif\n")    
 
+        # Determine if backprop is needed
+        stop_backprop = False
+        if lay <= last_updated_idx:
+            stop_backprop = True
+
         # Generate backward layer template
         skip_in_grad = 0
         FIRST_LAYER = False
-        if lay == 0:
+        if lay == 0 or stop_backprop:
             skip_in_grad = 1
             FIRST_LAYER = True
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.DW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'ReLU':
             f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay]))
         elif layers_l[lay] == 'AvgPool':
