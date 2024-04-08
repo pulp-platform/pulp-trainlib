@@ -1069,7 +1069,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Define error propagation tensors\n")
     previous_was_skip = False
     for layer in range(len(layers_l)):
-        if (not previous_was_skip) and (layer > last_updated_idx):
+        if (not previous_was_skip) and (layer >= last_updated_idx):
             # Define FP32 tensors
             if data_type_l[layer] == 'FP32':
                 if layer > 0:
@@ -1541,10 +1541,15 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  START_STATS();\n")
             f.write("  #endif\n")    
 
+        # Determine if backprop is needed
+        stop_backprop = False
+        if lay <= last_updated_idx:
+            stop_backprop = True
+
         # Generate backward layer template
         skip_in_grad = 0
         FIRST_LAYER = False
-        if lay == 0 or lay <= last_updated_idx:
+        if lay == 0 or stop_backprop:
             skip_in_grad = 1
             FIRST_LAYER = True
         print(f"Layer {lay}: stop_backprop = {FIRST_LAYER}, update_layer = {update_layer_l[lay]} (have last_updated_layer = {last_updated_idx})")
