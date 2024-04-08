@@ -94,7 +94,7 @@ if matmul_alg == 'STANDARD':
 
         if transp == '1':
             C = torch.mm(input=A, mat2=B.transpose(0, 1), out=C)
-            #B.transpose(0, 1)
+            B.transpose(0, 1)
         else:
             C = torch.mm(input=A, mat2=B, out=C)
 
