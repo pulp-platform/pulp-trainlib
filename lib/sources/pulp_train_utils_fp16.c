@@ -463,7 +463,7 @@ void pulp_scalar_mul_fp16_cl(void* void_args){
     struct scalar_mul_args_fp16* args = (struct scalar_mul_args_fp16 *) void_args;
 
     fp16* input = args->input;
-    fp16 scalar = args->scalar;
+    float scalar = args->scalar;
     int dim = args->dim;
 
     const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
