@@ -1667,6 +1667,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("    // Newline when an output channel ends\n")
     f.write("    if(!(i%Tout_W_l"+str(output_index)+"*Tout_H_l"+str(output_index)+")) printf(\"\\n\");\n")
     f.write("  }\n")
+    f.write("  printf(\"\\n\");\n")
     f.write("}\n")
 
 

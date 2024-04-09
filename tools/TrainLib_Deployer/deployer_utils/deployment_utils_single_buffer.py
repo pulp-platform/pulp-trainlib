@@ -558,19 +558,19 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Define error propagation tensors\n")
     previous_was_skip = False
     for layer in range(len(layers_l)):
-        if (not previous_was_skip) and (layer > last_updated_idx):
+        if (not previous_was_skip) and (layer >= last_updated_idx):
             # Define FP32 tensors
             if data_type_l[layer] == 'FP32':
                 if layer > 0:
-                    f.write("PI_L2 float l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+                    f.write("PI_L1 float l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
                 if (layer == len(layers_l)-1):
-                    f.write("PI_L2 float l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+                    f.write("PI_L1 float l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
             # Define FP16 tensors
             elif data_type_l[layer] == 'FP16':
                 if layer > 0:
-                    f.write("PI_L2 fp16 l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
+                    f.write("PI_L1 fp16 l"+str(layer)+"_in_diff[Tin_C_l"+str(layer)+" * Tin_H_l"+str(layer)+" * Tin_W_l"+str(layer)+"];\n")
                 if (layer == len(layers_l)-1):
-                    f.write("PI_L2 fp16 l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
+                    f.write("PI_L1 fp16 l"+str(layer)+"_out_diff[Tout_C_l"+str(layer)+" * Tout_H_l"+str(layer)+" * Tout_W_l"+str(layer)+"];\n")
             # Data type error
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for input grad definition @Layer{}!".format(layer))
@@ -578,7 +578,7 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[layer] == 'Skipnode':
             previous_was_skip = True
         else:
-            previous_was_skip = False   
+            previous_was_skip = False    
         
       
 
@@ -689,10 +689,9 @@ def GenerateNet(proj_folder_path, project_name,
     # Mixed precision check
     C_data_type = 'float'
     f.write("\n  // Connect tensors to blobs\n")
-    previous_was_skip = 0
-    
+    previous_was_skip_data = 0
+    previous_was_skip_diff = 0
     for layer in range(len(layers_l)):
-        
         # Find data type for each layer
         if data_type_l[layer] == 'FP32':
             C_data_type = 'float'
@@ -702,14 +701,6 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: Invalid data type for structure assignment @layer{}!".format(layer))
             exit()
         f.write(f"\n\n//Connecting {layers_l[layer]}\n")
-        # Verify how many Skipnodes comes after current layer (for diff connections)
-        lookahead = 0
-        if (layer + 1) <  len(layers_l):
-            for l in range(len(layers_l) - layer - 1):
-                if sumnode_connections[layer + l + 1] < 0 or layers_l[layer + l + 1] == 'Sumnode':
-                    break
-                else:
-                    lookahead += 1
         # DNN is 1 layer long
         if len(layers_l) == 1:
             f.write("  layer"+str(layer)+"_in.data = l0_in;\n")
@@ -724,7 +715,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tker_H_l0*Tker_W_l0;\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  layer"+str(layer)+"_wgt.dim = 2*Tin_C_l0;\n")
-            elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'InstNorm', 'AvgPool', 'MaxPool', 'ReLU']:
+            elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU']:
                 f.write("  layer"+str(layer)+"_wgt.dim = 1;\n")
             else:
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
@@ -741,17 +732,18 @@ def GenerateNet(proj_folder_path, project_name,
         # First layer connection
         elif layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
+                f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
+            else:
+                f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
+            f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
+            f.write("  layer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
+            f.write("  layer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
+            f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
             if layers_l[0] != 'Skipnode': # Avoid weight assignment for Skip Connections
-                if layer > 0 and update_layer_l[layer] == 0:
-                    f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
-                else:
-                    f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
-                f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
-                f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
+                if update_layer_l[layer] == 1:    # Sparse Update
+                    f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
                 if layers_l[layer] == 'DW':
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 elif layers_l[layer] == 'InstNorm':
@@ -773,31 +765,9 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
-                    if sumnode_connections[layer] < 0 or layers_l[layer] == 'Sumnode':
-                        f.write("  layer"+str(layer)+"_out.diff = l"+str(layer + 1 + lookahead)+"_in_diff;\n")   
-                    elif layer >= last_updated_idx:
-                        #f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
-                        f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")
+                    if layer >= last_updated_idx:
+                        f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")     
                 # End of assignment       
-                f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
-            else:
-                if layer > 0 and update_layer_l[layer] == 0:
-                    f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
-                else:
-                    f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
-                f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
-                if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0:
-                    f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
-                else:
-                    f.write("  layer"+str(layer)+"_out.data = l"+str(layer)+"_in;\n")
-                if layer >= last_updated_idx:
-                    f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")             
                 f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
@@ -805,21 +775,18 @@ def GenerateNet(proj_folder_path, project_name,
         # Hidden layers
         elif layer > 0 and layer < len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0:
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
-                f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip)+"_in;\n")
-            if layers_l[layer] != 'Skipnode':
-                if (layer - previous_was_skip) > last_updated_idx: # Avoid assignement of l0_in_diff
-                    f.write("  layer"+str(layer)+"_in.diff = l"+str(layer)+"_in_diff;\n")
-            else:
-                f.write(f"\tlayer{layer}_in.diff = l{sumnode_connections[layer]}_in_diff;\n")
+                f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
+            if (layer - previous_was_skip) > last_updated_idx: #0: # Avoid assignement of l0_in_diff
+                f.write("  layer"+str(layer)+"_in.diff = l"+str(layer - previous_was_skip_diff)+"_in_diff;\n")
             f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
             if layers_l[layer] != 'Skipnode':   # Avoid weight assignment for Skipnodes and out data assignement
-                if layers_l[layer]  != 'Sumnode':    # Different weight assignement for Sumnodes
+                if layers_l[layer]  != 'Sumnode':    # Avoid ONLY weight assignment for Sumnodes
                     f.write("  layer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
                     if update_layer_l[layer] == 1:    # Sparse Update
                         f.write("  layer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
@@ -834,13 +801,6 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
                     f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
                     f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
-                else:
-                    f.write("  layer"+str(layer)+"_wgt.data = layer"+str(sumnode_connections[layer])+"_out.data;\n")
-                    f.write("  layer"+str(layer)+"_wgt.diff = layer"+str(sumnode_connections[layer])+"_out.diff;\n")
-                    f.write("  layer"+str(layer)+"_wgt.C = layer"+str(sumnode_connections[layer])+"_out.C;\n")
-                    f.write("  layer"+str(layer)+"_wgt.H = layer"+str(sumnode_connections[layer])+"_out.H;\n")
-                    f.write("  layer"+str(layer)+"_wgt.W = layer"+str(sumnode_connections[layer])+"_out.W;\n")
-                    f.write("  layer"+str(layer)+"_wgt.dim = layer"+str(sumnode_connections[layer])+"_out.C*layer"+str(sumnode_connections[layer])+"_out.H*layer"+str(sumnode_connections[layer])+"_out.W;\n")
                 # Assign to cast_buffer in case data type changes
                 if data_type_l[layer] != data_type_l[layer+1]:
                     f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) cast_buffer;\n")
@@ -851,28 +811,29 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
-                    if sumnode_connections[layer] == -1 or layers_l[layer] == 'Sumnode':
+                    if sumnode_connections[layer] == -1:
                         if layer >= last_updated_idx:
-                            f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1+lookahead)+"_in_diff;\n")
-                    else:     
-                        if layer >= last_updated_idx:
+                            f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
+                    elif layers_l[layer] == 'Sumnode':
+                        if layer >= last_updated_idx:     
+                            f.write("  layer"+str(layer)+"_out.diff = l"+str(layer+1)+"_in_diff;\n")
+                    else:   
+                        if layer >= last_updated_idx:  
                             f.write("  layer"+str(layer)+"_out.diff = l"+str(sumnode_connections[layer])+"_in_diff;\n")
                 # End of assignment     
                 f.write("  layer"+str(layer)+"_out.dim = Tout_C_l"+str(layer)+"*Tout_H_l"+str(layer)+"*Tout_W_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.C = Tout_C_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.H = Tout_H_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_out.W = Tout_W_l"+str(layer)+";\n")
-            else:
-                f.write(f"\tlayer{layer}_out = layer{layer}_in;\n")
         # Last layer
         elif layer == len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
             if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
-                f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip)+"_in;\n")
+                f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
             if (layer) > last_updated_idx:
-                f.write("  layer"+str(layer)+"_in.diff = l"+str(layer + lookahead)+"_in_diff;\n")
+                f.write("  layer"+str(layer)+"_in.diff = l"+str(layer - previous_was_skip_diff)+"_in_diff;\n")
             f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
             f.write("  layer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
@@ -892,13 +853,6 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
                 f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
-            else:
-                    f.write("  layer"+str(layer)+"_wgt.data = layer"+str(sumnode_connections[layer])+"_out.data;\n")
-                    f.write("  layer"+str(layer)+"_wgt.diff = layer"+str(sumnode_connections[layer])+"_out.diff;\n")
-                    f.write("  layer"+str(layer)+"_wgt.C = layer"+str(sumnode_connections[layer])+"_out.C;\n")
-                    f.write("  layer"+str(layer)+"_wgt.H = layer"+str(sumnode_connections[layer])+"_out.H;\n")
-                    f.write("  layer"+str(layer)+"_wgt.W = layer"+str(sumnode_connections[layer])+"_out.W;\n")
-                    f.write("  layer"+str(layer)+"_wgt.dim = layer"+str(sumnode_connections[layer])+"_out.C*layer"+str(sumnode_connections[layer])+"_out.H*layer"+str(sumnode_connections[layer])+"_out.W;\n")
             f.write("  layer"+str(layer)+"_out.data = l"+str(layer)+"_out;\n")
             if layer >= last_updated_idx:
                 f.write("  layer"+str(layer)+"_out.diff = l"+str(layer)+"_out_diff;\n")
@@ -911,10 +865,14 @@ def GenerateNet(proj_folder_path, project_name,
             exit()
 
         if sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
-            previous_was_skip += 1
-           
+            previous_was_skip_data += 1
+            if layers_l[layer] == 'Skipnode':
+                previous_was_skip_diff += 1
+            else: 
+                previous_was_skip_diff = 0
         else:
-            previous_was_skip = 0
+            previous_was_skip_data = 0
+            previous_was_skip_diff = 0
             
 
     f.write("\n  // Configure layer structures\n")
@@ -1296,6 +1254,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("    // Newline when an output channel ends\n")
     f.write("    if(!(i%Tout_W_l"+str(output_index)+"*Tout_H_l"+str(output_index)+")) printf(\"\\n\");\n")
     f.write("  }\n")
+    f.write("  printf(\"\\n\");\n")
     f.write("}\n")
 
 
