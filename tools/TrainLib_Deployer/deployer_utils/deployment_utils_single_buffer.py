@@ -502,10 +502,10 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Check layer data layout
         data_layout = 'CHW'     # Change to input list of data layouts
-        if ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW')  and layer == last_updated_idx: #and layer == 0:
+        if ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer == last_updated_idx: #layer == 0:
             bt_flag = True
             bt_layer_index = 0
-        elif ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW')  and layer == last_updated_idx: #and layer > 0:
+        elif ((layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == True) or layers_l[layer] == 'PW') and layer > last_updated_idx: #layer > 0:
             bt_flag = True
             bt_mem = in_ch_l[layer] * hk_l[layer] * wk_l[layer] * out_ch_l[layer]
             if bt_mem > bt_max_memocc:
@@ -552,7 +552,11 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 float bt_buffer[1];\n")
 
     # Define label buffer
-    f.write("PI_L1 float label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
+    f.write("\n// Define temp buffer for the label\n")
+    if data_type_l[-1] == 'FP32':
+        f.write("PI_L1 float label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
+    elif data_type_l[-1] == 'FP16':
+        f.write("PI_L1 fp16 label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
 
     # Define tensors to backpropagate the output error
     f.write("\n// Define error propagation tensors\n")
