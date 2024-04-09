@@ -88,6 +88,8 @@ opt_mm_ig_list      = [ 10, 0, 0, 12, 0, 0, 12, 0, 0, 12, 0, 10 ]
 data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
 # Data layout list (CHW or HWC) 
 data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
+# Bias
+bias_list           = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 ]
 # Sparse Update
 update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
 # ----- END OF NETWORK GRAPH -----
@@ -150,7 +152,7 @@ else:
                             layer_list, in_ch_list, out_ch_list, hk_list, wk_list, 
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
                             epochs, batch_size, learning_rate, optimizer, loss_fn,
-                            NUM_CORES, data_type_list, update_layer_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
+                            NUM_CORES, data_type_list, bias_list, update_layer_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
                             sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
 
     print("PULP project generation successful!")
