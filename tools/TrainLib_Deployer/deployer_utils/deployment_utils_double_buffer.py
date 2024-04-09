@@ -1002,7 +1002,7 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_template_FW(layer, data_type_l[layer], bias_l[layer]))
+            f.write(ntemp.conv2d_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'DW':
             f.write(ntemp.DW_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'PW':
@@ -1191,7 +1191,7 @@ def GenerateNet(proj_folder_path, project_name,
             if layers_l[lay] == 'linear':
                 f.write(ntemp.linear_template_coeff_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'conv2d':
-                f.write(ntemp.conv2d_template_coeff_BW(lay, data_type_l[lay], bias_l[lay]))
+                f.write(ntemp.conv2d_template_coeff_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'DW':
                 f.write(ntemp.DW_template_coeff_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'PW':
@@ -1213,7 +1213,7 @@ def GenerateNet(proj_folder_path, project_name,
             if layers_l[lay] == 'linear':
                 f.write(ntemp.linear_template_in_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'conv2d':
-                f.write(ntemp.conv2d_template_in_BW(lay, data_type_l[lay], bias_l[lay]))
+                f.write(ntemp.conv2d_template_in_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'DW':
                 f.write(ntemp.DW_template_in_BW(lay, data_type_l[lay]))
             elif layers_l[lay] == 'PW':

@@ -344,9 +344,11 @@ def linear_config_template(layer_number, skip_in_grad, DATA_TYPE):
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
     return template
 
-def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE):
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, use_bias):
     template  = "  l"+str(layer_number)+"_args.input = &in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &wgt;\n"
+    if use_bias:
+        template += "  l"+str(layer_number)+"_args.bias = &bias;\n"
     template += "  l"+str(layer_number)+"_args.output = &out;\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.Lpad = "+str(pad_w)+";\n"
