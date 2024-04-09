@@ -244,6 +244,10 @@ def DNN_Composer (proj_folder_path, project_name,
                     PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'DB':
+        
+        print("ERROR: Double buffer mode unavailable (to be debugged!)")
+        exit()
+
         utilsDB.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
