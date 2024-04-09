@@ -54,9 +54,9 @@ project_path    = './'
 proj_folder     = project_path + project_name + '/'
 
 # TRAINING PROPERTIES
-epochs          = 1
+epochs          = 30
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
-learning_rate   = 0.001
+learning_rate   = 0.1
 optimizer       = "SGD"                # Name of PyTorch's optimizer
 loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
@@ -80,16 +80,16 @@ w_str_list          = [ 2,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]         
 h_pad_list          = [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Implemented for conv2d (naive kernel), DW TO DO
 w_pad_list          = [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]                            # Implemented for conv2d (naive kernel), DW TO DO
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
-opt_mm_fw_list      = [ 10, 0, 0, 12, 0, 0, 12, 0, 0, 12, 0, 10 ]
-opt_mm_wg_list      = [ 10, 0, 0, 12, 0, 0, 12, 0, 0, 12, 0, 10 ]
-opt_mm_ig_list      = [ 10, 0, 0, 12, 0, 0, 12, 0, 0, 12, 0, 10 ]
+opt_mm_fw_list      = [ 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+opt_mm_wg_list      = [ 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+opt_mm_ig_list      = [ 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
 # Data type list for layer-by-layer deployment (mixed precision)
 #data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
 data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
 # Data layout list (CHW or HWC) 
 data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # Sparse Update
-update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
+update_layer_list   = [ 0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
 # ----- END OF NETWORK GRAPH -----
 
 

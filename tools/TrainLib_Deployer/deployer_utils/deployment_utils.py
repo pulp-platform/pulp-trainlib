@@ -1384,16 +1384,16 @@ def GenerateNet(proj_folder_path, project_name,
     previous_was_skip = 0
     for layer in range(len(layers_l)):
         f.write("  // Layer "+str(layer)+"\n")
-        if layer == 0:
+        if layer == 0 or layer <= last_updated_idx:
             skip_inputgrad = 1
         elif layer - previous_was_skip <= 0: # If the 0 layer is a Skipnode, then layer1's diff is the input gradient
             skip_inputgrad = 1
         else: 
             skip_inputgrad = 0
         # Check if to perform in grad
-        if layer > 0:
-            if update_layer_l[layer-1] == 0:
-                skip_inputgrad = 1
+        #if layer > 0:
+        #    if update_layer_l[layer-1] == 0:
+        #        skip_inputgrad = 1
         # Write configuration templates
         if layers_l[layer] == 'linear':
             f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer], update_layer_l[layer]))
