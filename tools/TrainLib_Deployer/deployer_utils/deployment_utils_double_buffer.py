@@ -1782,6 +1782,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tconv2d_args.output = &output_blob;\n")
     f.write("\tconv2d_args.input = &input_blob;\n")
     f.write("\tconv2d_args.coeff = &weight_blob;\n")
+    f.write("\tconv2d_args.bias = &bias_blob;\n")
 
     f.write("\tPW_args.output = &output_blob;\n")
     f.write("\tPW_args.input = &input_blob;\n")
