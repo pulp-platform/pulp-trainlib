@@ -327,7 +327,7 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Define FP32 tensors
         if data_type_l[layer] == 'FP32':
-            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+            if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU']: # == 'MaxPool' or layers_l[layer] == 'AvgPool':
                 f.write("PI_L2 float l"+str(layer)+"_ker[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
@@ -352,30 +352,37 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\n// Define kernel grad tensors\n")
     for layer in range(len(layers_l)):
-        # Define FP32 tensors
-        if data_type_l[layer] == 'FP32':
-            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
-                f.write("PI_L2 float l"+str(layer)+"_ker_diff[1];\n")
-            elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
-                pass
-            elif layers_l[layer] == 'InstNorm':
-                f.write("PI_L2 float l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
-            else:    
-                f.write("PI_L2 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-        # Define FP16 tensors
-        elif data_type_l[layer] == 'FP16':
-            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
-                f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[1];\n")
-            elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
-                pass
-            elif layers_l[layer] == 'InstNorm':
-                f.write("PI_L2 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
-            else:    
-                f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-        # Data type error
+        # Define tensor only if layer is updated
+        if update_layer_l[layer] == 1:
+            # Define FP32 tensors
+            if data_type_l[layer] == 'FP32':
+                if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU']: # layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                    f.write("PI_L2 float l"+str(layer)+"_ker_diff[1];\n")
+                elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
+                    pass
+                elif layers_l[layer] == 'InstNorm':
+                    f.write("PI_L2 float l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
+                else:    
+                    f.write("PI_L2 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+            # Define FP16 tensors
+            elif data_type_l[layer] == 'FP16':
+                if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU']: # layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
+                    f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[1];\n")
+                elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
+                    pass
+                elif layers_l[layer] == 'InstNorm':
+                    f.write("PI_L2 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
+                else:    
+                    f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+            # Data type error
+            else:
+                print("[deployment_utils.GenerateNet] Invalid data type for kernel grad definition @Layer{}!".format(layer))
+                exit()
+        elif update_layer_l[layer] == 0:
+            pass
         else:
-            print("[deployment_utils.GenerateNet] Invalid data type for kernel grad definition @Layer{}!".format(layer))
-            exit()
+            print("[deployment_utils.GenerateNet] Invalid sparse update variable for layer {}!!".format(layer))
+
 
     f.write("\n// Define I/O tensors\n")
 
@@ -664,8 +671,10 @@ def GenerateNet(proj_folder_path, project_name,
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  for(int i=0; i<Tin_C_l0*Tin_H_l0*Tin_W_l0; i++)\t\t\tl0_in[i] = INPUT[i];\n")
-            if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm']:
+            if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU']:
                 f.write("  for(int i=0; i<Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0; i++)\t\tl0_ker[i] = init_WGT_l0[i];\n")
+            elif layers_l[layer] == 'ReLU':
+                f.write("  //   Activation layer (no parameters)\n")            
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer > 0 and layer < len(layers_l)-1:
@@ -676,12 +685,14 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  //   Pooling kernel (no parameters)\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 f.write("  //   Resconn layer (no parameters)\n")
+            elif layers_l[layer] == 'ReLU':
+                f.write("  //   Activation layer (no parameters)\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
             else:
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
-            if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm']:
+            if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU']:
                 f.write("  // Layer "+str(layer)+"\n")
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
             elif layers_l[layer] == 'InstNorm':
