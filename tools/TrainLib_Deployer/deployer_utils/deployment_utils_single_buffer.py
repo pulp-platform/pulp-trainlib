@@ -1081,11 +1081,17 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[lay] != 'Sumnode' and sumnode_connections[lay] > -1:
             is_skipderivation = True
 
+        # Determine if backprop is needed
+        stop_backprop = False
+        if lay <= last_updated_idx:
+            stop_backprop = True
+
         skip_in_grad = 0
         FIRST_LAYER = False
-        if lay == 0:
+        if lay == 0 or stop_backprop:
             skip_in_grad = 1
             FIRST_LAYER = True
+        print(f"Layer {lay}: stop_backprop = {FIRST_LAYER}, update_layer = {update_layer_l[lay]} (have last_updated_layer = {last_updated_idx})")
 
         target_layer = lay
         if is_skipderivation: # Check for target layer's input for diff calculation of Skipnode derivations
@@ -1096,31 +1102,33 @@ def GenerateNet(proj_folder_path, project_name,
                     target_layer += 1
 
         
-        f.write("\n\treset_dim();\n")
+        if lay >= last_updated_idx:
+            f.write("\n\treset_dim();\n")
 
-        if layers_l[lay] != 'Sumnode':
+        if layers_l[lay] != 'Sumnode' and update_layer_l[lay]:
             if layers_l[lay] == 'Skipnode':
                 f.write(f"\tload_input(&layer{target_layer}_in, 0);\n")
             else:
                 f.write(f"\tload_input(&layer{target_layer}_in, 1);\n")
 
-        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
+        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU' and lay >= last_updated_idx:
             f.write(f"\tload_coeff(&layer{lay}_wgt, 1);\n")
 
-        f.write(f"\tload_output(&layer{lay}_out, 2);\n")
+        if lay >= last_updated_idx:
+            f.write(f"\tload_output(&layer{lay}_out, 0);\n")
 
         # Copy struct info 
-        if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU':
+        if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU' and lay >= last_updated_idx:
             f.write(f"\tcopy_struct_param((unsigned int) &l{lay}_args, (unsigned int) &{layers_l[lay]}_args, sizeof(l{lay}_args));\n")
 
         if layers_l[lay] == 'linear':
-            f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'conv2d':
-            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.conv2d_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'DW':
-            f.write(ntemp.DW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.DW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'PW':
-            f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
+            f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'ReLU':
             f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay], FIRST_LAYER))
         elif layers_l[lay] == 'AvgPool':
@@ -1153,10 +1161,10 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(ntemp.sum(lay, data_type_l[lay]))
         
 
-        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
+        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU' and update_layer_l[lay] == 1:
             f.write(f"\tstore_coeff(&layer{lay}_wgt, 0);\n")
 
-        if lay > 0 and layers_l[lay] != 'Sumnode':
+        if lay > 0 and layers_l[lay] != 'Sumnode' and stop_backprop == False:
             f.write(f"\tstore_input(&layer{target_layer}_in, 0);\n")
 
         # Profile layer by layer?
