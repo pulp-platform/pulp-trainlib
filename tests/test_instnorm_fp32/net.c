@@ -162,6 +162,7 @@ void DNN_init()
   l2_args.coeff = &layer2_wgt;
   l2_args.output = &layer2_out;
   l2_args.transpose_buffer = (float*) bt_buffer;
+  l2_args.skip_wg_grad = 0;
   l2_args.skip_in_grad = 0;
   l2_args.opt_matmul_type_fw = 0;
   l2_args.opt_matmul_type_wg = 0;

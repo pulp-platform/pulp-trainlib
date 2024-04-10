@@ -37,6 +37,7 @@
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
  * @param bt_buffer pointer to the blocktranspose buffer (to compute input gradients)
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the 2D Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
@@ -59,6 +60,7 @@ struct Conv2D_args {
 	int stride_w;
 	float * i2c_buffer;
 	float * bt_buffer;
+	int skip_wg_grad;
 	int skip_in_grad;
 	int HWC;
 	int opt_matmul_type_fw;
@@ -117,6 +119,7 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args );
  * @param stride_h stride in input height
  * @param i2c_buffer pointer to the im2col buffer
  * @param bt_buffer pointer to the blocktranspose buffer (to compute input gradients)
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the 2D Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)

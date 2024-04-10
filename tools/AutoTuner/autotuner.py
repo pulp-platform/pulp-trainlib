@@ -43,9 +43,9 @@ Tiler (Naive or DORY-based) which finds tiling schemes depending on the problem,
 # Network setting                                         
 layer_type  = 'LINEAR'    # Options: 'PW', 'DW', 'LINEAR', 'CONV2D'  
 IN_CH       = 64
-INPUT_H     = 1                    
+INPUT_H     = 1               
 INPUT_W     = 1                       
-KER_H       = 1                                          
+KER_H       = 1                                       
 KER_W       = 1                                   
 OUT_CH      = 64
 PADDING     = 0                                            

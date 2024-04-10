@@ -28,6 +28,7 @@
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
  * @param output  categorical output for the linear layer (from forward perspective)
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
@@ -37,6 +38,7 @@ struct Linear_args {
 	struct blob * input; 
 	struct blob * coeff; 
 	struct blob * output;
+	int skip_wg_grad;
 	int skip_in_grad;
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
@@ -68,6 +70,7 @@ void pulp_linear_fp32_fw_cl( void * Linear_args );
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
  * @param output  categorical output for the linear layer (from forward perspective)
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)

@@ -33,6 +33,7 @@
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */
@@ -44,6 +45,7 @@ struct DepthWise_Conv_args_fp16 {
 	int Rpad;
 	int Upad;
 	int Dpad;
+	int skip_wg_grad;
 	int skip_in_grad;
 	int HWC;
 };
@@ -82,6 +84,7 @@ void pulp_conv_dw_fp16_fw_cl( void * DepthWise_Conv_args_fp16 );
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param HWC tells the DW Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  */

@@ -52,7 +52,7 @@ void mm_fp16(void * void_args) {
         {
           C[i*M+j] = A[i*K] * B[j];
           #ifdef DEBUG
-          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
+          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i*K], B[j]);
           #endif
         }
       }
@@ -88,7 +88,7 @@ void mm_fp16(void * void_args) {
         {
           C[i*M+j] = A[i*K] * B[j*K];
           #ifdef DEBUG
-          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, k+j*K, C[i*M+j], A[i*K+k], B[k+j*K]);
+          printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K, j*K, C[i*M+j], A[i*K], B[j*K]);
           #endif
         } 
       } 
@@ -175,321 +175,6 @@ void mm_M_fp16(void * void_args) {
 }
 
 
-
-// Naive forward kernel for DepthWise Convolution
-void dw_kernel_forward_fp16(void * kernel_DW_args_fp16) {
-
-  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
-  fp16 * inData = args->input->data;
-  fp16 * coeffData = args->weights->data;
-  fp16 * outData = args->output->data;
-
-  uint32_t C_in = args->input->C;
-  uint32_t H_in = args->input->H;
-  uint32_t W_in = args->input->W;
-  uint32_t pH = args->weights->H;
-  uint32_t pW = args->weights->W;
-  uint32_t H_out = args->output->H;
-  uint32_t W_out = args->output->W;
-
-  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
-  uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
-
-  for (int ch=start; ch<stop; ch++) 
-  {
-    for (int ho=0; ho<H_out; ho++) 
-    {
-      for (int wo=0; wo<W_out; wo++)
-      {
-        fp16 temp = 0;
-        for (int hk=0; hk<pH; hk++) 
-        {
-          for (int wk=0; wk<pW; wk++)
-          {
-            temp += coeffData[wk + hk*pW + ch*pH*pW] * inData[wo+wk + (ho+hk)*W_in + ch*H_in*W_in];
-          }
-        }
-        outData[wo + ho*W_out + ch*H_out*W_out] = temp;
-      }
-    }
-  } 
-
-}
-
-
-
-// Naive weight grad kernel for DepthWise Convolution
-void dw_kernel_weight_grad_fp16(void * kernel_DW_args_fp16) {
-
-  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
-  fp16 * inData = args->input->data;
-  fp16 * coeffDiff = args->weights->diff;
-  fp16 * outDiff = args->output->diff;
-
-  uint32_t C_in = args->input->C;
-  uint32_t H_in = args->input->H;
-  uint32_t W_in = args->input->W;
-  uint32_t pH = args->weights->H;
-  uint32_t pW = args->weights->W;
-  uint32_t H_out = args->output->H;
-  uint32_t W_out = args->output->W;
-
-  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
-  uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
-
-  for (int ch=0; ch<C_in; ch++) 
-  {
-    for (int hk=0; hk<pH; hk++)
-    {
-      for (int wk=0; wk<pW; wk++) 
-      {
-        fp16 temp = 0;
-        for (int ho=0; ho<H_out; ho++)
-        {
-          for (int wo=0; wo<W_out; wo++) 
-          {
-            temp += inData[wk+wo + (hk+ho)*W_in + ch*H_in*W_in] * outDiff[wo + ho*W_out + ch*H_out*W_out];
-          }
-        }
-        coeffDiff[wk + hk*pW + ch*pH*pW] = temp;
-      }
-    }
-  }
-
-}
-
-
-
-// Naive input grad kernel for DepthWise Convolution
-void dw_kernel_input_grad_fp16(void * kernel_DW_args_fp16) {
-
-  struct kernel_DW_args_fp16 * args = (struct kernel_DW_args_fp16 *) kernel_DW_args_fp16;
-  fp16 * inDiff = args->input->diff;
-  fp16 * coeffData = args->weights->data;
-  fp16 * outDiff = args->output->diff;
-
-  uint32_t C_in = args->input->C;
-  uint32_t H_in = args->input->H;
-  uint32_t W_in = args->input->W;
-  uint32_t pH = args->weights->H;
-  uint32_t pW = args->weights->W;
-  uint32_t H_out = args->output->H;
-  uint32_t W_out = args->output->W;
-
-  uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
-  uint32_t start = pi_core_id()*blockSize;
-  uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
-
-  for (int ch=0; ch<C_in; ch++) 
-  {
-    for (int hin=0; hin<H_in; hin++)
-    {
-      int ho = hin - pH + 1;
-      for (int win=0; win<W_in; win++) 
-      {
-        int wo = win - pW + 1;
-        fp16 temp = 0;
-        for (int hk=0; hk<pH; hk++)
-        {
-          for (int wk=0; wk<pW; wk++)
-          {
-            if ((wo+wk>=0) && (ho+hk>=0) && (wo+wk<W_out) && (ho+hk<H_out)) {
-              temp += coeffData[(pW-1-wk) + (pH-1-hk)*pW + ch*pH*pW] * outDiff[(wo+wk) + (ho+hk)*W_out + ch*H_out*W_out]; 
-            }
-          }
-        }
-        inDiff[win + hin*W_in + ch*H_in*W_in] = temp;
-      }
-    }
-  }
-
-}
-
-
-
-void mm_conv2d_in_grad_fp16 (void * void_args) 
-{
-
-  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
-  fp16 * __restrict__ A = args->A;
-  fp16 * __restrict__ B = args->B;
-  fp16 * __restrict__ C = args->C;
-
-  const uint32_t N = args->N;
-  const uint32_t K = args->K;
-  const uint32_t M = args->M;
-
-  const uint32_t pW = args->pW;
-  const uint32_t pH = args->pH;
-  const uint32_t pCin = args->pCin;
-  const uint32_t pCout = args->pCout;
-
-  const uint32_t blockSize = (M+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > M ? M : start+blockSize;
-
-  // ALGORITHM
-  // For each receptive field of the output on the weights
-  for (uint32_t rec_field = 0; rec_field < M; rec_field++) {
-    // For each channel of the output
-    for (uint32_t Ci = 0; Ci < pCin; Ci++) {
-      // Multiply each receptive field for the corresponding
-      // set of channels and accumulate on the input channel by channel
-      fp16 temp = 0;
-      for (uint32_t Co = 0; Co < pCout; Co++) {  
-        for (uint32_t elem = 0; elem < pW*pH; elem++) {
-          temp += A[pW*pH*pCin*Co+pW*pH*Ci+elem] * B[pH*pW*pCout*rec_field+pW*pH*Co+elem];
-          #ifdef DEBUG
-          printf("coeffdata[%d]=%f, i2c_buffer[%d]=%f, temp=%f\n",
-                  pW*pH*pCin*Co+pW*pH*Ci+elem, A[pW*pH*pCin*Co+pW*pH*Ci+elem], 
-                  pH*pW*pCout*rec_field+pW*pH*Co+elem, B[pH*pW*pCout*rec_field+pW*pH*Co+elem],
-                  temp);                  
-          #endif
-        }
-      }
-      C[M*Ci+rec_field] = temp;
-      #ifdef DEBUG
-      printf("C[%d]=%f\n", M*Ci+rec_field, C[M*Ci+rec_field]);
-      #endif
-    }
-  }
-}
-
-
-
-
-void naive_conv2d_fw_kernel_CHW_fp16 (void * matMul_args_fp16) 
-{
-  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
-  fp16 * __restrict__ inData = args->A;
-  fp16 * __restrict__ coeffData = args->B;
-  fp16 * __restrict__ outData = args->C;
-
-  const uint32_t H_in = args->H;
-  const uint32_t W_in = args->W;
-  const uint32_t pW = args->pW;
-  const uint32_t pH = args->pH;
-  const uint32_t C_in = args->pCin;
-  const uint32_t C_out = args->pCout;
-
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
-
-  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
-
-  for (uint32_t co=start; co<stop; co++) {
-    for (uint32_t ho=0; ho<H_out; ho++) {
-      for (uint32_t wo=0; wo<W_out; wo++) {
-        //outData[wo+ho*W_out+co*H_out*W_out] = 0;
-        fp16 temp = 0;
-        // Receptive field
-        for (uint32_t ci=0; ci<C_in; ci++) {
-          for (uint32_t hk=0; hk<pH; hk++) {
-            for (uint32_t wk=0; wk<pW; wk++) {
-              //outData[wo+ho*W_out+co*H_out*W_out] += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-              temp += inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in] * coeffData[wk+hk*pW+ci*pH*pW+co*C_in*pH*pW];
-            }
-          }
-        }
-        outData[wo+ho*W_out+co*H_out*W_out] = temp;
-      }
-    }
-  }
-
-}
-
-
-
-void naive_conv2d_param_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
-{
-  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
-  fp16 * __restrict__ inData = args->A;
-  fp16 * __restrict__ coeffDiff = args->B;
-  fp16 * __restrict__ outDiff = args->C;
-
-  const uint32_t H_in = args->H;
-  const uint32_t W_in = args->W;
-  const uint32_t pW = args->pW;
-  const uint32_t pH = args->pH;
-  const uint32_t C_in = args->pCin;
-  const uint32_t C_out = args->pCout;
-
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
-
-  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
-
-  for (uint32_t co=start; co<stop; co++) {
-    for (uint32_t hk=0; hk<pH; hk++) {
-      for (uint32_t wk=0; wk<pW; wk++) {
-        for (uint32_t ci=0; ci<C_in; ci++) {
-          fp16 temp = 0;
-          for (uint32_t ho=0; ho<H_out; ho++) {
-            for (uint32_t wo=0; wo<W_out; wo++) {
-              temp += outDiff[wo+ho*W_out+co*H_out*W_out] * inData[wo+wk+(ho+hk)*W_in+ci*H_in*W_in];
-            }
-          }
-          coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
-        }
-      }
-    }
-  }
-  
-}
-
-
-
-void naive_conv2d_in_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
-{
-  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
-  fp16 * __restrict__ inDiff = args->A;
-  fp16 * __restrict__ coeffData = args->B;
-  fp16 * __restrict__ outDiff = args->C;
-
-  const uint32_t H_in = args->H;
-  const uint32_t W_in = args->W;
-  const uint32_t pW = args->pW;
-  const uint32_t pH = args->pH;
-  const uint32_t C_in = args->pCin;
-  const uint32_t C_out = args->pCout;
-
-  const uint32_t H_out = H_in - pH + 1;
-  const uint32_t W_out = W_in - pW + 1;
-
-  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
-
-  for (uint32_t ci=0; ci<C_in; ci++) {
-    for (uint32_t hi=0; hi<H_in; hi++) {
-      for (uint32_t wi=0; wi<W_in; wi++) {
-        fp16 temp = 0;
-        for (uint32_t co=0; co<C_out; co++) {
-          for (uint32_t hk=0; hk<pH; hk++) {
-            for (uint32_t wk=0; wk<pW; wk++) {
-              // Coefficient to be loaded
-              fp16 coeff = coeffData[wk+(hk)*pW+ci*pH*pW+co*C_in*pH*pW];
-              // Padding conditions
-              int ho = hi + hk - (pH-1);
-              int wo = wi + wk - (pW-1);
-              // Compute in grad partial product
-              if ((ho < 0) || (ho > (int) H_out) || (wo < 0) || (wo > (int) W_out))   temp += 0;
-              else  temp += outDiff[wo+ho*W_out+co*H_out*W_out] * coeff;
-            }
-          }
-        }
-        inDiff[(W_in-wi-1)+(H_in-hi-1)*W_in+ci*H_in*W_in] = temp;
-      }
-    }
-  }
-
-}
 
 
 
@@ -678,6 +363,7 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
   fp16 * __restrict__ A = args->A; 
   fp16 * __restrict__ B = args->B; 
   fp16 * __restrict__ C = args->C; 
+
   uint32_t N = args->N; 
   uint32_t M = args->M; 
   uint32_t K = args->K;  
@@ -689,10 +375,19 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
   v2f16 Bv0, Bv1, Bv2, Bv3;
   v2f16 *Cv;
 
-  // Looping variables for leftovers
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  blockSize = stop - start;
+  uint32_t blockSize_par = blockSize & 0xfffffffe;
+  uint32_t blockSize_left = blockSize - blockSize_par;
+
+  // Looping variables for leftovers (TO REMOVE)
   uint32_t N_loop = N & 0xfffffffe;
   uint32_t N_left = N - N_loop;
-  uint32_t core_id = pi_core_id();
 
   // Integrity barrier for oversized unrolling
   uint32_t N_bound = (N_loop)/NUM_CORES;
@@ -702,23 +397,13 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
   if      (M_bound < 4) mm_fp16_SIMD_2x4(args);
   else if (K_bound < 2) mm_fp16_SIMD_2x4(args);
   else if (N_bound < 2) mm_fp16_SIMD_2x4(args);
-  else {
+  else 
+  {
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0) 
     {
-    #if NUM_CORES > 1
-      const uint32_t blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
-      const uint32_t start = core_id*blockSize;
-      const uint32_t stop = start+blockSize < N_loop? start+blockSize: N_loop;
-
-      for (uint32_t i = start; i < stop; i+=2) {
-
-    #else
-      const uint32_t start = 0;
-      const uint32_t stop = N_loop;
-
-      for (uint32_t i = start; i < stop; i+=2) {
-    #endif
+      uint32_t i;
+      for (i = start; i < stop-1; i+=2) {
         for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
           v2f16 temp0 = (v2f16) {0, 0};
@@ -791,21 +476,58 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
           }
         }
       }
-      // Leftover in N (parallel on M)
-      if (N_left > 0)
+      // Leftover in block
+      if (blockSize_left > 0)
       {
-        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
-        uint32_t j_start = core_id*j_block;
-        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
-
-        for (uint32_t j=j_start; j<j_stop; j++)
+        for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
-          fp16 temp_left = 0;
-          for (uint32_t k=0; k<K; k++)
+          v2f16 temp0 = (v2f16) {0, 0};
+          v2f16 temp1 = (v2f16) {0, 0};
+
+          for (uint32_t k = 0; k < (K & 0xfffffffe); k+=2) 
           {
-            temp_left += A[(N-1)*K+k] * B[j+k*M];
+            // A vectors
+            Av0 = *(v2f16 *) &A[i*K+k];
+            // B vectors
+            Bv0 = *(v2f16 *) &B[k*M+j];
+            Bv1 = *(v2f16 *) &B[(k+1)*M+j];
+            Bv2 = *(v2f16 *) &B[k*M+j+2];
+            Bv3 = *(v2f16 *) &B[(k+1)*M+j+2];
+
+            // Ci,j, Ci,j+1
+            temp0 += (v2f16)(__builtin_shuffle(Av0, (v2s){0,0})) * Bv0;
+            temp0 += (v2f16)(__builtin_shuffle(Av0, (v2s){1,1})) * Bv1;
+            // Ci,j+2, Ci,j+3
+            temp1 += (v2f16)(__builtin_shuffle(Av0, (v2s){0,0})) * Bv2;
+            temp1 += (v2f16)(__builtin_shuffle(Av0, (v2s){1,1})) * Bv3;         
           }
-          C[(N-1)*M+j] = temp_left;
+          // Leftover on K
+          if (K & 1)
+          {
+            Av0  = (v2f16) {A[i*K+(K-1)], A[i*K+(K-1)]};
+            Bv0 = *((v2f16 *)&B[(K-1)*M+j]);
+            Bv1 = *((v2f16 *)&B[(K-1)*M+j+2]);
+            temp0 += Av0 * Bv0;
+            temp1 += Av0 * Bv1;
+          }
+          Cv = (v2f16 *)&C[i*M+j];
+          *Cv = temp0;
+
+          Cv = (v2f16 *)&C[i*M+j+2];
+          *Cv = temp1;   
+        }
+        // Leftover in M
+        if (M & 0x00000003) 
+        {
+          for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
+          {
+            fp16 left_temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              left_temp += A[i*K+k] * B[k*M+j];
+            }
+            C[i*M+j] = left_temp;
+          }
         }
       }
     } 
@@ -813,19 +535,9 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
     // =====> B IS TRANSPOSED <=====
     else
     {
-    #if NUM_CORES > 1
-      const uint32_t blockSize = (N_loop+NUM_CORES-1) / NUM_CORES;
-      const uint32_t start = pi_core_id()*blockSize;
-      const uint32_t stop = start+blockSize < N_loop? start+blockSize: N_loop;
-
-      for (uint32_t i = start; i < stop; i+=2) {
-
-    #else
-      const uint32_t start = 0;
-      const uint32_t stop = N_loop;
-
-      for (uint32_t i = start; i < stop; i+=2) {
-    #endif
+      uint32_t i;
+      for (i = start; i < stop-1; i+=2) 
+      {
         for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
           // Global accumulator
@@ -931,26 +643,83 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
           }
         }
       }
-      // Leftover in N (parallel on M)
-      if (N_left > 0)
+      // Leftover in block
+      if (blockSize_left > 0)
       {
-        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
-        uint32_t j_start = core_id*j_block;
-        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;
-
-        for (uint32_t j=j_start; j<j_stop; j++)
-        //for (uint32_t j=0; j<M; j++)
+        for (uint32_t j = 0; j < (M & 0xfffffffc); j+=4) 
         {
-          fp16 temp_left = 0;
-          for (uint32_t k=0; k<K; k++)
+          // Global accumulator
+          v2f16 temp = (v2f16) {0, 0};
+          // Dot product accumulators
+          v2f16 tmp0 = (v2f16) {0, 0};
+          v2f16 tmp1 = (v2f16) {0, 0};
+          v2f16 tmp2 = (v2f16) {0, 0};
+          v2f16 tmp3 = (v2f16) {0, 0};
+          // Scalar accumulators
+          fp16 a = 0;
+          fp16 b = 0;
+
+          for (uint32_t k = 0; k < (K & 0xfffffffe); k+=2) 
           {
-            temp_left += A[(N-1)*K+k] * B[j*K+k];
+            // A vectors
+            Av0 = *(v2f16 *) &A[i*K+k];
+            // B vectors (transposed matrix)
+            Bv0 = *(v2f16 *) &B[j*K+k];
+            Bv1 = *(v2f16 *) &B[(j+1)*K+k];
+            Bv2 = *(v2f16 *) &B[(j+2)*K+k];
+            Bv3 = *(v2f16 *) &B[(j+3)*K+k];
+
+            // Products in Ci,j and successive with Av0
+            tmp0 += Av0 * Bv0;
+            tmp1 += Av0 * Bv1;
+            tmp2 += Av0 * Bv2;
+            tmp3 += Av0 * Bv3;
           }
-          C[(N-1)*M+j] = temp_left;
+          // Leftover on K
+          if (K & 1) {
+            // A elements
+            fp16 A0 = A[i*K+(K-1)];
+            // B elements (transposed matrix)
+            fp16 B0 = B[j*K+(K-1)];
+            fp16 B1 = B[(j+1)*K+(K-1)];
+            fp16 B2 = B[(j+2)*K+(K-1)];
+            fp16 B3 = B[(j+3)*K+(K-1)];
+
+            // Products in Ci,j and successive with Av0
+            tmp0[0] += A0 * B0;
+            tmp1[0] += A0 * B1;
+            tmp2[0] += A0 * B2;
+            tmp3[0] += A0 * B3;
+          }
+          // Accumulate to compute dot product and store
+          // Row 1
+          a = tmp0[0] + tmp0[1];
+          b = tmp1[0] + tmp1[1];
+          temp = (v2f16) {a, b};
+          Cv = (v2f16*)&C[i*M+j];
+          *Cv = temp;
+
+          a = tmp2[0] + tmp2[1];
+          b = tmp3[0] + tmp3[1];
+          temp = (v2f16) {a, b};
+          Cv = (v2f16*)&C[i*M+j+2];
+          *Cv = temp;
+        }
+        // Leftover in M
+        if (M & 0x00000003) 
+        {
+          for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
+          {
+            fp16 left_temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              left_temp += A[i*K+k] * B[j*K+k];
+            }
+            C[i*M+j] = left_temp;
+          }  
         }
       }
     }    
-
   }
 }
 

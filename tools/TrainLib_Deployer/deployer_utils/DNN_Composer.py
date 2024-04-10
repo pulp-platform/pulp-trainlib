@@ -21,6 +21,7 @@ Authors: Davide Nadalini
 import deployer_utils.deployment_utils_single_buffer as utilsSB
 import deployer_utils.deployment_utils_double_buffer as utilsDB
 import deployer_utils.deployment_utils as utils
+import numpy as np
 
 """
 The DNN Size Checker checks if the DNN fits the available PULP
@@ -32,26 +33,40 @@ memory
 MAX_LAYER_DIM = 0
 
 def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_str_list, w_str_list, h_pad_list,
-                      w_pad_list, data_type_l, bias_l, avail_mem_bytes, USE_DMA):
+                      w_pad_list, data_type_l, bias_l, update_layer_l, avail_mem_bytes, USE_DMA, CONV2D_USE_IM2COL):
 
     total_memory_occupation_bytes = 0
     l2_occupation = 0
     global MAX_LAYER_DIM 
     l1_structs_mem = 0
+
+    # Find last layer to be updated
+    last_updated_idx = len(layers_l) - 1
+    for layer in range(len(layers_l)):
+        if update_layer_l[layer] == 1:
+            last_updated_idx = layer
+            break
+    print(f"Weights updated up to layer {last_updated_idx}")
+
     # Compute activation and weight memory occupation
     
     for layer in range(len(layers_l)):
+        # Find if the layer needs backprop
+        compute_in_grad = 0
+        if layer > last_updated_idx:
+            compute_in_grad = 1
+        # Find other attributes
         is_last_layer = False
         if layer == len(layers_l) - 1:
             is_last_layer = True
         if USE_DMA == 'NO':
-            total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], is_last_layer)
+            total_memory_occupation_bytes += utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
         elif USE_DMA in ['SB', 'DB']:
-            l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], is_last_layer)
+            l2_occupation +=  utils.compute_wgt_act_memocc_bytes(layer, layers_l[layer], in_ch_l[layer], out_ch_l[layer], hk_l[layer], wk_l[layer], hin_l[layer], win_l[layer], h_pad_list[layer], w_pad_list[layer], h_str_list[layer], w_str_list[layer], data_type_l[layer], bias_l[layer], update_layer_l[layer], compute_in_grad, is_last_layer)
     # Compute im2col memory occupation
     mem_im2col = 0
     idx_im2col = 0
-    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_list, w_pad_list, h_str_list, w_str_list, data_type_l)
+    mem_im2col, idx_im2col = utils.compute_im2col_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_pad_list, w_pad_list, h_str_list, w_str_list, data_type_l, update_layer_l, CONV2D_USE_IM2COL)
     total_memory_occupation_bytes += mem_im2col
 
     if mem_im2col > 0:
@@ -60,7 +75,7 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
     # Compute transpose and blocktranspose memory occupation 
     mem_blocktransp = 0
     idx_blocktransp = 0
-    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l)
+    mem_blocktransp, idx_blocktransp = utils.compute_bt_memocc_bytes(layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, data_type_l, update_layer_l, CONV2D_USE_IM2COL)
     total_memory_occupation_bytes += mem_blocktransp
 
     if mem_blocktransp > 0:
@@ -85,36 +100,13 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         l1_structs_mem = 0
         l1_structs_mem += 6*4 # 6 pointers IN_DATA, IN_DIFF ...
         l1_structs_mem += 4*(6*4) # 4 blobs input_blob, output_blob ..
-        l1_structs_mem += 28 # linear_args
-
-        """
-        Conv2D_args (from lib/include/pulp_conv2d_fp32.h)
-        
-        blob *input                                                                     -> 12 +  8 = 20
-            - float*:   data, diff  ->  2 x 4 = 8
-            - uint32_t: C, H, W     ->  3 x 4 = 12
-        blob *coeff                                                                     ->  8 +  8 = 16
-            - int:      H, W        ->  2 x 4 = 8
-            - float*:   data, diff  ->  2 x 4 = 8
-        blob *bias                                                                      ->            8
-            - float*:   data, diff  ->  2 x 4 = 8
-        blob *output                                                                    ->  8 +  8 = 16
-            - float*:   data, diff  ->  2 x 4 = 8
-            - uint32_t: H, W        ->  2 x 4 = 8
-        2  x float*:    i2c_buffer, bt_buffer                                           ->  2 *  4 =  8
-        14 x int:       Lpad, Rpad, Upad, Dpad, stride_h, stride_w, skip_in_grad, HWC,  -> 14 *  4 = 56
-                        opt_matmul_type_fw, opt_matmul_type_wg, opt_matmul_type_ig,
-                        USE_BIASES, USE_IM2COL, USE_DMA_IM2COL
-        
-        TOTAL: 20 + 16 + 8 + 16 + 8 + 56 = 124
-        """
-        l1_structs_mem += 124
-
-        l1_structs_mem += 36 # PW_args
-        l1_structs_mem += 36 # DW_args
+        l1_structs_mem += 32 # linear_args
+        l1_structs_mem += 84 # conv2d_args
+        l1_structs_mem += 40 # PW_args
+        l1_structs_mem += 40 # DW_args
         l1_structs_mem += 8 # act_args
         l1_structs_mem += 16 # Skipconn_args
-        l1_structs_mem += 16 # InstNorm_args
+        l1_structs_mem += 20 # InstNorm_args
         l1_structs_mem += 2*4 # 2 pi_cl_dma_cmd_t
         l1_structs_mem += 2 # loss in fp16
         if data_type_l[0] == 'FP32':
@@ -122,6 +114,13 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         l1_structs_mem += 2*16 # 2 vect_sum_args
         print(f"Size of structures in L1 (Single Buffer Mode): {l1_structs_mem} bytes")
         total_memory_occupation_bytes += l1_buff_size + l1_structs_mem
+
+        # Label storage memory
+        h_out_net = np.floor((hin_l[-1] - hk_l[-1] + h_str_list[-1] + 2*h_pad_list[-1]) / h_str_list[-1])
+        w_out_net = np.floor((win_l[-1] - wk_l[-1] + w_str_list[-1] + 2*w_pad_list[-1]) / w_str_list[-1])
+        labels_mem = out_ch_l[-1] * h_out_net * w_out_net
+        print(f"Size of allocated memory for labels (Single Buffer Mode): {labels_mem} bytes")
+        total_memory_occupation_bytes += labels_mem
 
     elif USE_DMA == 'DB':
         
@@ -131,33 +130,10 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
 
         l1_structs_mem = 0
         l1_structs_mem += 7*(6*4) # 4 blobs input_blob, output_blob ..
-        l1_structs_mem += 28 # linear_args
-
-        """
-        Conv2D_args (from lib/include/pulp_conv2d_fp32.h)
-        
-        blob *input                                                                     -> 12 +  8 = 20
-            - float*:   data, diff  ->  2 x 4 = 8
-            - uint32_t: C, H, W     ->  3 x 4 = 12
-        blob *coeff                                                                     ->  8 +  8 = 16
-            - int:      H, W        ->  2 x 4 = 8
-            - float*:   data, diff  ->  2 x 4 = 8
-        blob *bias                                                                      ->            8
-            - float*:   data, diff  ->  2 x 4 = 8
-        blob *output                                                                    ->  8 +  8 = 16
-            - float*:   data, diff  ->  2 x 4 = 8
-            - uint32_t: H, W        ->  2 x 4 = 8
-        2  x float*:    i2c_buffer, bt_buffer                                           ->  2 *  4 =  8
-        14 x int:       Lpad, Rpad, Upad, Dpad, stride_h, stride_w, skip_in_grad, HWC,  -> 14 *  4 = 56
-                        opt_matmul_type_fw, opt_matmul_type_wg, opt_matmul_type_ig,
-                        USE_BIASES, USE_IM2COL, USE_DMA_IM2COL
-        
-        TOTAL: 20 + 16 + 8 + 16 + 8 + 56 = 124
-        """
-        l1_structs_mem += 124
-
-        l1_structs_mem += 36 # PW_args
-        l1_structs_mem += 36 # DW_args
+        l1_structs_mem += 32 # linear_args
+        l1_structs_mem += 84 # conv2d_args
+        l1_structs_mem += 40 # PW_args
+        l1_structs_mem += 40 # DW_args
         l1_structs_mem += 8 # act_args
         l1_structs_mem += 16 # Skipconn_args
         l1_structs_mem += 3*4 # 3 pi_cl_dma_cmd_t cmd_load, cmd_store and cmd_struct
@@ -196,7 +172,7 @@ def AdjustResConnList(sumnode_connections):
                     res.append(scanned_layer)
     return res
 
-def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnode_connections):
+def CheckResConn(layer_list, in_ch_list, out_ch_list, hin_list, win_list, sumnode_connections, update_layer_l):
     # Check same number of Skipnodes and Sumnodes
     num_skip = 0
     num_sum = 0
@@ -234,8 +210,8 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, data_type_l, bias_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, sumnode_connections,
-                  USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
+                  NUM_CORES, data_type_l, bias_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list,
+                  sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Initialize project (copy the prefab files and create folder)
     utils.InitProject(proj_folder_path)
@@ -248,7 +224,7 @@ def DNN_Composer (proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
                         epochs, batch_size, learning_rate, optimizer, loss_fn,
-                        data_type_l, bias_l, sumnode_connections, USE_DMA)
+                        data_type_l, bias_l, update_layer_l, sumnode_connections, USE_DMA)
 
 
     global MAX_LAYER_DIM
@@ -258,24 +234,24 @@ def DNN_Composer (proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, bias_l, sumnode_connections,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    data_type_l, bias_l, update_layer_l, sumnode_connections,
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'SB':
         utilsSB.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, bias_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    data_type_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
     elif USE_DMA == 'DB':
         utilsDB.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
                     epochs, batch_size, learning_rate, optimizer, loss_fn,
-                    data_type_l, bias_l, sumnode_connections, MAX_LAYER_DIM,
-                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS)
+                    data_type_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                    PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
     else:
         print(f"[DNN_Composer]: Not supported argument for USE_DMA: '{USE_DMA}' given")
 

@@ -29,6 +29,7 @@
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer 
  * @param transpose_buffer buffer to transpose weights in the input grad step
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
@@ -40,6 +41,7 @@ struct PointWise_Conv_args {
 	struct blob * coeff;
 	struct blob * output; 
 	float * transpose_buffer;
+	int skip_wg_grad;
 	int skip_in_grad;
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
@@ -75,6 +77,7 @@ void pulp_conv_pw_fp32_fw_cl( void * PointWise_Conv_args );
  * @param coeff weight matrix 
  * @param output output feature maps for the pointwise layer 
  * @param transpose_buffer buffer to transpose weights in the input grad step
+ * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)

@@ -1,18 +1,18 @@
 APP = conv2d_fp32
 
 # User settings
-IMAGE_H?=10
-IMAGE_W?=10
+IMAGE_H?=8
+IMAGE_W?=8
 KER_H?=3
 KER_W?=3
 IN_CH?=8
-OUT_CH?=16
-PAD_L?=0
-PAD_R?=0
-PAD_U?=0
-PAD_D?=0
-STRIDE_H?=1
-STRIDE_W?=1
+OUT_CH?=8
+PAD_L?=1
+PAD_R?=1
+PAD_U?=1
+PAD_D?=1
+STRIDE_H?=2
+STRIDE_W?=2
 NUM_CORES?=8
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
@@ -20,9 +20,9 @@ APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
-IM2COL?=1			# Selects to use or not the im2col+matmul (0=don't, 1=use)
+IM2COL?=0			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input data/output gradient need to be in L2, im2col buffer in L1)
-HWC_LAYOUT?=1		# Choose if data layout is CHW (=0) or HWC (=1)
+HWC_LAYOUT?=0		# Choose if data layout is CHW (=0) or HWC (=1)
 USE_BIASES?=1		# Choose whether to include biases or not
 # End of user settings
 
@@ -61,6 +61,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp32.c
 
 get_golden:
 	python3 ./utils/GM.py --step ${STEP} --image_width ${IMAGE_W} --image_height ${IMAGE_H} --ker_width ${KER_W} --ker_height ${KER_H} --ch_in ${IN_CH} --ch_out ${OUT_CH} --w_pad ${PAD_L} --h_pad ${PAD_U} --h_str ${STRIDE_H} --w_str ${STRIDE_W} --HWC ${HWC_LAYOUT} --USE_BIASES ${USE_BIASES}

@@ -52,6 +52,21 @@ struct softmax_args{
 };
 
 
+/**
+ * @brief Arguments for swiglu activation layer (output = input2 * (1 / (1 + exp(input1))))
+ * @param in1       input 1
+ * @param in2       input 2
+ * @param out       output vector
+ * @param dim       dimension of the input/output vectors
+*/
+struct swiglu_args{
+    float* in1;
+    float* in2;
+    float* out;
+    int dim;
+};
+
+
 
 /**
  * Activation functions, both FW and BW
@@ -188,5 +203,22 @@ static inline float fastpow2 (
 static inline float fastexp (
     float p
 );
+
+
+/**
+ * @brief Softmax on a 1-Dimensional vector 
+ * @param out                   output vector                                 
+ * @param in                    input vector         
+ * @param buffer_n_cores        support buffer to save the exponential sums (1 for each core)
+ * @param size                  size of input vector  
+ */
+void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsigned int size);
+
+
+/**
+ * @brief Swiglu activation layer (output = input2 * (1 / (1 + exp(input1)))). Set up the arguments by using a "struct swiglu_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_swiglu_fp32_cl, &args) to parallelize.
+ * @param (void*) (struct swiglu_args void_args) 
+ */
+void pulp_swiglu_fp32_cl(void *swiglu_args);
 
 
