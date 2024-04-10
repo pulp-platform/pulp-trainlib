@@ -42,6 +42,7 @@ PI_L1 fp16 result[IN_CH*OUT_CH];
 #endif
 
 
+PI_L1 float zero_init = 0.0f;
 
 
 // Function to null tensor
@@ -53,7 +54,7 @@ static inline void null_tensor (fp16 * tensor, int size)
 #endif
 {
     for (int idx=0; idx<size; idx++) {
-        tensor[idx] = 0;
+        tensor[idx] = zero_init;
     }
 }
 
@@ -88,7 +89,7 @@ static inline void multiply ()
 
     #ifdef FLOAT32
     printf("\n=====> PROFILING MATMULS WITH PARALLELISM ON N <=====\n");
-
+    
     printf("\n-----> Profiling mm:\n");
     START_STATS();
     pi_cl_team_fork(NUM_CORES, mm, &mm_args);
@@ -96,6 +97,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+
 
     printf("\n-----> Profiling mm_u2:\n");
     START_STATS();
@@ -128,7 +130,17 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    
 
+    printf("\n-----> Profiling mm_unroll_2x4:\n");
+    START_STATS();
+    pi_cl_team_fork(NUM_CORES, mm_unroll_2x4, &mm_args);
+    STOP_STATS();
+    check_tensor(result, C, IN_CH*OUT_CH);
+    compare_tensors(result, C, IN_CH*OUT_CH);
+    null_tensor(result, IN_CH*OUT_CH);
+
+    
     printf("\n-----> Profiling mm_unroll_2x1:\n");
     START_STATS();
     pi_cl_team_fork(NUM_CORES, mm_unroll_2x1, &mm_args);
@@ -145,6 +157,8 @@ static inline void multiply ()
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
 
+    /*
+
     printf("\n-----> Profiling mm_unroll_8x1:\n");
     START_STATS();
     pi_cl_team_fork(NUM_CORES, mm_unroll_8x1, &mm_args);
@@ -156,14 +170,6 @@ static inline void multiply ()
     printf("\n-----> Profiling mm_unroll_2x2:\n");
     START_STATS();
     pi_cl_team_fork(NUM_CORES, mm_unroll_2x2, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
-
-    printf("\n-----> Profiling mm_unroll_2x4:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_unroll_2x4, &mm_args);
     STOP_STATS();
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
@@ -282,6 +288,7 @@ static inline void multiply ()
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
+    */
     #endif
 
 

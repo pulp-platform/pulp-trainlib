@@ -119,6 +119,7 @@ static inline void connect_blobs(){
   C2D_args.stride_w = STRIDE_W;
   C2D_args.i2c_buffer = im2col_buffer;
   C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_wg_grad = 0;
   C2D_args.skip_in_grad = 0;
   C2D_args.HWC = HWC_LAYOUT;
   C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
@@ -212,6 +213,7 @@ static inline void connect_blobs(){
   C2D_args.stride_w = STRIDE_W;
   C2D_args.i2c_buffer = im2col_buffer;
   C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_wg_grad = 0;
   C2D_args.skip_in_grad = 0;
   C2D_args.HWC = HWC_LAYOUT;
   C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
@@ -291,6 +293,7 @@ static inline void connect_blobs(){
   C2D_args.stride_w = STRIDE_W;
   C2D_args.i2c_buffer = im2col_buffer;
   C2D_args.bt_buffer = bt_buffer;
+  C2D_args.skip_wg_grad = 0;
   C2D_args.skip_in_grad = 0;
   C2D_args.HWC = HWC_LAYOUT;
   C2D_args.opt_matmul_type_fw = MATMUL_TYPE;

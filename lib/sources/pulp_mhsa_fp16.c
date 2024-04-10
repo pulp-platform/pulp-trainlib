@@ -15,6 +15,9 @@
 #include "pulp_act_fp16.h"
 #include <math.h>
 
+// Instantiate zero_tensor support function
+static inline void zero_tensor(void *args);
+
 //FORWARD
 void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
@@ -32,6 +35,7 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     fp16 *q = mhsa_args->qkv->data;                             //  Pointer to the first element of Q
     fp16 *k = mhsa_args->qkv->data;                             //  Pointer to the first element of K 
     fp16 *v = mhsa_args->qkv->data;                             //  Pointer to the first element of V
+    fp16 *out;
     int n_heads = mhsa_args->n_heads;                           //  Number of heads used for MHSA
 
     int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
@@ -45,8 +49,8 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     #endif
 
     int H = F / n_heads;                                        //  Head dimension
-    //fp16 scaling = (fp16) (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
-    float scaling = q_rsqrt_fp16((float)H);
+    float scaling = (1/sqrt(H));                        //  Scaling factor to avoid vanishing gradients
+    //float scaling = q_rsqrt_fp16((float)H);
 
     // Projecting input sequence into Q, K, V
     struct matMul_args_fp16 matMul_args1;
@@ -63,14 +67,14 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     printf("\ninputData: %d %d\n", E, L);
     for (int j=0; j<L*E; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.A[j]);
+        printf("%.8f ", matMul_args1.B[j]);
     }
     printf("\n");
 
     printf("\nWin: %d %d\n", 3*F, E);
     for (int j=0; j<E*3*F; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ",  matMul_args1.B[j]);
+        printf("%.8f ",  matMul_args1.A[j]);
     }
     printf("\n");
     #endif
@@ -147,15 +151,6 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
         #endif
 
-        #ifdef DEBUG
-        printf("\nCurrent head buffer Data: %d %d\n", L, L);
-        for (int j=0; j<L*L; j++){
-            if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_buffer[j]);
-        }
-        printf("\n");
-        #endif
-
         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
@@ -166,6 +161,15 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
         transp_args4.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
+
+        #ifdef DEBUG
+        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", temp[j]);
+        }
+        printf("\n");
+        #endif
 
         /*
         struct copy_args copy_args3;
@@ -272,16 +276,13 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     }
 
     #ifdef DEBUG
-    printf("\nSoftmax results: %d %d %d\n", L, L, n_heads);
-    for (int j=0; j<n_heads; j++){
-        printf("\n\n");
-        for(int i=0; i<L*L; i++){
-            if(!(i%L))
-                printf("\n");
-            printf("%.8f ", softmax_buffer[j*L*L+i]);
-        }
-        
-    }
+    printf("\nAttention results: %d %d\n", F, L);
+    printf("\n\n");
+    for(int i=0; i<F*L; i++){
+        if(!(i%L))
+            printf("\n");
+        printf("%.8f ", attention_map[i]);
+    } 
     printf("\n");
     #endif
 
@@ -291,6 +292,467 @@ void pulp_mhsa_fp16_fw_cl(void* Mhsa_args){
     printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
     ///////////////////////////DELETE THIS////////////////////////////////////////////////////
     */
+
+    //  Final attention map projection
+    struct matMul_args_fp16 matMul_args4;
+    matMul_args4.A = coeffDataWout;
+    matMul_args4.B = attention_map;
+    matMul_args4.C = outData;
+    matMul_args4.N = E;
+    matMul_args4.K = F;
+    matMul_args4.M = L;
+    matMul_args4.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args4);
+    #else
+    struct mm_manager_args_fp16 man_args4;
+    man_args4.mm_args = &matMul_args4;
+    man_args4.layer_type = LAYER_LINEAR;
+    man_args4.step_type = STEP_FW;
+    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nTransposed Output sequence Data: %d %d\n", E, L);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args4.C[j]);
+    }
+    printf("\n");
+    #endif
+}
+
+//FORWARD W/ DOUBLE BUFFERING L1 DMA
+void pulp_mhsa_fp16_fw_cl_dblbuffer(void* Mhsa_args){
+    struct Mhsa_args_fp16_db *mhsa_args_db = (struct Mhsa_args_fp16_db *) Mhsa_args;
+    fp16 *coeffDataWin_l2 = mhsa_args_db->coeff_in->data;          //  Input Projection Weights in L2 (3F X E)
+    fp16 *coeffDataWout = mhsa_args_db->coeff_out->data;           //  Output Projection Weights (Already transposed from GM)
+    fp16 *attention_map = mhsa_args_db->attention_map->data;       //  Buffer saving the MHSA map before output projection
+    fp16 *attention_map_l2 = mhsa_args_db->attention_map_l2->data;       //  Buffer saving the MHSA map before output projection
+    fp16 *outData = mhsa_args_db->output->data;                    //  Output sequence (Transposed, E x L)
+    fp16 *temp = mhsa_args_db->temp_buffer;                        //  Support buffer used in the attention head loop
+    //float *head_buffer = mhsa_args->head_buffer->data;        //  Buffer containing the Q*Kt result (necessary to save for backward pass)
+    fp16 *softmax_buffer = mhsa_args_db->softmax_buffer->data;     //  Buffer containing the softmax results (necessary to save for backward pass)
+    fp16 *maxes = mhsa_args_db->maxes;                             //  Buffer containing the row-wise maxes in the softmax process
+    fp16 *sums = mhsa_args_db->sums;                               //  Buffer containing the row-wise exponential sums in the softmax process
+    fp16 *qkv_l2 = mhsa_args_db->qkv->data;                        //  Matrix in L2 containing the transposed Q, K and V (3*F x L)        
+    fp16 *q = mhsa_args_db->buff2_a->data;                        //  Pointer to the first element of Q
+    fp16 *k = mhsa_args_db->buff2_a->data;                        //  Pointer to the first element of K 
+    fp16 *v = mhsa_args_db->buff2_a->data;                        //  Pointer to the first element of V
+    fp16 *out = mhsa_args_db->attention_map_l2->data;
+    int n_heads = mhsa_args_db->n_heads;                           //  Number of heads used for MHSA
+    int n_tiles = mhsa_args_db->n_tiles;                           //  Number of tiles used for QKV projection
+
+    fp16 *buff0 = mhsa_args_db->input->data;                       
+    fp16 *buff1_a = mhsa_args_db->buff1_a->data;
+    fp16 *buff2_a = mhsa_args_db->buff2_a->data;
+    fp16 *buff1_b = mhsa_args_db->buff1_b->data;
+    fp16 *buff2_b = mhsa_args_db->buff2_b->data;
+
+
+    int opt_matmul_type = mhsa_args_db->opt_matmul_type_fw;        //  Matmul type used
+
+    int L = mhsa_args_db->input->H;                                //  Input/Output Sequence length    
+    int E = mhsa_args_db->input->W;                                //  Input Sequence element size
+    int F = mhsa_args_db->attention_map->W;                        //  Hidden dimension of attention (N. Heads * Head dimension)
+    int TILE = mhsa_args_db->buff1_a->W;
+
+
+    #ifdef DEBUG
+    printf("\nPrinting the parameters: L-%d, E-%d, F-%d, TILE-%d, n_tiles-%d\n", L, E, F, TILE, n_tiles);
+    #endif
+
+    int H = F / n_heads;                                        //  Head dimension
+    fp16 scaling = (fp16) (1/sqrt(H));                          //  Scaling factor to avoid vanishing gradients
+    //float scaling = q_rsqrt_fp16((float)H);
+
+
+    // PART 1: DOUBLE BUFFERING FOR QKV PROJECTION //
+
+    // Set the current L1 buffer (0: L1A, 1: L1B)
+    int curr_L1_buffer = 0;
+
+    // Index for input transfers into L1
+    int in_idx = 0;
+
+    // Define the copy structures
+    pi_cl_dma_copy_t copy_inA, copy_inB;
+    pi_cl_dma_copy_t copy_outA, copy_outB;
+
+    struct zero_tensor_args zero_args;
+    zero_args.size = TILE*L;
+    zero_args.zero_init = 0.0f;
+
+    // Load first data into BUFFER 1.A in L1
+    copy_inA.ext = (uint32_t) &coeffDataWin_l2[0];
+    copy_inA.loc = (uint32_t) buff1_a;
+    copy_inA.size = 2*TILE*E;
+    copy_inA.dir = PI_CL_DMA_DIR_EXT2LOC;
+    copy_inA.id = 0;
+    copy_inA.merge = 0;
+    pi_cl_dma_memcpy(&copy_inA);
+
+    // Copy struct for BUFFER 1.B in L1
+    copy_inB.loc = (uint32_t) buff1_b;
+    copy_inB.size = 2*TILE*E;
+    copy_inB.dir = PI_CL_DMA_DIR_EXT2LOC;
+    copy_inB.id = 0;
+    copy_inB.merge = 0;
+
+    // Output buffer from BUFFER 2.A
+    copy_outA.dir = PI_CL_DMA_DIR_LOC2EXT;
+    copy_outA.merge = 0;
+    copy_outA.size = 2*TILE*L; 
+    copy_outA.id = 0;
+    copy_outA.loc = (uint32_t) buff2_a;
+
+    // Output buffer from BUFFER 2.B
+    copy_outB.dir = PI_CL_DMA_DIR_LOC2EXT;
+    copy_outB.merge = 0;
+    copy_outB.size = 2*TILE*L; 
+    copy_outB.id = 0;
+    copy_outB.loc = (uint32_t) buff2_b;
+
+    // Projecting input sequence into Q, K, V, one tile at a time
+    struct matMul_args_fp16 matMul_args1;
+    matMul_args1.B = buff0;                                 //  E x L 
+    matMul_args1.N = TILE;                                       
+    matMul_args1.K = E;
+    matMul_args1.M = L;
+    matMul_args1.trans_B = 0; 
+
+    //  Cycle on the tiles
+    for(int tile = 0; tile < n_tiles; tile++){
+        //printf("\nTILE %d\n", tile);
+        //printf("\nWaiting for computation...");
+        // Wait for input data & connect L1 data to computation
+        if (curr_L1_buffer == 0) {
+            pi_cl_dma_wait(&copy_inA);
+            pi_cl_dma_wait(&copy_outA);
+            matMul_args1.A = buff1_a;                       //  TILE x E Tile of weight matrix
+            matMul_args1.C = buff2_a;                       //  TILE x L Q, K, V are saved contiguously, in the same matrix.
+        }
+        else {
+            pi_cl_dma_wait(&copy_inB);
+            pi_cl_dma_wait(&copy_outB);
+            matMul_args1.A = buff1_b;                       //  TILE x E Tile of weight matrix
+            matMul_args1.C = buff2_b;                       //  TILE x L Q, K, V are saved contiguously, in the same matrix.
+        }
+
+        //  printf("\nLoading next data...");
+        //  Begin to load next data
+        if (tile < n_tiles-1) {
+          in_idx+=TILE*E; 
+          if (curr_L1_buffer == 0) { 
+            copy_inB.ext = (uint32_t) &coeffDataWin_l2[in_idx];
+            pi_cl_dma_memcpy(&copy_inB);
+          }
+          else {
+            copy_inA.ext = (uint32_t) &coeffDataWin_l2[in_idx];
+            pi_cl_dma_memcpy(&copy_inA);
+          }
+        }
+
+        //printf("\nNull output tensor...");
+        // Null output tensor before computation
+        if (curr_L1_buffer == 0) {
+          //for (int i=0; i<L1_OUT_SIZ; i++)  L1A_out[i] = 0;
+          zero_args.tensor = buff2_a;
+          pi_cl_team_fork(NUM_CORES, zero_tensor, &zero_args);
+        }
+        else {
+          //for (int i=0; i<L1_OUT_SIZ; i++)  L1B_out[i] = 0;
+          zero_args.tensor = buff2_b;
+          pi_cl_team_fork(NUM_CORES, zero_tensor, &zero_args);
+        }
+
+        // Compute MatMul for QKV projection
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args1);
+        #else
+        struct mm_manager_args_fp16 man_args1;
+        man_args1.mm_args = &matMul_args1;
+        man_args1.layer_type = LAYER_LINEAR;
+        man_args1.step_type = STEP_FW;
+        man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1);
+        #endif
+
+        //printf("\nStore result...");
+        // Store results into L2
+        if (curr_L1_buffer == 0) {
+          copy_outA.ext = (uint32_t) &qkv_l2[tile * (TILE * L)];
+          pi_cl_dma_memcpy(&copy_outA);
+        }
+        else {
+          copy_outB.ext = (uint32_t) &qkv_l2[tile * (TILE * L)];
+          pi_cl_dma_memcpy(&copy_outB);
+        }
+
+        //printf("\nSwitch buffers...\n");
+        // Switch buffer roles
+        curr_L1_buffer = 1 - curr_L1_buffer;
+    }
+
+    // Select correct buffer to be waited
+    curr_L1_buffer = 1 - curr_L1_buffer;
+    //printf("\nWaiting last buffer...\n");
+    //curr_L1_buffer != curr_L1_buffer;
+    // Wait for the last transfer
+    if (curr_L1_buffer == 0) {
+        pi_cl_dma_wait(&copy_inA);
+        pi_cl_dma_wait(&copy_outA);
+    }
+    else {
+        pi_cl_dma_wait(&copy_inB);
+        pi_cl_dma_wait(&copy_outB);
+    }
+
+    // PART 2: MULTI-HEAD SELF ATTENTION //
+
+    // Reset the current L1 buffer (0: L1A, 1: L1B)
+    curr_L1_buffer = 0;
+
+    // Reset index for input transfers into L1
+    in_idx = 0;
+
+    zero_args.size = H * L;
+
+    // Define the NEW 2D copy structures
+    pi_cl_dma_copy_2d_t copy2d_inA, copy2d_inB;
+
+    // Load first data into L1 buffer 1.A (QKV is 3F x L)
+    copy2d_inA.ext = (uint32_t) qkv_l2;
+    copy2d_inA.loc = (uint32_t) buff1_a;
+    copy2d_inA.size = 2 * 3 * H * L;
+    copy2d_inA.stride = 2 * ((F) * L);
+    copy2d_inA.length = 2 * H * L;
+    copy2d_inA.dir = PI_CL_DMA_DIR_EXT2LOC;
+    copy2d_inA.id = 0;
+    copy2d_inA.merge = 0;
+    pi_cl_dma_memcpy_2d(&copy2d_inA);
+
+    // Copy struct for BUFFER 1.B in L1
+    copy2d_inB.loc = (uint32_t) buff1_b;
+    copy2d_inB.size = 2 * 3 * H * L;
+    copy2d_inB.stride = 2 * ((F) * L);
+    copy2d_inB.length = 2 * H * L;
+    copy2d_inB.dir = PI_CL_DMA_DIR_EXT2LOC;
+    copy2d_inB.id = 0;
+    copy2d_inB.merge = 0;
+
+    // Output buffer from BUFFER 2.A
+    copy_outA.dir = PI_CL_DMA_DIR_LOC2EXT;
+    copy_outA.merge = 0;
+    copy_outA.size = 2 * H * L; 
+    copy_outA.id = 0;
+    copy_outA.loc = (uint32_t) buff2_a;
+
+    // Output buffer from BUFFER 2.B
+    copy_outB.dir = PI_CL_DMA_DIR_LOC2EXT;
+    copy_outB.merge = 0;
+    copy_outB.size = 2 * H * L; 
+    copy_outB.id = 0;
+    copy_outB.loc = (uint32_t) buff2_b;
+    
+    //  Cycle on the different heads
+    for(int i = 0; i < n_heads; i++){
+        //printf("\nHEAD %d\n", i);
+        //printf("\nWaiting for computation...");
+        // Wait for input data & connect L1 data to computation
+        if (curr_L1_buffer == 0) {
+            pi_cl_dma_wait(&copy2d_inA);
+            pi_cl_dma_wait(&copy_outA);
+            q = buff1_a;
+            k = buff1_a + (L * H);
+            v = buff1_a + (L * 2 * H);
+        }
+        else {
+            pi_cl_dma_wait(&copy2d_inB);
+            pi_cl_dma_wait(&copy_outB);
+            q = buff1_b;
+            k = buff1_b + (L * H);
+            v = buff1_b + (L * 2 * H);
+        }
+
+        //printf("\nLoading next data...");
+        // Begin to load next data
+        if (i < n_heads-1) { 
+          if (curr_L1_buffer == 0) {
+            in_idx+=(H * L); 
+            copy2d_inB.ext = (uint32_t) &qkv_l2[in_idx];
+            pi_cl_dma_memcpy_2d(&copy2d_inB);
+          }
+          else {
+            in_idx+=(H * L);
+            copy2d_inA.ext = (uint32_t) &qkv_l2[in_idx];
+            pi_cl_dma_memcpy_2d(&copy2d_inA);
+          }
+        }
+
+        //printf("\nNull output tensor...");
+        // Null output tensor before computation
+        if (curr_L1_buffer == 0) {
+          //for (int i=0; i<L1_OUT_SIZ; i++)  L1A_out[i] = 0;
+          zero_args.tensor = buff2_a;
+          pi_cl_team_fork(NUM_CORES, zero_tensor, &zero_args);
+        }
+        else {
+          //for (int i=0; i<L1_OUT_SIZ; i++)  L1B_out[i] = 0;
+          zero_args.tensor = buff2_b;
+          pi_cl_team_fork(NUM_CORES, zero_tensor, &zero_args);
+        }
+
+        //printf("\nExecute computation...");
+        //  Transpose i-th head's K chunk
+        struct transp_args_fp16 transp_args2;
+        transp_args2.matrix = k;
+        transp_args2.transp_matrix = temp;
+        transp_args2.N = H;
+        transp_args2.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
+
+        //  Multiply it with the i-th head's Q chunk
+        struct matMul_args_fp16 matMul_args2;
+        matMul_args2.A = temp;
+        matMul_args2.B = q;
+        matMul_args2.C = buff0;
+        matMul_args2.N = L;
+        matMul_args2.K = H;
+        matMul_args2.M = L;
+        matMul_args2.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args2);
+        #else
+        struct mm_manager_args_fp16 man_args2;
+        man_args2.mm_args = &matMul_args2;
+        man_args2.layer_type = LAYER_LINEAR;
+        man_args2.step_type = STEP_FW;
+        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
+        #endif      
+
+        //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+        //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+        //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+        struct transp_args_fp16 transp_args4;
+        transp_args4.matrix = buff0;
+        transp_args4.transp_matrix = temp;
+        transp_args4.N = L;
+        transp_args4.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
+
+
+        //  Scale the current head values by a factor proportional to the head dimension
+        struct scalar_mul_args_fp16 s_m_args;
+        s_m_args.input = temp;
+        s_m_args.scalar = (fp16) scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp16_cl, &s_m_args);
+
+        //  Softmax operation
+        struct softmax_args_fp16 softmax_arg;
+        struct blob_fp16 input;
+        struct blob_fp16 output;
+        input.data = temp;
+        input.dim = L;
+        output.data = buff0;
+        softmax_arg.input = &input;
+        softmax_arg.output = &output;
+        softmax_arg.maxes = maxes;
+        softmax_arg.sums = sums;
+
+        pulp_softmax_fp16_fw_cl(&softmax_arg);
+
+        //  Each head result has to be appended to the full attention map, to do so we require to store the current
+        //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+        struct transp_args_fp16 transp_args5;
+        transp_args5.matrix = buff0;
+        transp_args5.transp_matrix = temp;
+        transp_args5.N = L;
+        transp_args5.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args5);
+
+        struct matMul_args_fp16 matMul_args3;
+        if (curr_L1_buffer == 0) {
+            //  Multiply softmax result with the i-th head's Vt chunk
+            matMul_args3.A = v;
+            matMul_args3.B = temp;
+            matMul_args3.C = buff2_a;
+            matMul_args3.N = H;
+            matMul_args3.K = L;
+            matMul_args3.M = L;
+            matMul_args3.trans_B = 0;
+        }
+        else{
+            //  Multiply softmax result with the i-th head's Vt chunk
+            matMul_args3.A = v;
+            matMul_args3.B = temp;
+            matMul_args3.C = buff2_b;
+            matMul_args3.N = H;
+            matMul_args3.K = L;
+            matMul_args3.M = L;
+            matMul_args3.trans_B = 0;  
+        }
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES,  mm_fp16, &matMul_args3);
+        #else
+        struct mm_manager_args_fp16 man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
+        #endif
+
+        //printf("\nStore result...");
+        // Store results into L2
+        if (curr_L1_buffer == 0) {
+          copy_outA.ext = (uint32_t) &attention_map_l2[i * (H * L)];
+          pi_cl_dma_memcpy(&copy_outA);
+        }
+        else {
+          copy_outB.ext = (uint32_t) &attention_map_l2[i * (H * L)];
+          pi_cl_dma_memcpy(&copy_outB);
+        }
+
+        //printf("\nSwitch buffers...\n");
+        // Switch buffer roles
+        curr_L1_buffer = 1 - curr_L1_buffer;
+    }
+
+    // Select correct buffer to be waited
+    curr_L1_buffer = 1 - curr_L1_buffer;
+    //curr_L1_buffer != curr_L1_buffer;
+    // Wait for the last transfer
+    if (curr_L1_buffer == 0) {
+        pi_cl_dma_wait(&copy2d_inA);
+        pi_cl_dma_wait(&copy_outA);
+    }
+    else {
+        pi_cl_dma_wait(&copy2d_inB);
+        pi_cl_dma_wait(&copy_outB);
+    }
+
+    // DA RIMUOVERE: metto tutto attention map in l1
+    pi_cl_dma_copy_t copy_attmap;
+
+    copy_attmap.ext = (uint32_t) attention_map_l2;
+    copy_attmap.loc = (uint32_t) attention_map;
+    copy_attmap.size = 2*F*L;
+    copy_attmap.dir = PI_CL_DMA_DIR_EXT2LOC;
+    copy_attmap.id = 0;
+    copy_attmap.merge = 0;
+    pi_cl_dma_memcpy(&copy_attmap);
+    pi_cl_dma_wait(&copy_attmap);
 
     //  Final attention map projection
     struct matMul_args_fp16 matMul_args4;
@@ -716,8 +1178,22 @@ void pulp_mhsa_fp16_bw_cl(void * Mhsa_args) {
     copy_args5.size = L*E;
 
     pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args5); // Input gradients transpose: (E x L) - > (L x E)
+}
 
+static inline void zero_tensor(void * args) {
 
+  struct zero_tensor_args * zero_args = (struct zero_tensor_args *) args;
+
+  fp16 * __restrict__ tensor = zero_args->tensor;
+  int size = zero_args->size;
+
+  int blockSize = (size+NUM_CORES-1) / NUM_CORES;
+  int start = pi_core_id()*blockSize;
+  int stop = start+blockSize > size ? size : start+blockSize;
+
+  for (int i=start; i<stop; i++) {
+    tensor[i] = zero_args->zero_init;
+  }
 }
   
 

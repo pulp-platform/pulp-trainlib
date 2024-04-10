@@ -149,8 +149,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Forward passes for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Weight gradients for DepthWise, PointWise and 2D Convolution, Fully-Connected (FP32, FP16)
 - [X] Input gradients for DepthWise and PointWise Convolution, Fully-Connected, Conv2D (FP32, FP16)
-- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
-- [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
+- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16) - no stride, padding
+- [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16) - stride and padding only for naive 2D Convolutions (without im2col+mm)
 - [X] ReLU activation function (FP32, FP16)
 - [X] Sigmoid activation function (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
@@ -159,14 +159,16 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Multihead Self Attention training primitives (FP32)
 - [X] Residual connection (FP32, FP16)
 - [X] InstanceNorm (FP32, FP16)
-- [ ] Padding operators for DepthWise and 2D Convolution
+- [X] Padding and stride operators for 2D Convolution (internally managed, only for naive formula)
+- [ ] Padding operators for DepthWise and 2D Convolution (im2col + mm)
 - [ ] HWC data layout management for DepthWise Convolution (FP32, FP16)
-- [ ] Stride operators for 2D Convolutions and DepthWise
+- [ ] Stride operators for 2D Convolutions and DepthWise (im2col + mm)
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
 - [ ] Biases for all layers
 - [ ] Migration to graph-managed padding (TrainLib_Deployer)
 - [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
+- [ ] Sparse Update (layer-wise) in TrainLib_Deployer
 
 # Known bugs / issues (open for contributions)
 
@@ -188,10 +190,11 @@ PULP-TrainLib's repository is organized with these branches:
 - Alberto Dequino (alberto.dequino@unibo.it, alberto.dequino@polito.it)
 - Manuele Rusci (manuele.rusci@kuleuven.be)
 - Francesco Conti (f.conti@unibo.it)
-- Giacomo Saporetti (giacomo.saporetti@studio.unibo.it)
+- Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
 
 ## Past Contributors
 
+- Giacomo Saporetti (giacomo.saporetti@studio.unibo.it)
 - Francesco Conoscenti (francesco.conoscenti@studio.unibo.it)
 - Leonardo Ravaglia (leonardo.ravaglia2@unibo.it)
 
