@@ -1446,7 +1446,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\toutput_blob.H = src->H;\n")
     f.write("\toutput_blob.W = src->W;\n")
     f.write("\toutput_blob.dim = src->dim;\n")
-    f.write("\tOUT_DIFF = BUFF + 2*weight_blob.dim + 2*input_blob.dim + output_blob.dim;\n")
+    f.write("\tOUT_DATA = BUFF + 2*weight_blob.dim + 2*input_blob.dim + output_blob.dim;\n")
+    f.write("\tOUT_DIFF = BUFF + 2*weight_blob.dim + 2*input_blob.dim + 2*output_blob.dim;\n")
     f.write("\tupdate_blob();}\n")
 
     f.write("\nvoid get_weight_dim(void * b){\n")
