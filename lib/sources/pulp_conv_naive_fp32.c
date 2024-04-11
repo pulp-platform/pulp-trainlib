@@ -565,3 +565,152 @@ void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
   }
 
 }
+
+
+
+void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inData = args->A;
+  float * __restrict__ coeffData = args->B;
+  float * __restrict__ outData = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = (H_in - 3)/2 + 1;
+  const uint32_t W_out = (W_in - 3)/2 + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t ho=0; ho<H_out; ho++) {
+      for (uint32_t wo=0; wo<W_out; wo++) {
+        float temp = 0;
+        // Receptive field
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          for (uint32_t hk=0; hk<5; hk++) {
+            for (uint32_t wk=0; wk<5; wk++) {
+              // Pad conditions
+              int pad_cond_h = 2*ho + hk - 1;
+              int pad_cond_w = 2*wo + wk - 1;
+              if ((pad_cond_h >= 0) && (pad_cond_w >= 0) && (pad_cond_h < H_in) && (pad_cond_w < W_in)) {
+                  int in_idx = (2*wo + wk - 1) + (2*ho + hk - 1)*W_in + ci*H_in*W_in;
+                  int ker_idx = wk + hk*5 + ci*25 + co*C_in*25;
+                  temp += inData[in_idx] * coeffData[ker_idx];
+              }
+            }
+          }
+        }
+        outData[wo+ho*W_out+co*H_out*W_out] = temp;
+      }
+    }
+  } 
+
+}
+
+
+
+void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inData = args->A;
+  float * __restrict__ coeffDiff = args->B;
+  float * __restrict__ outDiff = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = (H_in - 3)/2 + 1;
+  const uint32_t W_out = (W_in - 3)/2 + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+    
+  for (uint32_t co=start; co<stop; co++) {
+    for (uint32_t hk=0; hk<5; hk++) {
+      for (uint32_t wk=0; wk<5; wk++) {
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          float temp = 0;
+          for (uint32_t ho=0; ho<H_out; ho++) {
+            for (uint32_t wo=0; wo<W_out; wo++) {
+              // Pad conditions
+              int pad_cond_h = 2*ho + hk - 1;
+              int pad_cond_w = 2*wo + wk - 1;
+              if ((pad_cond_h >= 0) && (pad_cond_w >= 0) && (pad_cond_h < H_in) && (pad_cond_w < W_in)) {
+                int out_idx = wo + ho*W_out + co*H_out*W_out;
+                int in_idx = (2*wo + wk - 1) + (2*ho + hk - 1)*W_in + ci*H_in*W_in;
+                temp += outDiff[out_idx] * inData[in_idx];
+              }
+            }
+          }
+          coeffDiff[wk+hk*5+ci*25+co*25*C_in] = temp;
+        }
+      }
+    }
+  }
+
+}
+
+
+
+void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inDiff = args->A;
+  float * __restrict__ coeffData = args->B;
+  float * __restrict__ outDiff = args->C;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  const uint32_t H_out = (H_in - 3)/2 + 1;
+  const uint32_t W_out = (W_in - 3)/2 + 1;
+  const uint32_t pHW = 24;
+
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
+
+  int h_start = 3;
+  int w_start = 3;
+
+  for (uint32_t ci=start; ci<stop; ci++) {
+    for (uint32_t hi=0; hi<H_in; hi++) {
+      for (uint32_t wi=0; wi<W_in; wi++) {
+        float temp = 0;
+        for (uint32_t co=0; co<C_out; co++) {
+          for (uint32_t hk=0; hk<5; hk++) {
+            for (uint32_t wk=0; wk<5; wk++) {
+              // Indices
+              int ker_idx = (pHW-wk-hk*5) + ci*25 + co*25*C_in;
+              // Border conditions
+              int bord_h = (hi + hk - h_start) / 2;
+              int bord_w = (wi + wk - w_start) / 2;
+              int borders = (bord_h < H_out) && (bord_w < W_out);
+              float o_grad = 0;
+              float k_dat = coeffData[ker_idx];
+              if (((hi+hk-h_start) % 2 == 0) && ((wi+wk-w_start) % 2 == 0) && borders == 1)
+              {
+                int out_idx = bord_w + (bord_h)*W_out + co*H_out*W_out;
+                o_grad = outDiff[out_idx];
+                temp += k_dat * o_grad;
+              }
+            }
+          }
+        } 
+        inDiff[wi + hi*W_in + ci*H_in*W_in] = temp;
+      }
+    }
+  }
+
+}
