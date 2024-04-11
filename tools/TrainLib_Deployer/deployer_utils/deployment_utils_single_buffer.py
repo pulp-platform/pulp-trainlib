@@ -397,7 +397,7 @@ def GenerateNet(proj_folder_path, project_name,
             data_size = 2
         # Find if the layer needs to store in grad for weight grad computation (next layer needs it)
         save_activation = True
-        if layer > 0 and layer < (len(layers_l)-1) and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
+        if layer > 0 and layer < (len(layers_l)-1) and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
             in_size = in_ch_l[layer] * hin_l[layer] * win_l[layer] 
             save_activation = False
             use_activation_buffer = True
@@ -747,7 +747,7 @@ def GenerateNet(proj_folder_path, project_name,
         # First layer connection
         elif layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
@@ -776,7 +776,7 @@ def GenerateNet(proj_folder_path, project_name,
                     if layer >= last_updated_idx:
                         f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
                 else:
-                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0:
+                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU']:
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
@@ -790,7 +790,7 @@ def GenerateNet(proj_folder_path, project_name,
         # Hidden layers
         elif layer > 0 and layer < len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
@@ -822,7 +822,7 @@ def GenerateNet(proj_folder_path, project_name,
                     if layer >= last_updated_idx:
                         f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
                 else:
-                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0:
+                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU']:
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
@@ -843,7 +843,7 @@ def GenerateNet(proj_folder_path, project_name,
         # Last layer
         elif layer == len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] != 'Skipnode':
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
