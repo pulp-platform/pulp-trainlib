@@ -306,11 +306,14 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
                 int out_idx = wo+ho*W_out+co*H_out*W_out;
                 int in_idx = w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in;
                 temp += outDiff[out_idx] * inData[in_idx];
-                bias_temp += outDiff[out_idx];
+                if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
               }
             }
             coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
-            biasDiff[co] = bias_temp;
+
+            if (USE_BIASES == 1) {
+                biasDiff[co] = bias_temp;
+            }
           }
         }
       }
@@ -552,12 +555,15 @@ void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
                 int out_idx = wo + ho*W_out + co*H_out*W_out;
                 int in_idx = (2*wo + wk - 1) + (2*ho + hk - 1)*W_in + ci*H_in*W_in;
                 temp += outDiff[out_idx] * inData[in_idx];
-                bias_temp += outDiff[out_idx];
+                if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
               }
             }
           }
           coeffDiff[wk+hk*3+ci*9+co*9*C_in] = temp;
-          biasDiff[co] = bias_temp;
+
+          if (USE_BIASES == 1) {
+              biasDiff[co] = bias_temp;
+          }
         }
       }
     }
