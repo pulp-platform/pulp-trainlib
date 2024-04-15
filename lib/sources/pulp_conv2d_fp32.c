@@ -179,6 +179,8 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       int stride = stride_h + stride_w;
       if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
       pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else if (pH == 5 && pW == 5 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k5x5_s2_p1, &matMul_args);
       else
       #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW, &matMul_args);
@@ -390,6 +392,8 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
       int stride = stride_h + stride_w;
       if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
       pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else if (pH == 5 && pW == 5 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1, &matMul_args);
       else
       #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_param_grad_kernel_CHW, &matMul_args);
@@ -600,6 +604,8 @@ void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args )
       int stride = stride_h + stride_w;
       if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1, &matMul_args);
+      else if (pH == 5 && pW == 5 && padding == 4 && stride == 4)
+      pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1, &matMul_args);
       else
       #endif
       pi_cl_team_fork(NUM_CORES, naive_conv2d_in_grad_kernel_CHW, &matMul_args);
