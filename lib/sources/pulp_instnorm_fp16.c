@@ -15,8 +15,9 @@
  */
 
 /**
- * Authors: Giacomo Saporetti
+ * Authors: Giacomo Saporetti, Davide Nadalini
 */ 
+
 #include "pmsis.h"
 #include "pulp_train_utils_fp16.h"
 #include "pulp_instnorm_fp16.h"
@@ -48,20 +49,20 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
 
     fp16 * in_data = in->data;
     fp16 * out_data = out->data;
-    fp16 mean=0;
-    fp16 std=0;
+    fp16 mean; 
+    fp16 std; 
     fp16 var;
 
-    fp16 gamma=0;
-    fp16 b=0;
+    fp16 gamma = 0.0f; 
+    fp16 b = 0.0f;
 
-    for(int c=start; c<stop; c++)
+    for(int ch=start; ch<stop; ch++)
     {
         // Calculate Mean and Standard Deviation
-        in_data = in->data + c*D;
-        mean=0;
-        std=0;
-
+        in_data = in->data + ch*D;
+        mean=0.0f;
+        std=0.0f;
+        
         struct mean_std_args_fp16 mean_std_args;
         mean_std_args.input = in_data;
         mean_std_args.mean = &mean;
@@ -73,25 +74,16 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
         pulp_mean_std_fp16_cl(&mean_std_args);
         
         // Generate output
-        out_data = out->data + c*D;
+        out_data = out->data + ch*D;
 
-        gamma = coeff->data[c];
-        b = coeff->data[C + c];
+        gamma = coeff->data[ch];
+        b = coeff->data[C + ch];
     
-        /*struct normalize_args normalize_args; 
-        normalize_args.input = in_data;
-        normalize_args.output = out_data;
-        normalize_args.gamma = gamma;
-        normalize_args.bias = b;
-        normalize_args.mean = mean;
-        normalize_args.std = std;
-        normalize_args.dim = D;
-
-        pi_cl_team_fork(NUM_CORES, pulp_normalize_fp32_cl, &normalize_args);*/
         gamma = gamma/std;
-        for(int d=0; d<D; d++)
+        
+        for(int d=0; d<D; d++) {
             out_data[d] = gamma*(in_data[d] - mean) + b;
-
+        }
     }
 
     return;
@@ -109,65 +101,20 @@ void pulp_instnorm_parallelized_fp16_bw_input_grads_cl( void * InstNorm_args_fp1
     struct blob_fp16 * in = args->input;
     struct blob_fp16 * out = args->output;
     struct blob_fp16 * coeff = args->coeff;
-    //struct blob * bias = args->bias;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
     int W = in->W;
     int D = H*W;
 
-    fp16 epsilon = EPSILON;
-
-    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
+    int blockSize = (in->dim+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > C ? C : start+blockSize;
-    //int start =0;
-    //int stop = C;
-
-    for(int c=start; c<stop; c++)
-    {
-        fp16 * in_data = in->data + c*D;
-        fp16 * out_diff = out->diff + c*D;
-        fp16 * in_diff = in->diff + c*D;
-        fp16 mean=0;
-        fp16 std=0; 
-        fp16 var=0;
-        fp16 gamma = coeff->data[c];
-
-        mean=0;
-        std=0;
-
-        struct mean_std_args_fp16 mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
-
-        pulp_mean_std_fp16_cl(&mean_std_args);
-
-
-        for(int d=0; d<D; d++)
-        {
-            fp16 grad = 0;
-            for(int i=0; i<D; i++)
-            {
-
-                grad -= out_diff[i]*(1 + (in_data[i] - mean)*(in_data[d] - mean)/var);
-
-                //grad += out_diff[i]*(1 + N*(out_data[i])*(out_data[d])/(N - 1));
-            }
-            grad += D*out_diff[d];
-            grad = grad*gamma/(D*std);
-            //grad -= out_diff[d]*N;
-            //grad = -grad*gamma/(N*(std + epsilon));
-
-            in_diff[d] = grad;
-        }
-
+    int stop = start+blockSize > in->dim ? in->dim : start+blockSize;    
+    
+    for (int i=start; i<stop; i++) {
+        in->diff[i] = out->diff[i];
     }
-
 }
 
 void pulp_instnorm_fp16_bw_param_grads_cl( void * InstNorm_args_fp16 )
@@ -182,7 +129,6 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
     struct blob_fp16 * in = args->input;
     struct blob_fp16 * out = args->output;
     struct blob_fp16 * coeff = args->coeff;
-    //struct blob * bias = args->bias;
 
     fp16 gamma_grad = 0;
     fp16 bias_grad = 0;
