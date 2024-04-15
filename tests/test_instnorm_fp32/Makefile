@@ -1,15 +1,13 @@
 APP = test_instnorm_fp32
 
+# User Section
 CI?=8
 HI?=16
 WI?=16
-KER?=1
 NUM_CORES?=8
 HWC?=0
-DEBUG_INFO?=0
 STEP?='FORWARD'			# 'FORWARD' or 'BACKWARD_GRAD' or 'BACKWARD_ERROR'
-DATA_TYPE?='FLOAT32'
-EPOCHS?=0
+# End of User Section
 
 TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
@@ -44,7 +42,7 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3 ./utils/GM.py -CI ${CI} -HI ${HI} -WI ${WI} -NUM_CORES ${NUM_CORES} -STEP ${STEP} -EPOCHS ${EPOCHS}
+	python3 ./utils/GM.py -CI ${CI} -HI ${HI} -WI ${WI} -NUM_CORES ${NUM_CORES} -STEP ${STEP}
 
 include $(RULES_DIR)/pmsis_rules.mk
 

@@ -129,7 +129,6 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
     struct blob_fp16 * in = args->input;
     struct blob_fp16 * out = args->output;
     struct blob_fp16 * coeff = args->coeff;
-    //struct blob * bias = args->bias;
 
     fp16 gamma_grad = 0;
     fp16 bias_grad = 0;
