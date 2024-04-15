@@ -15,8 +15,9 @@
  */
 
 /**
- * Authors: Giacomo Saporetti
+ * Authors: Giacomo Saporetti, Davide Nadalini
 */ 
+
 #include "pmsis.h"
 #include "pulp_train_utils_fp32.h"
 #include "pulp_instnorm_fp32.h"
@@ -48,19 +49,17 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
 
     float * in_data = in->data;
     float * out_data = out->data;
-    float mean; //=0;
-    float std; //=0;
+    float mean; 
+    float std; 
     float var;
 
-    float gamma; //=0;
-    float b; //=0;
-    gamma = 0.0f;
-    b = 0.0f;
+    float gamma = 0.0f; 
+    float b = 0.0f;
 
-    for(int c=start; c<stop; c++)
+    for(int ch=start; ch<stop; ch++)
     {
         // Calculate Mean and Standard Deviation
-        in_data = in->data + c*D;
+        in_data = in->data + ch*D;
         mean=0.0f;
         std=0.0f;
         
@@ -75,25 +74,15 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
         pulp_mean_std_fp32_cl(&mean_std_args);
         
         // Generate output
-        out_data = out->data + c*D;
+        out_data = out->data + ch*D;
 
-        gamma = coeff->data[c];
-        b = coeff->data[C + c];
+        gamma = coeff->data[ch];
+        b = coeff->data[C + ch];
     
-        /*struct normalize_args normalize_args; 
-        normalize_args.input = in_data;
-        normalize_args.output = out_data;
-        normalize_args.gamma = gamma;
-        normalize_args.bias = b;
-        normalize_args.mean = mean;
-        normalize_args.std = std;
-        normalize_args.dim = D;
-
-        pi_cl_team_fork(NUM_CORES, pulp_normalize_fp32_cl, &normalize_args);*/
         gamma = gamma/std;
+        
         for(int d=0; d<D; d++) {
             out_data[d] = gamma*(in_data[d] - mean) + b;
-            //printf("out_data[%d] = %f\n", d, out_data[d]);
         }
     }
 
@@ -112,66 +101,20 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
     struct blob * in = args->input;
     struct blob * out = args->output;
     struct blob * coeff = args->coeff;
-    //struct blob * bias = args->bias;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
     int W = in->W;
     int D = H*W;
 
-    float epsilon = EPSILON;
-
-    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
+    int blockSize = (in->dim+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > C ? C : start+blockSize;
-    //int start =0;
-    //int stop = C;
-
-    for(int c=start; c<stop; c++)
-    {
-        float * in_data = in->data + c*D;
-        float * out_diff = out->diff + c*D;
-        float * in_diff = in->diff + c*D;
-        float mean; //=0;
-        float std; //=0; 
-        float var; //=0;
-        float gamma = coeff->data[c];
-
-        mean=0.0f;
-        std=0.0f;
-        var=0.0f;
-
-        struct mean_std_args mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
-
-        pulp_mean_std_fp32_cl(&mean_std_args);
-
-
-        for(int d=0; d<D; d++)
-        {
-            float grad = 0;
-            for(int i=0; i<D; i++)
-            {
-
-                grad -= out_diff[i]*(1 + (in_data[i] - mean)*(in_data[d] - mean)/var);
-                //grad -= out_diff[d]*(1 + (in_data[d] - mean)*(in_data[d] - mean)/var);
-                //printf("out_diff[%d] = %f, in_data[%d] = %f, in_data[%d] = %f\n",
-                //    i, out_diff[i], i, in_data[i], d, in_data[d]);
-            }
-            grad += D*out_diff[d];
-            grad = (grad*gamma)/(D*std);
-
-            in_diff[d] = grad;
-            //printf("in_diff[%d] = %f\n", d, in_diff[d]);
-        }
-
+    int stop = start+blockSize > in->dim ? in->dim : start+blockSize;    
+    
+    for (int i=start; i<stop; i++) {
+        in->diff[i] = out->diff[i];
     }
-
 }
 
 void pulp_instnorm_fp32_bw_param_grads_cl( void * InstNorm_args )
@@ -186,7 +129,6 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
     struct blob * in = args->input;
     struct blob * out = args->output;
     struct blob * coeff = args->coeff;
-    //struct blob * bias = args->bias;
 
     float gamma_grad; // = 0;
     float bias_grad; // = 0;
