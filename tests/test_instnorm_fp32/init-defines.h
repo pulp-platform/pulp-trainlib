@@ -42,4 +42,4 @@
 #define LEARNING_RATE 0.01
 #define EPOCHS 1
 #define BATCH_SIZE 1
-#define BACKWARD_GRAD
+#define BACKWARD_ERROR
