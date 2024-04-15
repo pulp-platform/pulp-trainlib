@@ -171,10 +171,12 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] Stride operators for 2D Convolutions and DepthWise (im2col + mm)
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
-- [ ] Biases for all layers
+- [ ] Biases for all layers (Conv2D, DepthWise / PointWise Convolutions, Fully-Connected)
 - [ ] Migration to graph-managed padding (TrainLib_Deployer)
 - [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
 - [ ] Sparse Update (layer-wise) in TrainLib_Deployer
+- [ ] Biases in FP32 and FP16 Conv2D (CHW, HWC) in im2col-based and naive kernels
+- [ ] Integration of biases in TrainLib-Deployer (Conv2D)
 
 # Known bugs / issues (open for contributions)
 
@@ -197,6 +199,7 @@ PULP-TrainLib's repository is organized with these branches:
 - Francesco Conti (f.conti@unibo.it)
 - Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
 - Luca Bompani (luca.bompani5@unibo.it)
+- Calin Diaconu (calin.diaconu@studio.unibo.it)
 
 ## Past Contributors
 
