@@ -37,6 +37,11 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
     struct blob_fp16 * in = IN_args->input;
     struct blob_fp16 * out = IN_args->output;
     struct blob_fp16 * coeff = IN_args->coeff;
+
+	fp16 * running_mean = IN_args->running_mean;
+	fp16 * running_stdev = IN_args->running_stdev;
+	int freeze_running_params = IN_args->freeze_running_params;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
@@ -60,18 +65,29 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
     {
         // Calculate Mean and Standard Deviation
         in_data = in->data + ch*D;
-        mean=0.0f;
-        std=0.0f;
-        
-        struct mean_std_args_fp16 mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
 
-        pulp_mean_std_fp16_cl(&mean_std_args);
+        if (freeze_running_params == 0) {
+            mean=0.0f;
+            var=0.0f;
+            std=0.0f;
+            
+            struct mean_std_args_fp16 mean_std_args;
+            mean_std_args.input = in_data;
+            mean_std_args.mean = &mean;
+            mean_std_args.std = &std;
+            mean_std_args.var = &var;
+            mean_std_args.dim = D;
+            mean_std_args.epsilon = EPSILON; 
+
+            pulp_mean_std_fp16_cl(&mean_std_args);
+
+            running_mean[ch] = mean;
+            running_stdev[ch] = std;
+        }
+        else {
+            mean = running_mean[ch];
+            std = running_stdev[ch];
+        }
         
         // Generate output
         out_data = out->data + ch*D;
@@ -130,6 +146,10 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
     struct blob_fp16 * out = args->output;
     struct blob_fp16 * coeff = args->coeff;
 
+	fp16 * running_mean = args->running_mean;
+	fp16 * running_stdev = args->running_stdev;
+	int freeze_running_params = args->freeze_running_params;
+
     fp16 gamma_grad = 0;
     fp16 bias_grad = 0;
 
@@ -158,18 +178,8 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
         out_diff = out->diff + c*D;
         in_diff = in->diff + c*D;
 
-        mean=0;
-        std=0;
-
-        struct mean_std_args_fp16 mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
-
-        pulp_mean_std_fp16_cl(&mean_std_args);
+        mean = running_mean[c];
+        std = running_stdev[c];
 
         gamma_grad = 0;
         bias_grad = 0;

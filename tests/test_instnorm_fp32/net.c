@@ -38,6 +38,10 @@ PI_L1 float l1_out[Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
 PI_L1 float l1_in_diff[Tin_C_l1 * Tin_H_l1 * Tin_W_l1];
 PI_L1 float l1_out_diff[Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
 
+// Define running params arrays
+PI_L1 float running_mean[Tin_C_l1];
+PI_L1 float running_stdev[Tin_C_l1];
+
 // Loss function configuration structure
 PI_L1 struct loss_args loss_args;
 
@@ -82,6 +86,9 @@ void DNN_init()
   l1_args.input = &layer1_in;
   l1_args.coeff = &layer1_wgt;
   l1_args.output = &layer1_out;
+  l1_args.running_mean = running_mean;
+  l1_args.running_stdev = running_stdev;
+  l1_args.freeze_running_params = 0;
   l1_args.skip_wg_grad = 0;
   l1_args.skip_in_grad = 0;
 }

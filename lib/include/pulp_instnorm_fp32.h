@@ -24,15 +24,13 @@
  */
 
 /**
- * @brief small number used to avoid division by zero 
- */ 
-#define EPSILON 1e-10
-
-/**
  * @brief Structure for Instance Norm Training in FP32
  * @param input input feauture maps for the depthwise layer
  * @param output output feature maps for the depthwise layer
  * @param coeff coefficients to compute normalization, bias are included
+ * @param running_mean array of running means computed during the forward step
+ * @param running_stdev array of running standard deviations computed during the forward step
+ * @param freeze_running_params if 1, freezes running mean and variance
  * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  */
@@ -40,6 +38,9 @@ struct InstNorm_args {
 	struct blob * input;
 	struct blob * output; 
 	struct blob * coeff;
+	float * running_mean;
+	float * running_stdev;
+	int freeze_running_params;
 	int skip_wg_grad;
 	int skip_in_grad;
 };
