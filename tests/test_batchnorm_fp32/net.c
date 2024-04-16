@@ -22,7 +22,7 @@ PI_L1 float loss = 0;
 PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
 
 // Define DNN layer structures
-PI_L1 struct InstNorm_args l1_args;
+PI_L1 struct BatchNorm_args l1_args;
 
 // Define kernel tensors
 PI_L1 float l1_ker[2*Tin_C_l1];
@@ -31,12 +31,12 @@ PI_L1 float l1_ker[2*Tin_C_l1];
 PI_L1 float l1_ker_diff[2*Tin_C_l1];
 
 // Define I/O tensors
-PI_L1 float l1_in[Tin_C_l1 * Tin_H_l1 * Tin_W_l1];
-PI_L1 float l1_out[Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
+PI_L1 float l1_in[BATCH_SIZE*Tin_C_l1 * Tin_H_l1 * Tin_W_l1];
+PI_L1 float l1_out[BATCH_SIZE*Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
 
 // Define error propagation tensors
-PI_L1 float l1_in_diff[Tin_C_l1 * Tin_H_l1 * Tin_W_l1];
-PI_L1 float l1_out_diff[Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
+PI_L1 float l1_in_diff[BATCH_SIZE*Tin_C_l1 * Tin_H_l1 * Tin_W_l1];
+PI_L1 float l1_out_diff[BATCH_SIZE*Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
 
 // Define running params arrays
 PI_L1 float running_mean[Tin_C_l1];
@@ -56,16 +56,16 @@ PI_L1 struct loss_args loss_args;
 void DNN_init()
 {
   // Layer 1
-  for(int i=0; i<Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)			l1_in[i] = INPUT[i];
+  for(int i=0; i<BATCH_SIZE*Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)			l1_in[i] = INPUT[i];
   for(int i=0; i<2*Tin_C_l1; i++)		                  l1_ker[i] = init_WGT_l1[i];
 
   // Connect tensors to blobs
 
-//Connecting InstNorm
+//Connecting BNorm
   // Layer 1
   layer1_in.data = l1_in;
   layer1_in.diff = l1_in_diff;
-  layer1_in.dim = Tin_C_l1*Tin_H_l1*Tin_W_l1;
+  layer1_in.dim = BATCH_SIZE*Tin_C_l1*Tin_H_l1*Tin_W_l1;
   layer1_in.C = Tin_C_l1;
   layer1_in.H = Tin_H_l1;
   layer1_in.W = Tin_W_l1;
@@ -77,7 +77,7 @@ void DNN_init()
   layer1_wgt.W = Tker_W_l1;
   layer1_out.data = l1_out;
   layer1_out.diff = l1_out_diff;
-  layer1_out.dim = Tout_C_l1*Tout_H_l1*Tout_W_l1;
+  layer1_out.dim = BATCH_SIZE*Tout_C_l1*Tout_H_l1*Tout_W_l1;
   layer1_out.C = Tout_C_l1;
   layer1_out.H = Tout_H_l1;
   layer1_out.W = Tout_W_l1;
@@ -87,6 +87,7 @@ void DNN_init()
   l1_args.input = &layer1_in;
   l1_args.coeff = &layer1_wgt;
   l1_args.output = &layer1_out;
+  l1_args.batch_size = BATCH_SIZE;
   l1_args.running_mean = running_mean;
   l1_args.running_var = running_var;
   l1_args.running_stdev = running_stdev;
@@ -99,7 +100,7 @@ void DNN_init()
 // Forward pass function
 void forward()
 {
-  pulp_instnorm_fp32_fw_cl(&l1_args);
+  pulp_batchnorm_fp32_fw_cl(&l1_args);
 }
 
 void forward_print()
@@ -108,7 +109,7 @@ void forward_print()
   printf("\nForward Stats:\n");
   START_STATS();
   #endif
-  pulp_instnorm_fp32_fw_cl(&l1_args);
+  pulp_batchnorm_fp32_fw_cl(&l1_args);
   #ifdef PROF_NET
   STOP_STATS();
   #endif
@@ -121,8 +122,8 @@ void backward()
   loss_args.target = LABEL;
   loss_args.wr_loss = &loss;
   pulp_MSELoss_backward(&loss_args);
-  pulp_instnorm_fp32_bw_param_grads_cl(&l1_args);
-  pulp_instnorm_fp32_bw_input_grads_cl(&l1_args);
+  pulp_batchnorm_fp32_bw_param_grads_cl(&l1_args);
+  pulp_batchnorm_fp32_bw_input_grads_cl(&l1_args);
 }
 
 void backward_print()
@@ -135,18 +136,18 @@ void backward_print()
   #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   printf("\nBackward Stats:\n");
   START_STATS();
-  //#endif
-  pulp_instnorm_fp32_bw_param_grads_cl(&l1_args);
-  //#if defined(PROF_NET) && defined(BACKWARD_GRAD)
+  #endif
+  pulp_batchnorm_fp32_bw_param_grads_cl(&l1_args);
+  #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   STOP_STATS();
   #endif
 
   #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   printf("\nBackward Stats:\n");
   START_STATS();
-  //#endif
-  pulp_instnorm_fp32_bw_input_grads_cl(&l1_args);
-  //#if defined(PROF_NET) && defined(BACKWARD_ERROR)
+  #endif
+  pulp_batchnorm_fp32_bw_input_grads_cl(&l1_args);
+  #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   STOP_STATS();
   #endif
 }
@@ -170,7 +171,7 @@ void print_output()
 {
   #ifdef FORWARD
   printf("\nLayer 1 output:\n");
-  for (int i=0; i<Tout_C_l1*Tout_H_l1*Tout_W_l1; i++)
+  for (int i=0; i<BATCH_SIZE*Tout_C_l1*Tout_H_l1*Tout_W_l1; i++)
   {
     printf("%f ", l1_out[i]);
     if(!(i%Tout_W_l1*Tout_H_l1)) printf("\n");
@@ -188,7 +189,7 @@ void print_output()
 
   #ifdef BACKWARD_ERROR
   printf("\nLayer 1 in diff:\n");
-  for (int i=0; i<Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)
+  for (int i=0; i<BATCH_SIZE*Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)
   {
     printf("%f ", l1_in_diff[i]);
     if(!(i%Tin_W_l1*Tin_H_l1)) printf("\n");
@@ -200,19 +201,19 @@ void print_output()
 void check_post_training_output()
 {
   int integrity_check = 0;
-  integrity_check = verify_tensor(l1_out, REFERENCE_OUTPUT, Tout_C_l1*Tout_H_l1*Tout_W_l1, TOLERANCE);
+  integrity_check = verify_tensor(l1_out, REFERENCE_OUTPUT, BATCH_SIZE*Tout_C_l1*Tout_H_l1*Tout_W_l1, TOLERANCE);
   if (integrity_check > 0)
     printf("\n*** UPDATED OUTPUT NOT MATCHING GOLDEN MODEL ***\n");
 }
 
 // Checks forward, weight and input grads of the InstanceNorm
-void check_instancenorm() 
+void check_batchnorm() 
 {
   int integrity_check = 0;
   #ifdef BACKWARD_ERROR
-  integrity_check = verify_tensor(l1_in_diff, INSTN_IN_GRAD, Tin_C_l1*Tin_H_l1*Tin_W_l1, TOLERANCE);
+  integrity_check = verify_tensor(l1_in_diff, BN_IN_GRAD, BATCH_SIZE*Tin_C_l1*Tin_H_l1*Tin_W_l1, TOLERANCE);
   #elif defined(BACKWARD_GRAD)
-  integrity_check = verify_tensor(l1_ker_diff, INSTN_WGT_GRAD, 2*Tin_C_l1, TOLERANCE);
+  integrity_check = verify_tensor(l1_ker_diff, BN_WGT_GRAD, 2*Tin_C_l1, TOLERANCE);
   #endif
 }
 
@@ -228,7 +229,7 @@ void net_step()
  
   printf("Initializing network..\n");
   DNN_init();
-  printf("Initializing Instance Normalization test\n");
+  printf("Initializing Batch Normalization test\n");
   forward();
   compute_loss();
 
@@ -253,12 +254,12 @@ void net_step()
   #endif
 
   // Check and print updated output
-  forward();
+  //forward();
   printf("Checking updated output..\n");
   #ifdef FORWARD
   check_post_training_output();
   #else
-  check_instancenorm();
+  check_batchnorm();
   #endif
   print_output();
 }

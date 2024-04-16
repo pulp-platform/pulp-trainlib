@@ -39,6 +39,7 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
     struct blob * coeff = IN_args->coeff;
 
 	float * running_mean = IN_args->running_mean;
+    float * running_var = IN_args->running_var;
 	float * running_stdev = IN_args->running_stdev;
 	int freeze_running_params = IN_args->freeze_running_params;
 
@@ -82,10 +83,12 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
             pulp_mean_std_fp32_cl(&mean_std_args);
 
             running_mean[ch] = mean;
+            running_var[ch] = var;
             running_stdev[ch] = std;
         }
         else {
             mean = running_mean[ch];
+            var = running_var[ch];
             std = running_stdev[ch];
         }
         
@@ -118,19 +121,60 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
     struct blob * out = args->output;
     struct blob * coeff = args->coeff;
 
+	float * running_mean = args->running_mean;
+    float * running_var = args->running_var;
+	float * running_stdev = args->running_stdev;
+	int freeze_running_params = args->freeze_running_params;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
     int W = in->W;
     int D = H*W;
 
-    int blockSize = (in->dim+NUM_CORES-1) / NUM_CORES;
+    float * gamma = coeff->data;
+    float * beta = coeff->data + C;
+    float * x = in->data;  
+
+    // NEW IMPLEMENTATION -> https://arxiv.org/pdf/1502.03167.pdf 
+    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > in->dim ? in->dim : start+blockSize;    
+    int stop = start+blockSize > C ? C : start+blockSize;      
     
-    for (int i=start; i<stop; i++) {
-        in->diff[i] = out->diff[i];
+    for (int ch=0; ch<C; ch++) {
+        
+        float dvar  = 0;
+        float dmean = 0;
+        float temp = 0;
+
+        // Compute drunning_variance
+        for (int i=0; i<D; i++) {
+            float xi    = in->data[ch*D + i];
+            float dyi   = out->diff[ch*D + i];
+            float dxih  = dyi * gamma[ch];
+            dvar       += -0.5 * dxih * (xi - running_mean[ch]) * powf(running_var[ch], (-3/2)); 
+        }
+
+        // Compute drunning_mean
+        for (int i=0; i<D; i++) {
+            float xi    = in->data[ch*D + i];
+            float dyi   = out->diff[ch*D + i];
+            float dxih  = dyi * gamma[ch];
+            dmean      += dxih * (-1) / (running_stdev[ch]) + dvar * (1/D) * 2 * (xi - running_mean[ch]);
+        }
+
+        //printf("[ch=%d] dvar = %f, dmean = %f\n", ch, dvar, dmean);
+
+        // Compute in grad
+        for (int i=0; i<D; i++) {
+            float xi            = in->data[ch*D + i];
+            float dyi           = out->diff[ch*D + i];
+            float dxih          = dyi * gamma[ch];           
+            in->diff[ch*D + i]  = dxih * (1 / running_stdev[ch]) + dvar * (2/D) * (xi - running_mean[ch]) + dmean * (1/D);  
+        }
+
     }
+
 }
 
 void pulp_instnorm_fp32_bw_param_grads_cl( void * InstNorm_args )

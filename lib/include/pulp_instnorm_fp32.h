@@ -29,6 +29,7 @@
  * @param output output feature maps for the depthwise layer
  * @param coeff coefficients to compute normalization, bias are included
  * @param running_mean array of running means computed during the forward step
+ * @param running_var array of running variances computed during the forward step
  * @param running_stdev array of running standard deviations computed during the forward step
  * @param freeze_running_params if 1, freezes running mean and variance
  * @param skip_wg_grad skips the computation of the weight grad
@@ -39,6 +40,7 @@ struct InstNorm_args {
 	struct blob * output; 
 	struct blob * coeff;
 	float * running_mean;
+	float * running_var;
 	float * running_stdev;
 	int freeze_running_params;
 	int skip_wg_grad;
@@ -46,41 +48,41 @@ struct InstNorm_args {
 };
 
 /**
- * @brief Dummy forward function that calls the parallelized version
+ * @brief Forward function that calls the parallelized version
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_fp32_fw_cl( void * InstNorm_args );
 
 /**
- * @brief Backward function that calls both input and param gradient functions
+ * @brief Function that calls both input and param gradient functions
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_fp32_bw_cl( void * InstNorm_args );
 
 /**
- * @brief Dummy backward param gradient function that calls the parallelized version
+ * @brief Backward param gradient function that calls the parallelized version
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_fp32_bw_param_grads_cl( void * InstNorm_args );
 
 /**
- * @brief Dummy backward input gradient function that calls the parallelized version
+ * @brief Backward input gradient function that calls the parallelized version
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_fp32_bw_input_grads_cl( void * InstNorm_args );
 
 /**
- * @brief Real forward function parallelized on multicore
+ * @brief Forward backend function parallelized on multicore
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args );
 /**
- * @brief Real bacward function for input gradients parallelized on multicore
+ * @brief Backward backend function for input gradients parallelized on multicore
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args );
 /**
- * @brief Real bacward function for parameters gradients parallelized on multicore
+ * @brief Backward backend function for parameters gradients parallelized on multicore
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args );

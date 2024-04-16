@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-CI", type=int, default=2)
 parser.add_argument("-HI", type=int, default=3)
 parser.add_argument("-WI", type=int, default=4)
+parser.add_argument("-BATCH_SIZE", type=int, default=8)
 parser.add_argument("-STEP", type=str, default='FORWARD')
 parser.add_argument("-NUM_CORES", type=int, default=1)
 parser.add_argument("-HWC", type=int, default=0)
@@ -24,14 +25,15 @@ args = parser.parse_args()
 CI = args.CI
 HI = args.HI
 WI = args.WI
- 
+BATCH_SIZE = args.BATCH_SIZE 
+
 HWC = args.HWC
 STEP = args.STEP
 NUM_CORES = args.NUM_CORES
 
-test_data = 100*torch.rand(CI, HI, WI)
+test_data = 100*torch.rand(BATCH_SIZE, CI, HI, WI)
 test_data.requires_grad = True
-test_labels = torch.rand(CI, HI, WI)
+test_labels = torch.rand(BATCH_SIZE, CI, HI, WI)
 
 # LAYER 1 SIZES
 l1_in_ch = CI
@@ -63,11 +65,12 @@ f.close()
 
 f = open('init-defines.h', 'a')
 f.write(f'#define {STEP}\n')
+f.write(f'// Batch size\n#define BATCH_SIZE {BATCH_SIZE}\n')
 f.close()
 
 
 # Simple input data 
-inp = torch.torch.div(torch.randint(1000, [1, l1_in_ch, l1_hin, l1_win]), 1000)
+inp = torch.torch.div(torch.randint(1000, [BATCH_SIZE, l1_in_ch, l1_hin, l1_win]), 1000)
 inp.requires_grad = True
 
 # def hook_fn(m, i, o):
@@ -78,8 +81,8 @@ inp.requires_grad = True
 # 		try:
 # 			print(grad.shape)
 # 			f = open('io_data.h', 'a')
-# 			f.write('#define INSTN_IN_G_SIZE '+str(grad.numel())+'\n')
-# 			f.write('PI_L2 float INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(grad)+'};\n')
+# 			f.write('#define BN_IN_G_SIZE '+str(grad.numel())+'\n')
+# 			f.write('PI_L2 float BN_IN_GRAD[BN_IN_G_SIZE] = {'+dump.tensor_to_string(grad)+'};\n')
 # 			f.close()
 
 # 		except AttributeError: 
@@ -97,7 +100,7 @@ inp.requires_grad = True
 class DNN(nn.Module):
 	def __init__(self):
 		super().__init__()
-		self.l1= nn.InstanceNorm2d(num_features=CI, eps=1e-10, momentum=0, affine=True)
+		self.l1= nn.BatchNorm2d(num_features=CI, eps=1e-10, momentum=0, affine=True)
 
 	def forward(self, x):
 		x1 = self.l1(x)
@@ -109,7 +112,7 @@ for p in net.parameters():
 	nn.init.normal_(p, mean=0.0, std=1.0)
 net.zero_grad()
 
-#net.l1.register_backward_hook(hook_fn)
+# net.l1.register_backward_hook(hook_fn)
 
 
 # All-ones fake label 
@@ -129,17 +132,17 @@ loss = loss_fn(out, label)
 loss.backward()
 # Print data to golden model's file
 f = open('io_data.h', 'a')
-f.write('#define INSTN_WGT_G_SIZE 2*'+str(net.l1.weight.data.numel())+'\n')
-f.write('PI_L2 float INSTN_WGT_GRAD[INSTN_WGT_G_SIZE] = {'+dump.tensor_to_string(net.l1.weight.grad)+dump.tensor_to_string(net.l1.bias.grad)+'};\n')
+f.write('#define BN_WGT_G_SIZE 2*'+str(net.l1.weight.data.numel())+'\n')
+f.write('PI_L2 float BN_WGT_GRAD[BN_WGT_G_SIZE] = {'+dump.tensor_to_string(net.l1.weight.grad)+dump.tensor_to_string(net.l1.bias.grad)+'};\n')
 f.close()
 
 f = open('io_data.h', 'a')
 f.write('// Input and Output data\n')
-f.write(f'#define IN_SIZE {CI*HI*WI}\n')
+f.write(f'#define IN_SIZE {BATCH_SIZE}*{CI*HI*WI}\n')
 f.write('PI_L1 float INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
-f.write('#define INSTN_IN_G_SIZE '+str(inp.grad.numel())+'\n')
-f.write('PI_L2 float INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(inp.grad)+'};\n')
-f.write(f'#define OUT_SIZE {CI*HI*WI}\n')
+f.write('#define BN_IN_G_SIZE '+str(inp.grad.numel())+'\n')
+f.write('PI_L2 float BN_IN_GRAD[BN_IN_G_SIZE] = {'+dump.tensor_to_string(inp.grad)+'};\n')
+f.write(f'#define OUT_SIZE {BATCH_SIZE}*{CI*HI*WI}\n')
 f.write('PI_L2 float REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\n')
 f.write('PI_L1 float LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\n')
 f.close()
