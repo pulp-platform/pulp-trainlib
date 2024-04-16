@@ -98,3 +98,27 @@ void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1_fp16 (
 void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1_fp16 (
     void * matMul_args
 );
+
+/**
+ * @brief Naive conv2d kernel for forward propagation (CHW format), optimized for the case of 5x5 kernel with stride 2 and padding 1 on all sides
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1_fp16 (
+    void * matMul_args
+);
+
+/**
+ * @brief Naive conv2d kernel for the computation of the weight gradient (CHW format), optimized for the case of 5x5 kernel with stride 2 and padding 1 on all sides
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1_fp16 (
+    void * matMul_args
+);
+
+/**
+ * @brief Naive conv2d kernel for the computation of the input gradient (CHW format), optimized for the case of 5x5 kernel with stride 2 and padding 1 on all sides
+ * @param matMul_args pointer to a matMul_args structure  
+ */
+void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1_fp16 (
+    void * matMul_args
+);
