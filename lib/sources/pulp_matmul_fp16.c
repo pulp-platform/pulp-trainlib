@@ -723,7 +723,389 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (void * void_args)
   }
 }
 
+void mm_fp16_unroll_8x1 (void * void_args)
+{
 
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
+  fp16 * __restrict__ A = args->A;
+  fp16 * __restrict__ B = args->B;
+  fp16 * __restrict__ C = args->C;
+
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+
+  uint32_t transp = args->trans_B;
+  uint32_t N_par = N & 0xfffffff8;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
+
+  // Check if sizes are smaller than the unrolling, and take countermeasures
+  if ((N_par/NUM_CORES) < 8) { mm_fp16_unroll_4x1(args); }
+  else
+  {  
+    // =====> B NOT TRANSPOSED <=====
+    if (transp==0) 
+    {
+      for (uint32_t i=start; i<stop; i=i+8)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+          fp16 temp2 = 0;
+          fp16 temp3 = 0;
+          fp16 temp4 = 0;
+          fp16 temp5 = 0;
+          fp16 temp6 = 0;
+          fp16 temp7 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k*M+j];
+            temp0     += A[idx]     * Bsh;
+            temp1     += A[idx+K]   * Bsh;
+            temp2     += A[idx+2*K] * Bsh;
+            temp3     += A[idx+3*K] * Bsh;
+            temp4     += A[idx+4*K] * Bsh;
+            temp5     += A[idx+5*K] * Bsh;
+            temp6     += A[idx+6*K] * Bsh;
+            temp7     += A[idx+7*K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+          C[(i+2)*M+j]  = temp2;
+          C[(i+3)*M+j]  = temp3;
+          C[(i+4)*M+j]  = temp4;
+          C[(i+5)*M+j]  = temp5;
+          C[(i+6)*M+j]  = temp6;
+          C[(i+7)*M+j]  = temp7;
+        }
+      }
+      // Leftover on N (parallel on M)
+      if (N_left > 0)
+      {
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
+
+        for (uint32_t j=j_start; j<j_stop; j++)
+        {
+          for (uint32_t i=(N-N_left); i<N; i++)
+          {
+            fp16 temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              temp += A[i*K+k] * B[k*M+j];
+            }
+            C[i*M+j] = temp;
+          }
+        }
+      }
+    }
+
+    // =====> B IS TRANSPOSED <=====
+    else 
+    {
+      for (uint32_t i=start; i<stop; i=i+8)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+          fp16 temp2 = 0;
+          fp16 temp3 = 0;
+          fp16 temp4 = 0;
+          fp16 temp5 = 0;
+          fp16 temp6 = 0;
+          fp16 temp7 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k+j*K];
+            temp0     += A[idx]     * Bsh;
+            temp1     += A[idx+K]   * Bsh;
+            temp2     += A[idx+2*K] * Bsh;
+            temp3     += A[idx+3*K] * Bsh;
+            temp4     += A[idx+4*K] * Bsh;
+            temp5     += A[idx+5*K] * Bsh;
+            temp6     += A[idx+6*K] * Bsh;
+            temp7     += A[idx+7*K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+          C[(i+2)*M+j]  = temp2;
+          C[(i+3)*M+j]  = temp3;
+          C[(i+4)*M+j]  = temp4;
+          C[(i+5)*M+j]  = temp5;
+          C[(i+6)*M+j]  = temp6;
+          C[(i+7)*M+j]  = temp7;
+        }
+      }
+      // Leftover on N (parallel on M)
+      if (N_left > 0)
+      {
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
+
+        for (uint32_t j=j_start; j<j_stop; j++)
+        {
+          for (uint32_t i=(N-N_left); i<N; i++)
+          {
+            fp16 temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              temp += A[i*K+k] * B[k+j*K];
+            }
+            C[i*M+j] = temp;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+void mm_fp16_unroll_4x1 (void * void_args)
+{
+
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
+  fp16 * __restrict__ A = args->A;
+  fp16 * __restrict__ B = args->B;
+  fp16 * __restrict__ C = args->C;
+
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+
+  uint32_t transp = args->trans_B;
+  uint32_t N_par = N & 0xfffffffc;
+  uint32_t N_left = N - N_par;
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N_par+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N_par ? N_par : start+blockSize;
+
+  // Check if sizes are smaller than the unrolling, and take countermeasures
+  if ((N_par/NUM_CORES) < 4) { mm_fp16_unroll_2x1(args); }
+  else
+  {  
+    // =====> B NOT TRANSPOSED <=====
+    if (transp==0) 
+    {
+      for (uint32_t i=start; i<stop; i=i+4)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+          fp16 temp2 = 0;
+          fp16 temp3 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k*M+j];
+            temp0     += A[idx]     * Bsh;
+            temp1     += A[idx+K]   * Bsh;
+            temp2     += A[idx+2*K] * Bsh;
+            temp3     += A[idx+3*K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+          C[(i+2)*M+j]  = temp2;
+          C[(i+3)*M+j]  = temp3;
+        }
+      }
+      // Leftover on N (parallel on M)
+      if (N_left > 0)
+      {
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
+
+        for (uint32_t j=j_start; j<j_stop; j++)
+        {
+          for (uint32_t i=(N-N_left); i<N; i++)
+          {
+            fp16 temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              temp += A[i*K+k] * B[k*M+j];
+            }
+            C[i*M+j] = temp;
+          }
+        }
+      }
+    }
+
+    // =====> B IS TRANSPOSED <=====
+    else 
+    {
+      for (uint32_t i=start; i<stop; i=i+4)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+          fp16 temp2 = 0;
+          fp16 temp3 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k+j*K];
+            temp0 += A[idx]     * Bsh;
+            temp1 += A[idx+K]   * Bsh;
+            temp2 += A[idx+2*K] * Bsh;
+            temp3 += A[idx+3*K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+          C[(i+2)*M+j]  = temp2;
+          C[(i+3)*M+j]  = temp3;
+        }
+      }
+      // Leftover on N (parallel on M)
+      if (N_left > 0)
+      {
+        uint32_t j_block = (M+NUM_CORES-1) / NUM_CORES;
+        uint32_t j_start = core_id*j_block;
+        uint32_t j_stop = j_start+j_block > M ? M : j_start+j_block;       
+
+        for (uint32_t j=j_start; j<j_stop; j++)
+        {
+          for (uint32_t i=(N-N_left); i<N; i++)
+          {
+            float temp = 0;
+            for (uint32_t k=0; k<K; k++)
+            {
+              temp += A[i*K+k] * B[k+j*K];
+            }
+            C[i*M+j] = temp;
+          }
+        }
+      }
+    }
+  }
+}
+
+void mm_fp16_unroll_2x1 (void * void_args)
+{
+
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
+  fp16 * __restrict__ A = args->A;
+  fp16 * __restrict__ B = args->B;
+  fp16 * __restrict__ C = args->C;
+
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+  uint32_t transp = args->trans_B;
+
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  blockSize = stop - start;
+  uint32_t blockSize_par = blockSize & 0xfffffffe;
+  uint32_t blockSize_left = blockSize - blockSize_par;
+
+  // Check if sizes are smaller than the unrolling, and take countermeasures
+  if ((N/NUM_CORES) < 2) { mm_fp16(args); }
+  else
+  {  
+    // =====> B NOT TRANSPOSED <=====
+    if (transp==0) 
+    {
+      uint32_t i;
+      for (i=start; i<stop-1; i=i+2)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k*M+j];
+            temp0     += A[idx]   * Bsh;
+            temp1     += A[idx+K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+        }
+      }
+      // Leftover in block
+      if (blockSize_left > 0)
+      {
+        for(uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k*M+j];
+            temp0     += A[idx]   * Bsh;
+          }
+          C[i*M+j]      = temp0;
+        }
+      }
+    }
+
+    // =====> B IS TRANSPOSED <=====
+    else 
+    {
+      uint32_t i;
+      for (i=start; i<stop-1; i=i+2)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+          fp16 temp1 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k+j*K];
+            temp0     += A[idx]   * Bsh;
+            temp1     += A[idx+K] * Bsh;
+          }
+          C[i*M+j]      = temp0;
+          C[(i+1)*M+j]  = temp1;
+        }
+      }
+      // Leftover in block
+      if (blockSize_left > 0)
+      {
+        for (uint32_t j=0; j<M; j++)
+        {
+          fp16 temp0 = 0;
+
+          for (uint32_t k=0; k<K; k++)
+          {
+            uint32_t idx   = i*K+k;
+            fp16 Bsh = B[k+j*K];
+            temp0     += A[idx]   * Bsh;
+          }
+          C[i*M+j]      = temp0;
+        }
+      }
+    }
+  }
+}
 
 
 

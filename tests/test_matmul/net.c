@@ -302,6 +302,30 @@ static inline void multiply ()
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);
 
+    printf("\n-----> Profiling mm_fp16_unroll_8x1:\n");
+    START_STATS();
+    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_8x1, &mm_args);
+    STOP_STATS();
+    check_tensor(result, C, IN_CH*OUT_CH);
+    compare_tensors(result, C, IN_CH*OUT_CH);
+    null_tensor(result, IN_CH*OUT_CH);
+
+    printf("\n-----> Profiling mm_fp16_unroll_4x1:\n");
+    START_STATS();
+    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_4x1, &mm_args);
+    STOP_STATS();
+    check_tensor(result, C, IN_CH*OUT_CH);
+    compare_tensors(result, C, IN_CH*OUT_CH);
+    null_tensor(result, IN_CH*OUT_CH);
+
+    printf("\n-----> Profiling mm_fp16_unroll_2x1:\n");
+    START_STATS();
+    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_2x1, &mm_args);
+    STOP_STATS();
+    check_tensor(result, C, IN_CH*OUT_CH);
+    compare_tensors(result, C, IN_CH*OUT_CH);
+    null_tensor(result, IN_CH*OUT_CH);
+
     printf("\n-----> Profiling mm_M_fp16:\n");
     START_STATS();
     pi_cl_team_fork(NUM_CORES, mm_M_fp16, &mm_args);
