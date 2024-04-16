@@ -524,6 +524,8 @@ void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
 
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
   const uint32_t C_in = args->pCin;
@@ -667,6 +669,8 @@ void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
