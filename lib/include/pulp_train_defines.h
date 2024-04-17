@@ -18,6 +18,8 @@
  * Authors: Davide Nadalini, Leonardo Ravaglia
 */ 
 
+#ifndef GLOBAL_TRAINLIB_DEFINES
+#define GLOBAL_TRAINLIB_DEFINES
 
 /**
  * =====> GLOBAL DEFINES <=====
@@ -27,7 +29,7 @@
  * @defgroup Data formats
  * @{
  */
-typedef float16alt fp16;                                    // Standard IEEE FP16 format
+typedef float16alt fp16;                                    // FP16 format (float16 or float16alt)
 typedef fp16 v2f16 __attribute__((vector_size (4)));        // Vectorized fp16 for SIMD
 /**
  * @}
@@ -85,4 +87,16 @@ typedef fp16 v2f16 __attribute__((vector_size (4)));        // Vectorized fp16 f
 #define GIST_C  8388608
 #define GIST_D  2139095040  
 
+
+/**
+ * Constants for Normalization Layers
+*/
+
+/**
+ * @brief small number used to avoid division by zero 
+ */ 
+#define EPSILON 1e-10
+
+
+#endif
     

@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Giacomo Saporetti, Davide Nadalini
+ * Authors: Giacomo Saporetti, Davide Nadalini, Luca Bompani
 */ 
 
 #include "pmsis.h"
@@ -37,6 +37,12 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
     struct blob * in = IN_args->input;
     struct blob * out = IN_args->output;
     struct blob * coeff = IN_args->coeff;
+
+	float * running_mean = IN_args->running_mean;
+    float * running_var = IN_args->running_var;
+	float * running_stdev = IN_args->running_stdev;
+	int freeze_running_params = IN_args->freeze_running_params;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
@@ -60,18 +66,31 @@ void pulp_instnorm_parallelized_fp32_fw_cl( void * InstNorm_args )
     {
         // Calculate Mean and Standard Deviation
         in_data = in->data + ch*D;
-        mean=0.0f;
-        std=0.0f;
         
-        struct mean_std_args mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
+        if (freeze_running_params == 0) {
+            mean=0.0f;
+            var=0.0f;
+            std=0.0f;
+        
+            struct mean_std_args mean_std_args;
+            mean_std_args.input = in_data;
+            mean_std_args.mean = &mean;
+            mean_std_args.std = &std;
+            mean_std_args.var = &var;
+            mean_std_args.dim = D;
+            mean_std_args.epsilon = EPSILON; 
 
-        pulp_mean_std_fp32_cl(&mean_std_args);
+            pulp_mean_std_fp32_cl(&mean_std_args);
+
+            running_mean[ch] = mean;
+            running_var[ch] = var;
+            running_stdev[ch] = std;
+        }
+        else {
+            mean = running_mean[ch];
+            var = running_var[ch];
+            std = running_stdev[ch];
+        }
         
         // Generate output
         out_data = out->data + ch*D;
@@ -102,18 +121,49 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
     struct blob * out = args->output;
     struct blob * coeff = args->coeff;
 
+	float * running_mean = args->running_mean;
+    float * running_var = args->running_var;
+	float * running_stdev = args->running_stdev;
+	int freeze_running_params = args->freeze_running_params;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
     int W = in->W;
     int D = H*W;
 
-    int blockSize = (in->dim+NUM_CORES-1) / NUM_CORES;
+    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > in->dim ? in->dim : start+blockSize;    
-    
-    for (int i=start; i<stop; i++) {
-        in->diff[i] = out->diff[i];
+    int stop = start+blockSize > C ? C : start+blockSize;
+
+    for (int c=start; c<stop; c++)
+    {
+        float * in_data  = in->data  + c*D;
+        float * out_diff = out->diff + c*D;
+        float * in_diff  = in->diff  + c*D;
+        float mean; 
+        float std;  
+        float var; 
+        float gamma = coeff->data[c];
+
+        mean = running_mean[c];
+        std  = running_stdev[c];
+        var  = running_var[c];        
+
+        for (int d=0; d<D; d++)
+        {
+            float grad = 0;
+            float mean_d = (in_data[d] - mean) / var;
+
+            for (int i=0; i<D; i++)
+            {
+                grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
+            }
+            grad += D*out_diff[d];
+            grad = grad*gamma/(D*std);
+
+            in_diff[d] = grad;
+        }
     }
 }
 
@@ -130,10 +180,12 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
     struct blob * out = args->output;
     struct blob * coeff = args->coeff;
 
-    float gamma_grad; // = 0;
-    float bias_grad; // = 0;
-    gamma_grad = 0.0f;
-    bias_grad = 0.0f;
+	float * running_mean = args->running_mean;
+	float * running_stdev = args->running_stdev;
+	int freeze_running_params = args->freeze_running_params;
+
+    float gamma_grad = 0.0f;
+    float bias_grad  = 0.0f;
 
     int N = in->dim;
     int C = in->C;
@@ -144,8 +196,6 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
     int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > C ? C : start+blockSize;
-
-    float epsilon = EPSILON;
 
     float * in_data;
     float * out_diff;
@@ -160,18 +210,8 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
         out_diff = out->diff + c*D;
         in_diff = in->diff + c*D;
 
-        mean=0;
-        std=0;
-
-        struct mean_std_args mean_std_args;
-        mean_std_args.input = in_data;
-        mean_std_args.mean = &mean;
-        mean_std_args.std = &std;
-        mean_std_args.var = &var;
-        mean_std_args.dim = D;
-        mean_std_args.epsilon = EPSILON; 
-
-        pulp_mean_std_fp32_cl(&mean_std_args);
+        mean = running_mean[c];
+        std = running_stdev[c];
 
         gamma_grad = 0;
         bias_grad = 0;
