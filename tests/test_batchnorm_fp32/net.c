@@ -136,18 +136,14 @@ void backward_print()
   #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   printf("\nBackward Stats:\n");
   START_STATS();
-  #endif
   pulp_batchnorm_fp32_bw_param_grads_cl(&l1_args);
-  #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   STOP_STATS();
   #endif
 
   #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   printf("\nBackward Stats:\n");
   START_STATS();
-  #endif
   pulp_batchnorm_fp32_bw_input_grads_cl(&l1_args);
-  #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   STOP_STATS();
   #endif
 }
@@ -191,7 +187,7 @@ void print_output()
   printf("\nLayer 1 in diff:\n");
   for (int i=0; i<BATCH_SIZE*Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)
   {
-    printf("%f ", l1_in_diff[i]);
+    printf("%.10f ", l1_in_diff[i]);
     if(!(i%Tin_W_l1*Tin_H_l1)) printf("\n");
   }
   #endif

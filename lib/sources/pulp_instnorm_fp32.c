@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Giacomo Saporetti, Davide Nadalini
+ * Authors: Giacomo Saporetti, Davide Nadalini, Luca Bompani
 */ 
 
 #include "pmsis.h"
@@ -136,7 +136,7 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > C ? C : start+blockSize;
 
-    for(int c=start; c<stop; c++)
+    for (int c=start; c<stop; c++)
     {
         float * in_data  = in->data  + c*D;
         float * out_diff = out->diff + c*D;
@@ -150,12 +150,14 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
         std  = running_stdev[c];
         var  = running_var[c];        
 
-        for(int d=0; d<D; d++)
+        for (int d=0; d<D; d++)
         {
             float grad = 0;
-            for(int i=0; i<D; i++)
+            float mean_d = (in_data[d] - mean) / var;
+
+            for (int i=0; i<D; i++)
             {
-                grad -= out_diff[i]*(1 + (in_data[i] - mean)*(in_data[d] - mean)/var);
+                grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
             }
             grad += D*out_diff[d];
             grad = grad*gamma/(D*std);

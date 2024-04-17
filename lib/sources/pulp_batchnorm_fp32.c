@@ -152,49 +152,47 @@ void pulp_batchnorm_parallelized_fp32_bw_input_grads_cl( void * BatchNorm_args )
     int C = in->C;
     int H = in->H;
     int W = in->W;
-    int D = H*W;
+    int D = C*H*W;
+    int HW = H*W;
 
     float * gamma = coeff->data;
     float * beta = coeff->data + C;
     float * x = in->data;  
 
-    // NEW IMPLEMENTATION -> https://arxiv.org/pdf/1502.03167.pdf 
     int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > C ? C : start+blockSize;      
     
-    for (int ch=0; ch<C; ch++) {
-        
-        float dvar  = 0;
-        float dmean = 0;
-        float temp = 0;
+    for (int sample=0; sample<batch_size; sample++) {
+        for (int c=start; c<stop; c++)
+        {
+            float * in_data  = in->data  + c*HW + sample*D;
+            float * out_diff = out->diff + c*HW + sample*D;
+            float * in_diff  = in->diff  + c*HW + sample*D;
+            float mean; 
+            float std;  
+            float var; 
+            float gamma = coeff->data[c];
 
-        // Compute drunning_variance
-        for (int i=0; i<D; i++) {
-            float xi    = in->data[ch*D + i];
-            float dyi   = out->diff[ch*D + i];
-            float dxih  = dyi * gamma[ch];
-            dvar       += -0.5 * dxih * (xi - running_mean[ch]) * powf(running_var[ch], (-3/2)); 
+            mean = running_mean[c];
+            std  = running_stdev[c];
+            var  = running_var[c];        
+
+            for(int d=0; d<HW; d++)
+            {
+                float grad = 0;
+                float mean_d = (in_data[d] - mean) / var;
+
+                for(int i=0; i<HW; i++)
+                {
+                    grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
+                }
+                grad += D*out_diff[d];
+                grad = grad*gamma/(D*std);
+
+                in_diff[d] = grad;
+            }
         }
-
-        // Compute drunning_mean
-        for (int i=0; i<D; i++) {
-            float xi    = in->data[ch*D + i];
-            float dyi   = out->diff[ch*D + i];
-            float dxih  = dyi * gamma[ch];
-            dmean      += dxih * (-1) / (running_stdev[ch]) + dvar * (1/D) * 2 * (xi - running_mean[ch]);
-        }
-
-        printf("[ch=%d] dvar = %f, dmean = %f\n", ch, dvar, dmean);
-
-        // Compute in grad
-        for (int i=0; i<D; i++) {
-            float xi            = in->data[ch*D + i];
-            float dyi           = out->diff[ch*D + i];
-            float dxih          = dyi * gamma[ch];
-            in->diff[ch*D + i] = dxih * 1 / (running_stdev[ch]) + dmean * (1/D) + dvar * (2/D) * (xi - running_mean[ch]);            
-        }
-
     }
 }
 
@@ -217,10 +215,8 @@ void pulp_batchnorm_parallelized_fp32_bw_param_grads_cl( void * BatchNorm_args )
 	float * running_stdev = args->running_stdev;
 	int freeze_running_params = args->freeze_running_params;
 
-    float gamma_grad; // = 0;
-    float bias_grad; // = 0;
-    gamma_grad = 0.0f;
-    bias_grad = 0.0f;
+    float gamma_grad = 0.0f; 
+    float bias_grad  = 0.0f; 
 
     //int N = in->dim;
     int C = in->C;
