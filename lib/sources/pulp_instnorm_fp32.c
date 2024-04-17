@@ -184,10 +184,8 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
 	float * running_stdev = args->running_stdev;
 	int freeze_running_params = args->freeze_running_params;
 
-    float gamma_grad; // = 0;
-    float bias_grad; // = 0;
-    gamma_grad = 0.0f;
-    bias_grad = 0.0f;
+    float gamma_grad = 0.0f;
+    float bias_grad  = 0.0f;
 
     int N = in->dim;
     int C = in->C;
@@ -198,8 +196,6 @@ void pulp_instnorm_parallelized_fp32_bw_param_grads_cl( void * InstNorm_args )
     int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > C ? C : start+blockSize;
-
-    float epsilon = EPSILON;
 
     float * in_data;
     float * out_diff;

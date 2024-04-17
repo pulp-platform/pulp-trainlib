@@ -39,6 +39,7 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
     struct blob_fp16 * coeff = IN_args->coeff;
 
 	fp16 * running_mean = IN_args->running_mean;
+    fp16 * running_var = IN_args->running_var;
 	fp16 * running_stdev = IN_args->running_stdev;
 	int freeze_running_params = IN_args->freeze_running_params;
 
@@ -86,6 +87,7 @@ void pulp_instnorm_parallelized_fp16_fw_cl( void * InstNorm_args_fp16 )
         }
         else {
             mean = running_mean[ch];
+            var = running_var[ch];
             std = running_stdev[ch];
         }
         
@@ -118,18 +120,49 @@ void pulp_instnorm_parallelized_fp16_bw_input_grads_cl( void * InstNorm_args_fp1
     struct blob_fp16 * out = args->output;
     struct blob_fp16 * coeff = args->coeff;
 
+	fp16 * running_mean = args->running_mean;
+    fp16 * running_var = args->running_var;
+	fp16 * running_stdev = args->running_stdev;
+	int freeze_running_params = args->freeze_running_params;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
     int W = in->W;
     int D = H*W;
 
-    int blockSize = (in->dim+NUM_CORES-1) / NUM_CORES;
+    int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
-    int stop = start+blockSize > in->dim ? in->dim : start+blockSize;    
-    
-    for (int i=start; i<stop; i++) {
-        in->diff[i] = out->diff[i];
+    int stop = start+blockSize > C ? C : start+blockSize;
+
+    for (int c=start; c<stop; c++)
+    {
+        fp16 * in_data  = in->data  + c*D;
+        fp16 * out_diff = out->diff + c*D;
+        fp16 * in_diff  = in->diff  + c*D;
+        fp16 mean; 
+        fp16 std;  
+        fp16 var; 
+        fp16 gamma = coeff->data[c];
+
+        mean = running_mean[c];
+        std  = running_stdev[c];
+        var  = running_var[c];        
+
+        for (int d=0; d<D; d++)
+        {
+            fp16 grad = 0;
+            fp16 mean_d = (in_data[d] - mean) / var;
+
+            for (int i=0; i<D; i++)
+            {
+                grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
+            }
+            grad += D*out_diff[d];
+            grad = grad*gamma/(D*std);
+
+            in_diff[d] = grad;
+        }
     }
 }
 
@@ -150,8 +183,8 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
 	fp16 * running_stdev = args->running_stdev;
 	int freeze_running_params = args->freeze_running_params;
 
-    fp16 gamma_grad = 0;
-    fp16 bias_grad = 0;
+    fp16 gamma_grad = 0.0f;
+    fp16 bias_grad  = 0.0f;
 
     int N = in->dim;
     int C = in->C;
@@ -162,8 +195,6 @@ void pulp_instnorm_parallelized_fp16_bw_param_grads_cl( void * InstNorm_args_fp1
     int blockSize = (C+NUM_CORES-1) / NUM_CORES;
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > C ? C : start+blockSize;
-
-    fp16 epsilon = EPSILON;
 
     fp16 * in_data;
     fp16 * out_diff;

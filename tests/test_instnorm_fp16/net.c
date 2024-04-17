@@ -40,6 +40,7 @@ PI_L1 fp16 l1_out_diff[Tout_C_l1 * Tout_H_l1 * Tout_W_l1];
 
 // Define running params arrays
 PI_L1 fp16 running_mean[Tin_C_l1];
+PI_L1 fp16 running_var[Tin_C_l1];
 PI_L1 fp16 running_stdev[Tin_C_l1];
 
 // Loss function configuration structure
@@ -87,6 +88,7 @@ void DNN_init()
   l1_args.coeff = &layer1_wgt;
   l1_args.output = &layer1_out;
   l1_args.running_mean = running_mean;
+  l1_args.running_var = running_var;
   l1_args.running_stdev = running_stdev;
   l1_args.freeze_running_params = 0;
   l1_args.skip_wg_grad = 0;
@@ -133,18 +135,14 @@ void backward_print()
   #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   printf("\nBackward Stats:\n");
   START_STATS();
-  #endif
   pulp_instnorm_fp16_bw_param_grads_cl(&l1_args);
-  #if defined(PROF_NET) && defined(BACKWARD_GRAD)
   STOP_STATS();
   #endif
 
   #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   printf("\nBackward Stats:\n");
   START_STATS();
-  #endif
   pulp_instnorm_fp16_bw_input_grads_cl(&l1_args);
-  #if defined(PROF_NET) && defined(BACKWARD_ERROR)
   STOP_STATS();
   #endif
 }
@@ -166,16 +164,32 @@ void compute_loss()
 // Function to print FW output
 void print_output()
 {
+  #ifdef FORWARD
   printf("\nLayer 1 output:\n");
-
   for (int i=0; i<Tout_C_l1*Tout_H_l1*Tout_W_l1; i++)
   {
     printf("%f ", l1_out[i]);
-    // Newline when an output row ends
-    // if(!(i%Tout_W_l1)) printf("\n");
-    // Newline when an output channel ends
     if(!(i%Tout_W_l1*Tout_H_l1)) printf("\n");
   }
+  #endif
+
+  #ifdef BACKWARD_GRAD
+  printf("\nBatchnorm Weight Grad:\n");
+  for (int i=0; i<2*Tin_C_l1; i++)
+  {
+    printf("%f ", l1_ker_diff[i]);
+    if(!(i%2)) printf("\n");
+  }
+  #endif
+
+  #ifdef BACKWARD_ERROR
+  printf("\nLayer 1 in diff:\n");
+  for (int i=0; i<Tin_C_l1*Tin_H_l1*Tin_W_l1; i++)
+  {
+    printf("%.10f ", l1_in_diff[i]);
+    if(!(i%Tin_W_l1*Tin_H_l1)) printf("\n");
+  }
+  #endif
 }
 
 // Function to check post-training output wrt Golden Model (GM)

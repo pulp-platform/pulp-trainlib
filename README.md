@@ -177,7 +177,6 @@ PULP-TrainLib's repository is organized with these branches:
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
 - Missing integration for RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
-- FP32 and FP16 InstanceNorm's output do not perfectly match PyTorch ones (need bugfixing)
 - Missing integration of sigmoid function in TrainLib_Deployer
 - Performances of FP16 sigmoid may need to be optimized with FP16 exponenetial (e.g., https://github.com/0xBYTESHIFT/fp16/blob/master/include/half/half.hpp)
 

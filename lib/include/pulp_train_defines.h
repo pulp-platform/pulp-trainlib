@@ -29,7 +29,7 @@
  * @defgroup Data formats
  * @{
  */
-typedef float16alt fp16;                                    // Standard IEEE FP16 format
+typedef float16alt fp16;                                    // FP16 format (float16 or float16alt)
 typedef fp16 v2f16 __attribute__((vector_size (4)));        // Vectorized fp16 for SIMD
 /**
  * @}

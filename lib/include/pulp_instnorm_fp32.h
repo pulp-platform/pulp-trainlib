@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Giacomo Saporetti
+ * Authors: Giacomo Saporetti, Davide Nadalini
 */ 
 
 

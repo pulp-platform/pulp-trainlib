@@ -72,31 +72,7 @@ f.close()
 
 # Simple input data 
 inp = torch.torch.div(torch.randint(1000, [1, l1_in_ch, l1_hin, l1_win]), 1000).half().to(device)
-inp.retain_grad = True
-
-def hook_fn(m, i, o):
-	print(m)
-	print("------------Input Grad------------")
-
-	for grad in i:
-		try:
-			print(grad.shape)
-			f = open('io_data.h', 'a')
-			f.write('#define INSTN_IN_G_SIZE '+str(grad.numel())+'\n')
-			f.write('PI_L2 fp16 INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(grad)+'};\n')
-			f.close()
-
-		except AttributeError: 
-			print ("None found for Gradient")
-
-	print("------------Output Grad------------")
-	for grad in o:  
-		try:
-			print(grad.shape)
-		except AttributeError: 
-			print("None found for Gradient")
-		print("\n")
-
+inp.requires_grad = True
 
 class DNN(nn.Module):
 	def __init__(self):
@@ -112,8 +88,6 @@ net = DNN().half().to(device)
 for p in net.parameters():
 	nn.init.normal_(p, mean=0.0, std=1.0)
 net.zero_grad()
-
-net.l1.register_backward_hook(hook_fn)
 
 
 # All-ones fake label 
@@ -144,6 +118,8 @@ f = open('io_data.h', 'a')
 f.write('// Input and Output data\n')
 f.write(f'#define IN_SIZE {CI*HI*WI}\n')
 f.write('PI_L1 fp16 INPUT[IN_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+f.write('#define INSTN_IN_G_SIZE '+str(inp.grad.numel())+'\n')
+f.write('PI_L2 fp16 INSTN_IN_GRAD[INSTN_IN_G_SIZE] = {'+dump.tensor_to_string(inp.grad)+'};\n')
 f.write(f'#define OUT_SIZE {CI*HI*WI}\n')
 f.write('PI_L2 fp16 REFERENCE_OUTPUT[OUT_SIZE] = {'+dump.tensor_to_string(out)+'};\n')
 f.write('PI_L1 fp16 LABEL[OUT_SIZE] = {'+dump.tensor_to_string(label)+'};\n')

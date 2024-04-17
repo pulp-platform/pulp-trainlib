@@ -30,7 +30,7 @@
 #include "pulp_train_utils_fp32.h"
 // FP32 primitives
 #include "pulp_act_fp32.h"
-#include "pulp_batchnorm_fp32.h"
+//#include "pulp_batchnorm_fp32.h"
 #include "pulp_conv_dw_fp32.h"
 #include "pulp_conv_pw_fp32.h"
 #include "pulp_conv2d_fp32.h"
