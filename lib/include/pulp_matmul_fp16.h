@@ -130,3 +130,11 @@ void __attribute__((noinline)) mv_fp16_SIMD_2x1 (
 void __attribute__((noinline)) mv_fp16_SIMD_4x1 (
     void * void_args
 );
+
+/**
+ * @brief SIMD matrix * vector operation which unrolls 8 elements of A. Parallelizes on M. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mv_fp16_SIMD_8x1 (
+    void * void_args
+);
