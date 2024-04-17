@@ -1107,7 +1107,216 @@ void mm_fp16_unroll_2x1 (void * void_args)
   }
 }
 
+void mv_fp16_SIMD_2x1 (void * void_args)
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
+  fp16 * __restrict__ A = args->A;
+  fp16 * __restrict__ B = args->B;
+  fp16 * __restrict__ C = args->C;
 
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+
+  if(M > 1){
+    uint32_t transp = args->trans_B;
+    if(transp){
+      K = M;
+    }
+    else{
+      printf("\nError: second tensor is not a vector.\n");
+      exit(1);
+    }    
+  }
+
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  blockSize = stop - start;
+  uint32_t blockSize_par = blockSize & 0xfffffffe;
+  uint32_t blockSize_left = blockSize - blockSize_par;
+  uint32_t K_par = K & 0xfffffffe;
+  uint32_t k_left = K - K_par;
+  uint32_t k = 0;
+
+  // Check if sizes are smaller than the unrolling, and take countermeasures
+  if (blockSize < 2) { mm_fp16(args); }
+  else
+  { 
+    uint32_t i;
+    for (i=start; i<stop-1; i+=2)
+    {
+      // Temporary sum buffers
+      v2f16 temp0 = (v2f16) {0, 0};
+      v2f16 temp1 = (v2f16) {0, 0};
+
+      // Cycle on middle dimension
+      for (k=0; k<K-1; k+=2)
+      {
+        uint32_t idx   = i*K+k;
+        v2f16 Bv = *((v2f16*) &B[k]);
+        v2f16 Av1 = *((v2f16*) &A[idx]);
+        v2f16 Av2 = *((v2f16*) &A[idx+K]);
+        temp0     += Av1 * Bv;
+        temp1     += Av2 * Bv;
+      }
+      // Leftover in K
+      if(k_left > 0){
+        while(k<K){
+          uint32_t idx = i*K + k;
+          fp16 Bsh = B[k];
+          fp16 A1 = A[idx];
+          fp16 A2 = A[idx + K];
+          temp0[0]  += A1 * Bsh;
+          temp1[0]  += A2 * Bsh;
+          k++;  
+        }
+      }
+      // Sum the buffers to store result
+      C[i]      = temp0[0] + temp0[1];
+      C[i+1]    = temp1[0] + temp1[1];
+    }
+    // Leftover in block
+    if (blockSize_left > 0)
+    {
+      v2f16 temp0 = (v2f16) {0, 0};
+      for (k=0; k<K; k+=2)
+      {
+        uint32_t idx   = i*K+k;
+        v2f16 Bv = *((v2f16*) &B[k]);
+        v2f16 Av = *((v2f16*) &A[idx]);
+        temp0   += Av * Bv;
+      }
+      // Leftover in K
+      if(k_left > 0){
+        while(k<K){
+          uint32_t idx = i*K + k;
+          fp16 Bsh = B[k];
+          fp16 A1 = A[idx];
+          temp0[0]  += A1 * Bsh;
+          k++;  
+        }
+      }
+      C[i]      = temp0[0] + temp0[1];
+    }
+  }
+}
+
+void mv_fp16_SIMD_4x1 (void * void_args)
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)void_args;
+  fp16 * __restrict__ A = args->A;
+  fp16 * __restrict__ B = args->B;
+  fp16 * __restrict__ C = args->C;
+
+  uint32_t N = args->N;
+  uint32_t M = args->M;
+  uint32_t K = args->K;
+
+  if(M > 1){
+    uint32_t transp = args->trans_B;
+    if(transp){
+      K = M;
+    }
+    else{
+      printf("\nError: second tensor is not a vector.\n");
+      exit(1);
+    }    
+  }
+
+  uint32_t core_id = pi_core_id();
+
+  uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  uint32_t start = core_id*blockSize;
+  uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  blockSize = stop - start;
+  uint32_t blockSize_par = blockSize & 0xfffffffc;
+  uint32_t blockSize_left = blockSize - blockSize_par;
+  uint32_t K_par = K & 0xfffffffe;
+  uint32_t k_left = K - K_par;
+  uint32_t k = 0;
+
+  // Check if sizes are smaller than the unrolling, and take countermeasures
+  if (blockSize < 4) { mv_fp16_SIMD_2x1(args); }
+  else
+  { 
+    uint32_t i;
+    for (i=start; i<stop-1; i+=4)
+    {
+      // Temporary sum buffers
+      v2f16 temp0 = (v2f16) {0, 0};
+      v2f16 temp1 = (v2f16) {0, 0};
+      v2f16 temp2 = (v2f16) {0, 0};
+      v2f16 temp3 = (v2f16) {0, 0};
+
+      // Cycle on middle dimension
+      for (k=0; k<K-1; k+=2)
+      {
+        uint32_t idx   = i*K+k;
+        v2f16 Bv = *((v2f16*) &B[k]);
+        v2f16 Av1 = *((v2f16*) &A[idx]);
+        v2f16 Av2 = *((v2f16*) &A[idx+K]);
+        v2f16 Av3 = *((v2f16*) &A[idx+2*K]);
+        v2f16 Av4 = *((v2f16*) &A[idx+3*K]);
+        temp0     += Av1 * Bv;
+        temp1     += Av2 * Bv;
+        temp2     += Av3 * Bv;
+        temp3     += Av4 * Bv;
+      }
+      // Leftover in K
+      if(k_left > 0){
+        while(k<K){
+          uint32_t idx = i*K + k;
+          fp16 Bsh = B[k];
+          fp16 A1 = A[idx];
+          fp16 A2 = A[idx + K];
+          fp16 A3 = A[idx + 2*K];
+          fp16 A4 = A[idx + 3*K];
+          temp0[0]  += A1 * Bsh;
+          temp1[0]  += A2 * Bsh;
+          temp2[0]  += A3 * Bsh;
+          temp3[0]  += A4 * Bsh;
+          k++;  
+        }
+      }
+      // Sum the buffers to store result
+      C[i]      = temp0[0] + temp0[1];
+      C[i+1]    = temp1[0] + temp1[1];
+      C[i+2]    = temp2[0] + temp2[1];
+      C[i+3]    = temp3[0] + temp3[1];
+    }
+    // Leftover in block
+    if (blockSize_left > 0)
+    {
+      while(i < stop){
+        v2f16 temp0 = (v2f16) {0, 0};
+        for (k=0; k<K; k+=2)
+        {
+          uint32_t idx   = i*K+k;
+          v2f16 Bv = *((v2f16*) &B[k]);
+          v2f16 Av = *((v2f16*) &A[idx]);
+          temp0   += Av * Bv;
+        }
+        // Leftover in K
+        if(k_left > 0){
+          while(k<K){
+            uint32_t idx = i*K + k;
+            fp16 Bsh = B[k];
+            fp16 A1 = A[idx];
+            temp0[0]  += A1 * Bsh;
+            k++;  
+          }
+        }
+        C[i]      = temp0[0] + temp0[1];
+        i++;
+      }  
+    }
+  }
+}
 
 
 
