@@ -107,7 +107,7 @@ To successfully run the tests, Python (>= 3.6) is needed, together with PyTorch 
 
 ```
 python -m pip install argparse 
-python -m pip install install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 python -m pip install torchsummary
 ```
 
