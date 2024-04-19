@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Giacomo Saporetti, Davide Nadalini
+ * Authors: Giacomo Saporetti, Davide Nadalini, Luca Bompani
 */ 
 
 #include "pmsis.h"
@@ -125,6 +125,10 @@ void pulp_instnorm_parallelized_fp16_bw_input_grads_cl( void * InstNorm_args_fp1
 	fp16 * running_stdev = args->running_stdev;
 	int freeze_running_params = args->freeze_running_params;
 
+    // Stabilize numerically
+    fp16 grad_scaling = 1e6;
+    fp16 grad_scaling_inv = 1 / grad_scaling;
+
     int N = in->dim;
     int C = in->C;
     int H = in->H;
@@ -149,17 +153,23 @@ void pulp_instnorm_parallelized_fp16_bw_input_grads_cl( void * InstNorm_args_fp1
         std  = running_stdev[c];
         var  = running_var[c];        
 
-        for (int d=0; d<D; d++)
+        fp16 grad_i_sum = 0;
+        fp16 grad_i_prod = 0;
+        for(int i=0; i<D; i++)
         {
-            fp16 grad = 0;
+            grad_i_sum  -= out_diff[i];
+            grad_i_prod -= (in_data[i] - mean) * out_diff[i];
+        }
+                
+        for(int d=0; d<D; d++)
+        {
+            fp16 grad   = grad_i_sum;
             fp16 mean_d = (in_data[d] - mean) / var;
 
-            for (int i=0; i<D; i++)
-            {
-                grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
-            }
+            grad += grad_i_prod*mean_d;
+
             grad += D*out_diff[d];
-            grad = grad*gamma/(D*std);
+            grad  = grad*gamma/(D*std);
 
             in_diff[d] = grad;
         }

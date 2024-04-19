@@ -150,20 +150,27 @@ void pulp_instnorm_parallelized_fp32_bw_input_grads_cl( void * InstNorm_args )
         std  = running_stdev[c];
         var  = running_var[c];        
 
-        for (int d=0; d<D; d++)
+        float grad_i_sum = 0;
+        float grad_i_prod = 0;
+        for(int i=0; i<D; i++)
         {
-            float grad = 0;
+            grad_i_sum  -= out_diff[i];
+            grad_i_prod -= (in_data[i] - mean) * out_diff[i];
+        }
+                
+        for(int d=0; d<D; d++)
+        {
+            float grad   = grad_i_sum;
             float mean_d = (in_data[d] - mean) / var;
 
-            for (int i=0; i<D; i++)
-            {
-                grad -= out_diff[i] * (1 + (in_data[i] - mean) * mean_d);
-            }
+            grad += grad_i_prod*mean_d;
+
             grad += D*out_diff[d];
-            grad = grad*gamma/(D*std);
+            grad  = grad*gamma/(D*std);
 
             in_diff[d] = grad;
         }
+
     }
 }
 
