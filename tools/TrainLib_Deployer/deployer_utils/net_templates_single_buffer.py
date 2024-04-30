@@ -504,9 +504,17 @@ def sum(layer, data_type):
 
 
 
-def InstNorm_config_template(layer_number, skip_in_grad):
+def InstNorm_config_template(layer_number, skip_in_grad, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
+    template += "  l"+str(layer_number)+"_args.running_mean = running_mean_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.running_var = running_var_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.running_stdev = running_stdev_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.freeze_running_params = 0;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     return template

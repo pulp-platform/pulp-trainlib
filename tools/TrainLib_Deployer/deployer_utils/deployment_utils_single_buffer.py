@@ -537,7 +537,48 @@ def GenerateNet(proj_folder_path, project_name,
             exit()  
         
       
-
+    # Normalization layer running stats
+    f.write("\n// Define running parameters for normalization layers (L2)\n")
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'InstNorm':
+            if data_type_l[layer] == 'FP32':
+                f.write("PI_L2 float l"+str(layer)+"_running_mean[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L2 float l"+str(layer)+"_running_var[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L2 float l"+str(layer)+"_running_stdev[Tin_C_l"+str(layer)+"];\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("PI_L2 fp16 l"+str(layer)+"_running_mean[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L2 fp16 l"+str(layer)+"_running_var[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L2 fp16 l"+str(layer)+"_running_stdev[Tin_C_l"+str(layer)+"];\n")
+    # Define L1 buffer for Norm parameters
+    f.write("\n// L1 buffers for normalization layers\n")
+    norm_temp_buffer_present = False
+    max_size = 0
+    max_num_bytes = 4
+    for layer in range(len(layers_l)):
+        temp_size = 0
+        if layers_l[layer] == 'InstNorm':
+            num_bytes = 4
+            if data_type_l[layer] == 'FP16':
+                num_bytes = 2
+            temp_size = 3 * in_ch_l[layer] * num_bytes
+            if max_size < temp_size:
+                max_size = temp_size
+                max_num_bytes = num_bytes
+                norm_temp_buffer_present = True
+    if norm_temp_buffer_present:
+        if max_num_bytes == 4:
+            f.write("PI_L1 float running_mean_buffer["+str(int(max_size / max_num_bytes))+"];\n")
+            f.write("PI_L1 float running_var_buffer["+str(int(max_size / max_num_bytes))+"];\n")
+            f.write("PI_L1 float running_stdev_buffer["+str(int(max_size / max_num_bytes))+"];\n")    
+        elif max_num_bytes == 2:
+            f.write("PI_L1 fp16 running_mean_buffer["+str(int(max_size / max_num_bytes))+"];\n")
+            f.write("PI_L1 fp16 running_var_buffer["+str(int(max_size / max_num_bytes))+"];\n")
+            f.write("PI_L1 fp16 running_stdev_buffer["+str(int(max_size / max_num_bytes))+"];\n")  
+        else:
+            print("[deployment_utils_single_buffer.py/GenerateNet] Invalid data type for running stats!!")
+            exit()      
+    
+    
     # Define buffer for mixed precision propagation
     previous_type = data_type_l[0]
     is_mixed_precision = False
@@ -630,6 +671,10 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  //   Resconn layer (no parameters)\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"; i++) {\n")
+                f.write("  \t\tl"+str(layer)+"_running_mean[i] = 0;")
+                f.write("  \t\tl"+str(layer)+"_running_var[i] = 1;")
+                f.write("  \t\tl"+str(layer)+"_running_stdev[i] = 1;\n  }")
             else:
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
@@ -871,7 +916,7 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[layer] == 'Skipnode':
             pass
         elif layers_l[layer] == 'InstNorm':
-            f.write(ntemp.InstNorm_config_template(layer, skip_inputgrad))
+            f.write(ntemp.InstNorm_config_template(layer, skip_inputgrad, 1))
         else:
             print("[deployment_utils.GenerateNet] Undefined layer "+str(layer)+" (unable to write configuration structure)!!")
         if sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
@@ -925,6 +970,17 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(f"\tload_coeff(&layer{layer}_wgt, 1);\n")
             if layers_l[layer] not in ['Sumnode', 'InstNorm']:
                 f.write(f"\tcopy_struct_param((unsigned int) &l{layer}_args, (unsigned int) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
+            if layers_l[layer] == 'InstNorm':
+                num_bytes_load = 4
+                if data_type_l[layer] == 'FP16':
+                    num_bytes_load = 2
+                f.write("\t// Load running stats\n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_mean), (uint32_t) (running_mean_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_var), (uint32_t) (running_var_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_stdev), (uint32_t) (running_stdev_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
         f.write(f"\tget_output_dim(&layer{layer}_out);\n")
         # Generate layer template
         if layers_l[layer] == 'linear':
@@ -952,6 +1008,17 @@ def GenerateNet(proj_folder_path, project_name,
             exit()
         if layers_l[layer] != 'Skipnode':
             f.write(f"\tstore_output(&layer{layer}_out, 1);\n\n")
+            if layers_l[layer] == 'InstNorm':
+                num_bytes_load = 4
+                if data_type_l[layer] == 'FP16':
+                    num_bytes_load = 2
+                f.write("\t// Store computed running stats\n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_mean), (uint32_t) (running_mean_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_LOC2EXT, cmd_store);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_store); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_var), (uint32_t) (running_var_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_LOC2EXT, cmd_store);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_store); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_stdev), (uint32_t) (running_stdev_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_LOC2EXT, cmd_store);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_store); \n")                
         else:
             f.write(f"\tstore_input(&layer{layer}_out, 1);\n\n")
         # Insert casting operator for data type variation
@@ -1071,6 +1138,17 @@ def GenerateNet(proj_folder_path, project_name,
         # Copy struct info 
         if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU':
             f.write(f"\tcopy_struct_param((unsigned int) &l{lay}_args, (unsigned int) &{layers_l[lay]}_args, sizeof(l{lay}_args));\n")
+            if layers_l[layer] == 'InstNorm':
+                num_bytes_load = 4
+                if data_type_l[layer] == 'FP16':
+                    num_bytes_load = 2
+                f.write("\t// Load running stats\n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_mean), (uint32_t) (running_mean_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_var), (uint32_t) (running_var_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
+                f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_stdev), (uint32_t) (running_stdev_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_EXT2LOC, cmd_load);\n")
+                f.write("\tpi_cl_dma_cmd_wait(cmd_load); \n")
 
         if layers_l[lay] == 'linear':
             f.write(ntemp.linear_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER))

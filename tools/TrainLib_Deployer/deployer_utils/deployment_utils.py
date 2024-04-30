@@ -69,7 +69,8 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
     memocc_bytes += chin * hin * win * byte_size
     # Weights
     if  layer_type == 'InstNorm':
-        memocc_bytes += 2 * chin * byte_size
+        memocc_bytes += 2 * chin * byte_size    # beta, gamma
+        memocc_bytes += 3 * chin * byte_size    # running mean, var, stdev
     else:    
         memocc_bytes += chin * chout * hk * wk * byte_size * wgt_present
     # Out act
@@ -1064,7 +1065,21 @@ def GenerateNet(proj_folder_path, project_name,
             previous_was_skip = True
         else:
             previous_was_skip = False   
-      
+
+
+    # Normalization layer running stats
+    f.write("\n// Define running parameters for normalization layers\n")
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'InstNorm':
+            if data_type_l[layer] == 'FP32':
+                f.write("PI_L1 float l"+str(layer)+"_running_mean[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L1 float l"+str(layer)+"_running_var[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L1 float l"+str(layer)+"_running_stdev[Tin_C_l"+str(layer)+"];\n")
+            elif data_type_l[layer] == 'FP16':
+                f.write("PI_L1 fp16 l"+str(layer)+"_running_mean[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L1 fp16 l"+str(layer)+"_running_var[Tin_C_l"+str(layer)+"];\n")
+                f.write("PI_L1 fp16 l"+str(layer)+"_running_stdev[Tin_C_l"+str(layer)+"];\n")
+
 
     # Define buffer for mixed precision propagation
     previous_type = data_type_l[0]
@@ -1149,6 +1164,10 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  //   Resconn layer (no parameters)\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"; i++) {\n")
+                f.write("  \t\tl"+str(layer)+"_running_mean[i] = 0;")
+                f.write("  \t\tl"+str(layer)+"_running_var[i] = 1;")
+                f.write("  \t\tl"+str(layer)+"_running_stdev[i] = 1;\n  }")
             else:
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
