@@ -560,7 +560,7 @@ def GenerateNet(proj_folder_path, project_name,
             num_bytes = 4
             if data_type_l[layer] == 'FP16':
                 num_bytes = 2
-            temp_size = 3 * in_ch_l[layer] * num_bytes
+            temp_size = in_ch_l[layer] * num_bytes # 3 * in_ch_l[layer] * num_bytes
             if max_size < temp_size:
                 max_size = temp_size
                 max_num_bytes = num_bytes
@@ -963,7 +963,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  #endif\n")  
 
         if layer > 0:
-            f.write("\treset_dim();\n")
+            f.write("\n\treset_dim();\n")
             f.write(f"\tload_input(&layer{layer}_in, 1);\n")
 
         if layers_l[layer] not in ['Skipnode', 'ReLU']:
@@ -1007,7 +1007,7 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
         if layers_l[layer] != 'Skipnode':
-            f.write(f"\tstore_output(&layer{layer}_out, 1);\n\n")
+            f.write(f"\tstore_output(&layer{layer}_out, 1);\n")
             if layers_l[layer] == 'InstNorm':
                 num_bytes_load = 4
                 if data_type_l[layer] == 'FP16':
@@ -1170,7 +1170,7 @@ def GenerateNet(proj_folder_path, project_name,
             #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
             f.write(f"\tstore_output(&layer{lay}_in, 0);\n")
         elif layers_l[lay]  == 'InstNorm':
-            f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay]))
+            f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
         else:
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
