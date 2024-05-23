@@ -30,36 +30,69 @@ import deployer_utils.net_templates_single_buffer as ntemp
 """
 DNN Size Checker backend functions
 """
-def max_input_dim(layers_l, cin_l, hin_l, win_l):
+def max_input_dim(layers_l, cin_l, hin_l, win_l, data_type_l, update_layer_l):
+    nbytes = 4
+    nbytes_max = 4
     RES = 0
     for layer in range(len(layers_l)):
-        temp = cin_l[layer]*hin_l[layer]*win_l[layer]
+        # Check data type
+        if data_type_l[layer] == 'FP32':
+            nbytes = 4
+        elif data_type_l[layer] == 'FP16':
+            nbytes = 2
+        temp = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
+        # Check if the tensor needs to store gradients
+        if layer > 0 and update_layer_l[layer-1] == 1:
+            temp = temp * 2
+        # Check if maximum is exceeded
         if temp > RES:
+            nbytes_max = nbytes
             RES = temp
 
+    RES /= nbytes_max
+
+    # Result returned in number of elements of the largest input tensor
     return RES
 
-def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
+def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data_type_l, update_layer_l):
+    nbytes = 4
+    nbytes_max = 4
     RES = 0
     temp = 0
     for layer in range(len(layers_l)):
+        # Check data type
+        if data_type_l[layer] == 'FP32':
+            nbytes = 4
+        elif data_type_l[layer] == 'FP16':
+            nbytes = 2        
+        # Define size depending on layer type
         if layers_l[layer] == 'conv2d' : 
-            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]
+            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'PW':
-            temp = cin_l[layer]*cout_l[layer]
+            temp = cin_l[layer]*cout_l[layer]*nbytes
         if   layers_l[layer] == 'DW':
-            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]
+            temp = hk_l[layer]*wk_l[layer]*cin_l[layer]*nbytes
         if layers_l[layer] == 'linear' :
-            temp = cin_l[layer]*cout_l[layer]
+            temp = cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'Sumnode':
-            temp = cin_l[layer]*hin_l[layer]*win_l[layer]
+            temp = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
+        # Check if tensor needs to store gradients
+        if update_layer_l[layer] == 1:
+            temp = temp * 2
+        # Check if maximum is exceeded
         if temp > RES:
+            nbytes_max = nbytes
             RES = temp
 
+    RES /= nbytes_max
+
+    # Result returned in number of elements of the largest weight tensor
     return RES
 
 
-def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad):
+def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad, data_type_l, update_layer_l):
+    nbytes = 4
+    nbytes_max = 4
     RES = 0
     temp1 = 0 #input
     temp2 = 0 #wgt
@@ -67,42 +100,56 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_st
     tot = 0
     max_layer =  0
     for layer in range(len(layers_l)):
+        # Check data type
+        if data_type_l[layer] == 'FP32':
+            nbytes = 4
+        elif data_type_l[layer] == 'FP16':
+            nbytes = 2    
+        # Define size depending on layer
         if layers_l[layer] == 'conv2d' : 
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]
+            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'PW':
-            temp2 = cin_l[layer]*cout_l[layer]
+            temp2 = cin_l[layer]*cout_l[layer]*nbytes
         if   layers_l[layer] == 'DW':
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]
+            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*nbytes
         if layers_l[layer] == 'linear' :
-            temp2 = cin_l[layer]*cout_l[layer]
+            temp2 = cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'Sumnode':
-            temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]
+            temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
         if layers_l[layer] == 'InstNorm':
-            temp2 = 2*cin_l[layer]
+            temp2 = 2*cin_l[layer]*nbytes
         if layers_l[layer] in ['ReLU', 'Skipnode']:
             temp2 = 0
+        # Check if tensor needs to store gradients
+        if update_layer_l[layer] == 1:
+            temp2 = temp2 * 2
 
-        temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]
+        temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
+        # Check if the tensor needs to store gradients
+        if layer > 0 and update_layer_l[layer-1] == 1:
+            temp1 = temp1 * 2        
 
         hout = int((hin_l[layer] - hk_l[layer] + 2*h_pad[layer])/h_str[layer] + 1)
         wout = int((win_l[layer] - wk_l[layer] + 2*w_pad[layer])/w_str[layer] + 1)
         if layers_l[layer] == 'linear':
-            temp3 = cout_l[layer]
+            temp3 = cout_l[layer]*nbytes
         else:
-            temp3 = cout_l[layer] * hout * wout
+            temp3 = cout_l[layer] * hout * wout * nbytes
+        # Check if the tensor needs to store gradients
+        if update_layer_l[layer] == 1:
+            temp3 = temp3 * 2   
         
         tot = temp1 + temp2 + temp3
-        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Output: {temp3}, Total: {tot}")
+        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Output: {temp3}, Total: {tot} (data + gradients)")
         if tot > RES:
+            nbytes_max = nbytes
             RES = tot
             max_layer = layer
 
-    multiplier = 2
-    if data  == 'FP32':
-        multiplier = 4
-    RES = 2*multiplier*RES #The 2 factor accounts for for both data and diff storage
     print(f"Max Layer size (including data and gradients): {RES} bytes   @layer {max_layer}")
-    return RES
+
+    # Result returned in bytes of the largest layer + size in bytes of the largest layer
+    return RES, nbytes_max
 
 
 """
@@ -166,9 +213,9 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void update_blob();\n")
     f.write("void reset_dim();\n")
 
-    f.write(f"#define MAX_IN_SIZE {max_input_dim(layers_l, in_ch_l, hin_l, win_l)}\n")
-    f.write(f"#define MAX_WGT_SIZE {max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l)}\n")
-    f.write(f"#define MAX_SIZE {MAX_LAYER_DIM}\n")
+    f.write(f"#define MAX_IN_SIZE {int(max_input_dim(layers_l, in_ch_l, hin_l, win_l, data_type_l, update_layer_l))}\n")
+    f.write(f"#define MAX_WGT_SIZE {int(max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l, update_layer_l))}\n")
+    f.write(f"#define MAX_SIZE {int(MAX_LAYER_DIM)}+50\n")
     f.close()    
 
 
@@ -510,11 +557,14 @@ def GenerateNet(proj_folder_path, project_name,
             exit()
     # No blocktranspose buffer
     if (bt_flag == False):
-        print("No blockstranspose buffer detected\n")
+        print("No blockstranspose buffer detected.\n")
         f.write("PI_L1 float bt_buffer[1];\n")
 
     # Define label buffer
-    f.write("PI_L1 float label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
+    if data_type_l[-1] == 'FP32':
+        f.write("PI_L1 float label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
+    elif data_type_l[-1] == 'FP16':
+        f.write("PI_L1 fp16 label_temp[Tout_C_l"+str(len(layers_l)-1)+"*Tout_H_l"+str(len(layers_l)-1)+"*Tout_W_l"+str(len(layers_l)-1)+"];\n")
 
     # Define tensors to backpropagate the output error
     f.write("\n// Define error propagation tensors\n")
