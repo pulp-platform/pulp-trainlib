@@ -25,7 +25,7 @@
 
 // LINEAR
 PI_L1 struct Linear_args FC_args;
-PI_L1 struct blob layer0_in, layer0_wgt, layer0_out;
+PI_L1 struct blob layer0_in, layer0_wgt, layer0_out, layer0_bias;
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
@@ -36,6 +36,7 @@ PI_L1 float zero_init = 0.0f;
 PI_L1 float l0_in[Tin_l0];
 PI_L1 float l0_ker[Tker_l0];
 PI_L1 float l0_out[Tout_l0]; 
+PI_L1 float l0_bias[Tout_l0]; 
 #endif
 
 #ifdef BACKWARD_ERROR
@@ -50,14 +51,13 @@ PI_L1 float l0_ker_diff[Tker_l0];
 PI_L1 float l0_out_diff [Tout_l0];
 #endif
 
-
-
 #ifdef FORWARD
 static inline void tensor_init() 
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
   for (int i=0; i<Tker_l0; i++)       l0_ker[i] = L0_WEIGHTS_params[i];
   for (int i=0; i<Tout_l0; i++)       l0_out[i] = zero_init; 
+  for (int i=0; i<Tout_l0; i++)       l0_bias[i] = L0_BIAS_params[i]; 
 }
 
 static inline void connect_blobs() 
@@ -71,14 +71,19 @@ static inline void connect_blobs()
   layer0_out.data = l0_out;
   layer0_out.dim = Tout_l0;
 
+  layer0_bias.data = l0_bias;
+  layer0_bias.dim = Tout_l0;
+
   FC_args.input = &layer0_in;
   FC_args.coeff = &layer0_wgt;
   FC_args.output = &layer0_out;
+  FC_args.bias = &layer0_bias;
   FC_args.skip_wg_grad = 0;
   FC_args.skip_in_grad = 0;
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;
   FC_args.opt_matmul_type_ig = MATMUL_TYPE;
+  FC_args.use_biases = USE_BIASES_LINEAR;
 }
 
 static inline void compute_memory_occupation(){
@@ -231,7 +236,8 @@ static inline void compare_tensors(float *A, float *B, int length){
         if (diff>0) diff = diff;
         else diff=-diff;
         if (A[i]>0) den = A[i];
-        else den = -A[i]; // missing A = 0
+        else if (A[i]<0) den = -A[i]; // missing A = 0
+        //else den = -A[i];
         mean_err_rel = mean_err_rel + (diff / den)/length;
      }
      else{
@@ -239,7 +245,8 @@ static inline void compare_tensors(float *A, float *B, int length){
        if (diff>0) diff = diff;
        else diff=-diff;
        if (A[i]>0) den = A[i];
-       else den = -A[i];
+       else if (A[i]<0) den = -A[i];
+       //else den = -A[i];
        mean_err_rel = mean_err_rel + (diff / den)/length;
      }
   }

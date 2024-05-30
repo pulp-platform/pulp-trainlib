@@ -37,12 +37,14 @@
 struct Linear_args {
 	struct blob * input; 
 	struct blob * coeff; 
+	struct blob * bias; 
 	struct blob * output;
 	int skip_wg_grad;
 	int skip_in_grad;
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
 	int opt_matmul_type_ig;
+	int use_biases;
 };
 
 
@@ -62,6 +64,7 @@ struct Linear_args {
  */
 void pulp_linear_fp32_fw_cl( void * Linear_args );
 
+void pulp_linear_fp32_fw_cl_kernel( void * Linear_args );
 
 // BACKWARD FUNCTIONS
 
