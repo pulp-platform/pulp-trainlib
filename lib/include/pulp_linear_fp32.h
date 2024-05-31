@@ -27,12 +27,14 @@
  * @brief Structure for Fully-Connected Training in FP32
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
+ * @param bias  bias (Optional), depending on use_biases
  * @param output  categorical output for the linear layer (from forward perspective)
  * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param use_biases flag: use bias (1) or not use bias (0).
  */
 struct Linear_args {
 	struct blob * input; 
@@ -59,11 +61,20 @@ struct Linear_args {
  * @brief Forward pass function, forked on PULP cluster.
  * @param input  input column vector for the linear layer
  * @param coeff  weight matrix 
+ * @param bias  bias (Optional)
  * @param output  categorical output for the linear layer
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
 void pulp_linear_fp32_fw_cl( void * Linear_args );
 
+/**
+ * @brief Forward pass function, forked on PULP cluster.
+ * @param input  input column vector for the linear layer
+ * @param coeff  weight matrix 
+ * @param bias  bias (Optional)
+ * @param output  categorical output for the linear layer
+ * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ */
 void pulp_linear_fp32_fw_cl_kernel( void * Linear_args );
 
 // BACKWARD FUNCTIONS
@@ -72,6 +83,7 @@ void pulp_linear_fp32_fw_cl_kernel( void * Linear_args );
  * @brief Backward pass function, which internally calls both weight gradient and input gradient calculation
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
+ * @param bias  bias (Optional)
  * @param output  categorical output for the linear layer (from forward perspective)
  * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
@@ -84,6 +96,7 @@ void pulp_linear_fp32_bw_cl( void * Linear_args );
  * @brief Backward pass function which computes weight's gradient only
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
+ * @param bias  bias (Optional)
  * @param output  categorical output for the linear layer (from forward perspective)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
@@ -96,6 +109,7 @@ void pulp_linear_fp32_bw_param_grads_cl_kernel( void * Linear_args );
  * @brief Backward pass function which computes input's gradient only
  * @param input  input column vector for the linear layer (from forward perspective)
  * @param coeff  weight matrix 
+ * @param bias  bias (Optional)
  * @param output  categorical output for the linear layer (from forward perspective)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
  */
