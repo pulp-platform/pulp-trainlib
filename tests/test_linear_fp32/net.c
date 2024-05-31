@@ -94,6 +94,8 @@ static inline void compute_memory_occupation(){
   L1_memocc_bytes += Tker_l0*sizeof(float); 
   // Output
   L1_memocc_bytes += Tout_l0*sizeof(float);
+  // Bias
+  L1_memocc_bytes += Tout_l0*sizeof(float);
 
   // Input data
   L2_memocc_bytes += L0_IN_CH*sizeof(float);
@@ -101,12 +103,17 @@ static inline void compute_memory_occupation(){
   L2_memocc_bytes += L0_WEIGHTS*sizeof(float);
   // Output
   L2_memocc_bytes += L0_OUT_CH*sizeof(float);
+  // Bias
+  L2_memocc_bytes += L0_OUT_CH*sizeof(float);
   // Output gradient
   L2_memocc_bytes += L0_OUT_CH*sizeof(float);
   // Weight gradient
   L2_memocc_bytes += L0_WEIGHTS*sizeof(float);
   // Input gradient
   L2_memocc_bytes += L0_IN_CH*sizeof(float);
+  // Bias gradient
+  L2_memocc_bytes += L0_OUT_CH*sizeof(float);
+
 }
 #endif
 
@@ -138,6 +145,7 @@ static inline void connect_blobs()
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;
   FC_args.opt_matmul_type_ig = MATMUL_TYPE;
+  FC_args.use_biases = USE_BIASES_LINEAR;
 }
 
 static inline void compute_memory_occupation(){
@@ -206,6 +214,8 @@ static inline void compute_memory_occupation(){
   L1_memocc_bytes += Tker_l0*sizeof(float); 
   // Output grad
   L1_memocc_bytes += Tout_l0*sizeof(float);
+  // Bias grad
+  L1_memocc_bytes += Tout_l0*sizeof(float);
 
   // Input data
   L2_memocc_bytes += L0_IN_CH*sizeof(float);
@@ -213,12 +223,16 @@ static inline void compute_memory_occupation(){
   L2_memocc_bytes += L0_WEIGHTS*sizeof(float);
   // Output
   L2_memocc_bytes += L0_OUT_CH*sizeof(float);
+  // Bias
+  L2_memocc_bytes += L0_OUT_CH*sizeof(float);
   // Output gradient
   L2_memocc_bytes += L0_OUT_CH*sizeof(float);
   // Weight gradient
   L2_memocc_bytes += L0_WEIGHTS*sizeof(float);
   // Input gradient
   L2_memocc_bytes += L0_IN_CH*sizeof(float);
+  // Bias gradient
+  L2_memocc_bytes += L0_OUT_CH*sizeof(float);
 }
 #endif
 
@@ -330,7 +344,7 @@ static inline void train(){
   compare_tensors(l0_ker_diff, L0_WEIGHT_GRAD, Tker_l0);
   check_tensor(l0_ker_diff, L0_WEIGHT_GRAD, Tker_l0);
 
-  printf("BIAS GRADIENT CHECK: \n");
+  printf("BIASES GRADIENT CHECK: \n");
   compare_tensors(l0_bias_diff, L0_BIAS_GRAD, Tout_l0);
   check_tensor(l0_bias_diff, L0_BIAS_GRAD, Tout_l0);
   #endif   
