@@ -89,6 +89,9 @@ void pulp_linear_fp32_bw_cl( void * Linear_args );
  */
 void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args );
 
+void pulp_linear_fp32_bw_param_grads_cl_kernel( void * Linear_args );
+
+
 /**
  * @brief Backward pass function which computes input's gradient only
  * @param input  input column vector for the linear layer (from forward perspective)

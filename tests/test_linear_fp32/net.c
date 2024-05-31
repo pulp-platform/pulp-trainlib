@@ -40,15 +40,16 @@ PI_L1 float l0_bias[Tout_l0];
 #endif
 
 #ifdef BACKWARD_ERROR
-PI_L1 float l0_in_diff [Tin_l0];
+PI_L1 float l0_in_diff[Tin_l0];
 PI_L1 float l0_ker[Tker_l0];
-PI_L1 float l0_out_diff [Tout_l0];
+PI_L1 float l0_out_diff[Tout_l0];
 #endif
 
 #ifdef BACKWARD_GRAD
 PI_L1 float l0_in[Tin_l0];
 PI_L1 float l0_ker_diff[Tker_l0];
-PI_L1 float l0_out_diff [Tout_l0];
+PI_L1 float l0_out_diff[Tout_l0];
+PI_L1 float l0_bias_diff[Tout_l0]; 
 #endif
 
 #ifdef FORWARD
@@ -168,6 +169,7 @@ static inline void tensor_init()
 {
   for (int i=0; i<Tin_l0; i++)        l0_in[i] = INPUT_VECTOR[i];
   for (int i=0; i<Tker_l0; i++)       l0_ker_diff[i] = zero_init;
+  for (int i=0; i<Tout_l0; i++)       l0_bias_diff[i] = zero_init; 
   for (int i=0; i<Tout_l0; i++)       l0_out_diff[i] = L0_OUT_GRAD[i];   
 }
 
@@ -182,14 +184,19 @@ static inline void connect_blobs()
   layer0_out.diff = l0_out_diff;
   layer0_out.dim = Tout_l0;  
 
+  layer0_bias.diff = l0_bias_diff;
+  layer0_bias.dim = Tout_l0;
+
   FC_args.input = &layer0_in;
   FC_args.coeff = &layer0_wgt;
   FC_args.output = &layer0_out;
+  FC_args.bias = &layer0_bias;
   FC_args.skip_wg_grad = 0;
   FC_args.skip_in_grad = 0;
   FC_args.opt_matmul_type_fw = MATMUL_TYPE;
   FC_args.opt_matmul_type_wg = MATMUL_TYPE;
   FC_args.opt_matmul_type_ig = MATMUL_TYPE;
+  FC_args.use_biases = USE_BIASES_LINEAR;
 }
 
 static inline void compute_memory_occupation(){
@@ -322,6 +329,10 @@ static inline void train(){
   printf("WEIGHTS GRADIENT CHECK: \n");
   compare_tensors(l0_ker_diff, L0_WEIGHT_GRAD, Tker_l0);
   check_tensor(l0_ker_diff, L0_WEIGHT_GRAD, Tker_l0);
+
+  printf("BIAS GRADIENT CHECK: \n");
+  compare_tensors(l0_bias_diff, L0_BIAS_GRAD, Tout_l0);
+  check_tensor(l0_bias_diff, L0_BIAS_GRAD, Tout_l0);
   #endif   
 
 }
