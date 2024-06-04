@@ -789,6 +789,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l0*Tker_H_l0*Tker_W_l0;\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("\tlayer"+str(layer)+"_wgt.dim = 2*Tin_C_l0;\n")
+            elif layers_l[layer] == 'ReLU':
+                f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
             else:
                 f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
             f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l0;\n")
@@ -815,6 +817,8 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 elif layers_l[layer] == 'InstNorm':
                     f.write("\tlayer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
+                elif layers_l[layer] == 'ReLU':
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
                 else:
                     f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -869,6 +873,8 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                     elif layers_l[layer] == 'InstNorm':
                         f.write("\tlayer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
+                    elif layers_l[layer] == 'ReLU':
+                        f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
                     else:
                         f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -915,6 +921,8 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 elif layers_l[layer] == 'InstNorm':
                     f.write("\tlayer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
+                elif layers_l[layer] == 'ReLU':
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
                 else:
                     f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
@@ -1194,9 +1202,9 @@ def GenerateNet(proj_folder_path, project_name,
         
         f.write("\n\treset_dim();\n")
         if lay == 0: # Skip in grad for the first layer
-            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
         else:        # Else, allocate memory for in grad
-            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_COMP_IN_GRAD);\n")
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'Skipnode':
@@ -1286,6 +1294,7 @@ def GenerateNet(proj_folder_path, project_name,
         float_size = 2
         if data_type_l[0] == 'FP32':
             float_size = 4
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\tloss_args.output = &output_blob;\n")
         f.write("\tloss_args.target = output_blob.diff;\n")
         f.write("\tloss_args.wr_loss = &loss;\n")
@@ -1304,6 +1313,7 @@ def GenerateNet(proj_folder_path, project_name,
         float_size = 2
         if data_type_l[0] == 'FP32':
             float_size = 4
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\tloss_args.output = &output_blob;\n")
         f.write("\tloss_args.target = output_blob.diff;\n")
         f.write("\tloss_args.wr_loss = &loss;\n")
@@ -1338,6 +1348,7 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet]: Invalid data type for optimizer structure generation @layer{}!".format(layer))  
             f.write("\topt_l"+str(layer)+".weights = &weight_blob;\n")
             f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
+            f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);")
             f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_BOTH);\n")
             if optimizer == "SGD":
                 if data_type_l[layer] == 'FP32':
