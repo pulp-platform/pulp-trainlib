@@ -1139,13 +1139,15 @@ def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out,
         in_act  = Cin
         ker     = Cin * Cout
         out_act = Cout
-        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES
+        bias    = Cout
+        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES + bias * KER_BYTES
         memory_size_bytes.append(tot_FW)
         # WGT_G
         in_act  = Cin
         ker     = Cin * Cout
         out_act = Cout
-        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES
+        bias    = Cout
+        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES + bias * KER_BYTES
         memory_size_bytes.append(tot_WGT)
         # IN_G
         in_act  = Cin
@@ -1185,7 +1187,7 @@ def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out,
     else:
         print("Invalid layer entry for memocc calculation!!")
 
-    if USE_BIAS == 1 and layer_type not in ['CONV2D']:
+    if USE_BIAS == 1 and layer_type not in ['CONV2D', 'LINEAR']:
         print("Bias not handled for selected layer type and will be ignored.")
 
     return memory_size_bytes

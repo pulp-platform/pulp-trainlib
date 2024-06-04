@@ -44,9 +44,9 @@ get_golden:
 	python3 utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --step $(STEP) --use_bias $(USE_BIASES_LINEAR)
 
 profile_all_optim:
-	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH}
+	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH} --use_bias ${USE_BIASES_LINEAR}
 
 profile_all_sizes:
-	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
+	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE} --use_bias ${USE_BIASES_LINEAR}
 
 include $(RULES_DIR)/pmsis_rules.mk

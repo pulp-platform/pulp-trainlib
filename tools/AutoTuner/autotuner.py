@@ -36,7 +36,7 @@ Tiler (Naive or DORY-based) which finds tiling schemes depending on the problem,
 #                       >>> NOTES <<<
 # - To tile a LINEAR layer, set INPUT_H, INPUT_W, KER_H, KER_W to 1, 
 #   then act on the IN_CH and OUT_CH parameters. 
-# - The progrm does not tile input channels, but only output ones!!
+# - The program does not tile input channels, but only output ones!!
 
 
 # =====> USER SETTINGS <=====
@@ -69,7 +69,7 @@ USE_NAIVE_TILER = True
 FIND_FASTEST_MATMUL = True
 # Select if to write the file for server execution (specify trainlib's folder location on server)
 WRITE_YML_FILE = True
-trainlib_path = '/home/Work/pulp-trainlib'
+trainlib_path = '/home/lanmei/pulp-trainlib_ori' #'/home/Work/pulp-trainlib'
 # PULP settings
 NUM_STD_MATMUL      = 24
 NUM_DW_MATMUL       = 7
@@ -92,6 +92,7 @@ TILING_BUFFER_SIZE  = 28*1024     # Standard = 64k
 os.chdir('..')
 base_path = os.getcwd()
 os.chdir('tools/')
+#os.chdir(base_path)
 # Output files
 sim_result_file = str(base_path + '/tools/AutoTuner/fastest_tiling.txt')
 raw_result_file = str(base_path + '/tools/AutoTuner/raw_data_tiling.txt')
@@ -370,7 +371,7 @@ if WRITE_YML_FILE == True:
                 step_int = "BACKWARD_GRAD"
             elif step=="IN_G":
                 step_int = "BACKWARD_ERROR"
-            make_f.write("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='{}'\n".format(num_cores, NUM_STD_MATMUL, C_in[idx], C_out[idx], step_int))
+            make_f.write("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='{}' USE_BIASES={}\n".format(num_cores, NUM_STD_MATMUL, C_in[idx], C_out[idx], step_int, USE_BIAS))
 
         # FW N Cores
         if IGNORE_FW == False:
@@ -443,8 +444,8 @@ if WRITE_YML_FILE == True:
 # ----- LOCAL PC EXECUTION -----
 # ------------------------------
 
-test_base_folder = "../tests/"
-return_folder = "../../tools"
+test_base_folder = "../tests/" #"/home/lanmei/pulp-trainlib_ori/tests/" # "../tests/"
+return_folder = "../../tools" # "/home/lanmei/pulp-trainlib_ori/tools/" # "../../tools"
 
 # Select if to compile layers or not
 if FIND_FASTEST_MATMUL == True:
@@ -552,7 +553,7 @@ if FIND_FASTEST_MATMUL == True:
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # Results with N CORES
                 # FWD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='FORWARD'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx]))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='FORWARD' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):
@@ -565,7 +566,7 @@ if FIND_FASTEST_MATMUL == True:
             tiling_idx_list = []; matmul_names_list = []; matmul_cycles_list = []; num_cores_list = []; passes_list = []
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # WGT GRAD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='BACKWARD_GRAD'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx]))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='BACKWARD_GRAD' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):
@@ -578,7 +579,7 @@ if FIND_FASTEST_MATMUL == True:
             tiling_idx_list = []; matmul_names_list = []; matmul_cycles_list = []; num_cores_list = []; passes_list = []        
             for idx in range(NUM_FOUND_SOLUTIONS):
                 # IN GRAD
-                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='BACKWARD_ERROR'".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx]))
+                os.system("make profile_all_optim NUM_CORES={} NUM_MATMULS={} IN_CH={} OUT_CH={} STEP='BACKWARD_ERROR' USE_BIASES={}".format(NUM_CORES, NUM_STD_MATMUL, C_in[idx], C_out[idx], USE_BIAS))
                 write_raw_file(source_file, raw_result_file)
                 tiling_idx, mm, cyc, cores, errors, broken_mm = find_best_perf(source_file, idx, NUM_CORES)
                 if (errors > 0):

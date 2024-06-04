@@ -21,4 +21,5 @@ cd $MYHOME/pulp-trainlib_ori/tests/test_linear_fp32 #&& make all run platform=gv
 #cmake -B build
 #cmake --build build -t run
 #make clean get_golden all run platform=gvsoc # -j 10
-make all run platform=gvsoc -j 10
+make clean profile_all_optim all run platform=gvsoc
+#make all run platform=gvsoc -j 10
