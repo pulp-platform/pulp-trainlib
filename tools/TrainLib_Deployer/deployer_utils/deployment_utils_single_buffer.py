@@ -51,6 +51,8 @@ def max_input_dim(layers_l, cin_l, hin_l, win_l, data_type_l, update_layer_l):
 
     RES /= nbytes_max
 
+    print(f"[TEST!!! max_input_dim] RES = {RES}")
+
     # Result returned in number of elements of the largest input tensor
     return RES
 
@@ -86,6 +88,8 @@ def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data_type_l, 
 
     RES /= nbytes_max
 
+    print(f"[TEST!!! max_wgt_dim] RES = {RES}")
+
     # Result returned in number of elements of the largest weight tensor
     return RES
 
@@ -94,9 +98,9 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_st
     nbytes = 4
     nbytes_max = 4
     RES = 0
-    temp1 = 0 #input
-    temp2 = 0 #wgt
-    temp3 = 0 #output
+    tmp_inp = 0 #input
+    tmp_wgt = 0 #wgt
+    tmp_out = 0 #output
     tot = 0
     max_layer =  0
     for layer in range(len(layers_l)):
@@ -107,40 +111,40 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_st
             nbytes = 2    
         # Define size depending on layer
         if layers_l[layer] == 'conv2d' : 
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]*nbytes
+            tmp_wgt = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'PW':
-            temp2 = cin_l[layer]*cout_l[layer]*nbytes
+            tmp_wgt = cin_l[layer]*cout_l[layer]*nbytes
         if   layers_l[layer] == 'DW':
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*nbytes
+            tmp_wgt = hk_l[layer]*wk_l[layer]*cin_l[layer]*nbytes
         if layers_l[layer] == 'linear' :
-            temp2 = cin_l[layer]*cout_l[layer]*nbytes
+            tmp_wgt = cin_l[layer]*cout_l[layer]*nbytes
         if layers_l[layer] == 'Sumnode':
-            temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
+            tmp_wgt = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
         if layers_l[layer] == 'InstNorm':
-            temp2 = 2*cin_l[layer]*nbytes
+            tmp_wgt = 2*cin_l[layer]*nbytes
         if layers_l[layer] in ['ReLU', 'Skipnode']:
-            temp2 = 0
+            tmp_wgt = 0
         # Check if tensor needs to store gradients
         if update_layer_l[layer] == 1:
-            temp2 = temp2 * 2
+            tmp_wgt = tmp_wgt * 2
 
-        temp1 = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
+        tmp_inp = cin_l[layer]*hin_l[layer]*win_l[layer]*nbytes
         # Check if the tensor needs to store gradients
         if layer > 0 and update_layer_l[layer-1] == 1:
-            temp1 = temp1 * 2        
+            tmp_inp = tmp_inp * 2        
 
         hout = int((hin_l[layer] - hk_l[layer] + 2*h_pad[layer])/h_str[layer] + 1)
         wout = int((win_l[layer] - wk_l[layer] + 2*w_pad[layer])/w_str[layer] + 1)
         if layers_l[layer] == 'linear':
-            temp3 = cout_l[layer]*nbytes
+            tmp_out = cout_l[layer]*nbytes
         else:
-            temp3 = cout_l[layer] * hout * wout * nbytes
+            tmp_out = cout_l[layer] * hout * wout * nbytes
         # Check if the tensor needs to store gradients
         if update_layer_l[layer] == 1:
-            temp3 = temp3 * 2   
+            tmp_out = tmp_out * 2   
         
-        tot = temp1 + temp2 + temp3
-        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Output: {temp3}, Total: {tot} (data + gradients)")
+        tot = tmp_inp + tmp_wgt + tmp_out
+        print(f"Layer {layer} ({layers_l[layer]}):  Input: {tmp_inp}, Coefficients: {tmp_wgt}, Output: {tmp_out}, Total: {tot} (data + gradients)")
         if tot > RES:
             nbytes_max = nbytes
             RES = tot
@@ -199,6 +203,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void check_post_training_output();\n")
 
     f.write("\n// DMA managment functions\n")
+    f.write("void set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad);\n")
+    f.write("void set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad);\n")
     f.write("void load_input(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_output(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_coeff(void * src_blob, uint8_t data_diff_both);\n")
@@ -213,9 +219,20 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void update_blob();\n")
     f.write("void reset_dim();\n")
 
+    f.write(f"\n// Max tensor and layer sizes\n")
     f.write(f"#define MAX_IN_SIZE {int(max_input_dim(layers_l, in_ch_l, hin_l, win_l, data_type_l, update_layer_l))}\n")
     f.write(f"#define MAX_WGT_SIZE {int(max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l, update_layer_l))}\n")
-    f.write(f"#define MAX_SIZE {int(MAX_LAYER_DIM)}+50\n")
+    f.write(f"#define MAX_SIZE {int(MAX_LAYER_DIM)}\n")
+
+    f.write(f"\n// Single buffering constants\n")
+    f.write(f"#define SB_DMA_GRAD 0\n")
+    f.write(f"#define SB_DMA_DATA 1\n")
+    f.write(f"#define SB_DMA_BOTH 2\n")
+
+    f.write(f"\n// Partial update constants\n")
+    f.write(f"#define PU_SKIP_IN_GRAD 0\n")
+    f.write(f"#define PU_COMP_IN_GRAD 1\n")
+
     f.close()    
 
 
@@ -996,7 +1013,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
     f.write("\treset_dim();\n")
-    f.write("\tload_input(&layer0_in, 1);\n")
+    f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_out, PU_SKIP_IN_GRAD);\n")
+    f.write("\tload_input(&layer0_in, SB_DMA_DATA);\n")
 
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
@@ -1014,10 +1032,11 @@ def GenerateNet(proj_folder_path, project_name,
 
         if layer > 0:
             f.write("\n\treset_dim();\n")
-            f.write(f"\tload_input(&layer{layer}_in, 1);\n")
+            f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
+            f.write(f"\tload_input(&layer{layer}_in, SB_DMA_DATA);\n")
 
         if layers_l[layer] not in ['Skipnode', 'ReLU']:
-            f.write(f"\tload_coeff(&layer{layer}_wgt, 1);\n")
+            f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n")
             if layers_l[layer] not in ['Sumnode', 'InstNorm']:
                 f.write(f"\tcopy_struct_param((unsigned int) &l{layer}_args, (unsigned int) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
             if layers_l[layer] == 'InstNorm':
@@ -1057,7 +1076,7 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: PULP layer not implemented or wrapped in DNN Deployer!")
             exit()
         if layers_l[layer] != 'Skipnode':
-            f.write(f"\tstore_output(&layer{layer}_out, 1);\n")
+            f.write(f"\tstore_output(&layer{layer}_out, SB_DMA_DATA);\n")
             if layers_l[layer] == 'InstNorm':
                 num_bytes_load = 4
                 if data_type_l[layer] == 'FP16':
@@ -1070,7 +1089,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(f"\tpi_cl_dma_cmd((uint32_t) (l"+str(layer)+"_running_stdev), (uint32_t) (running_stdev_buffer), "+str(num_bytes_load)+"*Tin_C_l"+str(layer)+", PI_CL_DMA_DIR_LOC2EXT, cmd_store);\n")
                 f.write("\tpi_cl_dma_cmd_wait(cmd_store); \n")                
         else:
-            f.write(f"\tstore_input(&layer{layer}_out, 1);\n\n")
+            f.write(f"\tstore_input(&layer{layer}_out, SB_DMA_DATA);\n\n")
         # Insert casting operator for data type variation
         if layer < len(layers_l)-1 and data_type_l[layer] != data_type_l[layer+1]:
             if data_type_l[layer] == 'FP32' and data_type_l[layer+1] == 'FP16':
@@ -1104,43 +1123,46 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        #f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
-        f.write("  temp_blob.data = label_temp;\n")
-        f.write("  temp_blob.dim = output_blob.dim;\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
-        f.write("  loss_args.output = &output_blob;\n")
-        f.write("  loss_args.target = temp_blob.data;\n")
-        f.write("  loss_args.wr_loss = &loss;\n") 
+        f.write("\treset_dim();\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
+        f.write("\ttemp_blob.data = label_temp;\n")
+        f.write("\ttemp_blob.dim = output_blob.dim;\n")
+        f.write("\tcopy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
+        f.write("\tloss_args.output = &output_blob;\n")
+        f.write("\tloss_args.target = temp_blob.data;\n")
+        f.write("\tloss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
-            f.write("  pulp_MSELoss_backward(&loss_args);\n")   
+            f.write("\tpulp_MSELoss_backward(&loss_args);\n")   
         elif data_type_l[-1] == 'FP16':
-            f.write("  pulp_MSELoss_backward_fp16(&loss_args);\n") 
-        f.write("  store_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+            f.write("\tpulp_MSELoss_backward_fp16(&loss_args);\n") 
+        f.write("\tstore_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_GRAD);\n")
     elif loss_fn == 'CrossEntropyLoss':
         if data_type_l[-1] == 'FP32':
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        #f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
-        f.write("  temp_blob.data = label_temp;\n")
-        f.write("  temp_blob.dim = output_blob.dim;\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
-        f.write("  loss_args.output = &output_blob;\n")
-        f.write("  loss_args.target = temp_blob.data;\n")
-        f.write("  loss_args.wr_loss = &loss;\n") 
+        f.write("\treset_dim();\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
+        f.write("\ttemp_blob.data = label_temp;\n")
+        f.write("\ttemp_blob.dim = output_blob.dim;\n")
+        f.write("\tcopy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
+        f.write("\tloss_args.output = &output_blob;\n")
+        f.write("\tloss_args.target = temp_blob.data;\n")
+        f.write("\tloss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
-            f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
+            f.write("\tpulp_CrossEntropyLoss_backward(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
-            f.write("  pulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
-        f.write("  store_output(&layer"+str(len(layers_l)-1)+"_out, 0);\n")
+            f.write("\tpulp_CrossEntropyLoss_backward_fp16(&loss_args);\n")
+        f.write("\tstore_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_GRAD);\n")
     else:
         print("[deployment_utils.GenerateNet]: invalid loss function for backward!!")
 
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
-        f.write("  printf(\"\\nBACKWARD PROFILING:\\n\\n\");\n")
+        f.write("\tprintf(\"\\nBACKWARD PROFILING:\\n\\n\");\n")
+
 
     for layer in range(len(layers_l)):
         lay = len(layers_l) - layer - 1
@@ -1173,17 +1195,22 @@ def GenerateNet(proj_folder_path, project_name,
 
         
         f.write("\n\treset_dim();\n")
+        if lay == 0: # Skip in grad for the first layer
+            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        else:        # Else, allocate memory for in grad
+            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_COMP_IN_GRAD);\n")
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'Skipnode':
-                f.write(f"\tload_input(&layer{target_layer}_in, 0);\n")
+                # FIXME: verify if PU_COMP_IN_GRAD is right and if there is necessity to verify partial update here
+                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DIFF);\n")
             else:
-                f.write(f"\tload_input(&layer{target_layer}_in, 1);\n")
+                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
 
         if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
-            f.write(f"\tload_coeff(&layer{lay}_wgt, 1);\n")
+            f.write(f"\tload_coeff(&layer{lay}_wgt, SB_DMA_DATA);\n")
 
-        f.write(f"\tload_output(&layer{lay}_out, 2);\n")
+        f.write(f"\tload_output(&layer{lay}_out, SB_DMA_BOTH);\n")
 
         # Copy struct info 
         if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU':
@@ -1218,7 +1245,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay], target_layer))
         elif layers_l[lay] == 'Sumnode':
             #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
-            f.write(f"\tstore_output(&layer{lay}_in, 0);\n")
+            f.write(f"\tstore_output(&layer{lay}_in, SB_DMA_GRAD);\n")
         elif layers_l[lay]  == 'InstNorm':
             f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
         else:
@@ -1236,15 +1263,15 @@ def GenerateNet(proj_folder_path, project_name,
 
 
         if sumnode_connections[lay] != -1 and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and skip_in_grad==0:
-            f.write(f"\tload_output(&layer{target_layer}_in, 0);\n")
+            f.write(f"\tload_output(&layer{target_layer}_in, SB_DMA_GRAD);\n")
             f.write(ntemp.sum(lay, data_type_l[lay]))
         
 
         if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
-            f.write(f"\tstore_coeff(&layer{lay}_wgt, 0);\n")
+            f.write(f"\tstore_coeff(&layer{lay}_wgt, SB_DMA_GRAD);\n")
 
         if lay > 0 and layers_l[lay] != 'Sumnode':
-            f.write(f"\tstore_input(&layer{target_layer}_in, 0);\n")
+            f.write(f"\tstore_input(&layer{target_layer}_in, SB_DMA_GRAD);\n")
 
         # Profile layer by layer?
         if PROFILE_SINGLE_LAYERS == True:
@@ -1274,7 +1301,7 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deployment_utils.GenerateNet]: Invalid loss type!")
             exit()
-        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, SB_DMA_BOTH);\n")
     elif loss_fn == "CrossEntropyLoss":
         float_size = 2
         if data_type_l[0] == 'FP32':
@@ -1292,7 +1319,7 @@ def GenerateNet(proj_folder_path, project_name,
         else:
             print("[deplyment_utils.GenerateNet]: Invalid loss type!")
             exit()
-        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, 2);\n")
+        #f.write(f"  store_output(&layer{len(layers_l)-1}_out, SB_DMA_BOTH);\n")
     else:
         print("[deployment_utils.GenerateNet]: Loss function not valid for PULP deployment!!")
         exit()
@@ -1313,7 +1340,7 @@ def GenerateNet(proj_folder_path, project_name,
                 print("[deployment_utils.GenerateNet]: Invalid data type for optimizer structure generation @layer{}!".format(layer))  
             f.write("  opt_l"+str(layer)+".weights = &weight_blob;\n")
             f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
-            f.write(f"  load_coeff(&layer{layer}_wgt, 2);\n")
+            f.write(f"  load_coeff(&layer{layer}_wgt, SB_DMA_BOTH);\n")
             if optimizer == "SGD":
                 if data_type_l[layer] == 'FP32':
                     f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
@@ -1324,7 +1351,7 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
                 exit()
-            f.write(f"  store_coeff(&layer{layer}_wgt, 1);\n\n")
+            f.write(f"  store_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n\n")
     f.write("}\n")
 
 
@@ -1421,11 +1448,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\nvoid load_coeff(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_weight_dim(src_blob);\n")
-    f.write("\tif (data_diff_both == 0) // Load only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Load only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both == 1) // Load only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Load only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (W_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both > 1) { // Load both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Load both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (W_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
@@ -1434,11 +1461,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\nvoid load_input(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_input_dim(src_blob);\n")
-    f.write("\tif (data_diff_both == 0) // Load only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Load only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (IN_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both == 1) // Load only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Load only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (IN_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both > 1) { // Load both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Load both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (IN_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (IN_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
@@ -1447,11 +1474,11 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\nvoid load_output(void * src_blob, uint8_t data_diff_both){\n") 
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_output_dim(src_blob);\n")
-    f.write("\tif (data_diff_both == 0) // Load only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Load only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (OUT_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both == 1) // Load only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Load only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (OUT_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
-    f.write("\tif (data_diff_both > 1) { // Load both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Load both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (OUT_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (OUT_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
@@ -1459,11 +1486,11 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\nvoid store_output(void * dest_blob, uint8_t data_diff_both){ \n")
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) dest_blob;\n")
-    f.write("\tif (data_diff_both == 0) // Store only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Store only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (OUT_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both == 1) // Store only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Store only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (OUT_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both > 1) { // Store both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Store both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (OUT_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (OUT_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);"+"}\n")
@@ -1471,11 +1498,11 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\nvoid store_coeff(void * dest_blob, uint8_t data_diff_both){ \n")
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) dest_blob;\n")
-    f.write("\tif (data_diff_both == 0) // Store only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Store only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both == 1) // Store only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Store only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (W_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both > 1) { // Store both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Store both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (W_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);"+"}\n")
@@ -1483,11 +1510,11 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\nvoid store_input(void * dest_blob, uint8_t data_diff_both){ \n")
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) dest_blob;\n")
-    f.write("\tif (data_diff_both == 0) // Store only .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_GRAD) // Store only .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (IN_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both == 1) // Store only .data\n")
+    f.write("\tif (data_diff_both == SB_DMA_DATA) // Store only .data\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (IN_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
-    f.write("\tif (data_diff_both > 1) { // Store both .data and .diff\n")
+    f.write("\tif (data_diff_both == SB_DMA_BOTH) { // Store both .data and .diff\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (IN_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (IN_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);"+"}\n")
@@ -1498,28 +1525,52 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tinput_blob.C = src->C;\n")
     f.write("\tinput_blob.H = src->H;\n")
     f.write("\tinput_blob.W = src->W;\n")
-    f.write("\tinput_blob.dim = src->dim;\n")
-    f.write("\tIN_DIFF = BUFF + input_blob.dim;\n")
-    f.write("\tW_DATA = BUFF + 2*input_blob.dim;\n")
-    f.write("\tupdate_blob();}\n")
+    f.write("\tinput_blob.dim = src->dim;}\n")
+    #f.write("\tIN_DIFF = BUFF + input_blob.dim;\n")
+    #f.write("\tW_DATA = BUFF + 2*input_blob.dim;\n")
+    #f.write("\tupdate_blob();}\n")
 
     f.write("\nvoid get_output_dim(void * b){\n")
     f.write(f"\tstruct blob{suffix} * src = (struct blob{suffix} *) b;\n")
     f.write("\toutput_blob.C = src->C;\n")
     f.write("\toutput_blob.H = src->H;\n")
     f.write("\toutput_blob.W = src->W;\n")
-    f.write("\toutput_blob.dim = src->dim;\n")
-    f.write("\tOUT_DIFF = BUFF + 2*weight_blob.dim + 2*input_blob.dim + output_blob.dim;\n")
-    f.write("\tupdate_blob();}\n")
+    f.write("\toutput_blob.dim = src->dim;}\n")
+    #f.write("\tOUT_DIFF = BUFF + 2*weight_blob.dim + 2*input_blob.dim + output_blob.dim;\n")
+    #f.write("\tupdate_blob();}\n")
 
     f.write("\nvoid get_weight_dim(void * b){\n")
     f.write(f"\tstruct blob{suffix} * src = (struct blob{suffix} *) b;\n")
     f.write("\tweight_blob.C = src->C;\n")
     f.write("\tweight_blob.H = src->H;\n")
     f.write("\tweight_blob.W = src->W;\n")
-    f.write("\tweight_blob.dim = src->dim;\n")
-    f.write("\tW_DIFF = BUFF + weight_blob.dim + 2*input_blob.dim;\n")
-    f.write("\tOUT_DATA = BUFF + 2*weight_blob.dim + 2*input_blob.dim;\n")
+    f.write("\tweight_blob.dim = src->dim;}\n")
+    #f.write("\tW_DIFF = BUFF + weight_blob.dim + 2*input_blob.dim;\n")
+    #f.write("\tOUT_DATA = BUFF + 2*weight_blob.dim + 2*input_blob.dim;\n")
+    #f.write("\tupdate_blob();}\n")
+
+    f.write("\nvoid set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad) {\n")
+    f.write("\tstruct blob * inp_b = (struct blob *) blob_in;\n")
+    f.write("\tstruct blob * wgt_b = (struct blob *) blob_wgt;\n")
+    f.write("\tstruct blob * out_b = (struct blob *) blob_out;\n")
+    f.write("\tIN_DATA  = BUFF;\n")
+    f.write("\tIN_DIFF  = IN_DATA  + compute_in_grad * inp_b->dim;\n")
+    f.write("\tW_DATA   = IN_DIFF  + inp_b->dim;\n")
+    f.write("\tW_DIFF   = W_DATA   + wgt_b->dim;\n")
+    f.write("\tOUT_DATA = W_DIFF   + wgt_b->dim;\n")
+    f.write("\tOUT_DIFF = OUT_DATA + out_b->dim;\n")
+    f.write("\tupdate_blob();}\n")
+
+    f.write("\nvoid set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad) {\n")
+    f.write("\tstruct blob_fp16 * inp_b = (struct blob_fp16 *) blob_in;\n")
+    f.write("\tstruct blob_fp16 * wgt_b = (struct blob_fp16 *) blob_wgt;\n")
+    f.write("\tstruct blob_fp16 * out_b = (struct blob_fp16 *) blob_out;\n")
+    f.write("\tIN_DATA  = BUFF;\n")
+    f.write("\tIN_DIFF  = IN_DATA  + compute_in_grad * inp_b->dim;\n")
+    f.write("\tW_DATA   = IN_DIFF  + inp_b->dim;\n")
+    f.write("\tW_DIFF   = W_DATA   + wgt_b->dim;\n")
+    f.write("\tOUT_DATA = W_DIFF   + wgt_b->dim;\n")
+    f.write("\tOUT_DIFF = OUT_DATA + out_b->dim;\n")
     f.write("\tupdate_blob();}\n")
    
     f.write("\nvoid copy_struct_param(unsigned int from, unsigned int to, int size){\n")
@@ -1530,26 +1581,26 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tlinear_args.output = &output_blob;\n")
     f.write("\tlinear_args.input = &input_blob;\n")
     f.write("\tlinear_args.coeff = &weight_blob;\n")
-
+    #
     f.write("\tconv2d_args.output = &output_blob;\n")
     f.write("\tconv2d_args.input = &input_blob;\n")
     f.write("\tconv2d_args.coeff = &weight_blob;\n")
-
+    #
     f.write("\tPW_args.output = &output_blob;\n")
     f.write("\tPW_args.input = &input_blob;\n")
     f.write("\tPW_args.coeff = &weight_blob;\n")
-
+    #
     f.write("\tDW_args.output = &output_blob;\n")
     f.write("\tDW_args.input = &input_blob;\n")
     f.write("\tDW_args.coeff = &weight_blob;\n")
-
+    #
     f.write("\tact_args.output = &output_blob;\n")
     f.write("\tact_args.input = &input_blob;\n")
-
+    #
     f.write("\tresconn_args.output = &output_blob;\n")
     f.write("\tresconn_args.lout = &input_blob;\n")
     f.write("\tresconn_args.skip = &weight_blob;\n")
-
+    #
     f.write("\tInstNorm_args.output = &output_blob;\n")
     f.write("\tInstNorm_args.input = &input_blob;\n")
     f.write("\tInstNorm_args.coeff = &weight_blob;\n")
