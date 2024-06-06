@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
 */ 
 
 
@@ -171,3 +171,20 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args );
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (output gradient tensor needs to be stored in L2, im2col_buffer in L1)
  */
 void pulp_conv2d_fp32_bw_input_grads_cl( void * Conv2D_args );
+
+
+/**
+ * @brief Conv2d kernel for the computation of the weight and bias gradient, to be used on inputs that have been
+ * transformed through the im2col operation
+ * @param void_args pointer to a mm_manager_args structure
+ */
+void im2col_conv2d_param_grad_kernel (void * void_args);
+
+
+/**
+ * @brief Conv2d kernel for forward propagation to be used on inputs that have been transformed through the im2col operation
+ * @param man_args pointer to a mm_manager_args structure
+ */
+void im2col_conv2d_fw_kernel(
+        void * void_args
+);

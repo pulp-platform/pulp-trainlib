@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini
+Authors: Davide Nadalini, Calin Diaconu
 '''
 
 import deployer_utils.deployment_utils_single_buffer as utilsSB

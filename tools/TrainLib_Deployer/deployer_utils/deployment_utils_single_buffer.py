@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Giacomo Saporetti, Davide Nadalini
+Authors: Giacomo Saporetti, Davide Nadalini, Calin Diaconu
 '''
 
 import os
@@ -62,8 +62,7 @@ def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
 def max_bias_dim(layers_l, cout_l, bias_l):
     RES = 0
     for layer in range(len(layers_l)):
-        if layers_l[layer] in ['conv2d'] and bias_l[layer] == 1:
-            if cout_l[layer] > RES:
+        if layers_l[layer] in ['conv2d'] and bias_l[layer] == 1 and cout_l[layer] > RES:
                 RES = cout_l[layer]
 
     return RES
