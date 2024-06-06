@@ -88,6 +88,11 @@ The `tools/` folder contains useful tools which ease the usage of PULP-TrainLib,
 The `assets/` folder contains useful support files for PULP-TrainLib. Inside [CI_test_suite](assets/CI_test_suite/), users can find a testing environment that can be used to verify PULP-TrainLib's primitives for Continuous Integration. 
 
 
+# Tutorials
+
+To learn how to generate the code with our TrainLib_Deployer and more details about the optimizations used in this library, a [tutorial repository](https://github.com/dnadalini/PULP-TrainLib-Tutorial) is available online. This repository contains tutorials and a guide to easily install a conda environment with all the necessary requirements to run PULP-TrainLib.
+
+
 
 # Installation and requirements
 
@@ -137,6 +142,7 @@ To add new functionalities, users can follow the naming convention of PULP-Train
 
 PULP-TrainLib's repository is organized with these branches:
 - `main`: main branch, targeting PULP architectures.
+- `trainlib-tutorial`: branch reserved for tutorial purposes (see [https://github.com/dnadalini/PULP-TrainLib-Tutorial](https://github.com/dnadalini/PULP-TrainLib-Tutorial)).
 - `pulp-trainlib-paper`: branch to reproduce the results provided in the paper ["PULP-TrainLib: Enabling On-Device Training for RISC-V Multi-Core MCUs through Performance-Driven Autotuning"](https://www.samos-conference.com/Resources_Samos_Websites/Proceedings_Repository_SAMOS/2022/Papers/Paper_14.pdf).
 - `pulp-trainlib-stm32`: this is a PULP-TrainLib port compatible with STM32 and other MCUs (FP32 format only).
 
@@ -177,7 +183,6 @@ PULP-TrainLib's repository is organized with these branches:
 - Performance bugs in im2col/im2row with DMA loading (performances tend to be less than im2col/im2row with cores)
 - Missing integration for RNN / MHSE in TrainLib_Deployer
 - FP32 MHSA primitives (Input Grad)
-- FP32 and FP16 InstanceNorm's output do not perfectly match PyTorch ones (need bugfixing)
 - Missing integration of sigmoid function in TrainLib_Deployer
 - Performances of FP16 sigmoid may need to be optimized with FP16 exponenetial (e.g., https://github.com/0xBYTESHIFT/fp16/blob/master/include/half/half.hpp)
 
@@ -191,6 +196,7 @@ PULP-TrainLib's repository is organized with these branches:
 - Manuele Rusci (manuele.rusci@kuleuven.be)
 - Francesco Conti (f.conti@unibo.it)
 - Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
+- Luca Bompani (luca.bompani5@unibo.it)
 
 ## Past Contributors
 
