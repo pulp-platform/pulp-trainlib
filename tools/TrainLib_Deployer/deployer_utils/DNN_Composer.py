@@ -100,7 +100,8 @@ def DNN_Size_Checker (layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l, h_s
         l1_structs_mem = 0
         l1_structs_mem += 6*4 # 6 pointers IN_DATA, IN_DIFF ...
         l1_structs_mem += 4*(6*4) # 4 blobs input_blob, output_blob ..
-        l1_structs_mem += 32 # linear_args
+        # l1_structs_mem += 32 # linear_args
+        l1_structs_mem += 44 # linear_args, if add bias: + 8 (blob, data+diff pointers) + 4 (use_biases) = 32+12 = 44
         l1_structs_mem += 84 # conv2d_args
         l1_structs_mem += 40 # PW_args
         l1_structs_mem += 40 # DW_args
