@@ -26,11 +26,15 @@
 /**
  * @brief Structure for optimizers
  * @param weights blob of the weights (with their gradient inside)
+ * @param bias blob of the biases (with their gradient inside)
  * @param learning_rate the learning rate of the optimizer
+ * @param use_biases flag: use bias (1) or not use bias (0).
  */
 struct optim_args {
   struct blob * weights;
+  struct blob * biases;
   float learning_rate;
+  int use_biases;
 };
 
 
