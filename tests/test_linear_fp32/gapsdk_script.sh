@@ -16,10 +16,9 @@ source $MYHOME/gap_sdk_private/configs/gap9_evk_audio.sh
 # make clean VERBOSE=1 all
 # make openocd.all -j8
 # Hello world test
-cd $MYHOME/pulp-trainlib_ori/tests/test_linear_fp32 #&& make all run platform=gvsoc
 #cd $MYHOME/pulp-trainlib/tests/new_gap_test_fcn_mibmi_fp32
 #cmake -B build
 #cmake --build build -t run
-#make clean get_golden all run platform=gvsoc # -j 10
-make clean profile_all_optim all run platform=gvsoc
+make clean get_golden all run platform=gvsoc # -j 10
+#make clean profile_all_optim all run platform=gvsoc
 #make all run platform=gvsoc -j 10
