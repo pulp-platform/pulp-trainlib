@@ -116,7 +116,7 @@ def max_bias_dim(layers_l, cout_l, bias_l, data_type_l, update_layer_l):
     return RES
 
 
-def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad, data_type_l, update_layer_l):
+def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad, bias_l, data_type_l, update_layer_l):
     nbytes = 4
     nbytes_max = 4
     RES = 0
@@ -230,8 +230,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void check_post_training_output();\n")
 
     f.write("\n// DMA managment functions\n")
-    f.write("void set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad);\n")
-    f.write("void set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_out, int compute_in_grad);\n")
+    f.write("void set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad);\n")
+    f.write("void set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad);\n")
     f.write("void load_input(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_output(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_coeff(void * src_blob, uint8_t data_diff_both);\n")
@@ -426,6 +426,7 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU']:
                 f.write("PI_L2 float l"+str(layer)+"_ker[1];\n")
+                f.write("PI_L2 float l"+str(layer)+"_bias[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
             elif layers_l[layer] == 'InstNorm':
@@ -456,6 +457,7 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU']:
                 f.write("PI_L2 float l"+str(layer)+"_ker_diff[1];\n")
+                f.write("PI_L2 float l"+str(layer)+"_bias_diff[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 pass
             elif layers_l[layer] == 'InstNorm':
@@ -1095,7 +1097,7 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
     f.write("\treset_dim();\n")
-    f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_out, PU_SKIP_IN_GRAD);\n")
+    f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_bias, &layer0_out, PU_SKIP_IN_GRAD);\n")
     f.write("\tload_input(&layer0_in, SB_DMA_DATA);\n")
 
     # Profiling options: single layer or all
@@ -1114,7 +1116,7 @@ def GenerateNet(proj_folder_path, project_name,
 
         if layer > 0:
             f.write("\n\treset_dim();\n")
-            f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
+            f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_bias, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
             f.write(f"\tload_input(&layer{layer}_in, SB_DMA_DATA);\n")
 
         if layers_l[layer] not in ['Skipnode', 'ReLU']:
@@ -1208,7 +1210,7 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("\treset_dim();\n")
-        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
         f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\ttemp_blob.data = label_temp;\n")
         f.write("\ttemp_blob.dim = output_blob.dim;\n")
@@ -1227,7 +1229,7 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("\treset_dim();\n")
-        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
         f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\ttemp_blob.data = label_temp;\n")
         f.write("\ttemp_blob.dim = output_blob.dim;\n")
@@ -1280,9 +1282,9 @@ def GenerateNet(proj_folder_path, project_name,
         
         f.write("\n\treset_dim();\n")
         if lay == 0: # Skip in grad for the first layer
-            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
         else:        # Else, allocate memory for in grad
-            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'Skipnode':
@@ -1435,7 +1437,7 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 f.write("\topt_l"+str(layer)+".use_biases = 0;\n")
             f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
-            f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);")
+            f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
             f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_BOTH);\n")
             if bias_l[layer] == 1:
                 f.write(f"\tload_bias(&layer{layer}_bias, SB_DMA_BOTH);\n")
