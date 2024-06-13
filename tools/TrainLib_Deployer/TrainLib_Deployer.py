@@ -122,7 +122,7 @@ READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
 # ---------------------
 
 # GENERAL PROPERTIES
-project_name    = 'CNN_FP32_bias_new'
+project_name    = 'CNN_FP32_bias_SB_new'
 project_path    = './' # '../../../Ex01-TrainLib_Deployer/'
 proj_folder     = project_path + project_name + '/'
 
@@ -171,7 +171,7 @@ update_layer_list   = [ 1,  1,  1]
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10) # 256*(2**10)
-USE_DMA = 'NO'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, the tool writes separate weight and input gradient in the backward step
 # PROFILING OPTIONS
