@@ -5,3 +5,6 @@ step-check.h
 output_eval.h
 runs.txt
 **/__pycache__/
+log_bkp.txt
+runs_bkp.txt
+BUILD_bkp/

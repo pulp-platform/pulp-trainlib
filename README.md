@@ -172,6 +172,8 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] Biases for all layers
 - [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
 - [ ] Sparse Update (layer-wise) in TrainLib_Deployer
+- [ ] Biases in FP32 and FP16 Conv2D (CHW, HWC) in im2col-based and naive kernels
+- [ ] Integration of biases in TrainLib-Deployer (Conv2D)
 
 # Known bugs / issues (open for contributions)
 

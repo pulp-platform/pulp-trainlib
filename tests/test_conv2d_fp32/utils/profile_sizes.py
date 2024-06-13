@@ -53,6 +53,7 @@ parser.add_argument( '--perf_file_name', type=str, default='runs.txt' )
 parser.add_argument( '--step', type=str, default="PW_FORWARD")
 parser.add_argument( '--cores', type=int, default=1)
 parser.add_argument( '--data_type', type=str, default='fp32')
+parser.add_argument( '--use_biases', type=int, default='int')
 
 parser.add_argument( '--matmul_type', type=int, default=0)  # Selects a matmul algorithm
 
@@ -63,6 +64,7 @@ step_type = args.step
 filename = args.perf_file_name
 cores = args.cores
 data_type = args.data_type
+use_biases = args.use_biases
 matmul_alg = args.matmul_type
 
 print("\n=====> ENTERING TEST SEQUENCE.. <=====\n")
@@ -85,13 +87,13 @@ for compile_idx in range(num_sizes) :
     # Execute build
     os.system("rm -r BUILD/")
     if (step_type == "FORWARD" or "BACKWARD_GRAD" or "BW_ERROR"):
-        os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IMAGE_W={} IMAGE_H={} KER_W={} KER_H={} IN_CH={} OUT_CH={} > log.txt".format(step_type, cores, matmul_alg, im_height[compile_idx], im_width[compile_idx], ker_height[compile_idx], ker_width[compile_idx], ch_in[compile_idx], ch_out[compile_idx]))
+        os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IMAGE_W={} IMAGE_H={} KER_W={} KER_H={} IN_CH={} OUT_CH={} USE_BIASES={} > log.txt".format(step_type, cores, matmul_alg, im_height[compile_idx], im_width[compile_idx], ker_height[compile_idx], ker_width[compile_idx], ch_in[compile_idx], ch_out[compile_idx], use_biases))
     else: 
         print("Invalid step!!")
         exit()
     # Find profiling and write it to file
     f = open(filename, "a")
-    f.write("\nRUN {}: MATMUL_ALG= {}, IMAGE_H={}, IMAGE_W={}, KER_H={}, KER_W={}, IN_CH={}, OUT_CH={}".format(compile_idx, matmul_alg, im_height[compile_idx], im_width[compile_idx], ker_height[compile_idx], ker_width[compile_idx], ch_in[compile_idx], ch_out[compile_idx]))
+    f.write("\nRUN {}: MATMUL_ALG= {}, IMAGE_H={}, IMAGE_W={}, KER_H={}, KER_W={}, IN_CH={}, OUT_CH={}, USE_BIASES={}".format(compile_idx, matmul_alg, im_height[compile_idx], im_width[compile_idx], ker_height[compile_idx], ker_width[compile_idx], ch_in[compile_idx], ch_out[compile_idx], use_biases))
     f.close()
     prof.extract_size_performance(step_type, filename)
 
