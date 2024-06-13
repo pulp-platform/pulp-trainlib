@@ -39,6 +39,14 @@ mm_M_fp16_SIMD_2x4
 matmul_type == 5
 mm_M_fp16_SIMD_4x8
 
+// Unrolling on N
+matmul_type == 6
+mm_fp16_unroll_2x1
+matmul_type == 7
+mm_fp16_unroll_4x1
+matmul_type == 8
+mm_fp16_unroll_8x1
+
 END STANDARD 
 
 
