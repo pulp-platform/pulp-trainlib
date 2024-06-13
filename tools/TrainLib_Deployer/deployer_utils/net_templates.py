@@ -525,6 +525,10 @@ def InstNorm_config_template(layer_number, skip_in_grad, update_layer):
     template  = "  l"+str(layer_number)+"_args.input = &layer"+str(layer_number)+"_in;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &layer"+str(layer_number)+"_wgt;\n"
     template += "  l"+str(layer_number)+"_args.output = &layer"+str(layer_number)+"_out;\n"
+    template += "  l"+str(layer_number)+"_args.running_mean = l"+str(layer_number)+"_running_mean;\n"
+    template += "  l"+str(layer_number)+"_args.running_var = l"+str(layer_number)+"_running_var;\n"
+    template += "  l"+str(layer_number)+"_args.running_stdev = l"+str(layer_number)+"_running_stdev;\n"
+    template += "  l"+str(layer_number)+"_args.freeze_running_params = 0;\n"
     template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     return template
