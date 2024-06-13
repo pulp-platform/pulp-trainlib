@@ -546,6 +546,7 @@ def GenerateGM(proj_folder_path, project_name,
         #Skipconn
         elif sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
             f.write(f"\n\t\t{variable} = self.l{layer}(x)")
+            f.write(f"\n\t\tx = {variable}")
         elif layers_l[layer] == "Sumnode": 
             f.write(f"\n\t\tx = y{layer} + x\t# Sumnode") 
         # Last layer
