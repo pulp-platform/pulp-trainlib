@@ -758,7 +758,8 @@ def GenerateNet(proj_folder_path, project_name,
     # Mixed precision check
     C_data_type = 'float'
     f.write("\n\t// Connect tensors to blobs")
-    previous_was_skip = 0
+    previous_was_skip_data = 0
+    previous_was_skip_diff = 0
     
     for layer in range(len(layers_l)):
         
@@ -803,7 +804,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
         elif layer > 0 and layer < len(layers_l)-1:     # Hidden layers
             f.write("\t// Layer "+str(layer)+"\n")
-            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip)+"_in;\n")
+            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
             if layers_l[layer] != 'Skipnode':
                 if (layer - previous_was_skip) > 0: # Avoid assignement of l0_in_diff
                     f.write("\tlayer"+str(layer)+"_in.diff = l"+str(layer)+"_in_diff;\n")
@@ -815,7 +816,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
         elif layer == len(layers_l)-1:                  # Last layer
             f.write("\t// Layer "+str(layer)+"\n")
-            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip)+"_in;\n")
+            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
             f.write("\tlayer"+str(layer)+"_in.diff = l"+str(layer + lookahead)+"_in_diff;\n")
             f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
             f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
