@@ -945,11 +945,20 @@ def GenerateNet(proj_folder_path, project_name,
             print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
             exit()
 
+        # if sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
+        #     previous_was_skip += 1
+        # else:
+        #     previous_was_skip = 0
+
         if sumnode_connections[layer] != -1 and layers_l[layer] != 'Sumnode':
-            previous_was_skip += 1
-           
+            if layers_l[layer] == 'Skipnode':
+                previous_was_skip_data += 1
+                previous_was_skip_diff += 1
+            else: 
+                previous_was_skip_diff = 0
         else:
-            previous_was_skip = 0
+            previous_was_skip_data = 0
+            previous_was_skip_diff = 0
             
 
     f.write("\n\t// Configure layer structures\n")
@@ -1209,7 +1218,7 @@ def GenerateNet(proj_folder_path, project_name,
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'Skipnode':
                 # FIXME: verify if PU_COMP_IN_GRAD is right and if there is necessity to verify partial update here
-                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DIFF);\n")
+                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_GRAD);\n")
             else:
                 f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
 
