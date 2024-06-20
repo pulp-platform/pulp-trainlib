@@ -261,6 +261,8 @@ if READ_MODEL_ARCH :
         if args.start_at is not None:
             node_names = [n.name for n in graph.graph.node if n.op_type != 'Constant']
             assert args.start_at in node_names, f"{args.start_at} is not a valid layer name. Layer names are: {node_names}"
+            # CIOFLANC: temporary reconciling pseudo-sparse update implementations 
+            assert update_layer_list.index(1) == node_names.index(args.start_at)]  
 
         for onnx_node in graph.graph.node:
             if not found_start:
