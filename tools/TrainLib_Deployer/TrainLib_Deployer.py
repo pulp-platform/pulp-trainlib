@@ -121,8 +121,56 @@ READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
 # --- USER SETTINGS ---
 # ---------------------
 
+
 # GENERAL PROPERTIES
-project_name    = 'CNN_FP32_bias_NO'
+project_name    = 'CNN_FP32_bias_SB_newest_residual_bias_test_after_merge'
+project_path    = './' # '../../../Ex01-TrainLib_Deployer/'
+proj_folder     = project_path + project_name + '/'
+
+# TRAINING PROPERTIES
+epochs          = 1
+batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
+learning_rate   = 0.001
+optimizer       = "SGD"                # Name of PyTorch's optimizer
+loss_fn         = "MSELoss"            # Name of PyTorch's loss function
+
+# ------- NETWORK GRAPH --------
+# Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
+layer_list      = [ 'conv2d', 'Skipnode', 'ReLU', 'Sumnode', 'linear']
+# Layer properties
+sumnode_connections = [0, 1, 0, 1, 0]             # For Skipnode and Sumnode only, for each Skipnode-Sumnode couple choose a value and assign it to both, all other layer MUST HAVE 0
+
+in_ch_list      = [  2,  4,  4, 4, 4*6*6]#[  8,  16, 16*6*6 ]       # Linear: size of input vector
+out_ch_list     = [  4, 4, 4, 4, 2 ]#[  16, 16, 32 ]           # Linear: size of output vector
+hk_list         = [  3, 1, 1,  1,  1 ]            # Linear: = 1
+wk_list         = [  3, 1, 1,  1,  1 ]            # Linear: = 1
+# Input activations' properties
+hin_list        = [  8, 6, 6, 6,  1 ]            # Linear: = 1
+win_list        = [  8, 6, 6, 6,  1 ]            # Linear: = 1
+# Convolutional strides
+h_str_list      = [  1, 1, 1, 1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
+w_str_list      = [  1, 1, 1, 1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
+# Padding (bilateral, adds the specified padding to both image sides)
+h_pad_list      = [  0, 0, 0, 0,  0 ]            # Only for conv2d, DW (NOT IMPLEMENTED)
+w_pad_list      = [  0, 0, 0, 0,  0 ]            # Only for conv2d, DW (NOT IMPLEMENTED)
+# Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
+opt_mm_fw_list  = [  0,  0,  0,  0,  0 ]
+opt_mm_wg_list  = [  0,  0,  0,  0,  0 ]
+opt_mm_ig_list  = [  0,  0,  0,  0,  0 ]
+# Data type list for layer-by-layer deployment (mixed precision)
+data_type_list  = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32']
+# Data layout list (CHW or HWC) 
+data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
+# Bias
+bias_list           = [ 0,  0, 0, 0,  1]
+# Sparse Update
+update_layer_list   = [ 1,  1,  1, 1, 1]
+# ----- END OF NETWORK GRAPH -----
+
+
+'''
+# GENERAL PROPERTIES
+project_name    = 'CNN_FP32_bias_SB_newest_no_residual'
 project_path    = './' # '../../../Ex01-TrainLib_Deployer/'
 proj_folder     = project_path + project_name + '/'
 
@@ -139,19 +187,19 @@ layer_list      = [ 'conv2d', 'ReLU', 'linear']
 # Layer properties
 sumnode_connections = [0, 0, 0]             # For Skipnode and Sumnode only, for each Skipnode-Sumnode couple choose a value and assign it to both, all other layer MUST HAVE 0
 
-in_ch_list      = [  2,  4, 4*6*6 ]#[  8,  16, 16*6*6 ]       # Linear: size of input vector
-out_ch_list     = [  4,  4, 2 ]#[  16, 16, 32 ]           # Linear: size of output vector
-hk_list         = [  3,  1,  1 ]            # Linear: = 1
-wk_list         = [  3,  1,  1 ]            # Linear: = 1
+in_ch_list      = [  2,  4, 4*6*6]#[  8,  16, 16*6*6 ]       # Linear: size of input vector
+out_ch_list     = [  4, 4, 2 ]#[  16, 16, 32 ]           # Linear: size of output vector
+hk_list         = [  3, 1,  1 ]            # Linear: = 1
+wk_list         = [  3, 1,  1 ]            # Linear: = 1
 # Input activations' properties
-hin_list        = [  8,  6,  1 ]            # Linear: = 1
-win_list        = [  8,  6,  1 ]            # Linear: = 1
+hin_list        = [  8, 6,  1 ]            # Linear: = 1
+win_list        = [  8, 6,  1 ]            # Linear: = 1
 # Convolutional strides
-h_str_list      = [  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
-w_str_list      = [  1,  1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
+h_str_list      = [  1, 1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
+w_str_list      = [  1, 1,  1 ]            # Only for conv2d, maxpool, avgpool (NOT IMPLEMENTED FOR CONV2D)
 # Padding (bilateral, adds the specified padding to both image sides)
-h_pad_list      = [  0,  0,  0 ]            # Only for conv2d, DW (NOT IMPLEMENTED)
-w_pad_list      = [  0,  0,  0 ]            # Only for conv2d, DW (NOT IMPLEMENTED)
+h_pad_list      = [  0, 0, 0]            # Only for conv2d, DW (NOT IMPLEMENTED)
+w_pad_list      = [  0, 0, 0]            # Only for conv2d, DW (NOT IMPLEMENTED)
 # Define the lists to call the optimized matmuls for each layer (see mm_manager_list.txt, mm_manager_list_fp16.txt or mm_manager function body)
 opt_mm_fw_list  = [  0,  0,  0 ]
 opt_mm_wg_list  = [  0,  0,  0 ]
@@ -163,7 +211,7 @@ data_layout_list    = ['CHW', 'CHW', 'CHW']   # TO DO
 # Bias
 bias_list           = [ 0,  0,  1]
 # Sparse Update
-update_layer_list   = [ 1,  1,  1]
+update_layer_list   = [ 1,  1, 1]
 # ----- END OF NETWORK GRAPH -----
 
 
@@ -171,7 +219,7 @@ update_layer_list   = [ 1,  1,  1]
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10) # 256*(2**10)
-USE_DMA = 'NO'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, the tool writes separate weight and input gradient in the backward step
 # PROFILING OPTIONS
@@ -187,7 +235,7 @@ READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
 # ---------------------------
 # --- END OF USER SETTING ---
 # ---------------------------
-
+'''
 
 
 """
