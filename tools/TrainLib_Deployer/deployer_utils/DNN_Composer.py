@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+Copyright (C) 2021-2024 ETH Zurich and University of Bologna
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini
+Authors: Davide Nadalini, Cristian Cioflan, Axel Vanoni
 '''
 
 import deployer_utils.deployment_utils_single_buffer as utilsSB
@@ -210,7 +210,7 @@ def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
                   epochs, batch_size, learning_rate, optimizer, loss_fn,
-                  NUM_CORES, data_type_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
+                  NUM_CORES, data_type_l, data_list, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list, 
                   sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     # Initialize project (copy the prefab files and create folder)
@@ -224,7 +224,7 @@ def DNN_Composer (proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
                         epochs, batch_size, learning_rate, optimizer, loss_fn,
-                        data_type_l, update_layer_l, sumnode_connections, USE_DMA)
+                        data_type_l, data_list, update_layer_l, sumnode_connections, USE_DMA)
 
 
     global MAX_LAYER_DIM

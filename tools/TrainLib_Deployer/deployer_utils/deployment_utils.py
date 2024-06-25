@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+Copyright (C) 2021-2024 ETH Zurich and University of Bologna
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini, Giacomo Saporetti
+Authors: Davide Nadalini, Giacomo Saporetti, Cristian Cioflan, Axel Vanoni
 '''
 
 import os
@@ -364,7 +364,7 @@ def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, update_layer_l, sumnode_connections, USE_DMA):
+                data_type_l, data_list, update_layer_l, sumnode_connections, USE_DMA):
 
     # Check if GPU is available, else keep fake FP16
     cuda_is_on = torch.cuda.is_available()
@@ -569,6 +569,18 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("net = DNN().to(device)\n")
     f.write("for p in net.parameters():\n")
     f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
+    if (data_list):
+        f.write("from pathlib import Path\n")
+        f.write("basedir = Path(__file__).resolve().parent.parent\n")
+        for layer in range(len(layers_l)):
+            if data_type_l[layer] == 'FP16':
+                to = ".to(device).half()"
+            else:
+                to = ".to(device)"
+            f.write(f"net.l{layer}.weight = torch.nn.Parameter(torch.from_numpy(numpy.load(basedir / 'data/l{layer}w.npy')){to}, requires_grad=True)\n")
+            # TODO: uncomment once biases are implemented in trainlib
+            # f.write(f"net.l{layer}.bias = torch.nn.Parameter(torch.from_numpy(numpy.load(basedir / 'data/l{layer}b.npy')){to}, requires_grad=True)\n")
+
     f.write("net.zero_grad()\n\n")
 
     # Freeze layers excluded from sparse update
