@@ -98,7 +98,7 @@ update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]         
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10)
-USE_DMA = 'DB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB', CURRENTLY UNAVAILABLE) 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, writes separate weight and input gradient in backward step
 # PROFILING OPTIONS
