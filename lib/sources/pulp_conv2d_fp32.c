@@ -177,10 +177,8 @@ void pulp_conv2d_fp32_fw_cl( void * Conv2D_args )
       matMul_args.A = inData;
       matMul_args.B = coeffData;
       matMul_args.C = outData;
-
       matMul_args.bias = biasData;
       matMul_args.USE_BIASES = USE_BIASES;
-
       matMul_args.H = H_in;
       matMul_args.W = W_in;
       matMul_args.pCin = C_in;
@@ -304,10 +302,10 @@ void pulp_conv2d_fp32_bw_param_grads_cl( void * Conv2D_args )
       im2col_args.c = C2D_args->coeff;
       im2col_args.output = C2D_args->output;
       im2col_args.pBuffer = i2c_buffer;
-      im2col_args.Lpad = 0;
-      im2col_args.Rpad = 0;
-      im2col_args.Upad = 0;
-      im2col_args.Dpad = 0;
+      im2col_args.Lpad = 0; //Lpad;
+      im2col_args.Rpad = 0; //Rpad;
+      im2col_args.Upad = 0; //Upad;
+      im2col_args.Dpad = 0; //Dpad;
       im2col_args.mod = 0;
       im2col_args.stride_w = stride_w;
       im2col_args.stride_h = stride_h;

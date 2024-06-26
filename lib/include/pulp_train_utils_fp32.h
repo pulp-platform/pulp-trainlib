@@ -248,7 +248,6 @@ struct matMul_args {
   int Rpad;
   int Upad;
   int Dpad;
-
   // For bias handling
   float * __restrict__ bias;
   int bias_dim;
