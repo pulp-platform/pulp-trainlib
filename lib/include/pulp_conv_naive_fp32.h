@@ -99,26 +99,6 @@ void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (
     void * matMul_args
 );
 
-
-/**
- * @brief Conv2d kernel for forward propagation to be used on inputs that have been transformed through the im2col operation
- * @param man_args pointer to a mm_manager_args structure
- */
-void im2col_conv2d_fw_kernel(
-        void * void_args
-);
-
-
-/**
- * @brief Conv2d kernel for the computation of the weight and bias gradient, to be used on inputs that have been
- * transformed through the im2col operation
- * @param man_args pointer to a mm_manager_args structure
- */
-void im2col_conv2d_param_grad_kernel (
-        void * void_args
-);
-
-
 /**
  * @brief Naive conv2d kernel for forward propagation (CHW format), optimized for the case of 5x5 kernel with stride 2 and padding 1 on all sides
  * @param matMul_args pointer to a matMul_args structure
