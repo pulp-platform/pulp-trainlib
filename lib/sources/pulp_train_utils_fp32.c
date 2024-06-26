@@ -977,4 +977,65 @@ void vector_exp_sum_fp32_cl(void * vector_exp_sum_args){
     }
 }
 
+#define CORDIC_N_ITERATION 12
+#define CORDIC_SCALING_FACTOR_14 0.6072529365170104
+#define CORDIC_SCALING_FACTOR_12 0.607252959138945
+#define CORDIC_SCALING_FACTOR_10 0.6072533210898753
+#define CORDIC_SCALING_FACTOR_8 0.6072591122988928
+
+const float atan_pow_2[14] = {
+        0.7853981633974483f, 
+    0.4636476090008061f, 
+    0.24497866312686414f, 
+    0.12435499454676144f, 
+    0.06241880999595735f, 
+    0.031239833430268277f, 
+    0.015623728620476831f, 
+    0.007812341060101111f, 
+    0.0039062301319669718f, 
+    0.0019531225164788188f, 
+    0.0009765621895593195f, 
+    0.0004882812111948983f, 
+    0.00024414062014936177f, 
+    0.00012207031189367021f };
+
+void cordic_cos_sin_fp32(float angle, float* cos, float* sin){
+    int inv_tan_theta = 1;
+    float x = CORDIC_SCALING_FACTOR_12;
+    float y = 0;
+    float x_n;
+    int cos_sign = 1;
+
+    angle -= ((int)(angle/(2*M_PI)))*(2*M_PI);
+
+    if(angle > M_PI)
+        angle -= 2*M_PI;
+    else if(angle < -M_PI)
+        angle += 2*M_PI;
+
+    if(angle > M_PI_2){
+        angle = M_PI - angle;
+        cos_sign = -1;
+    } else if(angle < -M_PI_2){
+        angle = -M_PI - angle;
+        cos_sign = -1;
+    }
+
+    for(int i=0; i<CORDIC_N_ITERATION; i++){
+        x_n = x;
+        if(angle > 0){
+            x -= y / inv_tan_theta;
+            y += x_n / inv_tan_theta;
+            angle -= atan_pow_2[i];
+        } else{
+            x += y / inv_tan_theta;
+            y -= x_n / inv_tan_theta;
+            angle += atan_pow_2[i];
+        }
+        inv_tan_theta <<= 1;
+    }
+    *cos = cos_sign*x;
+    *sin = y;
+}
+
 
