@@ -28,6 +28,7 @@ void pulp_gradient_descent_fp16 (void * optim_args_fp16)
     struct optim_args_fp16 * args = (struct optim_args_fp16 *) optim_args_fp16;
     fp16 * __restrict__ weights = args->weights->data; 
     fp16 * __restrict__ weight_grad = args->weights->diff;
+    int use_biases = args->use_biases;
     const int wgt_size = args->weights->dim; 
     fp16 lr = args->learning_rate;
 

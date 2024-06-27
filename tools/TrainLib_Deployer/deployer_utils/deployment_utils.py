@@ -574,7 +574,7 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("\n# Initialize network\n")
     f.write("net = DNN().to(device)\n")
     f.write("for p in net.parameters():\n")
-    f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
+    f.write("\tnn.init.normal_(p, mean=0.0, std=0.01)\n")
     f.write("net.zero_grad()\n\n")
 
     # Freeze layers excluded from sparse update
