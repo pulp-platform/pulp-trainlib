@@ -764,7 +764,7 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             f.write("PI_L1 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, " + bias_content + "layer"+str(layer)+"_out;\n")
         elif data_type_l[layer] == 'FP16':
-            f.write("PI_L1 struct blob_fp16 layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+            f.write("PI_L1 struct blob_fp16 layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, " + bias_content + "layer"+str(layer)+"_out;\n")
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for blob definition @Layer{}!".format(layer))
             exit()
@@ -868,6 +868,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L1 fp16 l"+str(layer)+f"_ker[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L1 fp16 l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                if bias_l[layer] == 1:
+                    f.write("PI_L1 fp16 l"+str(layer)+"_bias[Tout_C_l"+str(layer)+"];\n")
         # Data type error
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for kernel definition @Layer{}!".format(layer))
@@ -899,6 +901,8 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("PI_L1 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
                 else:
                     f.write("PI_L1 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                    if bias_l[layer] == 1:
+                        f.write("PI_L1 fp16 l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
             # Data type error
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for kernel grad definition @Layer{}!".format(layer))
