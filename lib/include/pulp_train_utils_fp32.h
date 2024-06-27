@@ -222,6 +222,10 @@ struct pad_args {
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param bias pointer to bias vector
+ * @param bias_dim dimension of bias (should be equal to C_out of layer)
+ * @param USE_BIASES Set to 0 if not using biases, 1 if using biases
+ * @param HWC Set to 0 if CHW layout, 1 if HWC
  */
 struct matMul_args {
   float * __restrict__ A;
@@ -244,6 +248,11 @@ struct matMul_args {
   int Rpad;
   int Upad;
   int Dpad;
+  // For bias handling
+  float * __restrict__ bias;
+  int bias_dim;
+  int USE_BIASES;
+  int HWC;
 };
 
 /**
@@ -480,7 +489,7 @@ void CHW_to_HWC (void * layout_args);
 
 /**
  * @brief Pad a tensor into a destination buffer specifying its size and the spatial sizes of the padding. Parallelize with pi_cl_team_fork(NUM_CORES, pad_tensor, &args).
- * @param (void *) (struct pad_args pad_args)
+ * @param pad_args (void *) (struct pad_args pad_args)
 */
 void pad_tensor (void * pad_args);
 

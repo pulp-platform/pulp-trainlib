@@ -28,6 +28,7 @@ import argparse
 import dump_utils as dump
 import math
 
+# Parse arguments
 parser = argparse.ArgumentParser("2D Convolution - Layer Test")
 parser.add_argument( '--image_width', type=int, default=7)
 parser.add_argument( '--image_height', type=int, default=7)
@@ -42,9 +43,12 @@ parser.add_argument( '--w_pad', type=int, default=0)
 parser.add_argument( '--h_str', type=int, default=1)
 parser.add_argument( '--w_str', type=int, default=1)
 parser.add_argument( '--HWC', type=int, default=0)
+parser.add_argument( '--USE_BIASES', type=int, default=1)
+parser.add_argument( '--bias', type=float, default=0.01)
 
 args = parser.parse_args()
 
+# Copy arguments
 ker_h = args.ker_height
 ker_w = args.ker_width
 in_ch = args.ch_in
@@ -58,7 +62,10 @@ wpad = args.w_pad
 hstr = args.h_str
 wstr = args.w_str
 HWC_layout = args.HWC
+use_biases = args.USE_BIASES
+bias_init = args.bias
 
+# Write init-defines.h
 f = open("init-defines.h", "w")
 f.write('#define Tker_H_l1 '+str(ker_h)+'\n')
 f.write('#define Tker_W_l1 '+str(ker_w)+'\n')
@@ -71,9 +78,11 @@ f.write('#define Tpad_H_l1 '+str(hpad)+'\n')
 f.write('#define Tpad_W_l1 '+str(wpad)+'\n')
 f.write('#define Tstr_H_l1 '+str(hstr)+'\n')
 f.write('#define Tstr_W_l1 '+str(wstr)+'\n')
+f.write('#define bias_init '+str(bias_init)+'\n')
 
 f.close()
 
+# Write step-check.h
 f = open("step-check.h", "w")
 f.write('#define '+args.step+'\n')
 f.close()
@@ -87,7 +96,14 @@ out_size_w = math.floor((image_width-ker_w+2*wpad+wstr)/wstr)
 class myNet(nn.Module):
   def __init__(self):
     super().__init__()
-    self.conv = nn.Conv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=(ker_h, ker_w), padding=(hpad, wpad), stride=(hstr, wstr))
+    self.conv = nn.Conv2d(
+      in_channels=in_ch,
+      out_channels=out_ch,
+      kernel_size=(ker_h, ker_w),
+      padding=(hpad, wpad),
+      stride=(hstr, wstr),
+      bias=use_biases,
+    )
 
   def forward(self, x):
     return self.conv(x)
@@ -98,6 +114,17 @@ net.zero_grad()
 
 
 def hook_fn1(m, i, o):
+  """
+  Backward hook that prints to conv2d-grads.h and to standard output details about layer dimensions.
+
+  PyTorch documentation on the topic of backward hooks:
+  https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.register_full_backward_hook
+
+  :param m: module
+  :param i: grad_input
+  :param o: grad_output
+  :return: None
+  """
 
   cont = 0
   input_grad = []
@@ -105,7 +132,7 @@ def hook_fn1(m, i, o):
   output_grad = []
   f = open("conv2d-grads.h", "w")
 
-  for grad in i:
+  for cont, grad in enumerate(i):
     try:
       if cont==0:
         input_grad = grad
@@ -136,7 +163,17 @@ def hook_fn1(m, i, o):
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
-      cont += 1
+
+      if cont==2 and use_biases == 1:
+        bias_grad = grad
+
+        if bias_grad is None:
+          print("[utils/GM.py] Biases required but not found in PyTorch layer!")
+          exit()
+
+        f.write('#define G_BIAS_SIZE '+str(bias_grad.numel())+'\n')
+        f.write('PI_L2 float BIAS_GRAD[G_BIAS_SIZE] = {'+dump.tensor_to_string(bias_grad)+'};\n')
+        print(bias_grad)
 
     except AttributeError:
       print("None found for Gradient (input)")
@@ -250,11 +287,17 @@ else:
 f.close()
 
 
-# Prepare weight tensors for init
+# Prepare weight and bias tensors for init
 print("Shape of conv2d kernel:")
 print(net.conv.weight.data.shape)
 print(net.conv.weight.data)
 print("\n")
+
+if use_biases == 1:
+  print("Shape of conv2d bias array:")
+  print(net.conv.bias.data.shape)
+  print(net.conv.bias.data)
+  print("\n")
 
 wgt_init_tensor = torch.zeros(out_ch, in_ch, ker_h, ker_w)
 for o in range(out_ch):
@@ -263,24 +306,40 @@ for o in range(out_ch):
       for wk in range(ker_w):
         wgt_init_tensor[o, i, hk, wk] = (o+i+hk+wk)*weight_init
 
+bias_init_tensor = torch.zeros(out_ch)
+if use_biases == 1:
+  for co in range(out_ch):
+    bias_init_tensor[co] = co * bias_init
+
 #print("!--- wgt_init_tensor ---!")
 #print(wgt_init_tensor)
 #print("!-----------------------!")
 
-# Initialize weights
+#print("!--- bias_init_tensor ---!")
+#print(bias_init_tensor)
+#print("!-----------------------!")
+
+# Initialize weights and biases
 with torch.no_grad():
     #net.conv.weight[:, :] = weight_init
     net.conv.weight.data = deepcopy(wgt_init_tensor)
-    net.conv.bias[:] = 0.0
+    if use_biases == 1:
+      net.conv.bias.data = deepcopy(bias_init_tensor)
 
 #print("!--- Initialized weights ---!")
 #print(net.conv.weight.data)
 #print("!---------------------------!")
 
+#print("!--- Initialized bias ---!")
+#print(net.conv.bias.data)
+#print("!---------------------------!")
+
 # Print weights to init file
 f = open("init-defines.h", 'a')
-f.write("\n\n// Weight initialization\n")
+f.write("\n\n// Weight and bias initialization\n")
 f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
+if use_biases == 1:
+  f.write("#define BIAS_SIZE (Tout_C_l1)\n")
 if HWC_layout == 0:
   f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
 elif HWC_layout == 1:
@@ -290,6 +349,8 @@ elif HWC_layout == 1:
 else:
   print("[utils/GM.py] Invaid data layout!!")
   exit()
+if use_biases == 1:
+  f.write('PI_L2 float BIASES[BIAS_SIZE] = {'+dump.tensor_to_string(net.conv.bias.data)+'};\n')
 f.close()
 
 criterion = nn.MSELoss()
@@ -303,12 +364,16 @@ if HWC_layout == 0:
   print("\n\nCHW data layout:")
   print("Input Size: [{}, {}, {}] \t\t(GM CHW Data: {})".format(in_ch, image_height, image_width, inp.size()))
   print("Kernel Size: [{}, {}, {}, {}] \t(GM CHW Data: {})".format(out_ch, in_ch, ker_h, ker_w, net.conv.weight.data.size()))
+  if use_biases == 1:
+    print("Bias Size: [{}] \t(GM CHW Data: {})".format(out_ch, net.conv.bias.data.size()))
   print("Out Size: [{}, {}, {}] \t\t(GM CHW Data: {})\n\n".format(out_ch, out_size_h, out_size_w, out.size()))
 elif HWC_layout == 1:
   print("\n\nHWC data layout:")
-  print("Input Size: [{}, {}, {}] \t\t(GM CHW Data: {})".format(image_height, image_width, in_ch, inp.size()))
-  print("Kernel Size: [{}, {}, {}, {}] \t(GM CHW Data: {})".format(out_ch, ker_h, ker_w, in_ch, net.conv.weight.data.size()))
-  print("Out Size: [{}, {}, {}] \t\t(GM CHW Data: {})\n\n".format(out_size_h, out_size_w, out_ch, out.size())) 
+  print("Input Size: [{}, {}, {}] \t\t(GM HWC Data: {})".format(image_height, image_width, in_ch, inp.size()))
+  print("Kernel Size: [{}, {}, {}, {}] \t(GM HWC Data: {})".format(out_ch, ker_h, ker_w, in_ch, net.conv.weight.data.size()))
+  if use_biases == 1:
+    print("Bias Size: [{}] \t(GM HWC Data: {})".format(out_ch, net.conv.bias.data.size()))
+  print("Out Size: [{}, {}, {}] \t\t(GM HWC Data: {})\n\n".format(out_size_h, out_size_w, out_ch, out.size()))
 else:
   print("[utils/GM.py] Invalid data layout!!")
   exit()

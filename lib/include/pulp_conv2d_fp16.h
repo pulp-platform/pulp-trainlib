@@ -28,6 +28,7 @@
  * @brief Structure for 2D Convolution Training in FP16
  * @param input input feature maps for the conv2d layer
  * @param coeff weight matrix 
+ * @param bias bias array
  * @param output output feature maps for the conv2d layer 
  * @param Lpad left padding
  * @param Rpad right padding
@@ -43,12 +44,14 @@
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager for the forward primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param USE_BIASES if set to 0, the biases are not allocated, if set to 1 they are handled according to the scenario (im2col or not)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input and output gradient tensors need to be stored in L2, im2col_buffer in L1)
  */
 struct Conv2D_args_fp16 {
 	struct blob_fp16 * input; 
 	struct blob_fp16 * coeff;
+    struct blob_fp16 * bias;
 	struct blob_fp16 * output; 
 	int Lpad;
 	int Rpad;
@@ -64,6 +67,7 @@ struct Conv2D_args_fp16 {
 	int opt_matmul_type_fw;
 	int opt_matmul_type_wg;
 	int opt_matmul_type_ig;
+    int USE_BIASES;
 	int USE_IM2COL;
 	int USE_DMA_IM2COL;
 };
@@ -91,6 +95,7 @@ struct Conv2D_args_fp16 {
  * @param i2c_buffer pointer to the im2col buffer
  * @param HWC tells the 2D Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_fw number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_BIASES if set to 0, the biases are not allocated, if set to 1 they are handled according to the scenario (im2col or not)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input tensor needs to be stored in L2, im2col_buffer in L1)
  */
@@ -117,6 +122,7 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 );
  * @param HWC tells the 2D Convolution if the input/output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager for the weight gradient primitive (see mm_manager_list.txt)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager for the input gradient primitive (see mm_manager_list.txt)
+ * @param USE_BIASES if set to 0, the biases are not allocated, if set to 1 they are handled according to the scenario (im2col or not)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input and output gradient tensors need to be stored in L2, im2col_buffer in L1)
  */
@@ -136,6 +142,7 @@ void pulp_conv2d_fp16_bw_cl( void * Conv2D_args_fp16 );
  * @param i2c_buffer pointer to the im2col buffer
  * @param HWC tells the 2D Convolution if the input tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_wg number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_BIASES if set to 0, the biases are not allocated, if set to 1 they are handled according to the scenario (im2col or not)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input tensor needs to be stored in L2, im2col_buffer in L1)
  */
@@ -156,7 +163,31 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 );
  * @param bt_buffer pointer to the blocktranspose buffer (to reshape the weights for the in grad step)
  * @param HWC tells the 2D Convolution if the output tensor is in CHW layout (HWC=0) or HWC format (HWC=1)
  * @param opt_matmul_type_ig number of the optimizer matmul to be chosen by the mm_manager (see mm_manager_list.txt)
+ * @param USE_BIASES if set to 0, the biases are not allocated, if set to 1 they are handled according to the scenario (im2col or not)
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (output gradient tensor needs to be stored in L2, im2col_buffer in L1)
  */
 void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 );
+
+
+
+/**
+ * OPTIMIZED IM2COL + MM KERNEL FUNCTIONS
+ */
+
+/**
+ * @brief Conv2d kernel for forward propagation to be used on inputs that have been transformed through the im2col operation
+ * @param man_args pointer to a mm_manager_args structure
+ */
+void im2col_conv2d_fw_kernel_fp16(
+        void * void_args
+);
+
+/**
+ * @brief Conv2d kernel for the computation of the weight and bias gradient, to be used on inputs that have been
+ * transformed through the im2col operation
+ * @param man_args pointer to a mm_manager_args structure
+ */
+void im2col_conv2d_param_grad_kernel_fp16 (
+        void * void_args
+);

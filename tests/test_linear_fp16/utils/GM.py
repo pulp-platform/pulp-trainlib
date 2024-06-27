@@ -35,7 +35,7 @@ parser.add_argument( '--out_size', type=int, default=8 )
 parser.add_argument( '--file_name', type=str, default='linear-data.h')
 parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 parser.add_argument( '--bf16_format', type=int, default=0) # if == 1, data needs to be bfloat16 (no fp16 on that target)
-
+parser.add_argument( '--use_bias', type=int, default=0)
 args = parser.parse_args()
 
 # Network parametersin_size
@@ -44,6 +44,7 @@ out_size = args.out_size
 simple_kernel = False
 current_step = args.step
 bf16_format = args.bf16_format
+use_bias = args.use_bias
 
 # Net step
 f_step = open('step-check.h', 'w')
@@ -65,7 +66,7 @@ class LinLayer (nn.Module):
 
     def __init__(self):
         super(LinLayer, self).__init__()
-        self.lin = nn.Linear(in_features=in_size, out_features=out_size, bias=False)
+        self.lin = nn.Linear(in_features=in_size, out_features=out_size, bias=bool(use_bias))
 
     def forward(self, x):
         out = self.lin(x)
@@ -81,17 +82,26 @@ else:
 
 temp_value = -0.1
 if simple_kernel:
-    initial_weights[0:out_size] = 1e-5
+    initial_weights[0:out_size] = 1e-4
 else:
     for i in range(out_size):
         for j in range(in_size):
             initial_weights[i][j] = temp_value
-            temp_value = temp_value + 1e-5
+            temp_value = temp_value + 1e-4
+
+temp_value_bias = 0.5
+if bf16_format == 1:
+    initial_bias = torch.zeros(out_size).bfloat16()
+else:
+    initial_bias = torch.zeros(out_size).half()
+for i in range(out_size):
+    initial_bias[i] = temp_value_bias
+    temp_value_bias = temp_value_bias + 0.5
 
 if bf16_format == 1:
-    indata = torch.div(torch.ones(in_size), 1e4).bfloat16()
+    indata = torch.div(torch.ones(in_size), 1e3).bfloat16()
 else:
-    indata = torch.div(torch.ones(in_size), 1e4).half()
+    indata = torch.div(torch.ones(in_size), 1e3).half()
     
 indata.requires_grad = True
 print("\nInput data is: ", indata, indata.shape, indata.dtype)
@@ -112,11 +122,13 @@ print("\nInitializing net parameters to {}.\nParameters are: ".format(initial_we
 
 
 net.lin.weight = nn.Parameter(initial_weights)
+net.lin.bias = nn.Parameter(initial_bias)
 for name, parameter in net.named_parameters():
     print(name, parameter, parameter.shape)
 
 
 f.write('PI_L2 fp16 L0_WEIGHTS_params[L0_WEIGHTS] = {'+dump.tensor_to_string(net.lin.weight)+'};\n')
+f.write('PI_L2 fp16 L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(net.lin.bias)+'};\n')
 
 # Optimizer and criterion
 criterion = nn.MSELoss()
@@ -143,7 +155,10 @@ for i in range(1):
     print("\nNetwork gradients are: ")
     for name, parameter in net.named_parameters():
         print(name, parameter.grad, parameter.grad.shape, parameter.grad.dtype)
-    f.write('PI_L2 fp16 L0_WEIGHT_GRAD [L0_WEIGHTS] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
+        if name == 'lin.weight':
+            f.write('PI_L2 fp16 L0_WEIGHT_GRAD [L0_WEIGHTS] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
+        elif name == 'lin.bias': 
+            f.write('PI_L2 fp16 L0_BIAS_GRAD [L0_OUT_CH] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
 
     print("\nInput grad is: ", indata.grad)
     f.write('PI_L2 fp16 L0_IN_GRAD [L0_IN_CH] = {'+dump.tensor_to_string(indata.grad)+'};\n')
