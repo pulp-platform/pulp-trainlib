@@ -196,6 +196,8 @@ PULP-TrainLib's repository is organized with these branches:
 - Francesco Conti (f.conti@unibo.it)
 - Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
 - Luca Bompani (luca.bompani5@unibo.it)
+- Lan Mei (lanmei@student.ethz.ch)
+- Calin Diaconu (calin.diaconu@studio.unibo.it)
 
 ## Past Contributors
 
