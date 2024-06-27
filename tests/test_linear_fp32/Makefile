@@ -1,14 +1,14 @@
 APP = linear_test
 
 # User settings
-IN_CH?=16
-OUT_CH?=16
+IN_CH?=64
+OUT_CH?=64
 NUM_CORES?=8
-STEP?='BACKWARD_GRAD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'
+STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'
 #APP_CFLAGS += -DDEBUG
-#APP_CFLAGS += -DOPTIMIZE
+APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
-USE_BIASES_LINEAR?=1
+USE_BIASES_LINEAR?=1	# Allocate biases (1) or not (0)
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings
@@ -25,7 +25,7 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 DATA_TYPE?='fp32'
 APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
 APP_CFLAGS += -O3 -g3 
-APP_CFLAGS += -Wno-error
+#APP_CFLAGS += -Wno-error
 APP_CFLAGS += -DFABRIC 
 APP_CFLAGS += -DCLUSTER
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)

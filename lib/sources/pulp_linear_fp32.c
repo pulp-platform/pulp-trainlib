@@ -47,26 +47,12 @@ void pulp_linear_fp32_fw_cl( void * Linear_args )
   matMul_args.trans_B = 0;
   matMul_args.USE_BIASES = use_biases_linear;
 
-  /*
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-  #else
-  struct mm_manager_args man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_LINEAR;
-  man_args.step_type = STEP_FW;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-  #endif
-  */
-
   struct mm_manager_args man_args;
   man_args.mm_args = &matMul_args;
   man_args.layer_type = LAYER_LINEAR;
   man_args.step_type = STEP_FW;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, pulp_linear_fp32_fw_cl_kernel, &man_args);
-  //pulp_linear_fp32_fw_cl_kernel(&man_args);
 
   #ifdef DEBUG 
     printf("\nLinear OutData: %d\n", matMul_args.N);
@@ -75,57 +61,6 @@ void pulp_linear_fp32_fw_cl( void * Linear_args )
     }
     printf("\n");
   #endif
-}
-
-void pulp_linear_fp32_fw_cl_kernel( void * man_args )
-{
-  struct mm_manager_args * manager_args = (struct mm_manager_args *) man_args;
-  struct matMul_args *matMul_args = manager_args->mm_args;
-
-  float *__restrict__ inData = matMul_args->A;
-  float *__restrict__ coeffData = matMul_args->B;
-  float *__restrict__ outData = matMul_args->C;
-
-  float *__restrict__ biasData = matMul_args->bias;
-
-  const uint32_t N = matMul_args->N;
-  const uint32_t K = matMul_args->K;
-  const uint32_t M = matMul_args->M;
-  const uint32_t trans_B = matMul_args->trans_B;
-  const uint32_t USE_BIASES = matMul_args->USE_BIASES;
-
-  /*
-  #ifdef DEBUG 
-    printf("\nLinear OutData: %d\n", N);
-    for (int i=0; i<N; i++){
-      printf("%4.2e ", outData[i]);
-    }
-    printf("\n");
-  #endif
-  */
-
-  #ifndef OPTIMIZE
-  //pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-  mm(matMul_args);
-  #else
-  //pi_cl_team_fork(NUM_CORES, mm_manager, &manager_args);
-  mm_manager(manager_args);
-  #endif
-
-  // N -- Co
-  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-  if (USE_BIASES == 1) {
-    #ifdef DEBUG 
-    printf("\n---------USE BIASES!!!--------\n");
-    #endif
-    //for (int i=0; i<N; i++){
-    for (uint32_t i=start; i < stop; i++) {
-      outData[i] += biasData[i];
-    }
-  }
 }
 
 
@@ -173,19 +108,6 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
   matMul_args.trans_B = 0;
   matMul_args.bias = biasDiff;
   matMul_args.USE_BIASES = use_biases_linear;
-
-  /*
-  #ifndef OPTIMIZE
-  pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-  #else
-  struct mm_manager_args man_args;
-  man_args.mm_args = &matMul_args;
-  man_args.layer_type = LAYER_LINEAR;
-  man_args.step_type = STEP_WGT_GRAD;
-  man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-  pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-  #endif
-  */
   
   struct mm_manager_args man_args;
   man_args.mm_args = &matMul_args;
@@ -193,7 +115,6 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
   man_args.step_type = STEP_FW;
   man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
   pi_cl_team_fork(NUM_CORES, pulp_linear_fp32_bw_param_grads_cl_kernel, &man_args);
-  //pulp_linear_fp32_fw_cl_kernel(&man_args);
 
   #ifdef DEBUG
   printf("\nLinear outDiff\n");
@@ -216,59 +137,6 @@ void pulp_linear_fp32_bw_param_grads_cl( void * Linear_args )
   printf("\n");
   #endif
 }
-
-
-void pulp_linear_fp32_bw_param_grads_cl_kernel( void * man_args )
-{
-  struct mm_manager_args * manager_args = (struct mm_manager_args *) man_args;
-  struct matMul_args *matMul_args = manager_args->mm_args;
-
-  float *__restrict__ outDiff = matMul_args->A;
-  float *__restrict__ inData = matMul_args->B;
-  float *__restrict__ coeffDiff = matMul_args->C;
-
-  float *__restrict__ biasData = matMul_args->bias;
-
-  const uint32_t N = matMul_args->N; // A: (NxK), B: (KxM), C: (NxM)
-  const uint32_t K = matMul_args->K;
-  const uint32_t M = matMul_args->M;
-  const uint32_t trans_B = matMul_args->trans_B;
-  const uint32_t USE_BIASES = matMul_args->USE_BIASES;
-
-  /*
-  #ifdef DEBUG 
-    printf("\nLinear coeffDiff: %d\n", N);
-    for (int i=0; i<N*M; i++){ // N -- Co
-      if(!(i%N)) printf("\n");
-      printf("%4.2e ", coeffDiff[i]);
-    }
-    printf("\n");
-  #endif
-  */
-
-  #ifndef OPTIMIZE
-  //pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-  mm(matMul_args);
-  #else
-  //pi_cl_team_fork(NUM_CORES, mm_manager, &manager_args);
-  mm_manager(manager_args);
-  #endif
-
-  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
-  const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
-
-  if (USE_BIASES == 1) {
-    #ifdef DEBUG 
-    printf("\n---------USE BIASES!!!--------\n");
-    #endif
-    for (uint32_t i=start; i < stop; i++) {
-      biasData[i] = outDiff[i];
-    }
-  }
-  
-}
-
 
 
 void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
@@ -320,4 +188,86 @@ void pulp_linear_fp32_bw_input_grads_cl( void * Linear_args )
     }
     printf("\n");
   #endif
+}
+
+
+
+
+
+
+
+void pulp_linear_fp32_fw_cl_kernel( void * man_args )
+{
+  struct mm_manager_args * manager_args = (struct mm_manager_args *) man_args;
+  struct matMul_args *matMul_args = manager_args->mm_args;
+
+  float *__restrict__ inData = matMul_args->A;
+  float *__restrict__ coeffData = matMul_args->B;
+  float *__restrict__ outData = matMul_args->C;
+
+  float *__restrict__ biasData = matMul_args->bias;
+
+  const uint32_t N = matMul_args->N;
+  const uint32_t K = matMul_args->K;
+  const uint32_t M = matMul_args->M;
+  const uint32_t trans_B = matMul_args->trans_B;
+  const uint32_t USE_BIASES = matMul_args->USE_BIASES;
+
+  #ifndef OPTIMIZE
+  mm(matMul_args);
+  #else
+  mm_manager(manager_args);
+  #endif
+
+  // N -- Co
+  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  if (USE_BIASES == 1) {
+    #ifdef DEBUG 
+    printf("\n---------USE BIASES!!!--------\n");
+    #endif
+    for (uint32_t i=start; i < stop; i++) {
+      outData[i] += biasData[i];
+    }
+  }
+}
+
+void pulp_linear_fp32_bw_param_grads_cl_kernel( void * man_args )
+{
+  struct mm_manager_args * manager_args = (struct mm_manager_args *) man_args;
+  struct matMul_args *matMul_args = manager_args->mm_args;
+
+  float *__restrict__ outDiff = matMul_args->A;
+  float *__restrict__ inData = matMul_args->B;
+  float *__restrict__ coeffDiff = matMul_args->C;
+
+  float *__restrict__ biasData = matMul_args->bias;
+
+  const uint32_t N = matMul_args->N; // A: (NxK), B: (KxM), C: (NxM)
+  const uint32_t K = matMul_args->K;
+  const uint32_t M = matMul_args->M;
+  const uint32_t trans_B = matMul_args->trans_B;
+  const uint32_t USE_BIASES = matMul_args->USE_BIASES;
+
+  #ifndef OPTIMIZE
+  mm(matMul_args);
+  #else
+  mm_manager(manager_args);
+  #endif
+
+  const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > N ? N : start+blockSize;
+
+  if (USE_BIASES == 1) {
+    #ifdef DEBUG 
+    printf("\n---------USE BIASES!!!--------\n");
+    #endif
+    for (uint32_t i=start; i < stop; i++) {
+      biasData[i] = outDiff[i];
+    }
+  }
+  
 }
