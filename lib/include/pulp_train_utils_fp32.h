@@ -589,5 +589,13 @@ float q_rsqrt(float number);
  */
 void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
 
+/**
+ * @brief CORDIC's sin and cos approximate calculator of input angle.
+ * @param angle value in radians
+ * @param cos pointer to the value to save the angle's cosine
+ * @param sin pointer to the value to save the angle's sin
+ */
+void cordic_cos_sin_fp32(float angle, float* cos, float* sin);
+
 
 

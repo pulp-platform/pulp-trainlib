@@ -532,4 +532,16 @@ v2f16 vfpack(fp16 a, fp16 b);
  */
 void pulp_mean_std_fp16_cl(void * mean_std_args);
 
+/**
+ * @brief Quick inverse-square root of a floating number, directly from the source code of Quake 3!
+ * @param number number to be inverse square-rooted
+ */
 float q_rsqrt_fp16(float number);
+
+/**
+ * @brief CORDIC's sin and cos approximate calculator of input angle.
+ * @param angle value in radians
+ * @param cos pointer to the value to save the angle's cosine
+ * @param sin pointer to the value to save the angle's sin
+ */
+void cordic_cos_sin_fp16(fp16 angle, fp16* cos, fp16* sin);
