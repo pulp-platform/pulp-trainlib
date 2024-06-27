@@ -621,6 +621,8 @@ def GenerateGM(proj_folder_path, project_name,
                     f.write("f.write('PI_L2 float init_BIAS_l"+str(layer)+"[BIAS_SIZE_L"+str(layer)+"] = {'"+bias_dump+"'};\\n')\n")
             elif data_type_l[layer] == 'FP16':
                 f.write("f.write('PI_L2 fp16 init_WGT_l"+str(layer)+"[WGT_SIZE_L"+str(layer)+"] = {'"+dump+"'};\\n')\n")
+                if bias_l[layer] == 1:
+                    f.write("f.write('PI_L2 fp16 init_BIAS_l"+str(layer)+"[BIAS_SIZE_L"+str(layer)+"] = {'"+bias_dump+"'};\\n')\n")
             else:
                 print("[deployment_utils.GenerateGM] Error in data type definition! (weight init)")
                 exit()

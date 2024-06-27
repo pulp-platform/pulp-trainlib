@@ -27,11 +27,15 @@
 /**
  * @brief Parameters for optimizer fucntions for every single layer
  * @param weights blob of the weights (with their gradient inside)
+ * @param bias blob of the biases (with their gradient inside)
  * @param learning_rate the learning rate of the optimizer
+ * @param use_biases flag: use bias (1) or not use bias (0).
  */
 struct optim_args_fp16 {
   struct blob_fp16 * weights;
+  struct blob_fp16 * biases;
   fp16 learning_rate;
+  int use_biases;
 };
 
 

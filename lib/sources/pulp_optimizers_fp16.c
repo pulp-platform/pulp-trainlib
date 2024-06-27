@@ -53,4 +53,33 @@ void pulp_gradient_descent_fp16 (void * optim_args_fp16)
     for (int i=0; i<wgt_size; i++)  printf("%f ", weights[i]);  
     printf("\n\n");
     #endif
+
+    if (use_biases == 1) {
+        fp16 * __restrict__ biases = args->biases->data; 
+        fp16 * __restrict__ bias_grad = args->biases->diff;
+        const int bias_size = args->biases->dim; 
+
+        #ifdef DEBUG
+        printf("\n*** BIASES ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", biases[i]);  
+        printf("\n*** BIAS GRAD ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", bias_grad[i]);
+        printf("\n\n");
+        #endif
+
+        int blockSize_bias = (bias_size+NUM_CORES-1) / NUM_CORES;
+        int start_bias = pi_core_id()*blockSize_bias;
+        int stop_bias = start_bias+blockSize_bias > bias_size ? bias_size : start_bias+blockSize_bias;
+
+        for (int i=start_bias; i<stop_bias; i++) 
+        {   
+            biases[i] -= lr * bias_grad[i];
+        }    
+
+        #ifdef DEBUG
+        printf("\n*** BIASES ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", biases[i]);
+        printf("\n\n");
+        #endif
+    }
 }
