@@ -69,7 +69,7 @@ USE_NAIVE_TILER = True
 FIND_FASTEST_MATMUL = True
 # Select if to write the file for server execution (specify trainlib's folder location on server)
 WRITE_YML_FILE = True
-trainlib_path = '/home/lanmei/pulp-trainlib_ori' #'/home/Work/pulp-trainlib'
+trainlib_path = '../../'
 # PULP settings
 NUM_STD_MATMUL      = 24
 NUM_DW_MATMUL       = 7
