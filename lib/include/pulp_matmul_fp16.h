@@ -67,6 +67,31 @@ void __attribute__((noinline)) mm_fp16_SIMD_4x8 (
     void * void_args
 );
 
+/**
+ * @brief matmul which unrolls 8 elements of A and 1 of B. Parallelizes on N. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mm_fp16_unroll_8x1 (
+    void * void_args
+);
+
+/**
+ * @brief matmul which unrolls 4 elements of A and 1 of B. Parallelizes on N. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mm_fp16_unroll_4x1 (
+    void * void_args
+);
+
+/**
+ * @brief matmul which unrolls 2 elements of A and 1 of B. Parallelizes on N. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mm_fp16_unroll_2x1 (
+    void * void_args
+);
+
+
 
 
 // =====> PARALLELISM ON M <=====
@@ -84,5 +109,32 @@ void __attribute__((noinline)) mm_M_fp16_SIMD_2x4 (
  * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
  */
 void __attribute__((noinline)) mm_M_fp16_SIMD_4x8 (
+    void * void_args
+);
+
+
+//  =====> MATRIX X VECTOR OPERATIONS <=====
+
+/**
+ * @brief SIMD matrix * vector operation which unrolls 2 elements of A. Parallelizes on M. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mv_fp16_SIMD_2x1 (
+    void * void_args
+);
+
+/**
+ * @brief SIMD matrix * vector operation which unrolls 4 elements of A. Parallelizes on M. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mv_fp16_SIMD_4x1 (
+    void * void_args
+);
+
+/**
+ * @brief SIMD matrix * vector operation which unrolls 8 elements of A. Parallelizes on M. 
+ * @param void_args pointer to a matMul_args_fp16 structure (please refer to this to setup the args)
+ */
+void __attribute__((noinline)) mv_fp16_SIMD_8x1 (
     void * void_args
 );

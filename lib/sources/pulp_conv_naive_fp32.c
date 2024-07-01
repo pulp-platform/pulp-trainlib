@@ -168,6 +168,9 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outData = args->C;
 
+  float *__restrict__ biasData = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
   const uint32_t pW = args->pW;
@@ -208,6 +211,11 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
             }
           }
           outData[wo+ho*W_out+co*H_out*W_out] = temp;
+
+          // Handle biases
+          if (USE_BIASES == 1) {
+              outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+          }
         }
       }
     } 
@@ -234,10 +242,19 @@ void naive_conv2d_fw_kernel_CHW (void * matMul_args)
             }
           }
           outData[wo+ho*W_out+co*H_out*W_out] = temp;
+
+          // Handle biases
+          if (USE_BIASES == 1) {
+              outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+          }
         }
       }
-    } 
+    }
+  }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
   }
 }
 
@@ -249,6 +266,9 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffDiff = args->B;
   float * __restrict__ outDiff = args->C;
+
+  float *__restrict__ biasDiff = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -279,15 +299,21 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
         for (uint32_t wk=0; wk<pW; wk++) {
           for (uint32_t ci=0; ci<C_in; ci++) {
             float temp = 0;
+            float bias_temp = 0;
             for (uint32_t ho=0; ho<H_out; ho++) {
               for (uint32_t wo=0; wo<W_out; wo++) {
                 // Indices
                 int out_idx = wo+ho*W_out+co*H_out*W_out;
                 int in_idx = w_str*wo+wk+(h_str*ho+hk)*W_in+ci*H_in*W_in;
                 temp += outDiff[out_idx] * inData[in_idx];
+                if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
               }
             }
             coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
+
+            if (USE_BIASES == 1) {
+                biasDiff[co] = bias_temp;
+            }
           }
         }
       }
@@ -300,6 +326,7 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
         for (uint32_t wk=0; wk<pW; wk++) {
           for (uint32_t ci=0; ci<C_in; ci++) {
             float temp = 0;
+            float bias_temp = 0;
             for (uint32_t ho=0; ho<H_out; ho++) {
               for (uint32_t wo=0; wo<W_out; wo++) {
                 // Pad conditions
@@ -309,15 +336,24 @@ void naive_conv2d_param_grad_kernel_CHW (void * matMul_args)
                   int out_idx = wo + ho*W_out + co*H_out*W_out;
                   int in_idx = (w_str*wo + wk - Lpad) + (h_str*ho + hk - Upad)*W_in + ci*H_in*W_in;
                   temp += outDiff[out_idx] * inData[in_idx];
+                  if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
                 }
               }
             }
             coeffDiff[wk+hk*pW+ci*pH*pW+co*pH*pW*C_in] = temp;
+
+            if (USE_BIASES == 1) {
+                biasDiff[co] = bias_temp;
+            }
           }
         }
       }
     }
+  }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_param_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
   }
 }
 
@@ -329,6 +365,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -416,9 +454,14 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
         }
       }
     }
+  }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_param_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+             USE_BIASES);
   }
 }
+
 
 
 
@@ -430,6 +473,9 @@ void naive_conv2d_fw_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outData = args->C;
+
+  float *__restrict__ biasData = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -463,12 +509,19 @@ void naive_conv2d_fw_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
           }
         }
         outData[wo+ho*W_out+co*H_out*W_out] = temp;
+
+        if (USE_BIASES == 1) {
+            outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+        }
       }
     }
-  } 
+  }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_fw_kernel_CHW_k3x3_s2_p1:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
 }
-
 
 
 void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args) 
@@ -477,6 +530,9 @@ void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffDiff = args->B;
   float * __restrict__ outDiff = args->C;
+
+  float *__restrict__ biasDiff = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -495,6 +551,7 @@ void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
       for (uint32_t wk=0; wk<3; wk++) {
         for (uint32_t ci=0; ci<C_in; ci++) {
           float temp = 0;
+          float bias_temp = 0;
           for (uint32_t ho=0; ho<H_out; ho++) {
             for (uint32_t wo=0; wo<W_out; wo++) {
               // Pad conditions
@@ -504,17 +561,25 @@ void naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
                 int out_idx = wo + ho*W_out + co*H_out*W_out;
                 int in_idx = (2*wo + wk - 1) + (2*ho + hk - 1)*W_in + ci*H_in*W_in;
                 temp += outDiff[out_idx] * inData[in_idx];
+                if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
               }
             }
           }
           coeffDiff[wk+hk*3+ci*9+co*9*C_in] = temp;
+
+          if (USE_BIASES == 1) {
+              biasDiff[co] = bias_temp;
+          }
         }
       }
     }
   }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_param_grad_kernel_CHW_k3x3_s2_p1:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
 }
-
 
 
 void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args) 
@@ -523,6 +588,8 @@ void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -558,22 +625,28 @@ void naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1 (void * matMul_args)
               }
             }
           }
-        } 
+        }
         inDiff[wi + hi*W_in + ci*H_in*W_in] = temp;
       }
     }
   }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_in_grad_kernel_CHW_k3x3_s2_p1:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+             USE_BIASES);
+  }
 }
 
 
-
-void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 {
   struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outData = args->C;
+
+  float *__restrict__ biasData = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -585,7 +658,7 @@ void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 
   const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;
 
   for (uint32_t co=start; co<stop; co++) {
     for (uint32_t ho=0; ho<H_out; ho++) {
@@ -607,20 +680,30 @@ void naive_conv2d_fw_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
           }
         }
         outData[wo+ho*W_out+co*H_out*W_out] = temp;
+
+        if (USE_BIASES == 1) {
+            outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+        }
       }
     }
-  } 
+  }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_fw_kernel_CHW_k5x5_s2_p1:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
 }
 
 
-
-void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 {
   struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inData = args->A;
   float * __restrict__ coeffDiff = args->B;
   float * __restrict__ outDiff = args->C;
+
+  float *__restrict__ biasDiff = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -632,13 +715,14 @@ void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 
   const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
-    
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;
+
   for (uint32_t co=start; co<stop; co++) {
     for (uint32_t hk=0; hk<5; hk++) {
       for (uint32_t wk=0; wk<5; wk++) {
         for (uint32_t ci=0; ci<C_in; ci++) {
           float temp = 0;
+          float bias_temp = 0;
           for (uint32_t ho=0; ho<H_out; ho++) {
             for (uint32_t wo=0; wo<W_out; wo++) {
               // Pad conditions
@@ -648,25 +732,35 @@ void naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
                 int out_idx = wo + ho*W_out + co*H_out*W_out;
                 int in_idx = (2*wo + wk - 1) + (2*ho + hk - 1)*W_in + ci*H_in*W_in;
                 temp += outDiff[out_idx] * inData[in_idx];
+                if (USE_BIASES == 1)  bias_temp += outDiff[out_idx];
               }
             }
           }
           coeffDiff[wk+hk*5+ci*25+co*25*C_in] = temp;
+
+          if (USE_BIASES == 1) {
+              biasDiff[co] = bias_temp;
+          }
         }
       }
     }
   }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_param_grad_kernel_CHW_k5x5_s2_p1:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
 }
 
 
-
-void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args) 
+void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 {
   struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inDiff = args->A;
   float * __restrict__ coeffData = args->B;
   float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
 
   const uint32_t H_in = args->H;
   const uint32_t W_in = args->W;
@@ -679,7 +773,7 @@ void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 
   const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;
 
   int h_start = 3;
   int w_start = 3;
@@ -707,10 +801,14 @@ void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
               }
             }
           }
-        } 
+        }
         inDiff[wi + hi*W_in + ci*H_in*W_in] = temp;
       }
     }
   }
 
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p2:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+             USE_BIASES);
+  }
 }

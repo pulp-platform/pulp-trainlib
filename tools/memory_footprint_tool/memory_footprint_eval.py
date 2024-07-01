@@ -28,7 +28,7 @@ Evaluate the memory footprint of the current trainlib
 # sizes of the available layers
 
 # Data type (fp32, fp16, bf16, fp8)
-data_type = "fp8"
+data_type = "fp32"
 
 # Conv2D
 conv2d_in_ch = 32
@@ -37,6 +37,7 @@ conv2d_in_H = 16
 conv2d_ker_W = 1
 conv2d_ker_H = 1
 conv2d_out_ch = 64
+conv2d_use_bias = 1
 
 # Depthwise Convolution
 dw_inout_ch = 64
@@ -54,6 +55,13 @@ pw_out_ch = 64
 # Fully-Connected
 lin_in_size = 640
 lin_out_size = 32
+lin_use_bias = 1
+
+if data_type not in ["fp32"]:
+    print("Bias not implemented for selected data type. It will be ignored.")
+    conv2d_use_bias = 0
+    lin_use_bias = 0
+
 # =====> END OF USER SETTINGS <=====
 
 
@@ -97,21 +105,27 @@ CONV2D
 # Compute Conv2D memory occupation (FORWARD)
 in_act  = conv2d_in_ch * conv2d_in_H * conv2d_in_W
 ker     = conv2d_ker_H * conv2d_ker_W * conv2d_in_ch * conv2d_out_ch
+bias    = conv2d_use_bias * conv2d_out_ch
 im2colF = conv2d_in_ch * conv2d_ker_H * conv2d_ker_W * (conv2d_in_W-conv2d_ker_W+1) * (conv2d_in_H-conv2d_ker_H+1) 
 out_act = (conv2d_in_W-conv2d_ker_W+1) * (conv2d_in_H-conv2d_ker_H+1) * conv2d_out_ch
-tot_FW  = in_act + ker + im2colF + out_act
+tot_FW  = in_act + ker + bias + im2colF + out_act
+
 f.write("-------------------------------------------\n")
 f.write("###              CONV2D LAYER           ###\n")
 f.write("-------------------------------------------\n")
 f.write("| ### SIZES ###\n|\n")
 f.write("| IN: \tH={}, W={}, C={}\n".format(conv2d_in_H, conv2d_in_W, conv2d_in_ch))
 f.write("| KER: \tH={}, W={}, C_IN={}, C_OUT={}\n".format(conv2d_ker_H, conv2d_ker_W, conv2d_in_ch, conv2d_out_ch))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \tSIZE={}\n".format(conv2d_out_ch))
 f.write("| OUT: \tH={}, W={}, C={}\n".format((conv2d_in_H-conv2d_ker_H+1), (conv2d_in_W-conv2d_ker_W+1), conv2d_in_ch))
 f.write("-------------------------------------------\n")
 f.write("| ### FORWARD ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colF, im2colF*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT: \t\t\t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL FORWARD: \t{} ({} bytes)\n".format(tot_FW, tot_FW*data_size))
 f.write("-------------------------------------------\n")
@@ -125,6 +139,8 @@ f.write("| ### WEIGHT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colW, im2colW*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL WGT GRAD: \t{} ({} bytes)\n".format(tot_WGT, tot_WGT*data_size))
 f.write("-------------------------------------------\n")
@@ -138,6 +154,8 @@ f.write("| ### INPUT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| IM2COL BUFFER: \t{} ({} bytes)\n".format(im2colI, im2colI*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if conv2d_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL IN GRAD: \t{} ({} bytes)\n".format(tot_ING, tot_ING*data_size))
 f.write("-------------------------------------------\n")
@@ -255,30 +273,38 @@ f.write("\n\n\n\n")
 # Compute FC memory occupation (FORWARD)
 in_act  = lin_in_size
 ker     = lin_in_size * lin_out_size
+bias    = lin_use_bias * lin_out_size
 out_act = lin_out_size
-tot_FW  = in_act + ker + out_act
+tot_FW  = in_act + ker + bias + out_act
 f.write("-------------------------------------------\n")
 f.write("###            FULLY-CONNECTED          ###\n")
 f.write("-------------------------------------------\n")
 f.write("| ### SIZES ###\n|\n")
 f.write("| IN: \tH={}, W={}\n".format(lin_in_size, 1))
 f.write("| KER: \tH={}, W={}\n".format(lin_out_size, lin_in_size))
+if lin_use_bias == 1:
+    f.write("| BIAS: \tH={}, W={}\n".format(1, lin_out_size))
 f.write("| OUT: \tH={}, W={}\n".format(1, lin_out_size))
 f.write("-------------------------------------------\n")
 f.write("| ### FORWARD ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if lin_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT: \t\t\t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL FORWARD: \t{} ({} bytes)\n".format(tot_FW, tot_FW*data_size))
 f.write("-------------------------------------------\n")
 # Compute FC memory occupation (WEIGHT GRADIENT)
 in_act  = lin_in_size
 ker     = lin_in_size * lin_out_size
+bias    = lin_use_bias * lin_out_size
 out_act = lin_out_size
-tot_WGT = in_act + ker + out_act
+tot_WGT = in_act + ker + bias + out_act
 f.write("| ### WEIGHT GRADIENT ###\n|\n")
 f.write("| IN: \t\t\t\t{} ({} bytes)\n".format(in_act, in_act*data_size))
 f.write("| KER: \t\t\t\t{} ({} bytes)\n".format(ker, ker*data_size))
+if lin_use_bias == 1:
+    f.write("| BIAS: \t\t\t\t{} ({} bytes)\n".format(bias, bias*data_size))
 f.write("| OUT DIFF: \t\t{} ({} bytes)\n".format(out_act, out_act*data_size))
 f.write("| \n| TOTAL WGT GRAD: \t{} ({} bytes)\n".format(tot_WGT, tot_WGT*data_size))
 f.write("-------------------------------------------\n")

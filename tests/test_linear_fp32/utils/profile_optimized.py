@@ -39,6 +39,8 @@ parser.add_argument( '--data_type', type=str, default='fp32')
 parser.add_argument( '--in_size', type=int, default=1024 )
 parser.add_argument( '--out_size', type=int, default=8 )
 
+parser.add_argument( '--use_biases', type=int, default=1 )
+
 args = parser.parse_args()
 
 num_matmuls = args.num_matmuls
@@ -49,6 +51,7 @@ data_type = args.data_type
 
 in_size = args.in_size
 out_size = args.out_size
+use_biases = args.use_biases
 
 print("\n=====> ENTERING TEST SEQUENCE.. <=====\n")
 
@@ -60,7 +63,7 @@ f.write("STEP TYPE: LINEAR {}\n".format(step_type))
 f.write("NUM_CORES: {}\n".format(cores))
 f.write("DATA_TYPE: {}\n".format(data_type))
 f.write("NUM_MATMUL algorithms: {}\n".format(num_matmuls))
-f.write("SIZES ARE:\n  In size: {}\n  Out_size: {}\n".format(in_size, out_size))
+f.write("SIZES ARE:\n  In size: {}\n  Out_size: {}\n  Bias size (if rquired): {}\n".format(in_size, out_size, out_size))
 f.write("------------------------------------------------\n")
 f.write("\n=====> UNSORTED RESULTS <=====")
 f.close()
@@ -70,7 +73,7 @@ for compile_idx in range(num_matmuls) :
     print("Executing build {}".format(compile_idx))
     # Execute build
     os.system("rm -r BUILD/")
-    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IN_CH={} OUT_CH={} NUM_CORES={} > log.txt".format(step_type, cores, compile_idx, in_size, out_size, cores))
+    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IN_CH={} OUT_CH={} NUM_CORES={} USE_BIASES={} > log.txt".format(step_type, cores, compile_idx, in_size, out_size, cores, use_biases))
     # Find profiling and write it to file
     prof.extract_performance(compile_idx, filename)
 

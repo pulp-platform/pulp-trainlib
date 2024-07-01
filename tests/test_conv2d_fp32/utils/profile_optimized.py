@@ -43,6 +43,8 @@ parser.add_argument( '--ker_height', type=int, default=3)
 parser.add_argument( '--ch_in', type=int, default=8 )  
 parser.add_argument( '--ch_out', type=int, default=8 )
 
+parser.add_argument( '--use_biases', type=int, default=1 )
+
 args = parser.parse_args()
 
 num_matmuls = args.num_matmuls
@@ -58,6 +60,8 @@ ker_height = args.ker_height
 ch_in = args.ch_in
 ch_out = args.ch_out
 
+use_biases = args.use_biases
+
 print("\n=====> ENTERING TEST SEQUENCE.. <=====\n")
 
 # Prepare log file for the measured performances
@@ -68,7 +72,7 @@ f.write("STEP TYPE: CONV2D {}\n".format(step_type))
 f.write("NUM_CORES: {}\n".format(cores))
 f.write("DATA_TYPE: {}\n".format(data_type))
 f.write("NUM_MATMUL algorithms: {}\n".format(num_matmuls))
-f.write("SIZES ARE:\n  Image width: H={}, W={}\n  Kernel size: H={}, W={}\n  Input channels: {}\n  Output channels: {}\n".format(im_height, im_width, ker_height, ker_width, ch_in, ch_out))
+f.write("SIZES ARE:\n  Image width: H={}, W={}\n  Bias size (if rquired): {}\n Kernel size: H={}, W={}\n  Input channels: {}\n  Output channels: {}\n".format(im_height, im_width, ch_out, ker_height, ker_width, ch_in, ch_out))
 f.write("------------------------------------------------\n")
 f.write("\n=====> UNSORTED RESULTS <=====")
 f.close()
@@ -78,7 +82,7 @@ for compile_idx in range(num_matmuls) :
     print("Executing build {}".format(compile_idx))
     # Execute build
     os.system("rm -r BUILD/")
-    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} IN_CH={} OUT_CH={} > log.txt".format(step_type, cores, compile_idx, im_height, im_width, ker_height, ker_width, ch_in, ch_out))
+    os.system("make clean get_golden all run STEP={} NUM_CORES={} MATMUL_TYPE={} IMAGE_H={} IMAGE_W={} KER_H={} KER_W={} IN_CH={} OUT_CH={} USE_BIASES={} > log.txt".format(step_type, cores, compile_idx, im_height, im_width, ker_height, ker_width, ch_in, ch_out, use_biases))
     # Find profiling and write it to file
     prof.extract_performance(compile_idx, filename)
 

@@ -280,22 +280,33 @@ NORM TEMPLATES
 '''
 def InstNorm_template_FW(layer_number, data_type):
     if data_type == 'FP32':
-        template = "\tpulp_instnorm_fp32_fw_cl(&InstNorm_args);\n"
+        template = "\tpulp_instnorm_fp32_fw_cl(&l"+str(layer_number)+"_args);\n"
     elif data_type == 'FP16':
-        template = "\tpulp_instnorm_fp16_fw_cl(&InstNorm_args);\n"
+        template = "\tpulp_instnorm_fp16_fw_cl(&l"+str(layer_number)+"_args);\n"
     else:
         print("[net_templates.InstNorm_template_FW]: Invalid data type!")
         exit()  
     return template
 
-def InstNorm_template_BW(layer_number, data_type):
-    if data_type == 'FP32':
-        template = "\tpulp_instnorm_fp32_bw_cl(&InstNorm_args);\n"
-    elif data_type == 'FP16':
-        template = "\tpulp_instnorm_fp16_bw_cl(&InstNorm_args);\n"
+def InstNorm_template_BW(layer_number, data_type, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
+    template = ""
+    if SEPARATE_BACKWARD_STEPS == 1:
+        if data_type == 'FP32':
+            if UPDATE_LAYER == 1:
+                template = "  pulp_instnorm_fp32_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if FIRST_LAYER == True:
+                template = "  pulp_instnorm_fp32_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
+        elif data_type == 'FP16':
+            if UPDATE_LAYER == 1:
+                template = "  pulp_instnorm_fp16_bw_param_grads_cl(&l"+str(layer_number)+"_args);\n"
+            if FIRST_LAYER == False:
+                template = "  pulp_instnorm_fp16_bw_input_grads_cl(&l"+str(layer_number)+"_args);\n"
     else:
-        print("[net_templates.InstNorm_template_BW]: Invalid data type!")
-        exit()  
+        if not (FIRST_LAYER == True and UPDATE_LAYER == 0):
+            if data_type == 'FP32':
+                template = "  pulp_instnorm_fp32_bw_cl(&l"+str(layer_number)+"_args);\n"
+            elif data_type == 'FP16':
+                template = "  pulp_instnorm_fp16_bw_cl(&l"+str(layer_number)+"_args);\n"
     return template
 
 
@@ -354,26 +365,34 @@ def cast_fp16_to_fp32_template (layer_number, STEP, DATA_TYPE):
 CONFIGURATION STRUCTURE TEMPLATES
 """
 
-def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
+def linear_config_template(layer_number, skip_in_grad, DATA_TYPE, use_bias, update_layer):
     skip_wg_grad = 0
     if update_layer == 0:
         skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    if use_bias == 1:
+        template += "  l"+str(layer_number)+"_args.bias = &bias_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
+    if use_bias:
+        template += "  l"+str(layer_number)+"_args.use_biases = 1;\n"
+    else:
+        template += "  l"+str(layer_number)+"_args.use_biases = 0;\n"
     return template
 
-def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, CONV2D_USE_IM2COL, update_layer):
+def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_in_grad, DATA_TYPE, use_bias, CONV2D_USE_IM2COL, update_layer):
     skip_wg_grad = 0
     if update_layer == 0:
         skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
+    if use_bias == 1:
+        template += "  l"+str(layer_number)+"_args.bias = &bias_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
     template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
@@ -396,6 +415,10 @@ def conv2d_config_template(layer_number, pad_h, pad_w, stride_h, stride_w, skip_
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_fw = MATMUL_TYPE_FW_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_wg = MATMUL_TYPE_WG_L"+str(layer_number)+";\n"
     template += "  l"+str(layer_number)+"_args.opt_matmul_type_ig = MATMUL_TYPE_IG_L"+str(layer_number)+";\n"
+    if use_bias:
+        template += "  l"+str(layer_number)+"_args.USE_BIASES = 1;\n"
+    else:
+        template += "  l"+str(layer_number)+"_args.USE_BIASES = 0;\n"
     # Temporary fix to use padding/stride (naive kernel)
     if (pad_h > 0 or pad_w > 0) or (stride_h > 1 or stride_w > 1):
         template += "  l"+str(layer_number)+"_args.USE_IM2COL = 0;\n"
@@ -504,9 +527,17 @@ def sum(layer, data_type):
 
 
 
-def InstNorm_config_template(layer_number, skip_in_grad):
+def InstNorm_config_template(layer_number, skip_in_grad, update_layer):
+    skip_wg_grad = 0
+    if update_layer == 0:
+        skip_wg_grad = 1
     template  = "  l"+str(layer_number)+"_args.input = &input_blob;\n"
     template += "  l"+str(layer_number)+"_args.coeff = &weight_blob;\n"
     template += "  l"+str(layer_number)+"_args.output = &output_blob;\n"
+    template += "  l"+str(layer_number)+"_args.running_mean = running_mean_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.running_var = running_var_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.running_stdev = running_stdev_buffer;\n"
+    template += "  l"+str(layer_number)+"_args.freeze_running_params = 0;\n"
+    template += "  l"+str(layer_number)+"_args.skip_wg_grad = "+str(skip_wg_grad)+";\n"
     template += "  l"+str(layer_number)+"_args.skip_in_grad = "+str(skip_in_grad)+";\n"
     return template

@@ -31,7 +31,7 @@
 // CONV2D
 PI_L1 float zero_init = 0.0f;
 PI_L1 struct Conv2D_args C2D_args;
-PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
+PI_L1 struct blob layer1_in, layer1_wgt, layer1_bias, layer1_out;
 
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
@@ -47,6 +47,9 @@ PI_L1 float im2col_buffer[IM2COL_SIZE];
 #endif
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+#if (USE_BIAS == 1)
+PI_L1 float l1_bias[Tout_C_l1];
+#endif
 PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 float bt_buffer[1];
 #endif
@@ -67,6 +70,9 @@ PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+#if (USE_BIAS == 1)
+PI_L1 float l1_bias_diff[Tout_C_l1];
+#endif
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 PI_L1 float bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
@@ -77,6 +83,9 @@ PI_L1 float bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 static inline void tensor_init(){
   for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = INPUT[i];
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = WEIGHTS[i]; //weight_init;
+  #if (USE_BIAS == 1)
+  for (int i=0; i<Tout_C_l1; i++)                                              l1_bias[i] = BIASES[i]; //bias_init;
+  #endif
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
 }
@@ -109,8 +118,14 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  #if (USE_BIAS == 1)
+  layer1_bias.data = l1_bias;
+  layer1_bias.dim = Tout_C_l1;
+  #endif
+
   C2D_args.input = &layer1_in;
   C2D_args.coeff = &layer1_wgt;
+  C2D_args.bias = &layer1_bias;
   C2D_args.output = &layer1_out;
   C2D_args.Lpad = PAD_L;
   C2D_args.Rpad = PAD_R;
@@ -128,6 +143,7 @@ static inline void connect_blobs(){
   C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
   C2D_args.USE_IM2COL = IM2COL;
   C2D_args.USE_DMA_IM2COL = DMA;
+  C2D_args.USE_BIASES = USE_BIAS;
 }
 
 static inline void compute_memory_occupation(){
@@ -138,6 +154,10 @@ static inline void compute_memory_occupation(){
   //printf("Im2Col: %d bytes\n", IM2COL_SIZE*sizeof(float));
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
   //printf("Weights: %d bytes\n", Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float));
+  #if (USE_BIAS == 1)
+  L1_memocc_bytes += Tout_C_l1 * sizeof(float);
+  //printf("Biases: %d bytes\n", Tout_C_l1*sizeof(float));
+  #endif
   L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
   //printf("Output: %d bytes\n", Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float));
   L1_memocc_bytes += INPUT_SIZE*sizeof(float);
@@ -146,6 +166,9 @@ static inline void compute_memory_occupation(){
 
   L2_memocc_bytes += G_IN_SIZE*sizeof(float);
   L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
+  #if (USE_BIAS == 1)
+  L2_memocc_bytes += G_BIAS_SIZE * sizeof(float);
+  #endif
   L2_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
   L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
 }
@@ -163,6 +186,12 @@ static inline void print_data() {
     if(!(index%Tker_H_l1)) printf("\n");
     printf("%f ", l1_ker[index]);   
   }
+  #if (USE_BIAS == 1)
+  printf("\n\nl1_bias (size: %d):\n", Tout_C_l1);
+  for(int index=0; index<Tout_C_l1; index++) {
+    printf("%f ", l1_bias[index]);
+  }
+  #endif
   printf("\n\nl1_out (size: %d):\n", Tout_H_l1*Tout_W_l1*Tout_C_l1);
   for(int index=0; index<Tout_H_l1*Tout_W_l1*Tout_C_l1; index++) {
     if(!(index%Tout_H_l1)) printf("\n");
@@ -176,10 +205,13 @@ static inline void print_data() {
 
 #ifdef BACKWARD_GRAD
 static inline void tensor_init(){
-  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = INPUT[i]; 
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*Tin_C_l1; i++)                             l1_in[i] = INPUT[i];
   for (int i=0; i<Tout_C_l1*Tker_H_l1*Tker_W_l1*Tin_C_l1; i++)                 l1_ker_diff[i] = zero_init;
-  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init; 
-  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i]; 
+  for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init;
+  #if (USE_BIAS == 1)
+  for (int i=0; i<Tout_C_l1; i++)                                              l1_bias_diff[i] = zero_init;
+  #endif
+  for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i];
 }
 
 static inline void connect_blobs(){
@@ -203,6 +235,12 @@ static inline void connect_blobs(){
   layer1_wgt.H = Tker_H_l1;
   layer1_wgt.C = Tin_C_l1;
 
+  #if (USE_BIAS == 1)
+  layer1_bias.diff = l1_bias_diff;
+  layer1_bias.dim = Tout_C_l1;
+  C2D_args.bias = &layer1_bias;
+  #endif
+
   C2D_args.input = &layer1_in;
   C2D_args.coeff = &layer1_wgt;
   C2D_args.output = &layer1_out;
@@ -222,6 +260,7 @@ static inline void connect_blobs(){
   C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
   C2D_args.USE_IM2COL = IM2COL;
   C2D_args.USE_DMA_IM2COL = DMA;
+  C2D_args.USE_BIASES = USE_BIAS;
 }
 
 static inline void compute_memory_occupation(){
@@ -232,6 +271,10 @@ static inline void compute_memory_occupation(){
   //printf("Im2Col: %d bytes\n", IM2COL_SIZE*sizeof(float));
   L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
   //printf("Weights: %d bytes\n", Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float));
+  #if (USE_BIAS == 1)
+  L1_memocc_bytes += Tout_C_l1 * sizeof(float);
+  //printf("Biases: %d bytes\n", Tout_C_l1 * sizeof(float));
+  #endif
   L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
   //printf("Output: %d bytes\n", Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float));
   L1_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
@@ -240,6 +283,9 @@ static inline void compute_memory_occupation(){
 
   L2_memocc_bytes += G_IN_SIZE*sizeof(float);
   L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
+  #if (USE_BIAS == 1)
+  L2_memocc_bytes += G_BIAS_SIZE * sizeof(float);
+  #endif
   L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
   L2_memocc_bytes += INPUT_SIZE*sizeof(float);
 }
@@ -302,6 +348,7 @@ static inline void connect_blobs(){
   C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
   C2D_args.USE_IM2COL = IM2COL;
   C2D_args.USE_DMA_IM2COL = DMA;
+  C2D_args.USE_BIASES = USE_BIAS;
 }
 
 static inline void compute_memory_occupation(){
@@ -432,6 +479,14 @@ static inline void train(){
   check_tensor(l1_ker_diff, WEIGHT_GRAD, Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1);
   // TEST
   printf("\nOUT SIZES: [%d, %d, %d]\n", Tout_C_l1, Tout_H_l1, Tout_W_l1);
+
+  #if (USE_BIAS ==1)
+  printf("BIASES GRADIENT CHECK: \n");
+  compare_tensors(l1_bias_diff, BIAS_GRAD, Tout_C_l1);
+  check_tensor(l1_bias_diff, BIAS_GRAD, Tout_C_l1);
+  printf("\nBIAS SIZES: [%d]\n", Tout_C_l1);
+  #endif
+
   //printf("\nADDR\nIN: %x, WGT: %x, OUT: %x, BUFF:%x\n", &layer1_in, &layer1_wgt, &layer1_out, im2col_buffer);
   for (int index=0; index<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; index++) {
     #if HWC_LAYOUT == 0 
