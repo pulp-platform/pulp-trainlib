@@ -28,6 +28,7 @@ void pulp_gradient_descent_fp32 (void * optim_args)
     struct optim_args * args = (struct optim_args *) optim_args;
     float * __restrict__ weights = args->weights->data; 
     float * __restrict__ weight_grad = args->weights->diff;
+    int use_biases = args->use_biases;
     const int wgt_size = args->weights->dim; 
     float lr = args->learning_rate;
 
@@ -53,4 +54,33 @@ void pulp_gradient_descent_fp32 (void * optim_args)
     for (int i=0; i<wgt_size; i++)  printf("%f ", weights[i]);  
     printf("\n\n");
     #endif
+    
+    if (use_biases == 1) {
+        float * __restrict__ biases = args->biases->data; 
+        float * __restrict__ bias_grad = args->biases->diff;
+        const int bias_size = args->biases->dim; 
+
+        #ifdef DEBUG
+        printf("\n*** BIASES ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", biases[i]);  
+        printf("\n*** BIAS GRAD ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", bias_grad[i]);
+        printf("\n\n");
+        #endif
+
+        int blockSize_bias = (bias_size+NUM_CORES-1) / NUM_CORES;
+        int start_bias = pi_core_id()*blockSize_bias;
+        int stop_bias = start_bias+blockSize_bias > bias_size ? bias_size : start_bias+blockSize_bias;
+
+        for (int i=start_bias; i<stop_bias; i++) 
+        {   
+            biases[i] -= lr * bias_grad[i];
+        }    
+
+        #ifdef DEBUG
+        printf("\n*** BIASES ***\n");
+        for (int i=0; i<bias_size; i++)  printf("%f ", biases[i]);
+        printf("\n\n");
+        #endif
+    }
 }

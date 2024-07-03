@@ -33,7 +33,8 @@ HWC = args.HWC
 STEP = args.STEP
 NUM_CORES = args.NUM_CORES
 
-test_data = 100*torch.rand(CI, HI, WI)
+#test_data = 100*torch.rand(CI, HI, WI)
+test_data = torch.rand(CI, HI, WI)
 test_data.requires_grad = True
 test_labels = torch.rand(CI, HI, WI)
 
@@ -71,7 +72,7 @@ f.close()
 
 
 # Simple input data 
-inp = torch.torch.div(torch.randint(1000, [1, l1_in_ch, l1_hin, l1_win]), 1000).half().to(device)
+inp = torch.torch.div(torch.randint(1000, [1, l1_in_ch, l1_hin, l1_win]), 1e6).half().to(device)
 inp.requires_grad = True
 
 class DNN(nn.Module):

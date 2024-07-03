@@ -273,11 +273,6 @@ void mm_M(void * matMul_args) {
 
 
 
-
-
-
-
-
 /**
  * OPTIMIZED VERSIONS
  */
@@ -1313,7 +1308,7 @@ void mm_unroll_2x4 (void * matMul_args)
     {
       uint32_t i;
       // Unrolled core
-      for (i=start; i<stop-1; i=i+2) 
+      for (i=start; i<stop-1; i=i+2)
       {
         for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
@@ -1383,7 +1378,7 @@ void mm_unroll_2x4 (void * matMul_args)
           temp2 = 0;
           temp3 = 0;
 
-          for (uint32_t k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++)
           {
             uint32_t idx   = k*M+j;
             // First A row
@@ -1403,7 +1398,7 @@ void mm_unroll_2x4 (void * matMul_args)
           C[i*M+j+3]      = temp3;
         }
         // Leftover in M
-        if (M & 0x00000003) 
+        if (M & 0x00000003)
         {
           for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
           {
@@ -1422,7 +1417,7 @@ void mm_unroll_2x4 (void * matMul_args)
     {
       // Unrolled core
       uint32_t i;
-      for (i=start; i<stop-1; i=i+2) 
+      for (i=start; i<stop-1; i=i+2)
       {
         for (uint32_t j=0; j<(M & 0xfffffffc); j=j+4)
         {
@@ -1492,7 +1487,7 @@ void mm_unroll_2x4 (void * matMul_args)
           temp2 = 0;
           temp3 = 0;
 
-          for (uint32_t k=0; k<K; k++) 
+          for (uint32_t k=0; k<K; k++)
           {
             uint32_t idx   = k+j*K;
             // First A row
@@ -1512,7 +1507,7 @@ void mm_unroll_2x4 (void * matMul_args)
           C[i*M+j+3]      = temp3;
         }
         // Leftover in M
-        if (M & 0x00000003) 
+        if (M & 0x00000003)
         {
           for (uint32_t j=(M-(M & 0x00000003)); j<M; j++)
           {

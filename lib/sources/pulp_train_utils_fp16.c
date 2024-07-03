@@ -510,6 +510,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -529,6 +533,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -548,6 +556,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -579,6 +591,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -598,6 +614,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -617,6 +637,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -648,6 +672,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -667,6 +695,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -686,6 +718,10 @@ void mm_manager_fp16 (void * void_args)
             // Parallelism on M
             else if (matmul_type == 4)     { mm_M_fp16_SIMD_2x4((void *) matMul_args);}
             else if (matmul_type == 5)     { mm_M_fp16_SIMD_4x8((void *) matMul_args);}
+            // Unrolling on N
+            else if (matmul_type == 6)      { mm_fp16_unroll_2x1((void *) matMul_args);}
+            else if (matmul_type == 7)      { mm_fp16_unroll_4x1((void *) matMul_args);}
+            else if (matmul_type == 8)      { mm_fp16_unroll_8x1((void *) matMul_args);}
             else
             {
                 printf("\nWrong matmul selection!\n");
@@ -774,4 +810,66 @@ void pulp_mean_std_fp16_cl(void * mean_std_args)
         *mean = m;
         *var = v;
         *std = (fp16)sqrtf(v);
+}
+
+
+#define CORDIC_N_ITERATION 14
+#define CORDIC_SCALING_FACTOR_14 0.6072529365170104
+#define CORDIC_SCALING_FACTOR_10 0.6072533210898753
+#define CORDIC_SCALING_FACTOR_8 0.6072591122988928 
+
+const fp16 atan_pow_2_fp16[14] = {
+    0.7853981633974483f, 
+    0.4636476090008061f, 
+    0.24497866312686414f, 
+    0.12435499454676144f, 
+    0.06241880999595735f, 
+    0.031239833430268277f, 
+    0.015623728620476831f, 
+    0.007812341060101111f, 
+    0.0039062301319669718f, 
+    0.0019531225164788188f, 
+    0.0009765621895593195f, 
+    0.0004882812111948983f, 
+    0.00024414062014936177f, 
+    0.00012207031189367021f };
+
+void cordic_cos_sin_fp16(fp16 angle, fp16* cos, fp16* sin){
+    int inv_tan_theta = 1;
+    fp16 x = CORDIC_SCALING_FACTOR_14;
+    fp16 y = 0;
+    fp16 x_n;
+    int cos_sign = 1;
+
+    angle -= ((int)(angle/(2*M_PI)))*(2*M_PI);
+
+    if(angle > M_PI)
+        angle -= 2*M_PI;
+    else if(angle < -M_PI)
+        angle += 2*M_PI;
+
+    if(angle > M_PI_2){
+        angle = M_PI - angle;
+        cos_sign = -1;
+    } else if(angle < -M_PI_2){
+        angle = -M_PI - angle;
+        cos_sign = -1;
+    }
+
+
+    for(int i=0; i<CORDIC_N_ITERATION; i++){
+        if(angle > 0){
+            x_n = x - y / inv_tan_theta;
+            y = y + x / inv_tan_theta;
+            angle -= atan_pow_2_fp16[i];
+        } else{
+            x_n = x + y / inv_tan_theta;
+            y = y - x / inv_tan_theta;
+            angle += atan_pow_2_fp16[i];
+        }
+        inv_tan_theta <<= 1;
+        x = x_n;
+    }
+    *cos = cos_sign*x;
+    *sin = y;
 }
