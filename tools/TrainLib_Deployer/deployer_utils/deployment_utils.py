@@ -244,8 +244,8 @@ def InitProject(proj_folder_path):
     utils_folder = proj_folder + 'utils/'
     trainlib_dest_folder = proj_folder + 'lib/' 
     
-    os.mkdir(proj_folder)
-    os.mkdir(utils_folder)
+    os.makedirs(proj_folder, exist_ok = True)
+    os.makedirs(utils_folder, exist_ok = True)
 
     shutil.copy2('./deployer_utils/srcfiles/main.c', proj_folder)
     shutil.copy2('./deployer_utils/srcfiles/stats.h', proj_folder)
@@ -283,7 +283,7 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
         f.write('MATMUL_TYPE_IG_L'+str(layer)+'?='+str(opt_mm_ig_list[layer])+'         # Selects which optimized matmul to be used in IN GRAD (see mm_manager_list.txt or "MM_manager()" body to verify which one is called)' + '\n')
     f.write('# End of user settings\n\n')
 
-    f.write('NUM_MATMULS?=24		# Available standard matmuls in the library' + '\n')
+    f.write('NUM_MATMULS?=24        # Available standard matmuls in the library' + '\n')
     f.write('TRAIN_LIB=./lib\n')
     f.write('TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources\n')
     f.write('APP_SRCS = main.c net.c\n\n')
@@ -384,6 +384,7 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("import torch.optim as optim\n")
     f.write("import dump_utils as dump\n")
     f.write("import math\n")
+    f.write("import numpy\n")
     f.write("\n")
 
     f.write("# Set device\n")
@@ -1739,4 +1740,3 @@ def GenerateNet(proj_folder_path, project_name,
     f.close()
 
     return
-

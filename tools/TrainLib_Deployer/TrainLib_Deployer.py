@@ -41,6 +41,15 @@ Available optimizers:
 'SGD'       -> Stochastic Gradient Descent
 """
 
+import argparse
+import onnx
+import os
+
+from onnx import shape_inference, numpy_helper
+
+import numpy as np
+
+
 import deployer_utils.DNN_Reader     as reader
 import deployer_utils.DNN_Composer   as composer
 
@@ -53,13 +62,10 @@ parser = argparse.ArgumentParser(
                     description='Generating C code for on-device training')
 
 parser = argparse.ArgumentParser()
-parser._action_groups.pop()
-required = parser.add_argument_group('required arguments')
-optional = parser.add_argument_group('optional arguments')
-required.add_argument('--project_name', type=str, default="Test_CNN", help='Project name', required=True)
-required.add_argument('--project_path', type=str, default="./", help='Project path', required=True)
-optional.add_argument('--model_path', type=str, default=None, help='Pretrained model path')
-optional.add_argument('--start_at', type=str, default=None, help='At which node to start generating')
+parser.add_argument('--project_name', type=str, default="Test_CNN", help='Project name')
+parser.add_argument('--project_path', type=str, default="./", help='Project path')
+parser.add_argument('--model_path', type=str, default=None, help='Pretrained model path')
+parser.add_argument('--start_at', type=str, default=None, help='At which node to start generating')
 args = parser.parse_args()
 
 
@@ -73,7 +79,7 @@ epochs          = 5
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.001
 optimizer       = "SGD"                # Name of PyTorch's optimizer
-loss_fn         = "MSELoss"            # Name of PyTorch's loss function
+loss_fn         = "CrossEntropyLoss"            # Name of PyTorch's loss function
 
 # ------- NETWORK GRAPH --------
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
@@ -106,7 +112,7 @@ data_list           = []
 # Data layout list (CHW or HWC) 
 data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
 # Sparse Update
-update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
+update_layer_list   = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
 # ----- END OF NETWORK GRAPH -----
 
 
@@ -115,7 +121,7 @@ update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]         
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10)
-USE_DMA = 'DB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
+USE_DMA = 'NO'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB') 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, writes separate weight and input gradient in backward step
 # PROFILING OPTIONS
@@ -126,7 +132,7 @@ CONV2D_USE_IM2COL = False                # Choose if the Conv2D layers should us
 PRINT_TRAIN_LOSS = True                 # Set to true if you want to print the train loss for each epoch
 # OTHER PROPERTIES
 # Select if to read the network from an external source
-READ_MODEL_ARCH = False                # NOT IMPLEMENTED!!
+READ_MODEL_ARCH = args.model_path is not None      
 
 # ---------------------------
 # --- END OF USER SETTING ---
@@ -259,14 +265,16 @@ if READ_MODEL_ARCH :
         found_start = args.start_at is None
 
         if args.start_at is not None:
-            node_names = [n.name for n in graph.graph.node if n.op_type != 'Constant']
+            node_names = [n.op_type for n in graph.graph.node if n.op_type != 'Constant']
             assert args.start_at in node_names, f"{args.start_at} is not a valid layer name. Layer names are: {node_names}"
             # CIOFLANC: temporary reconciling pseudo-sparse update implementations 
-            assert update_layer_list.index(1) == node_names.index(args.start_at)]  
+            update_layer_list = [1] * (len(node_names) -  node_names.index(args.start_at))
+            # update_layer_list[node_names.index(args.start_at)] = 1
 
         for onnx_node in graph.graph.node:
+
             if not found_start:
-                if onnx_node.name != args.start_at:
+                if onnx_node.op_type != args.start_at:
                     continue
                 else:
                     found_start = True
@@ -306,16 +314,16 @@ if READ_MODEL_ARCH :
                 in_ch_list.append(graph.get_channel_count(onnx_node.input[0]))
                 out_ch_list.append(graph.get_channel_count(onnx_node.output[0]))
                 layer_list.append('AvgPool')
-                (hk, wk) = graph.get_kernel_size(onnx_node.name)
+                (hk, wk) = graph.get_kernel_size(onnx_node.op_type)
                 hk_list.append(hk)
                 wk_list.append(wk)
                 (hin, win) = graph.get_activation_size(onnx_node.input[0])
                 hin_list.append(hin)
                 win_list.append(win)
-                (hstr, wstr) = graph.get_stride(onnx_node.name)
+                (hstr, wstr) = graph.get_stride(onnx_node.op_type)
                 h_str_list.append(hstr)
                 w_str_list.append(wstr)
-                (hpad, wpad) = graph.get_pad(onnx_node.name)
+                (hpad, wpad) = graph.get_pad(onnx_node.op_type)
                 h_pad_list.append(hpad)
                 w_pad_list.append(wpad)
                 opt_mm_fw_list.append(0)
@@ -352,23 +360,23 @@ if READ_MODEL_ARCH :
             elif onnx_node.op_type == 'Conv':
                 in_ch_list.append(graph.get_channel_count(onnx_node.input[0]))
                 out_ch_list.append(graph.get_channel_count(onnx_node.output[0]))
-                if graph.is_pointwise(onnx_node.name):
+                if graph.is_pointwise(onnx_node.op_type):
                     ty = "PW"
-                elif graph.is_depthwise(onnx_node.name):
+                elif graph.is_depthwise(onnx_node.op_type):
                     ty = "DW"
                 else:
                     ty = "conv2d"
                 layer_list.append(ty)
-                (hk, wk) = graph.get_kernel_size(onnx_node.name)
+                (hk, wk) = graph.get_kernel_size(onnx_node.op_type)
                 hk_list.append(hk)
                 wk_list.append(wk)
                 (hin, win) = graph.get_activation_size(onnx_node.input[0])
                 hin_list.append(hin)
                 win_list.append(win)
-                (hstr, wstr) = graph.get_stride(onnx_node.name)
+                (hstr, wstr) = graph.get_stride(onnx_node.op_type)
                 h_str_list.append(hstr)
                 w_str_list.append(wstr)
-                (hpad, wpad) = graph.get_pad(onnx_node.name)
+                (hpad, wpad) = graph.get_pad(onnx_node.op_type)
                 h_pad_list.append(hpad)
                 w_pad_list.append(wpad)
                 opt_mm_fw_list.append(0)
