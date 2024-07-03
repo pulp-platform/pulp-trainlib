@@ -123,7 +123,7 @@ update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ] 
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10)
-USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB', CURRENTLY UNAVAILABLE) 
+USE_DMA = 'NO'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB', CURRENTLY UNAVAILABLE) 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, the tool writes separate weight and input gradient in the backward step
 # PROFILING OPTIONS
@@ -437,7 +437,8 @@ if READ_MODEL_ARCH :
     # Check if the network training fits L1
     memocc = composer.DNN_Size_Checker(layer_list, in_ch_list, out_ch_list, hk_list, wk_list, hin_list, win_list, 
                                 h_str_list, w_str_list, h_pad_list, w_pad_list,
-                                data_type_list, update_layer_list, L1_SIZE_BYTES, USE_DMA, CONV2D_USE_IM2COL)
+                                data_type_list, bias_list, update_layer_list, 
+                                L1_SIZE_BYTES, USE_DMA, CONV2D_USE_IM2COL)
 
     print("DNN memory occupation: {} bytes of {} available L1 bytes ({}%).".format(memocc, L1_SIZE_BYTES, (memocc/L1_SIZE_BYTES)*100))
 

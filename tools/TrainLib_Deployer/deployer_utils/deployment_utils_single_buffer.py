@@ -59,7 +59,7 @@ def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
     return RES
 
 
-  def max_bias_dim(layers_l, cout_l, bias_l, data_type_l, update_layer_l):
+def max_bias_dim(layers_l, cout_l, bias_l, data_type_l, update_layer_l):
     nbytes = 4
     nbytes_max = 4
     RES = 0

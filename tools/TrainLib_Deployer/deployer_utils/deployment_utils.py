@@ -576,7 +576,7 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("net = DNN().to(device)\n")
     f.write("for p in net.parameters():\n")
     f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
-    if (weight_list):
+    if (weight_l):
         f.write("from pathlib import Path\n")
         f.write("basedir = Path(__file__).resolve().parent.parent\n")
         for layer in range(len(layers_l)):
