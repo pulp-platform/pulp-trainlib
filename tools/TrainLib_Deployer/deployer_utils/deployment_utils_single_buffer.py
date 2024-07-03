@@ -59,22 +59,51 @@ def max_wgt_dim(layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l):
     return RES
 
 
-def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad):
+  def max_bias_dim(layers_l, cout_l, bias_l, data_type_l, update_layer_l):
+    nbytes = 4
+    nbytes_max = 4
     RES = 0
-    temp1 = 0 #input
-    temp2 = 0 #wgt
-    temp3 = 0 #output
+    for layer in range(len(layers_l)):
+        # Check data type
+        if data_type_l[layer] == 'FP32':
+            nbytes = 4
+        elif data_type_l[layer] == 'FP16':
+            nbytes = 2
+        if layers_l[layer] in ['conv2d', 'linear'] and bias_l[layer] == 1:
+            if cout_l[layer] > RES:
+                nbytes_max = nbytes
+                RES = cout_l[layer]*nbytes
+
+    RES /= nbytes_max
+
+    print(f"[TEST!!! max_bias_dim] RES = {RES}")
+
+    return RES
+
+
+def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_str, w_str, h_pad, w_pad, bias_l, data_type_l, update_layer_l):
+    nbytes = 4
+    nbytes_max = 4
+    RES = 0
+    tmp_inp = 0 #input
+    tmp_wgt = 0 #wgt
+    tmp_out = 0 #output
+    tmp_bias = 0 #bias
     tot = 0
     max_layer =  0
     for layer in range(len(layers_l)):
         if layers_l[layer] == 'conv2d' : 
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]
+            tmp_wgt = hk_l[layer]*wk_l[layer]*cin_l[layer]*cout_l[layer]*nbytes
+            if bias_l[layer] == 1:
+                tmp_bias = cout_l[layer]*nbytes
         if layers_l[layer] == 'PW':
-            temp2 = cin_l[layer]*cout_l[layer]
-        if   layers_l[layer] == 'DW':
-            temp2 = hk_l[layer]*wk_l[layer]*cin_l[layer]
+            tmp_wgt = cin_l[layer]*cout_l[layer]*nbytes
+        if layers_l[layer] == 'DW':
+            tmp_wgt = hk_l[layer]*wk_l[layer]*cin_l[layer]*nbytes
         if layers_l[layer] == 'linear' :
-            temp2 = cin_l[layer]*cout_l[layer]
+            tmp_wgt = cin_l[layer]*cout_l[layer]*nbytes
+            if bias_l[layer] == 1:
+                tmp_bias = cout_l[layer]*nbytes
         if layers_l[layer] == 'Sumnode':
             temp2 = cin_l[layer]*hin_l[layer]*win_l[layer]
         if layers_l[layer] == 'InstNorm':
@@ -90,9 +119,8 @@ def max_layer_dim (layers_l, cin_l, hin_l, win_l, cout_l, hk_l, wk_l, data, h_st
             temp3 = cout_l[layer]
         else:
             temp3 = cout_l[layer] * hout * wout
-        
-        tot = temp1 + temp2 + temp3
-        print(f"Layer {layer} ({layers_l[layer]}):  Input: {temp1}, Coefficients: {temp2}, Output: {temp3}, Total: {tot}")
+        tot = tmp_inp + tmp_wgt + tmp_out + tmp_bias
+        print(f"Layer {layer} ({layers_l[layer]}):  Input: {tmp_inp}, Coefficients: {tmp_wgt}, Biases: {tmp_bias}, Output: {tmp_out}, Total: {tot} (data + gradients + biases)")
         if tot > RES:
             RES = tot
             max_layer = layer
@@ -115,9 +143,8 @@ def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, sumnode_connections, MAX_LAYER_DIM,
-                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS):
-
+                data_type_l, weights_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
+                PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
     data_type = data_type_l[0]
     data_size = 0
@@ -152,23 +179,40 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("void check_post_training_output();\n")
 
     f.write("\n// DMA managment functions\n")
+    f.write("void set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad);\n")
+    f.write("void set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad);\n")
     f.write("void load_input(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_output(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void load_coeff(void * src_blob, uint8_t data_diff_both);\n")
+    f.write("void load_bias(void * src_blob, uint8_t data_diff_both);\n")
     f.write("void store_output(void * dest_blob, uint8_t data_diff_both);\n")
     f.write("void store_input(void * dest_blob, uint8_t data_diff_both);\n")
     f.write("void store_coeff(void * dest_blob, uint8_t data_diff_both);\n")
+    f.write("void store_bias(void * dest_blob, uint8_t data_diff_both);\n")
     f.write("void copy_struct_param(unsigned int from, unsigned int to, int size);\n")
     f.write("void get_input_dim(void * b);\n")
     f.write("void get_output_dim(void * b);\n")
     f.write("void get_weight_dim(void * b);\n")
+    f.write("void get_bias_dim(void * b);\n")
     f.write("void reset_arguments();\n")
     f.write("void update_blob();\n")
     f.write("void reset_dim();\n")
+    
+    f.write(f"\n// Max tensor and layer sizes\n")
+    f.write(f"#define MAX_IN_SIZE {int(max_input_dim(layers_l, in_ch_l, hin_l, win_l, data_type_l, update_layer_l))}\n")
+    f.write(f"#define MAX_WGT_SIZE {int(max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l, data_type_l, update_layer_l))}\n")
+    f.write(f"#define MAX_BIAS_SIZE {max_bias_dim(layers_l, out_ch_l, bias_l, data_type_l, update_layer_l)}\n")
+    f.write(f"#define MAX_SIZE {int(MAX_LAYER_DIM)}\n")
 
-    f.write(f"#define MAX_IN_SIZE {max_input_dim(layers_l, in_ch_l, hin_l, win_l)}\n")
-    f.write(f"#define MAX_WGT_SIZE {max_wgt_dim(layers_l, in_ch_l, hin_l, win_l, out_ch_l, hk_l, wk_l)}\n")
-    f.write(f"#define MAX_SIZE {MAX_LAYER_DIM}\n")
+    f.write(f"\n// Single buffering constants\n")
+    f.write(f"#define SB_DMA_GRAD 0\n")
+    f.write(f"#define SB_DMA_DATA 1\n")
+    f.write(f"#define SB_DMA_BOTH 2\n")
+
+    f.write(f"\n// Partial update constants\n")
+    f.write(f"#define PU_SKIP_IN_GRAD 0\n")
+    f.write(f"#define PU_COMP_IN_GRAD 1\n")
+    
     f.close()    
 
 
@@ -186,10 +230,11 @@ def GenerateNet(proj_folder_path, project_name,
 
     f.write("\n// Define structures and pointers to data in L1 memory\n")
     if data_type == 'FP32':
-        f.write("PI_L1 float * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * OUT_DATA, * OUT_DIFF;\n")
+        f.write("PI_L1 float * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * BIAS_DATA, * BIAS_DIFF, * OUT_DATA, * OUT_DIFF;\n")
         f.write("PI_L1 float BUFF[MAX_SIZE];\n")
         f.write("PI_L1 struct blob input_blob;\n")
         f.write("PI_L1 struct blob weight_blob;\n")
+        f.write("PI_L1 struct blob bias_blob;\n")
         f.write("PI_L1 struct blob output_blob;\n")
         f.write("PI_L1 struct blob temp_blob;\n")
         f.write("PI_L1 struct Linear_args linear_args;\n")
@@ -203,10 +248,11 @@ def GenerateNet(proj_folder_path, project_name,
         f.write("PI_L1 struct pool_args AvgPool_args;\n")
         f.write("PI_L1 float * t;\n")
     elif data_type == 'FP16':
-        f.write("PI_L1 fp16 * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * OUT_DATA, * OUT_DIFF;\n")
+        f.write("PI_L1 fp16 * IN_DATA , * IN_DIFF, * W_DATA, * W_DIFF, * BIAS_DATA, * BIAS_DIFF, * OUT_DATA, * OUT_DIFF;\n")
         f.write("PI_L1 fp16 BUFF[MAX_SIZE];\n")
         f.write("PI_L1 struct blob_fp16 input_blob;\n")
         f.write("PI_L1 struct blob_fp16 weight_blob;\n")
+        f.write("PI_L1 struct blob_fp16 bias_blob;\n")
         f.write("PI_L1 struct blob_fp16 output_blob;\n")
         f.write("PI_L1 struct blob_fp16 temp_blob;\n")
         f.write("PI_L1 struct Linear_args_fp16 linear_args;\n")
@@ -241,9 +287,9 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Define DNN blobs\n")
     for layer in range(len(layers_l)):
         if data_type_l[layer] == 'FP32':
-            f.write("PI_L2 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+            f.write("PI_L2 struct blob layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_bias, layer"+str(layer)+"_out;\n")
         elif data_type_l[layer] == 'FP16':
-            f.write("PI_L2 struct blob_fp16 layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_out;\n")
+            f.write("PI_L2 struct blob_fp16 layer"+str(layer)+"_in, layer"+str(layer)+"_wgt, layer"+str(layer)+"_bias, layer"+str(layer)+"_out;\n")
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for blob definition @Layer{}!".format(layer))
             exit()
@@ -329,22 +375,28 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
                 f.write("PI_L2 float l"+str(layer)+"_ker[1];\n")
+                f.write("PI_L2 float l"+str(layer)+"_bias[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
             elif layers_l[layer] == 'InstNorm':
                 f.write("PI_L2 float l"+str(layer)+f"_ker[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 float l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                if bias_l[layer] == 1:
+                    f.write("PI_L2 float l"+str(layer)+"_bias[Tout_C_l"+str(layer)+"];\n")
         # Define FP16 tensors
         elif data_type_l[layer] == 'FP16':
             if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker[1];\n")
+                f.write("PI_L2 fp16 l"+str(layer)+"_bias[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
             elif layers_l[layer] == 'InstNorm':
                 f.write("PI_L2 fp16 l"+str(layer)+f"_ker[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                if bias_l[layer] == 1:
+                    f.write("PI_L2 fp16 l"+str(layer)+"_bias[Tout_C_l"+str(layer)+"];\n")
         # Data type error
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for kernel definition @Layer{}!".format(layer))
@@ -356,12 +408,15 @@ def GenerateNet(proj_folder_path, project_name,
         if data_type_l[layer] == 'FP32':
             if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
                 f.write("PI_L2 float l"+str(layer)+"_ker_diff[1];\n")
+                f.write("PI_L2 float l"+str(layer)+"_bias_diff[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 pass
             elif layers_l[layer] == 'InstNorm':
                 f.write("PI_L2 float l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                if bias_l[layer] == 1:
+                    f.write("PI_L2 float l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
         # Define FP16 tensors
         elif data_type_l[layer] == 'FP16':
             if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool':
@@ -372,6 +427,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L2 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
             else:    
                 f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
+                if bias_l[layer] == 1:
+                    f.write("PI_L2 fp16 l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
         # Data type error
         else:
             print("[deployment_utils.GenerateNet] Invalid data type for kernel grad definition @Layer{}!".format(layer))
@@ -447,6 +504,14 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet] Invalid data type for im2col!!")
                 exit()
+
+    # No im2col buffer
+    allocate_no_im2col = False
+    for layer in range(len(layers_l)):
+        if layers_l[layer] == 'conv2d' and CONV2D_USE_IM2COL == False:
+            allocate_no_im2col = True
+    if allocate_no_im2col == True:
+        f.write("PI_L1 float im2col_buffer[1];\n")
 
     # Write in grad transposition / blocktranspose buffer
     bt_flag = False
@@ -595,18 +660,26 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("IN_DIFF = BUFF;\n")
     f.write("W_DATA = BUFF;\n")
     f.write("W_DIFF = BUFF;\n")
+    f.write("BIAS_DATA = BUFF;\n")
+    f.write("BIAS_DIFF = BUFF;\n")
     f.write("OUT_DATA = BUFF;\n")
     f.write("OUT_DIFF = BUFF;\n")
     f.write("update_blob();\n")
     f.write("reset_arguments();\n\n")
+
+
     for layer in range(len(layers_l)):
+        # First layer
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  for(int i=0; i<Tin_C_l0*Tin_H_l0*Tin_W_l0; i++)\t\t\tl0_in[i] = INPUT[i];\n")
             if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm']:
-                f.write("  for(int i=0; i<Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0; i++)\t\tl0_ker[i] = init_WGT_l0[i];\n")
+                f.write("\tfor(int i=0; i<Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0; i++)\t\tl0_ker[i] = init_WGT_l0[i];\n")
+                if bias_l[layer] == 1:
+                    f.write("\tfor(int i=0; i<Tout_C_l0; i++)\t\tl0_bias[i] = init_BIAS_l0[i];\n")
             elif layers_l[layer] == 'InstNorm':
-                f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                f.write("\tfor(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+        # Hidden layers
         elif layer > 0 and layer < len(layers_l)-1:
             f.write("  // Layer "+str(layer)+"\n")
             if layers_l[layer] == 'DW':
@@ -618,11 +691,16 @@ def GenerateNet(proj_folder_path, project_name,
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
             else:
-                f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                f.write("\tfor(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                if bias_l[layer] == 1:
+                    f.write("\tfor(int i=0; i<Tout_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_bias[i] = init_BIAS_l"+str(layer)+"[i];\n")
+        # Last layer
         elif layer == len(layers_l)-1:
             if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm']:
-                f.write("  // Layer "+str(layer)+"\n")
-                f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                f.write("\t// Layer "+str(layer)+"\n")
+                f.write("\tfor(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
+                if bias_l[layer] == 1:
+                    f.write("\tfor(int i=0; i<Tout_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_bias[i] = init_BIAS_l"+str(layer)+"[i];\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
         else:
@@ -653,33 +731,72 @@ def GenerateNet(proj_folder_path, project_name,
                     break
                 else:
                     lookahead += 1
-        # DNN is 1 layer long
-        if len(layers_l) == 1:
-            f.write("  layer"+str(layer)+"_in.data = l0_in;\n")
-            f.write("  layer"+str(layer)+"_in.dim = Tin_C_l0*Tin_H_l0*Tin_W_l0;\n")
-            f.write("  layer"+str(layer)+"_in.C = Tin_C_l0;\n")
-            f.write("  layer"+str(layer)+"_in.H = Tin_H_l0;\n")
-            f.write("  layer"+str(layer)+"_in.W = Tin_W_l0;\n")
-            f.write("  layer"+str(layer)+"_wgt.data = l0_ker;\n")
-            f.write("  layer"+str(layer)+"_wgt.diff = l0_ker_diff;\n")
+        if len(layers_l) == 1:                          # DNN is 1 layer long
+            f.write("\tlayer"+str(layer)+"_in.data = l0_in;\n")
+            f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l0*Tin_H_l0*Tin_W_l0;\n")
+            f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l0;\n")
+            f.write("\tlayer"+str(layer)+"_in.H = Tin_H_l0;\n")
+            f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l0;\n")
+        elif layer == 0:                                # First layer
+            f.write("\t// Layer "+str(layer)+"\n")
+            if layers_l[0] != 'Skipnode': # Avoid weight assignment for Skip Connections
+                f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
+                f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
+            else:
+                f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
+                f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
+        elif layer > 0 and layer < len(layers_l)-1:     # Hidden layers
+            f.write("\t// Layer "+str(layer)+"\n")
+            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
+            if layers_l[layer] != 'Skipnode':
+                if (layer - previous_was_skip) > 0: # Avoid assignement of l0_in_diff
+                    f.write("\tlayer"+str(layer)+"_in.diff = l"+str(layer)+"_in_diff;\n")
+            else:
+                f.write(f"\tlayer{layer}_in.diff = l{sumnode_connections[layer]}_in_diff;\n")
+            f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
+        elif layer == len(layers_l)-1:                  # Last layer
+            f.write("\t// Layer "+str(layer)+"\n")
+            f.write("\tlayer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
+            f.write("\tlayer"+str(layer)+"_in.diff = l"+str(layer + lookahead)+"_in_diff;\n")
+            f.write("\tlayer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.C = Tin_C_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.H = Tin_H_l"+str(layer)+";\n")
+            f.write("\tlayer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
+        else:
+            print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
+            exit()
+
+        # WEIGHT BLOB
+        if len(layers_l) == 1:                          # DNN is 1 layer long
+            f.write("\tlayer"+str(layer)+"_wgt.data = l0_ker;\n")
+            f.write("\tlayer"+str(layer)+"_wgt.diff = l0_ker_diff;\n")
             if layers_l[layer] == 'DW':
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tker_H_l0*Tker_W_l0;\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  layer"+str(layer)+"_wgt.dim = 2*Tin_C_l0;\n")
             else:
-                f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
-            f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l0;\n")
-            f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l0;\n")
-            f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l0;\n")
-            f.write("  layer"+str(layer)+"_out.data = l0_out;\n")
-            f.write("  layer"+str(layer)+"_out.diff = l0_out_diff;\n")
-            f.write("  layer"+str(layer)+"_out.dim = Tout_C_l0*Tout_H_l0*Tout_W_l0;\n")
-            f.write("  layer"+str(layer)+"_out.C = Tout_C_l0;\n")
-            f.write("  layer"+str(layer)+"_out.H = Tout_H_l0;\n")
-            f.write("  layer"+str(layer)+"_out.W = Tout_W_l0;\n")
-        # First layer connection
-        elif layer == 0:
-            f.write("  // Layer "+str(layer)+"\n")
+                f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
+            f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l0;\n")
+            f.write("\tlayer"+str(layer)+"_wgt.H = Tker_H_l0;\n")
+            f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l0;\n")
+            if bias_l[layer] == 1:
+                f.write("\tlayer"+str(layer)+"_bias.data = l0_bias;\n")
+                f.write("\tlayer"+str(layer)+"_bias.diff = l0_bias_diff;\n")
+                f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l0;\n")
+                f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l0;\n")
+                f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l0;\n")
+                f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l0;\n")
+
+        elif layer == 0:                                # First layer
             if layers_l[0] != 'Skipnode': # Avoid weight assignment for Skip Connections
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
                 f.write("  layer"+str(layer)+"_in.dim = Tin_C_l"+str(layer)+"*Tin_H_l"+str(layer)+"*Tin_W_l"+str(layer)+";\n")
@@ -693,10 +810,95 @@ def GenerateNet(proj_folder_path, project_name,
                 elif layers_l[layer] == 'InstNorm':
                     f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
                 else:
-                    f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
-                f.write("  layer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
+
+                if bias_l[layer] == 1:
+                    f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
+                    f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                    f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l"+str(layer)+";\n")
+
+        elif layer > 0 and layer < len(layers_l)-1:     # Hidden layers
+            if layers_l[layer] != 'Skipnode':   # Avoid weight assignment for Skipnodes and out data assignement
+                if layers_l[layer]  != 'Sumnode':    # Different weight assignement for Sumnodes
+                    f.write("\tlayer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
+                    if layers_l[layer] == 'DW':
+                        f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                    elif layers_l[layer] == 'InstNorm':
+                        f.write("\tlayer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
+                    elif layers_l[layer] == 'ReLU':
+                        f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
+                    else:
+                        f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
+                    if bias_l[layer] == 1:
+                        f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
+                        f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                        f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
+                        f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
+                        f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
+                        f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l"+str(layer)+";\n")
+            
+                else:
+                    f.write("\tlayer"+str(layer)+"_wgt.data = layer"+str(sumnode_connections[layer])+"_out.data;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.diff = layer"+str(sumnode_connections[layer])+"_out.diff;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.C = layer"+str(sumnode_connections[layer])+"_out.C;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.H = layer"+str(sumnode_connections[layer])+"_out.H;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.W = layer"+str(sumnode_connections[layer])+"_out.W;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = layer"+str(sumnode_connections[layer])+"_out.C*layer"+str(sumnode_connections[layer])+"_out.H*layer"+str(sumnode_connections[layer])+"_out.W;\n")
+
+
+        elif layer == len(layers_l)-1:                  # Last layer
+            if layers_l[layer] !=  'Sumnode':
+                f.write("\tlayer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.diff = l"+str(layer)+"_ker_diff;\n")
+                if layers_l[layer] == 'DW':
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                elif layers_l[layer] == 'InstNorm':
+                    f.write("\tlayer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
+                elif layers_l[layer] == 'ReLU':
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = 0;\n")
+                else:
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.H = Tker_H_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
+                #if bias_l[layer] == 1:
+                f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
+                f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
+                f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l"+str(layer)+";\n")
+            else:
+                f.write("\tlayer"+str(layer)+"_wgt.data = layer"+str(sumnode_connections[layer])+"_out.data;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.diff = layer"+str(sumnode_connections[layer])+"_out.diff;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.C = layer"+str(sumnode_connections[layer])+"_out.C;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.H = layer"+str(sumnode_connections[layer])+"_out.H;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.W = layer"+str(sumnode_connections[layer])+"_out.W;\n")
+                f.write("\tlayer"+str(layer)+"_wgt.dim = layer"+str(sumnode_connections[layer])+"_out.C*layer"+str(sumnode_connections[layer])+"_out.H*layer"+str(sumnode_connections[layer])+"_out.W;\n")
+        else:
+            print("[deployment_utils.GenerateNet]: Error in PULP layer initialization!")
+            exit()
+
+        # OUTPUT BLOB
+        if len(layers_l) == 1:                          # DNN is 1 layer long
+            f.write("\tlayer"+str(layer)+"_out.data = l0_out;\n")
+            f.write("\tlayer"+str(layer)+"_out.diff = l0_out_diff;\n")
+            f.write("\tlayer"+str(layer)+"_out.dim = Tout_C_l0*Tout_H_l0*Tout_W_l0;\n")
+            f.write("\tlayer"+str(layer)+"_out.C = Tout_C_l0;\n")
+            f.write("\tlayer"+str(layer)+"_out.H = Tout_H_l0;\n")
+            f.write("\tlayer"+str(layer)+"_out.W = Tout_W_l0;\n")
+        elif layer == 0:                                # First layer
+            if layers_l[0] != 'Skipnode': 
                 # Assign to cast_buffer in case data type changes
                 if data_type_l[layer] != data_type_l[layer+1]:
                     f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) cast_buffer;\n")
@@ -834,9 +1036,12 @@ def GenerateNet(proj_folder_path, project_name,
             skip_inputgrad = 0
         # Write configuration templates
         if layers_l[layer] == 'linear':
-            f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer]))
+            f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer], bias_l[layer], 1))
         elif layers_l[layer] == 'conv2d':
-            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer]))
+            IM2COL_USEIT = 1
+            if CONV2D_USE_IM2COL == False:
+                IM2COL_USEIT = 0
+            f.write(ntemp.conv2d_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer], bias_l[layer], IM2COL_USEIT, 1))
         elif layers_l[layer] == 'PW':
             f.write(ntemp.PW_config_template(layer, skip_inputgrad, data_type_l[layer]))
         elif layers_l[layer] == 'DW':
@@ -883,7 +1088,8 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
     f.write("\treset_dim();\n")
-    f.write("\tload_input(&layer0_in, 1);\n")
+    f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_bias, &layer0_out, PU_SKIP_IN_GRAD);\n")
+    f.write("\tload_input(&layer0_in, SB_DMA_DATA);\n")
 
     # Profiling options: single layer or all
     if PROFILE_SINGLE_LAYERS == True:
@@ -900,11 +1106,14 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  #endif\n")  
 
         if layer > 0:
-            f.write("\treset_dim();\n")
-            f.write(f"\tload_input(&layer{layer}_in, 1);\n")
+            f.write("\n\treset_dim();\n")
+            f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_bias, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
+            f.write(f"\tload_input(&layer{layer}_in, SB_DMA_DATA);\n")
 
         if layers_l[layer] not in ['Skipnode', 'ReLU']:
-            f.write(f"\tload_coeff(&layer{layer}_wgt, 1);\n")
+            f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n")
+            if bias_l[layer] == 1:
+                f.write(f"\tload_bias(&layer{layer}_bias, SB_DMA_DATA);\n")
             if layers_l[layer] not in ['Sumnode', 'InstNorm']:
                 f.write(f"\tcopy_struct_param((unsigned int) &l{layer}_args, (unsigned int) &{layers_l[layer]}_args, sizeof({layers_l[layer]}_args));\n")
         f.write(f"\tget_output_dim(&layer{layer}_out);\n")
@@ -969,11 +1178,15 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
-        f.write("  loss_args.output = &output_blob;\n")
-        f.write("  loss_args.target = temp_blob.data;\n")
-        f.write("  loss_args.wr_loss = &loss;\n") 
+        f.write("\treset_dim();\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
+        f.write("\ttemp_blob.data = label_temp;\n")
+        f.write("\ttemp_blob.dim = output_blob.dim;\n")
+        f.write("\tcopy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
+        f.write("\tloss_args.output = &output_blob;\n")
+        f.write("\tloss_args.target = temp_blob.data;\n")
+        f.write("\tloss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
             f.write("  pulp_MSELoss_backward(&loss_args);\n")   
         elif data_type_l[-1] == 'FP16':
@@ -984,11 +1197,15 @@ def GenerateNet(proj_folder_path, project_name,
             bytes_per_data = 4
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
-        f.write("  load_output(&layer"+str(len(layers_l)-1)+"_out, 1);\n")
-        f.write("  copy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*output_blob.dim);\n")
-        f.write("  loss_args.output = &output_blob;\n")
-        f.write("  loss_args.target = temp_blob.data;\n")
-        f.write("  loss_args.wr_loss = &loss;\n") 
+        f.write("\treset_dim();\n")
+        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
+        f.write("\ttemp_blob.data = label_temp;\n")
+        f.write("\ttemp_blob.dim = output_blob.dim;\n")
+        f.write("\tcopy_struct_param((uint32_t) LABEL, (uint32_t) temp_blob.data, "+str(bytes_per_data)+"*temp_blob.dim);\n")
+        f.write("\tloss_args.output = &output_blob;\n")
+        f.write("\tloss_args.target = temp_blob.data;\n")
+        f.write("\tloss_args.wr_loss = &loss;\n") 
         if data_type_l[-1] == 'FP32':
             f.write("  pulp_CrossEntropyLoss_backward(&loss_args);\n")
         elif data_type_l[-1] == 'FP16':
@@ -1032,6 +1249,10 @@ def GenerateNet(proj_folder_path, project_name,
 
         
         f.write("\n\treset_dim();\n")
+        if lay == 0: # Skip in grad for the first layer
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
+        else:        # Else, allocate memory for in grad
+            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'Skipnode':
@@ -1040,7 +1261,9 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(f"\tload_input(&layer{target_layer}_in, 1);\n")
 
         if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
-            f.write(f"\tload_coeff(&layer{lay}_wgt, 1);\n")
+            f.write(f"\tload_coeff(&layer{lay}_wgt, SB_DMA_DATA);\n")
+            if bias_l[lay] == 1:
+                f.write(f"\tload_bias(&layer{lay}_bias, SB_DMA_DATA);\n")
 
         f.write(f"\tload_output(&layer{lay}_out, 2);\n")
 
@@ -1089,7 +1312,9 @@ def GenerateNet(proj_folder_path, project_name,
         
 
         if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU':
-            f.write(f"\tstore_coeff(&layer{lay}_wgt, 0);\n")
+            f.write(f"\tstore_coeff(&layer{lay}_wgt, SB_DMA_GRAD);\n")
+            if bias_l[lay] == 1:
+                f.write(f"\tstore_bias(&layer{lay}_bias, SB_DMA_GRAD);\n")
 
         if lay > 0 and layers_l[lay] != 'Sumnode':
             f.write(f"\tstore_input(&layer{target_layer}_in, 0);\n")
@@ -1159,9 +1384,17 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  struct optim_args_fp16 opt_l"+str(layer)+";\n")
             else:
                 print("[deployment_utils.GenerateNet]: Invalid data type for optimizer structure generation @layer{}!".format(layer))  
-            f.write("  opt_l"+str(layer)+".weights = &weight_blob;\n")
-            f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
-            f.write(f"  load_coeff(&layer{layer}_wgt, 2);\n")
+            f.write("\topt_l"+str(layer)+".weights = &weight_blob;\n")
+            f.write("\topt_l"+str(layer)+".biases = &bias_blob;\n")
+            if bias_l[layer] == 1:
+                f.write("\topt_l"+str(layer)+".use_biases = 1;\n")
+            else:
+                f.write("\topt_l"+str(layer)+".use_biases = 0;\n")
+            f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
+            f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
+            f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_BOTH);\n")
+            if bias_l[layer] == 1:
+                f.write(f"\tload_bias(&layer{layer}_bias, SB_DMA_BOTH);\n")
             if optimizer == "SGD":
                 if data_type_l[layer] == 'FP32':
                     f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")
@@ -1172,7 +1405,9 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
                 exit()
-            f.write(f"  store_coeff(&layer{layer}_wgt, 2);\n\n")
+            f.write(f"\tstore_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n")
+            if bias_l[layer] == 1:
+                f.write(f"\tstore_bias(&layer{layer}_bias, SB_DMA_DATA);\n\n")
     f.write("}\n")
 
 
@@ -1274,7 +1509,20 @@ def GenerateNet(proj_folder_path, project_name,
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);} \n")
 
-    f.write("\nvoid load_input(void * src_blob, uint8_t data_diff_both){\n") 
+    f.write("\nvoid load_bias(void * src_blob, uint8_t data_diff_both){\n")
+    f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
+    f.write("\tget_bias_dim(src_blob);\n")
+    f.write("\tif (data_diff_both == 0) // Load only .diff\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (BIAS_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
+    f.write("\tif (data_diff_both == 1) // Load only .data\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (BIAS_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
+    f.write("\tif (data_diff_both > 1) { // Load both .data and .diff\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (BIAS_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_load);\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (BIAS_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_EXT2LOC , cmd_load);"+"}\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_load);} \n")
+
+    f.write("\nvoid load_input(void * src_blob, uint8_t data_diff_both){\n")
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) src_blob;\n")
     f.write("\tget_input_dim(src_blob);\n")
     f.write("\tif (data_diff_both == 0) // Load only .diff\n")
@@ -1324,6 +1572,18 @@ def GenerateNet(proj_folder_path, project_name,
     f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (W_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);"+"}\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_store);} \n")
 
+    f.write("\nvoid store_bias(void * dest_blob, uint8_t data_diff_both){ \n")
+    f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) dest_blob;\n")
+    f.write("\tif (data_diff_both == 0) // Store only .diff\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (BIAS_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
+    f.write("\tif (data_diff_both == 1) // Store only .data\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (BIAS_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
+    f.write("\tif (data_diff_both > 1) { // Store both .data and .diff\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->data), (uint32_t) (BIAS_DATA), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_store);\n")
+    f.write(f"\tpi_cl_dma_cmd((uint32_t) (b->diff), (uint32_t) (BIAS_DIFF), {data_size}*b->dim, PI_CL_DMA_DIR_LOC2EXT , cmd_store);"+"}\n")
+    f.write("\tpi_cl_dma_cmd_wait(cmd_store);} \n")
+
     f.write("\nvoid store_input(void * dest_blob, uint8_t data_diff_both){ \n")
     f.write(f"\tstruct blob{suffix} * b = (struct blob{suffix} *) dest_blob;\n")
     f.write("\tif (data_diff_both == 0) // Store only .diff\n")
@@ -1341,30 +1601,57 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tinput_blob.C = src->C;\n")
     f.write("\tinput_blob.H = src->H;\n")
     f.write("\tinput_blob.W = src->W;\n")
-    f.write("\tinput_blob.dim = src->dim;\n")
-    f.write("\tIN_DIFF = BUFF + input_blob.dim;\n")
-    f.write("\tW_DATA = BUFF + 2*input_blob.dim;\n")
-    f.write("\tupdate_blob();}\n")
+    f.write("\tinput_blob.dim = src->dim;}\n")
 
     f.write("\nvoid get_output_dim(void * b){\n")
     f.write(f"\tstruct blob{suffix} * src = (struct blob{suffix} *) b;\n")
     f.write("\toutput_blob.C = src->C;\n")
     f.write("\toutput_blob.H = src->H;\n")
     f.write("\toutput_blob.W = src->W;\n")
-    f.write("\toutput_blob.dim = src->dim;\n")
-    f.write("\tOUT_DIFF = BUFF + 2*weight_blob.dim + 2*input_blob.dim + output_blob.dim;\n")
-    f.write("\tupdate_blob();}\n")
+    f.write("\toutput_blob.dim = src->dim;}\n")
 
     f.write("\nvoid get_weight_dim(void * b){\n")
     f.write(f"\tstruct blob{suffix} * src = (struct blob{suffix} *) b;\n")
     f.write("\tweight_blob.C = src->C;\n")
     f.write("\tweight_blob.H = src->H;\n")
     f.write("\tweight_blob.W = src->W;\n")
-    f.write("\tweight_blob.dim = src->dim;\n")
-    f.write("\tW_DIFF = BUFF + weight_blob.dim + 2*input_blob.dim;\n")
-    f.write("\tOUT_DATA = BUFF + 2*weight_blob.dim + 2*input_blob.dim;\n")
+    f.write("\tweight_blob.dim = src->dim;}\n")
+
+    f.write("\nvoid set_buffer_pointers(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad) {\n")
+    f.write("\tstruct blob * inp_b  = (struct blob *) blob_in;\n")
+    f.write("\tstruct blob * wgt_b  = (struct blob *) blob_wgt;\n")
+    f.write("\tstruct blob * bias_b = (struct blob *) blob_bias;\n")
+    f.write("\tstruct blob * out_b  = (struct blob *) blob_out;\n")
+    f.write("\tIN_DATA   = BUFF;\n")
+    f.write("\tIN_DIFF   = IN_DATA   + compute_in_grad * inp_b->dim;\n")
+    f.write("\tW_DATA    = IN_DIFF   + inp_b->dim;\n")
+    f.write("\tW_DIFF    = W_DATA    + wgt_b->dim;\n")
+    f.write("\tBIAS_DATA = W_DIFF    + wgt_b->dim;\n")
+    f.write("\tBIAS_DIFF = BIAS_DATA + bias_b->dim;\n")
+    f.write("\tOUT_DATA  = BIAS_DIFF + bias_b->dim;\n")
+    f.write("\tOUT_DIFF  = OUT_DATA  + out_b->dim;\n")
     f.write("\tupdate_blob();}\n")
-   
+
+    f.write("\nvoid set_buffer_pointers_fp16(void * blob_in, void * blob_wgt, void * blob_bias, void * blob_out, int compute_in_grad) {\n")
+    f.write("\tstruct blob_fp16 * inp_b  = (struct blob_fp16 *) blob_in;\n")
+    f.write("\tstruct blob_fp16 * wgt_b  = (struct blob_fp16 *) blob_wgt;\n")
+    f.write("\tstruct blob_fp16 * bias_b = (struct blob_fp16 *) blob_bias;\n")
+    f.write("\tstruct blob_fp16 * out_b  = (struct blob_fp16 *) blob_out;\n")
+    f.write("\tIN_DATA   = BUFF;\n")
+    f.write("\tIN_DIFF   = IN_DATA   + compute_in_grad * inp_b->dim;\n")
+    f.write("\tW_DATA    = IN_DIFF   + inp_b->dim;\n")
+    f.write("\tW_DIFF    = W_DATA    + wgt_b->dim;\n")
+    f.write("\tBIAS_DATA = W_DIFF    + wgt_b->dim;\n")
+    f.write("\tBIAS_DIFF = BIAS_DATA + bias_b->dim;\n")
+    f.write("\tOUT_DATA  = BIAS_DIFF + bias_b->dim;\n")
+    f.write("\tOUT_DIFF  = OUT_DATA  + out_b->dim;\n")
+    f.write("\tupdate_blob();}\n")
+
+    f.write("\nvoid get_bias_dim(void * b){\n")
+    f.write(f"\tstruct blob{suffix} * src = (struct blob{suffix} *) b;\n")
+    f.write("\tbias_blob.dim = src->dim;\n")
+    f.write("\tupdate_blob();}\n")
+
     f.write("\nvoid copy_struct_param(unsigned int from, unsigned int to, int size){\n")
     f.write("\tpi_cl_dma_cmd(from, to, size, PI_CL_DMA_DIR_EXT2LOC , cmd_load);\n")
     f.write("\tpi_cl_dma_cmd_wait(cmd_load);}\n")
@@ -1373,10 +1660,12 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tlinear_args.output = &output_blob;\n")
     f.write("\tlinear_args.input = &input_blob;\n")
     f.write("\tlinear_args.coeff = &weight_blob;\n")
+    f.write("\tlinear_args.bias = &bias_blob;\n")
 
     f.write("\tconv2d_args.output = &output_blob;\n")
     f.write("\tconv2d_args.input = &input_blob;\n")
     f.write("\tconv2d_args.coeff = &weight_blob;\n")
+    f.write("\tconv2d_args.bias = &bias_blob;\n")
 
     f.write("\tPW_args.output = &output_blob;\n")
     f.write("\tPW_args.input = &input_blob;\n")
@@ -1403,12 +1692,15 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\tinput_blob.diff = IN_DIFF;\n")
     f.write("\toutput_blob.data = OUT_DATA;\n")
     f.write("\toutput_blob.diff = OUT_DIFF;\n")
+    f.write("\tbias_blob.data = BIAS_DATA;\n")
+    f.write("\tbias_blob.diff = BIAS_DIFF;\n")
     f.write("\tweight_blob.data = W_DATA;\n")
     f.write("\tweight_blob.diff = W_DIFF;}\n")
 
     f.write("\nvoid reset_dim(){\n")
     f.write("\tinput_blob.dim = 0;\n")
     f.write("\tweight_blob.dim = 0;\n")
+    f.write("\tbias_blob.dim = 0;\n")
     f.write("\toutput_blob.dim = 0;}\n")
 
     f.close()

@@ -164,14 +164,16 @@ PULP-TrainLib's repository is organized with these branches:
 - [X] Multihead Self Attention training primitives (FP32)
 - [X] Residual connection (FP32, FP16)
 - [X] InstanceNorm (FP32, FP16)
+- [X] Biases for Conv2D and Fully-Connected (FP32, FP16)
 - [ ] Padding operators for DepthWise and 2D Convolution (im2col + mm)
 - [ ] HWC data layout management for DepthWise Convolution (FP32, FP16)
 - [ ] Stride operators for 2D Convolutions and DepthWise (im2col + mm)
 - [ ] RNN training primitives (FP16)
 - [ ] Multihead Self Attention training primitives (FP16)
-- [ ] Biases for all layers
-- [ ] Fix of TrainLib_Deployer to support new graph-level optimizations of layers
+- [ ] Biases for DepthWise and PointWise Convolutions (FP32, FP16)
 - [ ] Sparse Update (layer-wise) in TrainLib_Deployer
+- [ ] Partial Im2Col / Im2Row for Conv2D (FP32, FP16)
+- [ ] Integration of biases in TrainLib-Deployer (Conv2D)
 
 # Known bugs / issues (open for contributions)
 
@@ -194,6 +196,8 @@ PULP-TrainLib's repository is organized with these branches:
 - Francesco Conti (f.conti@unibo.it)
 - Cristian Cioflan (cioflanc@iis.ee.ethz.ch)
 - Luca Bompani (luca.bompani5@unibo.it)
+- Lan Mei (lanmei@student.ethz.ch)
+- Calin Diaconu (calin.diaconu@studio.unibo.it)
 
 ## Past Contributors
 

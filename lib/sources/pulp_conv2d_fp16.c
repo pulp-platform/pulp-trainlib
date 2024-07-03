@@ -33,6 +33,7 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
     int pW = C2D_args->coeff->W;
     int pH = C2D_args->coeff->H;
     fp16 *coeffData = C2D_args->coeff->data;
+    fp16 *biasData = C2D_args->bias->data;
     fp16 *outData = C2D_args->output->data;
     fp16 *inData = C2D_args->input->data;
 
@@ -53,6 +54,7 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
     fp16 * i2c_buffer = C2D_args->i2c_buffer;
 
     int HWC_layout = C2D_args->HWC;
+    int USE_BIASES = C2D_args->USE_BIASES;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int USE_DMA = C2D_args->USE_DMA_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_fw;
@@ -83,6 +85,7 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
 
       pi_cl_team_fork(NUM_CORES, pulp_im2row_fp16, &im2col_args);
 
+      // Perform matmul
       matMul_args.A = coeffData;
       matMul_args.B = i2c_buffer;
       matMul_args.C = outData;
@@ -90,17 +93,24 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
       matMul_args.K = pW*pH*C_in;
       matMul_args.M = (W_in-pW+stride_w+Lpad+Rpad)/stride_w*(H_in-pH+stride_h+Upad+Dpad)/stride_h;
       matMul_args.trans_B = 1;
+      matMul_args.HWC = HWC_layout;
+      matMul_args.bias = biasData;
+      matMul_args.USE_BIASES = USE_BIASES;
 
-      #ifndef OPTIMIZE
-      pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-      #else
+      matMul_args.H = H_in;
+      matMul_args.W = W_in;
+      matMul_args.pCin = C_in;
+      matMul_args.pCout = C_out;
+      matMul_args.pH = H_out;
+      matMul_args.pW = W_out;
+
       struct mm_manager_args_fp16 man_args;
       man_args.mm_args = &matMul_args;
       man_args.layer_type = LAYER_CONV2D;
       man_args.step_type = STEP_FW;
       man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-      #endif
+
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel_fp16, &man_args);
     }
 
     /**
@@ -131,17 +141,24 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
       matMul_args.K = pW*pH*C_in;
       matMul_args.M = C_out; 
       matMul_args.trans_B = 1;
+      matMul_args.HWC = HWC_layout;
+      matMul_args.bias = biasData;
+      matMul_args.USE_BIASES = USE_BIASES;
 
-      #ifndef OPTIMIZE
-      pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-      #else
+      matMul_args.H = H_in;
+      matMul_args.W = W_in;
+      matMul_args.pCin = C_in;
+      matMul_args.pCout = C_out;
+      matMul_args.pH = H_out;
+      matMul_args.pW = W_out;
+
       struct mm_manager_args_fp16 man_args;
       man_args.mm_args = &matMul_args;
       man_args.layer_type = LAYER_CONV2D;
       man_args.step_type = STEP_FW;
       man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-      #endif    
+
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_fw_kernel_fp16, &man_args); 
     }
     else {
       printf("[pulp_conv2d_fp16_fw_cl:] Invalid data layout format (HWC or CHW)!\n");
@@ -160,6 +177,8 @@ void pulp_conv2d_fp16_fw_cl( void * Conv2D_args_fp16 )
       matMul_args.A = inData;
       matMul_args.B = coeffData;
       matMul_args.C = outData;
+      matMul_args.bias = biasData;
+      matMul_args.USE_BIASES = USE_BIASES;
       matMul_args.H = H_in;
       matMul_args.W = W_in;
       matMul_args.pCin = C_in;
@@ -237,6 +256,8 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
     //kernel dimensions
     int pW = C2D_args->coeff->W;
     int pH = C2D_args->coeff->H;
+    //bias dimensions
+    int bias_dim = C2D_args->output->C;
     //output dimensions
     int W_out = C2D_args->output->W;
     int H_out = C2D_args->output->H;
@@ -246,6 +267,8 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
     fp16 * inDiff = C2D_args->input->diff;
     fp16 * coeffData = C2D_args->coeff->data;
     fp16 * coeffDiff = C2D_args->coeff->diff;
+    fp16 * biasData = C2D_args->bias->data;
+    fp16 * biasDiff = C2D_args->bias->diff;
     fp16 * outDiff = C2D_args->output->diff;
     fp16 * outData = C2D_args->output->data;
 
@@ -261,6 +284,7 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
     fp16 * tr_buffer = C2D_args->bt_buffer;
 
     int HWC_layout = C2D_args->HWC;
+    int USE_BIASES = C2D_args->USE_BIASES;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int USE_DMA = C2D_args->USE_DMA_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_wg;
@@ -278,10 +302,10 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       im2col_args.c = C2D_args->coeff;
       im2col_args.output = C2D_args->output;
       im2col_args.pBuffer = i2c_buffer;
-      im2col_args.Lpad = Lpad;
-      im2col_args.Rpad = Rpad;
-      im2col_args.Upad = Upad;
-      im2col_args.Dpad = Dpad;
+      im2col_args.Lpad = 0; //Lpad;
+      im2col_args.Rpad = 0; //Rpad;
+      im2col_args.Upad = 0; //Upad;
+      im2col_args.Dpad = 0; //Dpad;
       im2col_args.mod = 0;
       im2col_args.stride_w = stride_w;
       im2col_args.stride_h = stride_h;
@@ -298,16 +322,22 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.M = pW*pH*C_in; 
       matMul_args.trans_B = 0;
 
-      #ifndef OPTIMIZE
-      pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-      #else
+      matMul_args.HWC = HWC_layout;
+      matMul_args.bias = biasDiff;
+      matMul_args.USE_BIASES = USE_BIASES;
+
+      matMul_args.pH = H_out;
+      matMul_args.pW = W_out;
+
+      matMul_args.bias_dim = bias_dim;
+
       struct mm_manager_args_fp16 man_args;
       man_args.mm_args = &matMul_args;
       man_args.layer_type = LAYER_CONV2D;
       man_args.step_type = STEP_WGT_GRAD;
       man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-      #endif
+
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_param_grad_kernel_fp16, &man_args);
     }
 
     /**
@@ -345,16 +375,22 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.M = pW*pH*C_in; 
       matMul_args.trans_B = 1;
 
-      #ifndef OPTIMIZE
-      pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-      #else
+      matMul_args.HWC = HWC_layout;
+      matMul_args.bias = biasDiff;
+      matMul_args.USE_BIASES = USE_BIASES;
+
+      matMul_args.pH = H_out;
+      matMul_args.pW = W_out;
+
+      matMul_args.bias_dim = bias_dim;
+
       struct mm_manager_args_fp16 man_args;
       man_args.mm_args = &matMul_args;
       man_args.layer_type = LAYER_CONV2D;
       man_args.step_type = STEP_WGT_GRAD;
       man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
-      pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-      #endif    
+
+      pi_cl_team_fork(NUM_CORES, im2col_conv2d_param_grad_kernel_fp16, &man_args);
     }
     else {
       printf("[pulp_conv2d_fp16_bw_param_grads_cl:] Invalid data layout format (HWC or CHW)!\n");
@@ -387,6 +423,10 @@ void pulp_conv2d_fp16_bw_param_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.Rpad = Rpad;
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
+
+      // Handle bias
+      matMul_args.bias = biasDiff;
+      matMul_args.USE_BIASES = USE_BIASES;
 
       #ifdef OPTIMIZE
       int padding = Lpad + Rpad + Upad + Dpad;
@@ -455,6 +495,7 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
   int Dpad = C2D_args->Dpad;
 
   int HWC_layout = C2D_args->HWC;
+  int USE_BIASES = C2D_args->USE_BIASES;
   int USE_IM2COL = C2D_args->USE_IM2COL;
   int USE_DMA = C2D_args->USE_DMA_IM2COL;
   int opt_matmul_type = C2D_args->opt_matmul_type_ig;
@@ -601,6 +642,9 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
       matMul_args.Upad = Upad;
       matMul_args.Dpad = Dpad;
 
+      // Handle bias
+      matMul_args.USE_BIASES = USE_BIASES;
+
       #ifdef OPTIMIZE
       int padding = Lpad + Rpad + Upad + Dpad;
       int stride = stride_h + stride_w;
@@ -628,4 +672,156 @@ void pulp_conv2d_fp16_bw_input_grads_cl( void * Conv2D_args_fp16 )
   else {
     printf("[pulp_conv2d_fp16_bw_input_grads_cl:117] Invalid selection of the conv2d algorithm (im2col or not)\n");
   }  
+}
+
+
+
+
+
+
+void im2col_conv2d_fw_kernel_fp16 (void * void_args) {
+    struct mm_manager_args_fp16 *man_args = (struct mm_manager_args_fp16 *) void_args;
+    struct matMul_args_fp16 *args = man_args->mm_args;
+
+    fp16 *__restrict__ inData = args->A;
+    fp16 *__restrict__ coeffData = args->B;
+    fp16 *__restrict__ outData = args->C;
+
+    fp16 *__restrict__ biasData = args->bias;
+    const uint32_t USE_BIASES = args->USE_BIASES;
+
+    const uint32_t H_in = args->H;
+    const uint32_t W_in = args->W;
+    const uint32_t pW = args->pW;
+    const uint32_t pH = args->pH;
+    const uint32_t C_in = args->pCin;
+    const uint32_t C_out = args->pCout;
+
+    uint32_t h_str = args->stride_h;
+    uint32_t w_str = args->stride_w;
+    uint32_t Lpad = args->Lpad;
+    uint32_t Rpad = args->Rpad;
+    uint32_t Upad = args->Upad;
+    uint32_t Dpad = args->Dpad;
+
+    // const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+    // const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+
+    const uint32_t H_out = pH;
+    const uint32_t W_out = pW;
+
+    const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
+    const uint32_t start = pi_core_id() * blockSize;
+    const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
+
+    const uint32_t HWC = args->HWC;
+
+    int padding = Lpad + Rpad + Upad + Dpad;
+
+    // Perform simple matrix multiplication
+#ifndef OPTIMIZE
+    mm_fp16(args);
+#else
+    mm_manager_fp16(man_args);
+#endif
+
+
+    // Handle biases
+    if (USE_BIASES == 1) {
+        for (uint32_t co = start; co < stop; co++) {
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
+                    if (HWC == 0) {
+                        // CHW layout
+                        outData[wo + ho * W_out + co * H_out * W_out] += biasData[co];
+                    } else if (HWC == 1) {
+                        // HWC layout
+                        outData[co + wo * C_out + ho * W_out * C_out] += biasData[co];
+                    }
+                }
+            }
+        }
+    }
+
+    if (HWC != 0 && HWC != 1) {
+        // Unsupported layout
+        printf("[im2col_conv2d_fw_kernel_fp16:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
+               HWC);
+    }
+
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[im2col_conv2d_fw_kernel_fp16:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+               USE_BIASES);
+    }
+}
+
+
+
+
+void im2col_conv2d_param_grad_kernel_fp16 (void * void_args) {
+    struct mm_manager_args_fp16 *man_args = (struct mm_manager_args_fp16 *) void_args;
+    struct matMul_args_fp16 *args = man_args->mm_args;
+
+    fp16 *__restrict__ inData = args->A;
+    fp16 *__restrict__ coeffDiff = args->B;
+    fp16 *__restrict__ outDiff = args->C;
+
+    fp16 *__restrict__ biasDiff = args->bias;
+    const uint32_t USE_BIASES = args->USE_BIASES;
+
+    const uint32_t H_in = args->H;
+    const uint32_t W_in = args->W;
+    const uint32_t pW = args->pW;
+    const uint32_t pH = args->pH;
+    const uint32_t C_in = args->pCin;
+    const uint32_t C_out = args->N;
+
+    uint32_t h_str = args->stride_h;
+    uint32_t w_str = args->stride_w;
+    uint32_t Lpad = args->Lpad;
+    uint32_t Rpad = args->Rpad;
+    uint32_t Upad = args->Upad;
+    uint32_t Dpad = args->Dpad;
+
+    const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+    const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+
+    const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
+    const uint32_t start = pi_core_id() * blockSize;
+    const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
+
+    const uint32_t HWC = args->HWC;
+
+    int padding = Lpad + Rpad + Upad + Dpad;
+
+    // Perform simple matrix multiplication
+    #ifndef OPTIMIZE
+    mm_fp16(args);
+    #else
+    mm_manager_fp16(man_args);
+    #endif
+
+    // Handle biases
+    if (USE_BIASES == 1) {
+        for (uint32_t co = start; co < stop; co++) {
+            float temp = 0;
+            for (uint32_t ho = 0; ho < pH; ho++) {
+                for (uint32_t wo = 0; wo < pW; wo++) {
+                    temp += inData[wo + ho * pW + co * pH * pW];
+                }
+            }
+            biasDiff[co] = temp;
+        }
+    }
+
+    if (HWC != 0 && HWC != 1) {
+        // Unsupported layout
+        printf("[im2col_conv2d_param_grad_kernel_fp16:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
+               HWC);
+    }
+
+    if (USE_BIASES != 0 && USE_BIASES != 1) {
+        printf("[im2col_conv2d_param_grad_kernel_fp16:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+               USE_BIASES);
+    }
 }

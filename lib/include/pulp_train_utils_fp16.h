@@ -220,6 +220,10 @@ struct pad_args_fp16 {
  * @param Rpad right padding
  * @param Upad upper padding
  * @param Dpad lower padding
+ * @param bias pointer to bias vector
+ * @param bias_dim dimension of bias (should be equal to C_out of layer)
+ * @param USE_BIASES Set to 0 if not using biases, 1 if using biases
+ * @param HWC Set to 0 if CHW layout, 1 if HWC
  */
 struct matMul_args_fp16 {
   fp16 * __restrict__ A;
@@ -242,6 +246,11 @@ struct matMul_args_fp16 {
   int Rpad;
   int Upad;
   int Dpad;
+  // For bias handling
+  fp16 * __restrict__ bias;
+  int bias_dim;
+  int USE_BIASES;
+  int HWC;
 };
 
 /**
@@ -523,4 +532,16 @@ v2f16 vfpack(fp16 a, fp16 b);
  */
 void pulp_mean_std_fp16_cl(void * mean_std_args);
 
+/**
+ * @brief Quick inverse-square root of a floating number, directly from the source code of Quake 3!
+ * @param number number to be inverse square-rooted
+ */
 float q_rsqrt_fp16(float number);
+
+/**
+ * @brief CORDIC's sin and cos approximate calculator of input angle.
+ * @param angle value in radians
+ * @param cos pointer to the value to save the angle's cosine
+ * @param sin pointer to the value to save the angle's sin
+ */
+void cordic_cos_sin_fp16(fp16 angle, fp16* cos, fp16* sin);
