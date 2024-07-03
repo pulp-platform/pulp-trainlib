@@ -79,7 +79,7 @@ epochs          = 5
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.001
 optimizer       = "SGD"                # Name of PyTorch's optimizer
-loss_fn         = "CrossEntropyLoss"            # Name of PyTorch's loss function
+loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
 # ------- NETWORK GRAPH --------
 # Manually define the list of the network (each layer in the list has its own properties in the relative index of each list)
