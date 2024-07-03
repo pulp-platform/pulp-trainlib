@@ -1,5 +1,5 @@
 '''
-Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+Copyright (C) 2021-2024 ETH Zurich and University of Bologna
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 '''
 
 '''
-Authors: Davide Nadalini, Giacomo Saporetti
+Authors: Davide Nadalini, Giacomo Saporetti, Cristian Cioflan, Axel Vanoni
 '''
 
 import os
@@ -250,8 +250,8 @@ def InitProject(proj_folder_path):
     utils_folder = proj_folder + 'utils/'
     trainlib_dest_folder = proj_folder + 'lib/' 
     
-    os.mkdir(proj_folder)
-    os.mkdir(utils_folder)
+    os.makedirs(proj_folder, exist_ok = True)
+    os.makedirs(utils_folder, exist_ok = True)
 
     shutil.copy2('./deployer_utils/srcfiles/main.c', proj_folder)
     shutil.copy2('./deployer_utils/srcfiles/stats.h', proj_folder)
@@ -289,7 +289,7 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
         f.write('MATMUL_TYPE_IG_L'+str(layer)+'?='+str(opt_mm_ig_list[layer])+'         # Selects which optimized matmul to be used in IN GRAD (see mm_manager_list.txt or "MM_manager()" body to verify which one is called)' + '\n')
     f.write('# End of user settings\n\n')
 
-    f.write('NUM_MATMULS?=24		# Available standard matmuls in the library' + '\n')
+    f.write('NUM_MATMULS?=24        # Available standard matmuls in the library' + '\n')
     f.write('TRAIN_LIB=./lib\n')
     f.write('TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources\n')
     f.write('APP_SRCS = main.c net.c\n\n')
@@ -370,7 +370,7 @@ def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
                 epochs, batch_size, learning_rate, optimizer, loss_fn,
-                data_type_l, bias_l, update_layer_l, sumnode_connections, USE_DMA):
+                data_type_l, weight_l, bias_l, update_layer_l, sumnode_connections, USE_DMA):
 
     # Check if GPU is available, else keep fake FP16
     cuda_is_on = torch.cuda.is_available()
@@ -390,6 +390,7 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("import torch.optim as optim\n")
     f.write("import dump_utils as dump\n")
     f.write("import math\n")
+    f.write("import numpy\n")
     f.write("\n")
 
     f.write("# Set device\n")
@@ -574,7 +575,18 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("\n# Initialize network\n")
     f.write("net = DNN().to(device)\n")
     f.write("for p in net.parameters():\n")
-    f.write("\tnn.init.normal_(p, mean=0.0, std=0.01)\n")
+    f.write("\tnn.init.normal_(p, mean=0.0, std=1.0)\n")
+    if (weight_l):
+        f.write("from pathlib import Path\n")
+        f.write("basedir = Path(__file__).resolve().parent.parent\n")
+        for layer in range(len(layers_l)):
+            if data_type_l[layer] == 'FP16':
+                to = ".to(device).half()"
+            else:
+                to = ".to(device)"
+            f.write(f"net.l{layer}.weight = torch.nn.Parameter(torch.from_numpy(numpy.load(basedir / 'data/l{layer}w.npy')){to}, requires_grad=True)\n")
+            # TODO: uncomment once biases are implemented in trainlib
+            # f.write(f"net.l{layer}.bias = torch.nn.Parameter(torch.from_numpy(numpy.load(basedir / 'data/l{layer}b.npy')){to}, requires_grad=True)\n")
     f.write("net.zero_grad()\n\n")
 
     # Freeze layers excluded from sparse update
@@ -1806,4 +1818,3 @@ def GenerateNet(proj_folder_path, project_name,
     f.close()
 
     return
-

@@ -1799,4 +1799,3 @@ def GenerateNet(proj_folder_path, project_name,
 
 
     return
-
