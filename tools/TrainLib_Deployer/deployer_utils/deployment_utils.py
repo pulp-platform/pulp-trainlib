@@ -592,7 +592,7 @@ def GenerateGM(proj_folder_path, project_name,
         if sparse_comment_written == False:
             f.write("# Freeze weights for sparse update\n")
             sparse_comment_written = True
-        if write_sparse_update and update_layer_l[layer] == 0 and layers_l[layer] not in ['ReLU', 'AvgPool', 'MaxPool', 'SumNode', 'SkipNode']:
+        if write_sparse_update and update_layer_l[layer] == 0 and layers_l[layer] not in ['ReLU', 'AvgPool', 'MaxPool', 'Sumnode', 'Skipnode']:
             f.write("net.l"+str(layer)+".weight.requires_grad = False\n")
     f.write("\n")
 

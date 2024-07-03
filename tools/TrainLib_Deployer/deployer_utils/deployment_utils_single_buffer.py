@@ -467,7 +467,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("PI_L2 float l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
                 else:    
                     f.write("PI_L2 float l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-                    if bias_l[layer] == 1:
+                    if bias_l[layer] == 1 and update_layer_l[layer] == 1:    # Sparse Update
                         f.write("PI_L2 float l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
             # Define FP16 tensors
             elif data_type_l[layer] == 'FP16':
@@ -479,7 +479,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("PI_L2 fp16 l"+str(layer)+f"_ker_diff[2*Tin_C_l{layer}];\n")
                 else:    
                     f.write("PI_L2 fp16 l"+str(layer)+"_ker_diff[Tin_C_l"+str(layer)+" * Tout_C_l"+str(layer)+" * Tker_H_l"+str(layer)+" * Tker_W_l"+str(layer)+"];\n")
-                    if bias_l[layer] == 1:
+                    if bias_l[layer] == 1 and update_layer_l[layer] == 1:    # Sparse Update
                         f.write("PI_L2 fp16 l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
             # Data type error
             else:
@@ -941,7 +941,8 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l0;\n")
             if bias_l[layer] == 1:
                 f.write("\tlayer"+str(layer)+"_bias.data = l0_bias;\n")
-                f.write("\tlayer"+str(layer)+"_bias.diff = l0_bias_diff;\n")
+                if update_layer_l[layer] == 1:    # Sparse Update
+                    f.write("\tlayer"+str(layer)+"_bias.diff = l0_bias_diff;\n")
                 f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l0;\n")
                 f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l0;\n")
                 f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l0;\n")
@@ -964,7 +965,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
                 if bias_l[layer] == 1:
                     f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
-                    f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                    if update_layer_l[layer] == 1:    # Sparse Update
+                        f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
                     f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
@@ -988,7 +990,8 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
                     if bias_l[layer] == 1:
                         f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
-                        f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                        if update_layer_l[layer] == 1:    # Sparse Update
+                            f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
                         f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
                         f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
                         f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
@@ -1011,7 +1014,8 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("\tlayer"+str(layer)+"_wgt.W = Tker_W_l"+str(layer)+";\n")
                 if bias_l[layer] == 1:
                     f.write("\tlayer"+str(layer)+"_bias.data = l"+str(layer)+"_bias;\n")
-                    f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
+                    if update_layer_l[layer] == 1:    # Sparse Update
+                        f.write("\tlayer"+str(layer)+"_bias.diff = l"+str(layer)+"_bias_diff;\n")
                     f.write("\tlayer"+str(layer)+"_bias.dim = Tout_C_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
@@ -1116,7 +1120,7 @@ def GenerateNet(proj_folder_path, project_name,
             skip_inputgrad = 0
         # Write configuration templates
         if layers_l[layer] == 'linear':
-            f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer], 1))
+            f.write(ntemp.linear_config_template(layer, skip_inputgrad, data_type_l[layer], bias_l[layer], update_layer_l[layer]))
         elif layers_l[layer] == 'conv2d':
             IM2COL_USEIT = 1
             if CONV2D_USE_IM2COL == False:
