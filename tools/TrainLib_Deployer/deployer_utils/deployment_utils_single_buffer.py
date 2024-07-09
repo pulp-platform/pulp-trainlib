@@ -1182,7 +1182,10 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Forward pass function\n")
     f.write("void forward()\n{\n")
     f.write("\treset_dim();\n")
-    f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_bias, &layer0_out, PU_SKIP_IN_GRAD);\n")
+    if data_type_l[0] == 'FP32':
+        f.write("\tset_buffer_pointers(&layer0_in, &layer0_wgt, &layer0_bias, &layer0_out, PU_SKIP_IN_GRAD);\n")
+    else:
+        f.write("\tset_buffer_pointers_fp16(&layer0_in, &layer0_wgt, &layer0_bias, &layer0_out, PU_SKIP_IN_GRAD);\n")
     f.write("\tload_input(&layer0_in, SB_DMA_DATA);\n")
 
     # Profiling options: single layer or all
@@ -1201,7 +1204,10 @@ def GenerateNet(proj_folder_path, project_name,
 
         if layer > 0:
             f.write("\n\treset_dim();\n")
-            f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_bias, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
+            if data_type_l[layer] == 'FP32':
+                f.write(f"\tset_buffer_pointers(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_bias, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
+            else:
+                f.write(f"\tset_buffer_pointers_fp16(&layer{layer}_in, &layer{layer}_wgt, &layer{layer}_bias, &layer{layer}_out, PU_SKIP_IN_GRAD);\n")
             f.write(f"\tload_input(&layer{layer}_in, SB_DMA_DATA);\n")
 
         if layers_l[layer] not in ['Skipnode', 'ReLU']:
@@ -1295,7 +1301,10 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("\treset_dim();\n")
-        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        if data_type_l[-1] == 'FP32':
+            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        else:
+            f.write("\tset_buffer_pointers_fp16(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")            
         f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\ttemp_blob.data = label_temp;\n")
         f.write("\ttemp_blob.dim = output_blob.dim;\n")
@@ -1314,7 +1323,10 @@ def GenerateNet(proj_folder_path, project_name,
         elif data_type_l[-1] == 'FP16':
             bytes_per_data = 2
         f.write("\treset_dim();\n")
-        f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        if data_type_l[-1] == 'FP32':
+            f.write("\tset_buffer_pointers(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")
+        else:
+            f.write("\tset_buffer_pointers_fp16(&layer"+str(len(layers_l)-1)+"_in, &layer"+str(len(layers_l)-1)+"_wgt, &layer"+str(len(layers_l)-1)+"_bias, &layer"+str(len(layers_l)-1)+"_out, PU_SKIP_IN_GRAD);\n")            
         f.write("\tload_output(&layer"+str(len(layers_l)-1)+"_out, SB_DMA_DATA);\n")
         f.write("\ttemp_blob.data = label_temp;\n")
         f.write("\ttemp_blob.dim = output_blob.dim;\n")
@@ -1373,9 +1385,16 @@ def GenerateNet(proj_folder_path, project_name,
         if lay >= last_updated_idx: # Skip in grad for skipped layers
             f.write("\n\treset_dim();\n")
             if lay > last_updated_idx:
-                f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
+                if data_type_l[lay] == 'FP32':
+                    f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
+                else:
+                    f.write("\tset_buffer_pointers_fp16(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
             else:
-                f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
+                if data_type_l[lay] == 'FP32':
+                    f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
+                else:
+                    f.write("\tset_buffer_pointers_fp16(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
+
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'ReLU' and lay >= last_updated_idx: # Load input data to backprop ReLU
@@ -1533,7 +1552,10 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 f.write("\topt_l"+str(layer)+".use_biases = 0;\n")
             f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
-            f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
+            if data_type_l[layer] == 'FP32':
+                f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
+            else:
+                f.write("\tset_buffer_pointers_fp16(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
             f.write(f"\tload_coeff(&layer{layer}_wgt, SB_DMA_BOTH);\n")
             if bias_l[layer] == 1:
                 f.write(f"\tload_bias(&layer{layer}_bias, SB_DMA_BOTH);\n")
