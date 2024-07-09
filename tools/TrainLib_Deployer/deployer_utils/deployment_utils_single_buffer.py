@@ -1359,31 +1359,34 @@ def GenerateNet(proj_folder_path, project_name,
                     break
                 else:
                     target_layer += 1
-
         
-        f.write("\n\treset_dim();\n")
         if lay >= last_updated_idx: # Skip in grad for skipped layers
-            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
-        else:        # Else, allocate memory for in grad
-            f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
-
-        if layers_l[lay] != 'Sumnode' and update_layer_l[lay]:
-            if layers_l[lay] == 'Skipnode':
-                # FIXME: verify if PU_COMP_IN_GRAD is right and if there is necessity to verify partial update here
-                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_GRAD);\n")
+            f.write("\n\treset_dim();\n")
+            if lay > last_updated_idx:
+                f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_COMP_IN_GRAD);\n")
             else:
-                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
+                f.write("\tset_buffer_pointers(&layer"+str(lay)+"_in, &layer"+str(lay)+"_wgt, &layer"+str(lay)+"_bias, &layer"+str(lay)+"_out, PU_SKIP_IN_GRAD);\n")
 
-        if layers_l[lay] != 'Sumnode' and layers_l[lay] != 'Skipnode' and layers_l[lay] != 'ReLU' and lay >= last_updated_idx:
+        if layers_l[lay] != 'Sumnode':
+            if layers_l[lay] == 'ReLU' and lay >= last_updated_idx: # Load input data to backprop ReLU
+                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
+            if update_layer_l[lay]:
+                if layers_l[lay] == 'Skipnode':
+                    # FIXME: verify if PU_COMP_IN_GRAD is right and if there is necessity to verify partial update here
+                    f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_GRAD);\n")
+                else:
+                    f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
+
+        if layers_l[lay] not in ['Sumnode', 'Skipnode', 'ReLU'] and lay > last_updated_idx: # Load the weights only to backprop out grad
             f.write(f"\tload_coeff(&layer{lay}_wgt, SB_DMA_DATA);\n")
             if bias_l[lay] == 1:
                 f.write(f"\tload_bias(&layer{lay}_bias, SB_DMA_DATA);\n")
 
         if lay >= last_updated_idx:
-            f.write(f"\tload_output(&layer{lay}_out, SB_DMA_BOTH);\n")
+            f.write(f"\tload_output(&layer{lay}_out, SB_DMA_GRAD);\n")
 
         # Copy struct info 
-        if layers_l[lay] != 'Skipnode' and layers_l[lay] != 'Sumnode' and layers_l[lay] != 'ReLU' and lay >= last_updated_idx:
+        if layers_l[lay] not in ['Skipnode', 'Sumnode', 'ReLU'] and lay >= last_updated_idx:
             f.write(f"\tcopy_struct_param((unsigned int) &l{lay}_args, (unsigned int) &{layers_l[lay]}_args, sizeof(l{lay}_args));\n")
             if layers_l[layer] == 'InstNorm':
                 num_bytes_load = 4
