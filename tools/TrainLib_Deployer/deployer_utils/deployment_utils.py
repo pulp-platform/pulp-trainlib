@@ -1675,9 +1675,9 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[lay] == 'MaxPool':
             f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay], FIRST_LAYER))
         elif layers_l[lay] == 'Skipnode':
-            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay]))
+            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay], last_updated_idx))
         elif layers_l[lay] == 'Sumnode':
-            f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
+            f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay], last_updated_idx))
             prev_sumnode = lay
         elif layers_l[lay]  == 'InstNorm':
             f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))

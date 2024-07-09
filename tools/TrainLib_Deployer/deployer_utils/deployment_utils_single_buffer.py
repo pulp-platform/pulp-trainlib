@@ -972,7 +972,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
                     f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l"+str(layer)+";\n")
         elif layer > 0 and layer < len(layers_l)-1:     # Hidden layers
-            if layers_l[layer] != 'Skipnode':   # Avoid weight assignment for Skipnodes and out data assignement
+            if layers_l[layer] not in ['Skipnode']:   # Avoid weight assignment for Skipnodes and out data assignement
                 if layers_l[layer]  != 'Sumnode':    # Avoid ONLY weight assignment for Sumnodes
                     f.write("\tlayer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
                     if update_layer_l[layer] == 1:    # Sparse Update
@@ -996,6 +996,16 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("\tlayer"+str(layer)+"_bias.C = Tout_C_l"+str(layer)+";\n")
                         f.write("\tlayer"+str(layer)+"_bias.H = Tout_H_l"+str(layer)+";\n")
                         f.write("\tlayer"+str(layer)+"_bias.W = Tout_W_l"+str(layer)+";\n")
+                else: # Layer is a Sumnode
+                    #import pdb; pdb.set_trace()
+                    connection_idx = sumnode_connections.index(layer)
+                    f.write("\tlayer"+str(layer)+"_wgt.data = l"+str(connection_idx)+"_in;\n")
+                    if update_layer_l[layer] == 1:    # Sparse Update
+                        f.write("\tlayer"+str(layer)+"_wgt.diff = l"+str(connection_idx)+"_in_diff;\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.dim = Tin_C_l"+str(connection_idx)+"*Tin_H_l"+str(connection_idx)+"*Tin_W_l"+str(connection_idx)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.C = Tin_C_l"+str(connection_idx)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.H = Tin_H_l"+str(connection_idx)+";\n")
+                    f.write("\tlayer"+str(layer)+"_wgt.W = Tin_W_l"+str(connection_idx)+";\n")
         elif layer == len(layers_l)-1:                  # Last layer
             if layers_l[layer] !=  'Sumnode':
                 f.write("  layer"+str(layer)+"_wgt.data = l"+str(layer)+"_ker;\n")
@@ -1415,10 +1425,11 @@ def GenerateNet(proj_folder_path, project_name,
         elif layers_l[lay] == 'MaxPool':
             f.write(ntemp.MaxPool_template_BW(lay, data_type_l[lay], FIRST_LAYER))
         elif layers_l[lay] == 'Skipnode':
-            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay], target_layer))
+            f.write(ntemp.residualconn_template_sum_BW(sumnode_connections[lay], data_type_l[lay], target_layer, last_updated_idx))
         elif layers_l[lay] == 'Sumnode':
-            #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
-            f.write(f"\tstore_output(&layer{lay}_in, SB_DMA_GRAD);\n")
+            if lay >= last_updated_idx:
+                #f.write(ntemp.residualconn_template_copy_BW(lay, data_type_l[lay]))
+                f.write(f"\tstore_output(&layer{lay}_in, SB_DMA_GRAD);\n")
         elif layers_l[lay]  == 'InstNorm':
             f.write(ntemp.InstNorm_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[layer]))
         else:

@@ -191,24 +191,28 @@ def residualconn_template_FW(layer_number, DATA_TYPE):
         exit()
     return template
 
-def residualconn_template_copy_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == 'FP32':
-        template = "  pulp_residualconn_fp32_bw(&l"+str(layer_number)+"_args);\n"
-    elif DATA_TYPE == 'FP16':
-        template = "  pulp_residualconn_fp16_bw(&l"+str(layer_number)+"_args);\n"
-    else:
-        print("[net_templates.residualconn_template_copy_BW]: Invalid data type!")
-        exit()
+def residualconn_template_copy_BW(layer_number, DATA_TYPE, last_updated_idx):
+    template = ""
+    if layer_number >= last_updated_idx:
+        if DATA_TYPE == 'FP32':
+            template = "  pulp_residualconn_fp32_bw(&l"+str(layer_number)+"_args);\n"
+        elif DATA_TYPE == 'FP16':
+            template = "  pulp_residualconn_fp16_bw(&l"+str(layer_number)+"_args);\n"
+        else:
+            print("[net_templates.residualconn_template_copy_BW]: Invalid data type!")
+            exit()
     return template
 
-def residualconn_template_sum_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == 'FP32':
-        template = "  pulp_sumnode_fp32_bw(&l"+str(layer_number)+"_args);\n"
-    elif DATA_TYPE == 'FP16':
-        template = "  pulp_sumnode_fp16_bw(&l"+str(layer_number)+"_args);\n"
-    else:
-        print("[net_templates.residualconn_template_sum_BW]: Invalid data type!")
-        exit()
+def residualconn_template_sum_BW(layer_number, DATA_TYPE, last_updated_idx):
+    template = ""
+    if layer_number >= last_updated_idx:
+        if DATA_TYPE == 'FP32':
+            template = "  pulp_sumnode_fp32_bw(&l"+str(layer_number)+"_args);\n"
+        elif DATA_TYPE == 'FP16':
+            template = "  pulp_sumnode_fp16_bw(&l"+str(layer_number)+"_args);\n"
+        else:
+            print("[net_templates.residualconn_template_sum_BW]: Invalid data type!")
+            exit()
     return template
 
 """
