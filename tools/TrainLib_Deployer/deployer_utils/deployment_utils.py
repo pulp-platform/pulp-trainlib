@@ -1807,43 +1807,43 @@ def GenerateNet(proj_folder_path, project_name,
     f.write("\n// Call for a complete training step\n")
     f.write("void net_step()\n{\n")
 
-    f.write("  printf(\"Initializing network..\\n\");\n")
-    f.write("  DNN_init();\n")
+    f.write("\tprintf(\"Initializing network..\\n\");\n")
+    f.write("\tDNN_init();\n")
 
-    f.write("  printf(\"Testing DNN initialization forward..\");\n")
-    f.write("  forward();\n")
-    f.write("  print_output();\n\n")
+    f.write("\tprintf(\"Testing DNN initialization forward..\");\n")
+    f.write("\tforward();\n")
+    f.write("\tprint_output();\n\n")
 
     # Profile layer by layer?
     if PROFILE_SINGLE_LAYERS == False:
-        f.write("  #ifdef PROF_NET\n")
-        f.write("  INIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
-        f.write("  #endif\n\n")
+        f.write("\t#ifdef PROF_NET\n")
+        f.write("\tINIT_STATS();\n\tPRE_START_STATS();\n\tSTART_STATS();\n")
+        f.write("\t#endif\n\n")
 
-    f.write("  for (int epoch=0; epoch<EPOCHS; epoch++)\n  {\n")
-    f.write("    forward();\n")
-    f.write("    compute_loss();\n")
+    f.write("\tfor (int epoch=0; epoch<EPOCHS; epoch++)\n\t{\n")
+    f.write("\t\tforward();\n")
+    f.write("\t\tcompute_loss();\n")
     if PRINT_TRAIN_LOSS == True:
-        f.write("    /* Stop profiling */ pi_perf_stop();\n")
-        f.write("    if (epoch == 0) printf(\"\\n\");\n")
-        f.write("    printf(\">>> EPOCH %d: train_loss = %f (GM: %f)\\n\", epoch, loss, TRAIN_LOSS[epoch]);\n")
-        f.write("    /* Continue profiling */ pi_perf_start();\n")
-    f.write("    backward();\n")
-    f.write("    update_weights();\n")
-    f.write("  }\n\n")
+        f.write("\t\t/* Stop profiling */ pi_perf_stop();\n")
+        f.write("\t\tif (epoch == 0) printf(\"\\n\");\n")
+        f.write("\t\tprintf(\">>> EPOCH %d: train_loss = %f (GM: %f)\\n\", epoch, loss, TRAIN_LOSS[epoch]);\n")
+        f.write("\t\t/* Continue profiling */ pi_perf_start();\n")
+    f.write("\t\tbackward();\n")
+    f.write("\t\tupdate_weights();\n")
+    f.write("\t}\n\n")
 
     # Profile layer by layer?
     if PROFILE_SINGLE_LAYERS == False:
-        f.write("  #ifdef PROF_NET\n")
-        f.write("  STOP_STATS();\n")
-        f.write("  #endif\n\n")
+        f.write("\t#ifdef PROF_NET\n")
+        f.write("\tSTOP_STATS();\n")
+        f.write("\t#endif\n\n")
 
 
-    f.write("  // Check and print updated output\n")
-    f.write("  forward();\n")
-    f.write("  printf(\"Checking updated output..\\n\");\n")
-    f.write("  check_post_training_output();\n")
-    f.write("  print_output();\n")
+    f.write("\t// Check and print updated output\n")
+    f.write("\tforward();\n")
+    f.write("\tprintf(\"Checking updated output..\\n\");\n")
+    f.write("\tcheck_post_training_output();\n")
+    f.write("\tprint_output();\n")
 
     f.write("}\n")
 

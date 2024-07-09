@@ -1625,10 +1625,10 @@ def GenerateNet(proj_folder_path, project_name,
     # Profile layer by layer?
     if PROFILE_SINGLE_LAYERS == False:
         f.write("\t#ifdef PROF_NET\n")
-        f.write("\tINIT_STATS();\n  PRE_START_STATS();\n  START_STATS();\n")
+        f.write("\tINIT_STATS();\n\tPRE_START_STATS();\n\tSTART_STATS();\n")
         f.write("\t#endif\n\n")
 
-    f.write("\tfor (int epoch=0; epoch<EPOCHS; epoch++)\n  {\n")
+    f.write("\tfor (int epoch=0; epoch<EPOCHS; epoch++)\n\t{\n")
     f.write("\t\tforward();\n")
     f.write("\t\tcompute_loss();\n")
     if PRINT_TRAIN_LOSS == True:
