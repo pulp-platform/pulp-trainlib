@@ -1575,9 +1575,10 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 print("[deployment_utils.GenerateNet]: Invalid optimizer for PULP deployment!!")
                 exit()
-            f.write(f"\tstore_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n")
             if bias_l[layer] == 1:
-                f.write(f"\tstore_bias(&layer{layer}_bias, SB_DMA_DATA);\n\n")
+                f.write(f"\tstore_bias(&layer{layer}_bias, SB_DMA_DATA);\n")
+            f.write(f"\tstore_coeff(&layer{layer}_wgt, SB_DMA_DATA);\n\n")
+
     f.write("}\n")
 
 
