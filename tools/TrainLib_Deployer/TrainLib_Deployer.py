@@ -88,14 +88,14 @@ if NET == 0:
     opt_mm_wg_list      = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
     opt_mm_ig_list      = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
     # Data type list for layer-by-layer deployment (mixed precision)
-    data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
-    #data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
+    #data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
+    data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
     # Data layout list (CHW or HWC) 
     data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
     # Bias
     bias_list           = [ 1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1 ]
     # Sparse Update
-    update_layer_list   = [ 0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
+    update_layer_list   = [ 0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
     # ----- END OF NETWORK GRAPH -----
 elif NET == 1:
     # ------- NETWORK GRAPH --------
@@ -122,14 +122,14 @@ elif NET == 1:
     opt_mm_wg_list      = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
     opt_mm_ig_list      = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
     # Data type list for layer-by-layer deployment (mixed precision)
-    data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
-    #data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
+    #data_type_list      = ['FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16', 'FP16']
+    data_type_list     = ['FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32', 'FP32']
     # Data layout list (CHW or HWC) 
     data_layout_list    = ['CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW', 'CHW']   # TO DO
     # Bias
     bias_list           = [ 1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1 ]
     # Sparse Update
-    update_layer_list   = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
+    update_layer_list   = [ 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 ]             # Set to 1 for each layer you want to update, 0 if you want to skip weight update
     # ----- END OF NETWORK GRAPH -----
 
 
@@ -144,7 +144,7 @@ SEPARATE_BACKWARD_STEPS = True          # If True, the tool writes separate weig
 # PROFILING OPTIONS
 PROFILE_SINGLE_LAYERS = False            # If True, profiles forward and backward layer-by-layer
 # CONV2D SETUPS
-CONV2D_USE_IM2COL = False                # Choose if the Conv2D layers should use Im2Col or not
+CONV2D_USE_IM2COL = False                # Choose if the Conv2D layers should use Im2Col or not (computatational optimization)
 # PRINT TRAIN LOSS
 PRINT_TRAIN_LOSS = True                 # Set to true if you want to print the train loss for each epoch
 # OTHER PROPERTIES
