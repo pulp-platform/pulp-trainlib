@@ -1376,11 +1376,12 @@ def GenerateNet(proj_folder_path, project_name,
 
         target_layer = lay
         if is_skipderivation: # Check for target layer's input for diff calculation of Skipnode derivations
-            for l in range(len(layers_l)):
-                if sumnode_connections[lay + l ] < 0:
-                    break
-                else:
-                    target_layer += 1
+            # for l in range(len(layers_l)):
+            #     if sumnode_connections[lay + l ] < 0:
+            #         break
+            #     else:
+            #         target_layer += 1
+            target_layer = sumnode_connections.index(lay)
         
         if lay >= last_updated_idx: # Skip in grad for skipped layers
             f.write("\n\treset_dim();\n")
@@ -1398,13 +1399,13 @@ def GenerateNet(proj_folder_path, project_name,
 
         if layers_l[lay] != 'Sumnode':
             if layers_l[lay] == 'ReLU' and lay >= last_updated_idx: # Load input data to backprop ReLU
-                f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
-            if update_layer_l[lay]:
+                f.write(f"\tload_input(&layer{lay}_in, SB_DMA_DATA);\n")
+            elif update_layer_l[lay]:
                 if layers_l[lay] == 'Skipnode':
                     # FIXME: verify if PU_COMP_IN_GRAD is right and if there is necessity to verify partial update here
-                    f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_GRAD);\n")
+                    f.write(f"\tload_input(&layer{lay}_out, SB_DMA_GRAD);\n")
                 else:
-                    f.write(f"\tload_input(&layer{target_layer}_in, SB_DMA_DATA);\n")
+                    f.write(f"\tload_input(&layer{lay}_in, SB_DMA_DATA);\n")
 
         if layers_l[lay] not in ['Sumnode', 'Skipnode', 'ReLU'] and lay > last_updated_idx: # Load the weights only to backprop out grad
             f.write(f"\tload_coeff(&layer{lay}_wgt, SB_DMA_DATA);\n")
@@ -1412,7 +1413,12 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write(f"\tload_bias(&layer{lay}_bias, SB_DMA_DATA);\n")
 
         if lay >= last_updated_idx:
-            f.write(f"\tload_output(&layer{lay}_out, SB_DMA_GRAD);\n")
+            if layers_l[lay] == 'Skipnode':
+                f.write(f"\tload_coeff(&layer{target_layer}_in, SB_DMA_GRAD);\n")
+                f.write(f"\tget_output_dim(&layer{lay}_out);\n")
+            else:
+                f.write(f"\tload_output(&layer{lay}_out, SB_DMA_GRAD);\n")
+        
 
         # Copy struct info 
         if layers_l[lay] not in ['Skipnode', 'Sumnode', 'ReLU'] and lay >= last_updated_idx:

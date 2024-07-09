@@ -213,7 +213,6 @@ def residualconn_template_sum_BW(layer_number, DATA_TYPE, target, last_update_id
         template = "\tresconn_args.skip = &input_blob;\n"
         template += "\tresconn_args.output = &output_blob;\n"
         template += "\tresconn_args.lout = &weight_blob;\n"
-        template += f"\tload_input(&layer{target}_in, 0);\n"
         if DATA_TYPE == 'FP32':
             template += "\tpulp_sumnode_fp32_bw(&resconn_args);\n"
         elif DATA_TYPE == 'FP16':
