@@ -140,7 +140,7 @@ elif NET == 1:
 # EXECUTION PROPERTIES
 NUM_CORES       = 8
 L1_SIZE_BYTES   = 128*(2**10)
-USE_DMA = 'NO'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB', CURRENTLY UNAVAILABLE) 
+USE_DMA = 'SB'                          # choose whether to load all structures in L1 ('NO') or in L2 and use Single Buffer mode ('SB') or Double Buffer mode ('DB', CURRENTLY UNAVAILABLE) 
 # BACKWARD SETTINGS
 SEPARATE_BACKWARD_STEPS = True          # If True, the tool writes separate weight and input gradient in the backward step
 # PROFILING OPTIONS

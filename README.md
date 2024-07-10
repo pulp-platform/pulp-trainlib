@@ -181,6 +181,7 @@ TrainLib_Deployer:
 - [X] No Buffer and Single Buffer mode, supporting layer-wise execution (tiling not supported)
 - [X] Conv2D, PointWise, DepthWise Convolutions, Fully-Connected support (FP32, FP16)
 - [X] Average and Max Pooling (FP32, FP16)
+- [X] ReLU, LeakyReLU, Sigmoid Activations (FP32, FP16)
 - [X] InstanceNorm (FP32, FP16)
 - [X] Residual Connections (FP32, FP16, only no buffer mode)
 - [ ] Residual Connections (FP32, FP16, single buffer mode)
