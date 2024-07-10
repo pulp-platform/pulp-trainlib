@@ -151,12 +151,14 @@ PULP-TrainLib's repository is organized with these branches:
 
 > Note: checked are complete, unchecked are ongoing
 
+PULP-TrainLib:
+
 - [X] Forward passes for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
 - [X] Weight gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
 - [X] Input gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
 - [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
 - [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
-- [X] stride and padding (only naive 2D Convolutions, without im2col+mm optimization)
+- [X] Stride and Padding (only naive 2D Convolutions, without im2col+mm optimization)
 - [X] ReLU, Sigmoid activation functions (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
@@ -173,7 +175,22 @@ PULP-TrainLib's repository is organized with these branches:
 - [ ] Biases for DepthWise and PointWise Convolutions (FP32, FP16)
 - [ ] Sparse Update (layer-wise) in TrainLib_Deployer
 - [ ] Partial Im2Col / Im2Row for Conv2D (FP32, FP16)
-- [ ] Integration of biases in TrainLib-Deployer (Conv2D)
+
+TrainLib_Deployer:
+
+- [X] No Buffer and Single Buffer mode, supporting layer-wise execution (tiling not supported)
+- [X] Conv2D, PointWise, DepthWise Convolutions, Fully-Connected support (FP32, FP16)
+- [X] Average and Max Pooling (FP32, FP16)
+- [X] InstanceNorm (FP32, FP16)
+- [X] Residual Connections (FP32, FP16, only no buffer mode)
+- [ ] Residual Connections (FP32, FP16, single buffer mode)
+- [X] SGD Optimizer (FP32, FP16)
+- [ ] FP32-FP16 Layer-Wise Mixed Precision Mode
+- [X] Layer-Wise Sparse Update
+- [X] CHW Data Layout
+- [ ] HWC Data Layout
+- [X] Online Learning (batch size = 1)
+- [ ] Mini-Batch Learning (batch size > 1)
 
 # Known bugs / issues (open for contributions)
 
