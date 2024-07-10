@@ -55,6 +55,7 @@ if data_type == 'FP32':
 
     # Fake output tensor
     reluinput = torch.ones(in_c, in_h, in_w)
+    leakyreluinput = torch.ones(in_c, in_h, in_w)
     softminput = torch.ones(in_c, in_h, in_w)
     sigmoidinput = torch.ones(in_c, in_h, in_w)
     with torch.no_grad():
@@ -62,34 +63,47 @@ if data_type == 'FP32':
             for i in range(in_w):
                 for j in range(in_h):
                     reluinput[k, i, j] += (i+j+k)*value
+                    leakyreluinput[k, i, j] += (i+j+k)*value
                     softminput[k, i, j] += (i+j+k)*value
                     sigmoidinput[k, i, j] += (i+j+k)*value
     # Fake label
     relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
+    leakyrelulabel = torch.ones(in_c, int((in_h)), int((in_w)))
     softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
     sigmoidlabel = torch.ones(in_c, int((in_h)), int((in_w)))
 
     print("relulabel:")
     print(relulabel.size())
+    print("leakyrelulabel:")
+    print(leakyrelulabel.size())
     print("softmlabel:")
     print(softmlabel.size())
     print("sigmoidlabel:")
     print(sigmoidlabel.size())
 
     reluinput.requires_grad = True
+    leakyreluinput.requires_grad = True
     softminput.requires_grad = True
     sigmoidinput.requires_grad = True
 
     # Loss function
     loss_fn = nn.MSELoss()
 
-    # Pooling functions
+    # Activation functions
     class ReLU (nn.Module):
         def __init__(self):
             super(ReLU, self).__init__()
             self.relu = nn.ReLU()
         def forward(self, x):
             out = self.relu(x)
+            return out
+        
+    class LeakyReLU (nn.Module):
+        def __init__(self):
+            super(LeakyReLU, self).__init__()
+            self.leakyrelu = nn.LeakyReLU()
+        def forward(self, x):
+            out = self.leakyrelu(x)
             return out
 
     class SoftMax (nn.Module):
@@ -112,30 +126,37 @@ if data_type == 'FP32':
 
 
     relu = ReLU()
+    leakyrelu = LeakyReLU()
     softmax = SoftMax()
     sigmoid = Sigmoid()
 
     # Compute the output and the backward of both
     reluout = relu(reluinput)
+    leakyreluout = leakyrelu(leakyreluinput)
     softmout = softmax(softminput)
     sigmoidout = sigmoid(sigmoidinput)
 
     reluout.retain_grad()
+    leakyreluout.retain_grad()
     softmout.retain_grad()
     sigmoidout.retain_grad()
 
     print("reluout: ")
     print(reluout.size())
+    print("leakyreluout: ")
+    print(leakyreluout.size())
     print("softmout: ")
     print(softmout.size())
     print("sigmoidout: ")
     print(sigmoidout.size())
 
     reluloss = loss_fn(reluout, relulabel)
+    leakyreluloss = loss_fn(leakyreluout, leakyrelulabel)
     softmloss = loss_fn(softmout, softmlabel)
     sigmoidloss = loss_fn(sigmoidout, sigmoidlabel)
 
     reluloss.backward()
+    leakyreluloss.backward()
     softmloss.backward()
     sigmoidloss.backward()
 
@@ -146,6 +167,14 @@ if data_type == 'FP32':
     print(reluout.grad)
     print("ReLU in grad is:")
     print(reluinput.grad)
+
+    print("\n*** LEAKY RELU DATA ***")
+    print("LeakyReLU out is:")
+    print(leakyreluout)
+    print("LeakyReLU out grad is:")
+    print(leakyreluout.grad)
+    print("LeakyReLU in grad is:")
+    print(leakyreluinput.grad)
 
     print("\n*** SOFTMAX DATA ***")
     print("SoftMax out is:")
@@ -189,6 +218,13 @@ if data_type == 'FP32':
     f.write("PI_L2 float RELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(reluinput.grad)+"};\n")
     f.write("PI_L1 float RELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(relulabel)+"};\n")
 
+    f.write("PI_L2 float LEAKYRELULOSS = {"+str(leakyreluloss.data.item())+"};\n")
+    f.write("PI_L2 float LEAKYRELUOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(leakyreluout)+"};\n")
+    f.write("PI_L2 float LEAKYRELUOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(leakyreluout.grad)+"};\n")
+    f.write("PI_L1 float LEAKYRELUIN[IN_SIZE] = {"+dump.tensor_to_string(leakyreluinput)+"};\n")
+    f.write("PI_L2 float LEAKYRELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(leakyreluinput.grad)+"};\n")
+    f.write("PI_L1 float LEAKYRELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(leakyrelulabel)+"};\n")
+
     f.write("PI_L2 float SOFTMLOSS = {"+str(softmloss.data.item())+"};\n")
     f.write("PI_L2 float SOFTMOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(softmout)+"};\n")
     f.write("PI_L2 float SOFTMOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(softmout.grad)+"};\n")
@@ -215,6 +251,7 @@ if data_type == 'FP16':
 
     # Fake output tensor
     reluinput = torch.ones(in_c, in_h, in_w)
+    leakyreluinput = torch.ones(in_c, in_h, in_w)
     softminput = torch.ones(in_c, in_h, in_w)
     sigmoidinput = torch.ones(in_c, in_h, in_w)
     with torch.no_grad():
@@ -222,34 +259,47 @@ if data_type == 'FP16':
             for i in range(in_w):
                 for j in range(in_h):
                     reluinput[k, i, j] += (i+j+k)*value
+                    leakyreluinput[k, i, j] += (i+j+k)*value
                     softminput[k, i, j] += (i+j+k)*value
                     sigmoidinput[k, i, j] += (i+j+k)*value
     # Fake label
     relulabel = torch.ones(in_c, int((in_h)), int((in_w)))
+    leakyrelulabel = torch.ones(in_c, int((in_h)), int((in_w)))
     softmlabel = torch.flatten(torch.ones(in_c, int((in_h)), int((in_w))))
     sigmoidlabel = torch.ones(in_c, int((in_h)), int((in_w)))
 
     print("relulabel:")
     print(relulabel.size())
+    print("leakyrelulabel:")
+    print(leakyrelulabel.size())
     print("softmlabel:")
     print(softmlabel.size())
     print("sigmoidlabel:")
     print(sigmoidlabel.size())
 
     reluinput.requires_grad = True
+    leakyreluinput.requires_grad = True
     softminput.requires_grad = True
     sigmoidinput.requires_grad = True
 
     # Loss function
     loss_fn = nn.MSELoss()
 
-    # Pooling functions
+    # Activation functions
     class ReLU (nn.Module):
         def __init__(self):
             super(ReLU, self).__init__()
             self.relu = nn.ReLU()
         def forward(self, x):
             out = self.relu(x)
+            return out
+    
+    class LeakyReLU (nn.Module):
+        def __init__(self):
+            super(LeakyReLU, self).__init__()
+            self.leakyrelu = nn.LeakyReLU()
+        def forward(self, x):
+            out = self.leakyrelu(x)
             return out
 
     class SoftMax (nn.Module):
@@ -272,30 +322,37 @@ if data_type == 'FP16':
 
 
     relu = ReLU()
+    leakyrelu = LeakyReLU()
     softmax = SoftMax()
     sigmoid = Sigmoid()
 
     # Compute the output and the backward of both
     reluout = relu(reluinput)
+    leakyreluout = leakyrelu(leakyreluinput)
     softmout = softmax(softminput)
     sigmoidout = sigmoid(sigmoidinput)
 
     reluout.retain_grad()
+    leakyreluout.retain_grad()
     softmout.retain_grad()
     sigmoidout.retain_grad()
 
     print("reluout: ")
     print(reluout.size())
+    print("leakyreluout: ")
+    print(leakyreluout.size())
     print("softmout: ")
     print(softmout.size())
     print("sigmoidout: ")
     print(sigmoidout.size())
 
     reluloss = loss_fn(reluout, relulabel)
+    leakyreluloss = loss_fn(leakyreluout, leakyrelulabel)
     softmloss = loss_fn(softmout, softmlabel)
     sigmoidloss = loss_fn(sigmoidout, sigmoidlabel)
 
     reluloss.backward()
+    leakyreluloss.backward()
     softmloss.backward()
     sigmoidloss.backward()
 
@@ -305,6 +362,14 @@ if data_type == 'FP16':
     print("ReLU out grad is:")
     print(reluout.grad)
     print("ReLU in grad is:")
+    print(reluinput.grad)
+
+    print("\n*** LEAKY RELU DATA ***")
+    print("LeakyReLU out is:")
+    print(leakyreluout)
+    print("LeakyReLU out grad is:")
+    print(leakyreluout.grad)
+    print("LeakyReLU in grad is:")
     print(reluinput.grad)
 
     print("\n*** SOFTMAX DATA ***")
@@ -348,6 +413,13 @@ if data_type == 'FP16':
     f.write("PI_L1 fp16 RELUIN[IN_SIZE] = {"+dump.tensor_to_string(reluinput.half())+"};\n")
     f.write("PI_L2 fp16 RELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(reluinput.grad.half())+"};\n")
     f.write("PI_L1 fp16 RELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(relulabel.half())+"};\n")
+
+    f.write("PI_L2 fp16 LEAKYRELULOSS = {"+str(leakyreluloss.data.item())+"};\n")
+    f.write("PI_L2 fp16 LEAKYRELUOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(leakyreluout.half())+"};\n")
+    f.write("PI_L2 fp16 LEAKYRELUOUTPUT_GRAD[OUT_SIZE] = {"+dump.tensor_to_string(leakyreluout.grad.half())+"};\n")
+    f.write("PI_L1 fp16 LEAKYRELUIN[IN_SIZE] = {"+dump.tensor_to_string(leakyreluinput.half())+"};\n")
+    f.write("PI_L2 fp16 LEAKYRELUIN_GRAD[IN_SIZE] = {"+dump.tensor_to_string(leakyreluinput.grad.half())+"};\n")
+    f.write("PI_L1 fp16 LEAKYRELULABEL[OUT_SIZE] = {"+dump.tensor_to_string(leakyrelulabel.half())+"};\n")
 
     f.write("PI_L2 fp16 SOFTMLOSS = {"+str(softmloss.data.item())+"};\n")
     f.write("PI_L2 fp16 SOFTMOUTPUT[OUT_SIZE] = {"+dump.tensor_to_string(softmout.half())+"};\n")
