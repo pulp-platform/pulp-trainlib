@@ -49,7 +49,7 @@ def compute_wgt_act_memocc_bytes(layer_number, layer_type, chin, chout, hk, wk, 
 
     # If the layer is an activation, no weights or biases!
     wgt_present = 1
-    if layer_type in ['ReLu', 'Skipnode', 'Sumnode'] or update_layer == 0:
+    if layer_type in ['ReLU', 'LeakyReLU', 'Sigmoid', 'Skipnode', 'Sumnode'] or update_layer == 0:
         wgt_present = 0
         bias_present = 0
 
@@ -500,6 +500,10 @@ def GenerateGM(proj_folder_path, project_name,
         # Activations
         elif layers_l[layer] == "ReLU":
             f.write(Gtemp.ReLU_template(layer, current_type))
+        elif layers_l[layer] == "LeakyReLU":
+            f.write(Gtemp.LeakyReLU_template(layer, current_type))
+        elif layers_l[layer] == "Sigmoid":
+            f.write(Gtemp.Sigmoid_template(layer, current_type))
         # Pooling
         elif layers_l[layer] == "MaxPool":
             f.write(Gtemp.MaxPool_template(layer, hk_l[layer], wk_l[layer], h_str_l[layer], w_str_l[layer], current_type))
@@ -544,7 +548,7 @@ def GenerateGM(proj_folder_path, project_name,
                 f.write(f"\n\t\tx = x.float()")
         # Forward layers 
         # (ReLU works with FP32 only)
-        if layers_l[layer] == 'ReLU': # and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
+        if layers_l[layer] in ['ReLU', 'LeakyReLU', 'Sigmoid']: # and data_type_l[layer-1] == 'FP32' and data_type_l[layer] == 'FP16':
             if cuda_is_on:
                 f.write(f"\n\t\t{variable} = self.l"+str(layer)+f"({variable})")
             else:
@@ -592,7 +596,7 @@ def GenerateGM(proj_folder_path, project_name,
         if sparse_comment_written == False:
             f.write("# Freeze weights for sparse update\n")
             sparse_comment_written = True
-        if write_sparse_update and update_layer_l[layer] == 0 and layers_l[layer] not in ['ReLU', 'AvgPool', 'MaxPool', 'Sumnode', 'Skipnode']:
+        if write_sparse_update and update_layer_l[layer] == 0 and layers_l[layer] not in ['ReLU', 'LeakyReLU', 'Sigmoid', 'AvgPool', 'MaxPool', 'Sumnode', 'Skipnode']:
             f.write("net.l"+str(layer)+".weight.requires_grad = False\n")
     f.write("\n")
 
@@ -605,7 +609,7 @@ def GenerateGM(proj_folder_path, project_name,
     f.write("f = open('io_data.h', 'w')\n")
     f.write("f.write('// Init weights\\n')\n")
     for layer in range(len(layers_l)):
-        if (layers_l[layer] not in ['ReLU', 'MaxPool',  'AvgPool', 'Skipnode', 'Sumnode']):
+        if (layers_l[layer] not in ['ReLU', 'LeakyReLU', 'Sigmoid', 'MaxPool',  'AvgPool', 'Skipnode', 'Sumnode']):
             dump = f"+dump.tensor_to_string(net.l{layer}.weight.data)+"
             bias_dump = f"+dump.tensor_to_string(net.l{layer}.bias.data)+"
             if layers_l[layer] != 'InstNorm':   # Generic layer's weights
@@ -786,6 +790,10 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("PI_L1 struct DepthWise_Conv_args l"+str(layer)+"_args;\n")
             elif layers_l[layer] == 'ReLU':
                 f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'LeakyReLU':
+                f.write("PI_L1 struct leakyrelu_args l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'Sigmoid':
+                f.write("PI_L1 struct act_args l"+str(layer)+"_args;\n")
             elif layers_l[layer] == 'MaxPool':
                 pass
             elif layers_l[layer] == 'AvgPool':
@@ -809,6 +817,10 @@ def GenerateNet(proj_folder_path, project_name,
             elif layers_l[layer] == 'DW':
                 f.write("PI_L1 struct DepthWise_Conv_args_fp16 l"+str(layer)+"_args;\n")
             elif layers_l[layer] == 'ReLU':
+                f.write("PI_L1 struct act_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'LeakyReLU':
+                f.write("PI_L1 struct leakyrelu_args_fp16 l"+str(layer)+"_args;\n")
+            elif layers_l[layer] == 'Sigmoid':
                 f.write("PI_L1 struct act_args_fp16 l"+str(layer)+"_args;\n")
             elif layers_l[layer] == 'MaxPool':
                 pass
@@ -848,7 +860,7 @@ def GenerateNet(proj_folder_path, project_name,
     for layer in range(len(layers_l)):
         # Define FP32 tensors
         if data_type_l[layer] == 'FP32':
-            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool' or layers_l[layer] == 'ReLU':
+            if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("PI_L1 float l"+str(layer)+"_ker[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
@@ -860,7 +872,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("PI_L1 float l"+str(layer)+"_bias[Tout_C_l"+str(layer)+"];\n")
         # Define FP16 tensors
         elif data_type_l[layer] == 'FP16':
-            if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool' or layers_l[layer] == 'ReLU':
+            if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("PI_L1 fp16 l"+str(layer)+"_ker[1];\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode': 
                 pass
@@ -881,7 +893,7 @@ def GenerateNet(proj_folder_path, project_name,
         if update_layer_l[layer] == 1:
             # Define FP32 tensors
             if data_type_l[layer] == 'FP32':
-                if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool' or layers_l[layer] == 'ReLU':
+                if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                     f.write("PI_L1 float l"+str(layer)+"_ker_diff[1];\n")
                 elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                     pass
@@ -893,7 +905,7 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("PI_L1 float l"+str(layer)+"_bias_diff[Tout_C_l"+str(layer)+"];\n")
             # Define FP16 tensors
             elif data_type_l[layer] == 'FP16':
-                if layers_l[layer] == 'MaxPool' or layers_l[layer] == 'AvgPool' or layers_l[layer] == 'ReLU':
+                if layers_l[layer] in ['MaxPool', 'AvgPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                     f.write("PI_L1 fp16 l"+str(layer)+"_ker_diff[1];\n")
                 elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                     pass
@@ -934,7 +946,7 @@ def GenerateNet(proj_folder_path, project_name,
             data_size = 2
         # Find if the layer needs to store in grad for weight grad computation (next layer needs it)
         save_activation = True
-        if layer > 0 and layer < (len(layers_l)-1) and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
+        if layer > 0 and layer < (len(layers_l)-1) and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU', 'LeakyReLU', 'Sigmoid']:
             in_size = in_ch_l[layer] * hin_l[layer] * win_l[layer] 
             save_activation = False
             use_activation_buffer = True
@@ -1201,7 +1213,7 @@ def GenerateNet(proj_folder_path, project_name,
         if layer == 0:
             f.write("  // Layer "+str(layer)+"\n")
             f.write("  for(int i=0; i<Tin_C_l0*Tin_H_l0*Tin_W_l0; i++)\t\t\tl0_in[i] = INPUT[i];\n")
-            if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU']:
+            if layers_l[layer] not in ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  for(int i=0; i<Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0; i++)\t\tl0_ker[i] = init_WGT_l0[i];\n")
                 if bias_l[layer] == 1:
                     f.write("  for(int i=0; i<Tout_C_l0; i++)\t\tl0_bias[i] = init_BIAS_l0[i];\n")
@@ -1215,7 +1227,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  //   Pooling kernel (no parameters)\n")
             elif layers_l[layer] == 'Skipnode' or layers_l[layer] == 'Sumnode':
                 f.write("  //   Resconn layer (no parameters)\n")
-            elif layers_l[layer] == 'ReLU':
+            elif layers_l[layer] in ['ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  //   Activation layer (no parameters)\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  for(int i=0; i<2*Tin_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
@@ -1228,7 +1240,7 @@ def GenerateNet(proj_folder_path, project_name,
                 if bias_l[layer] == 1:
                     f.write("  for(int i=0; i<Tout_C_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_bias[i] = init_BIAS_l"+str(layer)+"[i];\n")
         elif layer == len(layers_l)-1:
-            if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU']:
+            if layers_l[layer] not in  ['Skipnode', 'Sumnode', 'InstNorm', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  // Layer "+str(layer)+"\n")
                 f.write("  for(int i=0; i<Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+"; i++)\t\tl"+str(layer)+"_ker[i] = init_WGT_l"+str(layer)+"[i];\n")
                 if bias_l[layer] == 1:
@@ -1267,7 +1279,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_in.W = Tin_W_l0;\n")
         elif layer == 0:                                # First layer
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer)+"_in;\n")
@@ -1277,7 +1289,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
         elif layer > 0 and layer < len(layers_l)-1:     # Hidden layers
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
@@ -1289,7 +1301,7 @@ def GenerateNet(proj_folder_path, project_name,
             f.write("  layer"+str(layer)+"_in.W = Tin_W_l"+str(layer)+";\n")
         elif layer == len(layers_l)-1:                  # Last layer
             f.write("  // Layer "+str(layer)+"\n")
-            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU']:
+            if layer > 0 and update_layer_l[layer] == 0 and layers_l[layer] not in ['Skipnode', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  layer"+str(layer)+"_in.data = ("+C_data_type+"*) act_shared_buffer;\n")
             else:
                 f.write("  layer"+str(layer)+"_in.data = l"+str(layer - previous_was_skip_data)+"_in;\n")
@@ -1312,7 +1324,7 @@ def GenerateNet(proj_folder_path, project_name,
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tker_H_l0*Tker_W_l0;\n")
             elif layers_l[layer] == 'InstNorm':
                 f.write("  layer"+str(layer)+"_wgt.dim = 2*Tin_C_l0;\n")
-            elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU']:
+            elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                 f.write("  layer"+str(layer)+"_wgt.dim = 1;\n")
             else:
                 f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l0*Tout_C_l0*Tker_H_l0*Tker_W_l0;\n")
@@ -1337,7 +1349,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 elif layers_l[layer] == 'InstNorm':
                     f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
-                elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU']:
+                elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                     f.write("  layer"+str(layer)+"_wgt.dim = 1;\n")
                 else:
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
@@ -1363,7 +1375,7 @@ def GenerateNet(proj_folder_path, project_name,
                         f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                     elif layers_l[layer] == 'InstNorm':
                         f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
-                    elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU']:
+                    elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                         f.write("  layer"+str(layer)+"_wgt.dim = 1;\n")
                     else:
                         f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
@@ -1387,7 +1399,7 @@ def GenerateNet(proj_folder_path, project_name,
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
                 elif layers_l[layer] == 'InstNorm':
                         f.write("  layer"+str(layer)+f"_wgt.dim = 2*Tin_C_l{layer};\n")
-                elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU']:
+                elif layers_l[layer] in  ['Skipnode', 'Sumnode', 'AvgPool', 'MaxPool', 'ReLU', 'LeakyReLU', 'Sigmoid']:
                     f.write("  layer"+str(layer)+"_wgt.dim = 1;\n")            
                 else:
                     f.write("  layer"+str(layer)+"_wgt.dim = Tin_C_l"+str(layer)+"*Tout_C_l"+str(layer)+"*Tker_H_l"+str(layer)+"*Tker_W_l"+str(layer)+";\n")
@@ -1423,7 +1435,7 @@ def GenerateNet(proj_folder_path, project_name,
                     if layer >= last_updated_idx:
                         f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
                 else:
-                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU']:
+                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU', 'LeakyReLU', 'Sigmoid']:
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
@@ -1442,7 +1454,7 @@ def GenerateNet(proj_folder_path, project_name,
                     if layer >= last_updated_idx:
                         f.write("  layer"+str(layer)+"_out.diff = ("+C_data_type+"*) cast_buffer;\n")
                 else:
-                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU']:
+                    if layer < (len(layers_l)-1) and update_layer_l[layer+1] == 0 and layers_l[layer+1] not in ['ReLU', 'LeakyReLU', 'Sigmoid']:
                         f.write("  layer"+str(layer)+"_out.data = ("+C_data_type+"*) act_shared_buffer;\n")
                     else:
                         f.write("  layer"+str(layer)+"_out.data = l"+str(layer+1)+"_in;\n")
@@ -1515,6 +1527,10 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(ntemp.DW_config_template(layer, h_pad_l[layer], w_pad_l[layer], h_str_l[layer], w_str_l[layer], skip_inputgrad, data_type_l[layer], update_layer_l[layer]))
         elif layers_l[layer] == 'ReLU':
             f.write(ntemp.ReLU_config_template(layer, data_type_l[layer]))
+        elif layers_l[layer] == 'LeakyReLU':
+            f.write(ntemp.LeakyReLU_config_template(layer, data_type_l[layer]))
+        elif layers_l[layer] == 'Sigmoid':
+            f.write(ntemp.Sigmoid_config_template(layer, data_type_l[layer]))
         elif layers_l[layer] == 'MaxPool':
             f.write("  //   Pooling layer (see next section)\n")
         elif layers_l[layer] == 'AvgPool':
@@ -1579,6 +1595,10 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(ntemp.PW_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'ReLU':
             f.write(ntemp.ReLU_template_FW(layer, data_type_l[layer]))
+        elif layers_l[layer] == 'LeakyReLU':
+            f.write(ntemp.LeakyReLU_template_FW(layer, data_type_l[layer]))
+        elif layers_l[layer] == 'Sigmoid':
+            f.write(ntemp.Sigmoid_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'AvgPool':
             f.write(ntemp.AvgPool_template_FW(layer, data_type_l[layer]))
         elif layers_l[layer] == 'MaxPool':
@@ -1670,6 +1690,10 @@ def GenerateNet(proj_folder_path, project_name,
             f.write(ntemp.PW_template_BW(lay, data_type_l[lay], SEPARATE_BACKWARD_STEPS, FIRST_LAYER, update_layer_l[lay]))
         elif layers_l[lay] == 'ReLU':
             f.write(ntemp.ReLU_template_BW(lay, data_type_l[lay], FIRST_LAYER))
+        elif layers_l[lay] == 'LeakyReLU':
+            f.write(ntemp.LeakyReLU_template_BW(lay, data_type_l[lay], FIRST_LAYER))
+        elif layers_l[lay] == 'Sigmoid':
+            f.write(ntemp.Sigmoid_template_BW(lay, data_type_l[lay], FIRST_LAYER))
         elif layers_l[lay] == 'AvgPool':
             f.write(ntemp.AvgPool_template_BW(lay, data_type_l[lay], FIRST_LAYER))
         elif layers_l[lay] == 'MaxPool':

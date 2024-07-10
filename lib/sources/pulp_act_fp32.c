@@ -162,7 +162,7 @@ void leakyrelu_core_fw_fp32( void * leakyrelu_args )
 
 void leakyrelu_core_bw_fp32( void * leakyrelu_args )
 {
-  struct leakyrelu_args * args = (struct act_args *) leakyrelu_args;
+  struct leakyrelu_args * args = (struct leakyrelu_args *) leakyrelu_args;
   int dim = args->input->dim;
   float* inData = args->input->data;
   float* inDiff = args->input->diff;
