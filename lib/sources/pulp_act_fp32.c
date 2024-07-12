@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
 */
 
 #include "pulp_train_utils_fp32.h"
@@ -274,27 +274,24 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
 
 void pulp_softmax_fp32_bw_cl( void * act_args )
 {
-  struct act_args * args = (struct act_args *) act_args;
-  int dim = args->input->dim;
-  int i = args->output->dim;
-  float* inDiff = args->input->diff;
-  float* outData = args->output->data;
-  float* outDiff = args->output->diff;
-  //float sum = 0.0f;
+    // TODO 0004: Parallelize like in the forward pass
+    struct act_args * args = (struct act_args *) act_args;
+    int i = args->input->dim;
+    int rows = args->output->dim;
+    float* inDiff = args->input->diff;
+    float* outData = args->output->data;
+    float* outDiff = args->output->diff;
 
-  for(int j = 0; j < dim; j++){ // Cycle over the elements of the i-th head buffer
-      float sum = 0.0f;
-      const float neg_sft_j  =  -(outData)[j]; 
-      for(int z = 0; z < dim; ++z){ // Softmax involves all the elements of the i-th head buffer
-          float mul =  (outDiff)[z] * (outData)[z] * neg_sft_j;
-          sum +=  mul; // adding to the total sum of this row.
-      }
-      inDiff[j] = sum;
-  }
+    for (int row = 0; row < rows; row++) {
+        float sum = 0.0f;
 
-  for(int j=0; j<dim; j++){
-      inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
-  }
+        // TODO 0005: Currently, can reuse rows since an L x L matrix is passed, but may need to pass a new dimension
+        for (int idx = 0; idx < rows; idx++)
+            sum += (outDiff[row * rows + idx] * outData[row * rows + idx]);
+
+        for (int idx = 0; idx < rows; idx++)
+            inDiff[row * rows + idx] = (outDiff[row * rows + idx] - sum) * outData[row * rows + idx];
+    }
 }
 
 

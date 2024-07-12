@@ -52,9 +52,10 @@ PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1];
 PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
 PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
 //PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
-PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1];
+PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_temp[Tin_H_l1*Tin_H_l1]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+// TODO 0000: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+PI_L1 float l0_temp[Tin_H_l1*Tin_H_l1*3];
 PI_L1 float l0_sums[Tin_H_l1]; 
 PI_L1 float l0_maxes[Tin_H_l1]; 
 #endif
@@ -79,11 +80,13 @@ PI_L1 float l0_h_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_h_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 
 PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
+PI_L1 float l0_softmax_buffer_diff[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1]; 
 PI_L1 float l0_out_diff[Tin_H_l1*Tin_W_l1];
 
-PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3]; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required) 
+// TODO 0002: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+PI_L1 float l0_temp[Tin_H_l1*Tatt_dim_l1*3];
 
 PI_L1 float l0_grad[Tin_H_l1*Tin_H_l1]; // Buffer containing the pre-softmax head buffer gradient, necessary in the backward process
 
@@ -100,12 +103,13 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_in[i] = INPUT[i];
   for (int i=0; i<Tin_W_l1*Tatt_dim_l1*3; i++)          l0_ker_in[i] = INPUT_WEIGHTS[i]; 
   for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_out[i] = OUTPUT_WEIGHTS[i]; 
-  for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_out[i] = zero_init; 
-  for (int i=0; i<Tin_H_l1*Tin_H_l1; i++)               l0_temp[i] = zero_init; // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+  for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_out[i] = zero_init;
+  // TODO 0003: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+  for (int i=0; i<Tin_H_l1*Tin_W_l1*3; i++)               l0_temp[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_qkv[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_att_map[i] = zero_init;
   //for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_h_buffer[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tin_H_l1; i++)               l0_softmax_buffer[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)               l0_softmax_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1; i++)                        l0_sums[i] = zero_init;
   for (int i=0; i<Tin_H_l1; i++)                        l0_maxes[i] = min_float;
   printf("Finished initializing the things\n");
@@ -201,7 +205,7 @@ static inline void compute_memory_occupation(){
   // Heads Scores
   //L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Heads Softmax Output
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
   // sums buffer
@@ -226,7 +230,7 @@ static inline void compute_memory_occupation(){
   // Heads Scores
   //L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Heads Softmax Output
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
+  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(float);
   // Tmp buffer
   L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(float);
   // sums buffer
@@ -265,6 +269,7 @@ static inline void tensor_init()
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_h_buffer_diff[i] = zero_init;
 
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_softmax_buffer[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)        l0_softmax_buffer_diff[i] = zero_init;
 
   for (int i=0; i<Tin_H_l1; i++)                             l0_sums[i] = zero_init;
   for (int i=0; i<Tin_H_l1; i++)                             l0_maxes[i] = min_float;
@@ -328,6 +333,7 @@ static inline void connect_blobs()
   layer0_softmax_buffer.H = Tn_heads_l1;
   layer0_softmax_buffer.W = Tin_H_l1*Tin_H_l1;
   layer0_softmax_buffer.C = Tin_C_l1;
+  layer0_softmax_buffer.diff = l0_softmax_buffer_diff;
 
   mhsa_args.input = &layer0_in;
   mhsa_args.n_heads = Tn_heads_l1;

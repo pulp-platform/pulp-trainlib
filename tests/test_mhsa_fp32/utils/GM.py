@@ -34,19 +34,14 @@ class MyNet(nn.Module):
         return self.mhsa(x=x, tgt_len=tgt_len)
 
 
-def hook_fn1(m, i, o):
+def hook_fn1(_, __, o):
     # Hook to write output gradients
-    cont = 0
-    input_grad = []
-    weight_grad = []
-    output_grad = []
-
     f = open("mhsa-grads.h", "w")
 
     print("------------Output Grad------------")
     for grad in o:
         try:
-            output_grad = grad
+            output_grad = torch.transpose(grad, 0, 1)
             f.write('#define G_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
             print(output_grad)
 
@@ -60,13 +55,9 @@ def hook_fn1(m, i, o):
     f.close()
 
 
-def hook_fn2(m, i, o):
+def hook_fn2(_, __, o):
     # Hook for writing output to file
     cont = 0
-    input_grad = []
-    weight_grad = []
-    output_grad = []
-
     f = open("mhsa-output.h", "w")
 
     print("------------Output------------")
@@ -227,18 +218,22 @@ if __name__ == '__main__':
     net.zero_grad()
     loss.backward()
 
-    input_wgt_grad = torch.transpose(net.mhsa.proj_in.weight.grad, 0, 1)
-    output_wgt_grad = torch.transpose(net.mhsa.proj_out.weight.grad, 0, 1)
-    input_grad = inp.grad
+    input_wgt_grad = net.mhsa.proj_in.weight.grad
+    output_wgt_grad = net.mhsa.proj_out.weight.grad
+    input_grad = inp.grad.transpose(1, 2)
 
     # Write gradients to file
     f = open("mhsa-grads.h", 'a')
+
     f.write('#define G_INPUT_WGT_SIZE '+str(input_wgt_grad.numel())+'\n')
     f.write("PI_L2 float INPUT_WGT_GRAD[G_INPUT_WGT_SIZE] = {"+dump.tensor_to_string(input_wgt_grad)+"};\n")
+
     f.write('#define G_OUTPUT_WGT_SIZE '+str(output_wgt_grad.numel())+'\n')
     f.write("PI_L2 float OUTPUT_WGT_GRAD[G_OUTPUT_WGT_SIZE] = {"+dump.tensor_to_string(output_wgt_grad)+"};\n")
+
     f.write("#define G_IN_SIZE "+str(input_grad.numel()) + '\n')
     f.write("PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad) + "};\n")
+
     f.close()
 
     # Write attention scores to file

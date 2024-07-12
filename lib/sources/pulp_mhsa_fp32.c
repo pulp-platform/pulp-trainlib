@@ -5,7 +5,7 @@
  * This software may be modified and distributed under the terms
  * of the BSD license.  See the LICENSE file for details.
  *
- * Authors: Alberto Dequino (alberto.dequino@unibo.it)
+ * Authors: Alberto Dequino (alberto.dequino@unibo.it), Calin Diaconu (calin.diaconu@studio.unibo.it)
  */
 
 
@@ -17,7 +17,8 @@
 
 
 //FORWARD
-void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
+void pulp_mhsa_fp32_fw_cl(void* Mhsa_args) {
+    // ======================================== DECLARATIONS ========================================
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
     float *coeffDataWin = mhsa_args->coeff_in->data;            //  Input Projection Weights
     float *coeffDataWout = mhsa_args->coeff_out->data;          //  Output Projection Weights (Already transposed from GM)
@@ -48,6 +49,11 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     int H = F / n_heads;                                        //  Head dimension
     float scaling = q_rsqrt((float)H);                          //  Scaling factor to avoid vanishing gradients
     //float scaling = 1/sqrt(H);
+
+
+    // ================================================== OP 1 ==================================================
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin @ inputData ->  qkv   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    3F x E    @   E x L   -> 3F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // Projecting input sequence into Q, K, V
     struct matMul_args matMul_args1;
@@ -106,27 +112,25 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     printf("\n");
     #endif
 
+    // ================================================== OP 2 ==================================================
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   qkv  ->  q, k, v  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 3F x L -> 3 (F x L) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     // Separate Q, K and V entry points in the QKV matrix. Q, K and V are F x L vectors.
+    // TODO 0006: Maybe different key size (from q and v)
     q = qkv;
     k = qkv + L*F;
     v = qkv + L*2*F;
 
-    /*
-    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    unsigned long _cycles = 0; 
-    int id = 0;
-    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    */
-
-
-
     //  Cycle on the different heads
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     for(int i = 0; i < n_heads; i++){
-        /*
-        //  Initialize the pointers to the correct starting positions for the i-th head
-        float* current_head_buffer = head_buffer + i*L*L;
-        float* current_softmax_buffer = softmax_buffer + i*L*L;
-        */
+        // ================================================== OP 3 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   k   -T-> temp [k ^ T] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L  ->     L x H     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [k ^ T] @   q   -> softmax_buffer ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    L x H     @ H x L ->      L x L     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         //  Transpose i-th head's K chunk
         struct transp_args transp_args2;
@@ -141,7 +145,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         struct matMul_args matMul_args2;
         matMul_args2.A = temp;
         matMul_args2.B = q + L*i*H;
-        matMul_args2.C = softmax_buffer;
+        matMul_args2.C = softmax_buffer + i * L * L;
         matMul_args2.N = L;
         matMul_args2.K = H;
         matMul_args2.M = L;
@@ -158,20 +162,31 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
         #endif
 
+
+        // ================================================== OP 4 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         //  Scale the current head values by a factor proportional to the head dimension
         struct scalar_mul_args s_m_args;
-        s_m_args.input = softmax_buffer;
+        s_m_args.input = softmax_buffer + i * L * L;
         s_m_args.scalar = scaling;
         s_m_args.dim = L*L;
 
         pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
 
 
+        // ================================================== OP 5 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
         struct transp_args transp_args4;
-        transp_args4.matrix = softmax_buffer;
+        transp_args4.matrix = softmax_buffer + i * L * L;
         transp_args4.transp_matrix = temp;
         transp_args4.N = L;
         transp_args4.M = L;
@@ -187,67 +202,37 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         printf("\n");
         #endif
 
-        /*
-        struct copy_args copy_args3;
-        copy_args3.from = temp;
-        copy_args3.to = current_head_buffer;
-        copy_args3.size = L*L;
-
-        pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
-        */
-
         //  Softmax algorithm
         struct softmax_args softmax_arg;
         struct blob input;
         struct blob output;
         input.data = temp;
         input.dim = L;
-        output.data = softmax_buffer;
+        output.data = softmax_buffer + i * L * L;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
         softmax_arg.maxes = maxes;
         softmax_arg.sums = sums;
 
-        /*
-        ///------------------------------------------------------------------///
-        //printf("\nSoftmax stats\n");
-        pi_perf_conf((1<<PI_PERF_CYCLES)); 
-
-
-        pi_perf_stop();
-        pi_perf_reset(); 
-        pi_perf_start();
-        */
-
-        //pi_cl_team_fork(NUM_CORES, pulp_softmax_fp32_fw_cl, &softmax_arg);
         pulp_softmax_fp32_fw_cl(&softmax_arg);
-        //pulp_partial_softmax_simple_fp32_fw_cl(&softmax_arg);
 
-        /*
-        pi_perf_stop(); 
-        _cycles   += pi_perf_read (PI_PERF_CYCLES); 
-        id = pi_core_id(); 
-        ///----------------------------------------------------------------///
-        */
+
+        // ================================================== OP 6 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+
+        // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
 
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
         struct transp_args transp_args5;
-        transp_args5.matrix = softmax_buffer;
+        transp_args5.matrix = softmax_buffer + i * L * L;
         transp_args5.transp_matrix = temp;
         transp_args5.N = L;
         transp_args5.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args5);
-
-        /*
-        struct copy_args copy_args4;
-        copy_args4.from = temp;
-        copy_args4.to = current_softmax_buffer;
-        copy_args4.size = L*L;
-
-        pi_cl_team_fork(NUM_CORES, copy, &copy_args4);
-        */
 
         //  Multiply softmax result with the i-th head's Vt chunk
         struct matMul_args matMul_args3;
@@ -270,6 +255,7 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
         #endif
     }
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #ifdef DEBUG
     printf("\nAttention results: %d %d\n", F, L);
@@ -291,12 +277,10 @@ void pulp_mhsa_fp32_fw_cl(void* Mhsa_args){
     printf("\n");
     #endif
 
-    /*
-    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    printf("\n"); 
-    printf("[%d] TOTAL softmax cycles = %lu\n", id, _cycles); 
-    ///////////////////////////DELETE THIS////////////////////////////////////////////////////
-    */
+
+    // ================================================== OP 7 ==================================================
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> outData ~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~     E x F     @     F x L     ->  E x L  ~~~~~~~~~~~~~~~~~~~~~~
 
     //  Final attention map projection
     struct matMul_args matMul_args4;
@@ -647,12 +631,14 @@ void pulp_mhsa_fp32_fw_cl_2(void* Mhsa_args){
 
 //BACKWARD
 void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
+    // ======================================== DECLARATIONS ========================================
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
 
     float *coeffDataWin = mhsa_args->coeff_in->data; // E x 3F
     float *coeffDataWout = mhsa_args->coeff_out->data; // E x F
-    float *inData = mhsa_args->input->data; // L x E
-    float *temp = mhsa_args->temp_buffer; // Temporary buffer to save transposed matrices // TODO: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+    float *inputData = mhsa_args->input->data; // L x E
+    // TODO 0007: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
+    float *temp = mhsa_args->temp_buffer; // Temporary buffer to save transposed matrices
     float *grad = mhsa_args->grad; // L x L
     float *outData = mhsa_args->output->data; // L x E
     float *attention_map = mhsa_args->attention_map->data; // F x L
@@ -670,9 +656,10 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     int H = F / n_heads;
     int opt_matmul_type = mhsa_args->opt_matmul_type_wg;
 
-    float *q = mhsa_args->qkv->data; // 3F x L
-    float *k = mhsa_args->qkv->data + F*L;
-    float *v = mhsa_args->qkv->data + 2*F*L;
+    // qkv ~ 3F x L
+    float *q = mhsa_args->qkv->data;            // F x L
+    float *k = mhsa_args->qkv->data + F*L;      // F x L
+    float *v = mhsa_args->qkv->data + 2*F*L;    // F x L
 
     float *q_diff = mhsa_args->qkv->diff; // 3F x L
     float *k_diff = mhsa_args->qkv->diff + F*L;
@@ -680,45 +667,52 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
 
 
     float *outDiff = mhsa_args->output->diff; // L x E
-    float *inDiff = mhsa_args->input->diff; // L x E
+    float *inputDiff = mhsa_args->input->diff; // L x E
     float *attention_map_diff = mhsa_args->attention_map->diff; // F x L
-    float *head_buffer_diff = mhsa_args->head_buffer->diff; // L x L
+    float *softmax_buffer_diff = mhsa_args->softmax_buffer->diff;
 
-    
-    
-    #ifdef DEBUG
-    printf("\noutData\n");
-    for(int i=0; i<total_dim; i++){
-    if(!(i%E)) printf("\n");
-      printf("%4.2e  ",outData[i]);
-    }
-    printf("\n");
+    float scaling = q_rsqrt((float)H);
 
-    printf("\nLinear outDiff\n");
-    for(int i=0; i<total_dim; i++){
-    if(!(i%E)) printf("\n");
-      printf("%4.2e  ",outDiff[i]);
-    }
-    printf("\n");
-    #endif
+    // ================================================== BACKPROP 7 ==================================================
+    // INITIAL OP [A @ B -> C]
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> outData ~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~     E x F     @     F x L     ->  E x L  ~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // BACKPROP 8.1 [dC @ B^T -> dA]
+    // ~~~~~~~~~~~~~~~~~~~~~~ attention_map -T-> temp [attention_map ^ T] ~~~~~~~~~~~~~~~~~~~~~~                (T1)
+    // ~~~~~~~~~~~~~~~~~~~~~~     F x L     -T->         L x F            ~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // ~~~~~~~~~~~~~~~~~~~~~~ outDiff @ temp [attention_map ^ T] -> coeffDiffWout ~~~~~~~~~~~~~~~~~~~~~~        (M1)
+    // ~~~~~~~~~~~~~~~~~~~~~~  E x L  @           L x F          ->     E x F    ~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // BACKPROP 8.2 [A^T @ dC -> dB]
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout -T-> temp [coeffDataWout ^ T] ~~~~~~~~~~~~~~~~~~~~~~                (T2)
+    // ~~~~~~~~~~~~~~~~~~~~~~     E x F     -T->         F x E            ~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // ~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWout ^ T] @ outDiff -> attention_map_diff ~~~~~~~~~~~~~~~~~~~~~~   (M2)
+    // ~~~~~~~~~~~~~~~~~~~~~~         F x E            @  E x L  ->       F x L        ~~~~~~~~~~~~~~~~~~~~~~
 
+    // T1
+    struct transp_args transp_args1;
+    transp_args1.matrix = attention_map;
+    transp_args1.transp_matrix = temp;
+    transp_args1.N = F;
+    transp_args1.M = L;
 
-    // Calculate gradient for Output Weights and Attention Map
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
 
-    // Attention Map
-
-    // matmul setup 1
+    // M1
     struct matMul_args matMul_args1;
-    matMul_args1.A = outDiff; 
-    matMul_args1.B = coeffDataWout; 
-    matMul_args1.C = attention_map_diff;
-    matMul_args1.N = L;
-    matMul_args1.K = E;
+    matMul_args1.A = outDiff;
+    matMul_args1.B = temp;
+    matMul_args1.C = coeffDiffWout;
+    matMul_args1.N = E;
+    matMul_args1.K = L;
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1); // Gradient of attention map: (L x E)*(E x F) - > (L x F)
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args1);
     #else
     struct mm_manager_args man_args1;
     man_args1.mm_args = &matMul_args1;
@@ -728,54 +722,27 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
     #endif
 
-    //Transpose map gradients (copy required because transpose can't be done inplace)
-    struct transp_args transp_args1;
-    transp_args1.matrix = attention_map_diff;
-    transp_args1.transp_matrix = temp;
-    transp_args1.N = L;
-    transp_args1.M = F;
+    // T2
+    struct transp_args transp_args2;
+    transp_args2.matrix = coeffDataWout;
+    transp_args2.transp_matrix = temp;
+    transp_args2.N = E;
+    transp_args2.M = F;
 
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
 
-    struct copy_args copy_args1;
-    copy_args1.from = temp;
-    copy_args1.to = attention_map_diff;
-    copy_args1.size = F*L;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args1); // Transposed gradient of attention map: (L x F) - > (F x L)
-
-    // Output Projection Weights
-
-
-    // matmul setup 2
+    // M2
     struct matMul_args matMul_args2;
-    matMul_args2.A = attention_map; 
-    matMul_args2.B = outDiff; 
-    matMul_args2.C = coeffDiffWout;
+    matMul_args2.A = temp;
+    matMul_args2.B = outDiff;
+    matMul_args2.C = attention_map_diff;
     matMul_args2.N = F;
-    matMul_args2.K = L;
-    matMul_args2.M = E;
+    matMul_args2.K = E;
+    matMul_args2.M = L;
     matMul_args2.trans_B = 0;
 
-
-    #ifdef DEBUG
-    printf("\ngrad\n");
-    for (int i=0; i<total_dim; i++){
-        if(!(i%E)) printf("\n");
-        printf("%4.2e  ", outDiff[i]);
-    }
-    printf("\n");
-
-    printf("\nTransposed Attention map\n");
-    for (int i=0; i<F*L; i++){
-        if(!(i%L)) printf("\n");
-        printf("%4.2e  ", attention_map[i]);
-    }
-    printf("\n");
-    #endif
-
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2); // Output weight gradient: (F x L)*(L x E) - > (F x E)
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args2);
     #else
     struct mm_manager_args man_args2;
     man_args2.mm_args = &matMul_args2;
@@ -785,49 +752,39 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
     #endif
 
-
-    // Transpose Linear Output Weight gradients
-    struct transp_args transp_args9;
-    transp_args9.matrix = coeffDiffWout;
-    transp_args9.transp_matrix = temp;
-    transp_args9.N = F;
-    transp_args9.M = E;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args9);
-
-    struct copy_args copy_args9;
-    copy_args9.from = temp;
-    copy_args9.to = coeffDiffWout;
-    copy_args9.size = E*F;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args9); // Transposed output weight gradient: (F x E) - > (E x F)
-
-
-    #ifdef DEBUG
-    printf("\nLinear coeffDiffWout");
-    for (int i=0; i<E*F; i++){
-      if(!(i%F)) printf("\n");
-      printf("%4.2e (i=%d)", coeffDiffWout[i], i);
-    }
-    printf("\n");
-    #endif
-
     // Cycle on the heads
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     for(int i=0; i<n_heads; i++){
-        // I-th head Value Gradient
-
-        // matmul setup 3
+        // ================================================ BACKPROP 6 ================================================
+        // INITIAL OPS
+        // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+        // [A @ B -> C]
+        // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // BACKPROP 6.1 [dC @ B^T -> dA]
+        // ~~~~~~~~~~~~~~~~~~~~~~ attention_map_diff @ softmax_buffer [softmax_buffer ^ T] -> v_diff ~~~~~~~~~~~~~~~~~~~~~~   (M3)
+        // ~~~~~~~~~~~~~~~~~~~~~~       H x L        @               L x L                 -> H x L  ~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // BACKPROP 6.2 [A^T @ dC -> dB]
+        // ~~~~~~~~~~~~~~~~~~~~~~   v   -T-> temp [v ^ T] ~~~~~~~~~~~~~~~~~~~~~~                                    (T4)
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L -T->   L x H      ~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // ~~~~~~~~~ temp [v ^ T] @ attention_map_diff -> softmax_buffer_diff [softmax_buffer_diff ^ T] ~~~~~~~~~   (M4)
+        // ~~~~~~~~~    L X H     @      H x L         ->                    L x L                      ~~~~~~~~~
+        // M3
         struct matMul_args matMul_args3;
-        matMul_args3.A = attention_map_diff + i*L*H; 
-        matMul_args3.B = softmax_buffer + i*L*L; 
-        matMul_args3.C = v_diff + i*L*H;
+        matMul_args3.A = attention_map_diff + i * L * H;
+        matMul_args3.B = softmax_buffer + i * L * L;
+        matMul_args3.C = v_diff + i * L * H;
         matMul_args3.N = H;
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
         #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3); // i-th head Value gradient: (H x L)*(L x L) - > (H x L)
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args3);
         #else
         struct mm_manager_args man_args3;
         man_args3.mm_args = &matMul_args3;
@@ -837,31 +794,27 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
         #endif
 
+        // T4
+        struct transp_args transp_args4;
+        transp_args4.matrix = v + i * L * H;
+        transp_args4.transp_matrix = temp;
+        transp_args4.N = H;
+        transp_args4.M = L;
 
-        // I-th head Buffer Gradient
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args4);
 
-        // Transpose output gradients
-        struct transp_args transp_args3;
-        transp_args3.matrix = attention_map_diff + i*L*H;
-        transp_args3.transp_matrix = temp;
-        transp_args3.N = H;
-        transp_args3.M = L;
-
-        pi_cl_team_fork(NUM_CORES, transpose, &transp_args3); // Transpose i-th head attention map gradient: (H x L) - > (L x H) 
-
-
-        // matmul setup 4
+        // M4
         struct matMul_args matMul_args4;
-        matMul_args4.A = temp; 
-        matMul_args4.B = v + i*L*H; 
-        matMul_args4.C = head_buffer_diff + i*L*L;
+        matMul_args4.A = temp;
+        matMul_args4.B = attention_map_diff + i * L * H;
+        matMul_args4.C = softmax_buffer_diff + i * L * L;
         matMul_args4.N = L;
         matMul_args4.K = H;
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
 
         #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args4); // i-th head Buffer gradient: (L x H)*(H x L) - > (L x L)
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args4);
         #else
         struct mm_manager_args man_args4;
         man_args4.mm_args = &matMul_args4;
@@ -872,54 +825,120 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         #endif
 
 
+        // ================================================ BACKPROP 5 ================================================
+        // INITIAL OP
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
+        // BACKPROP
+        // ~~~~~~~~~~~~~~~~~~ "IN-PLACE"_TRANSFORM (softmax_buffer_diff) [L x L] ~~~~~~~~~~~~~~~~~~                                                                 (T5 & C1)
+        // ~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] & softmax_buffer_diff [softmax_buffer_diff ^ T] -BW_SM->  grad [sm_diff ^ T] ~~~~~~~~~~~~~~~~~~   (SM1)
+        // ~~~~~~~~~~~~~~~~~~               L x L                 &                  L x L                        -BW_SM->       L x L         ~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~ "IN-PLACE"_TRANSFORM (grad) [L x L] ~~~~~~~~~~~~~~~~~~                                                                                (T7 & C3)
+        // T5
+        struct transp_args transp_args5;
+        transp_args5.matrix = softmax_buffer_diff + i * L * L;
+        transp_args5.transp_matrix = temp;
+        transp_args5.N = L;
+        transp_args5.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args5);
+
+        // C1
+        struct copy_args copy_args1;
+        copy_args1.from = temp;
+        copy_args1.to = softmax_buffer_diff + i * L * L;
+        copy_args1.size = L*L;
+
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args1);
+
+        // SM1
         struct act_args softmax_arg;
         struct blob input;
         struct blob output;
         input.diff = grad;
-        input.dim = L*L;
-        output.data = softmax_buffer + i*L*L;
-        output.diff = head_buffer_diff + i*L*L;
-        output.dim = i;
+        input.dim = i;
+        output.data = softmax_buffer + i * L * L;
+        output.diff = softmax_buffer_diff + i * L * L;
+        output.dim = L;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
-        // Back propagation of i-th head Buffer gradient through the softmax operation
 
-        
         pi_cl_team_fork(1, pulp_softmax_fp32_bw_cl, &softmax_arg);
 
+        // T7
+        struct transp_args transp_args7;
+        transp_args7.matrix = grad;
+        transp_args7.transp_matrix = temp;
+        transp_args7.N = L;
+        transp_args7.M = L;
 
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args7);
 
-
-        // I-th head Query Gradient
-        
-        // Transpose softmax gradients
-        struct transp_args transp_args4;
-        transp_args4.matrix = grad;
-        transp_args4.transp_matrix = temp;
-        transp_args4.N = L;
-        transp_args4.M = L;
-
-        pi_cl_team_fork(NUM_CORES, transpose, &transp_args4); 
-
+        // C3
         struct copy_args copy_args3;
         copy_args3.from = temp;
         copy_args3.to = grad;
         copy_args3.size = L*L;
 
-        pi_cl_team_fork(NUM_CORES, copy, &copy_args3); // Still (L x L). Unsure if it is needed.
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
 
-        // matmul setup 5
+
+        // ================================================ BACKPROP 4 ================================================
+        // INITIAL OP
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // BACKPROP
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ grad [softmax_buffer] *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~               L x L             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        struct scalar_mul_args s_m_args;
+        s_m_args.input = grad;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = L*L;
+
+        pi_cl_team_fork(NUM_CORES,  pulp_scalar_mul_fp32_cl, &s_m_args);
+
+
+        // ================================================ BACKPROP 3 ================================================
+        // INITIAL OP
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   k   -T-> temp [k ^ T] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L  ->     L x H     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // [A @ B -> C]
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [k ^ T] @   q   -> softmax_buffer ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    L x H     @ H x L ->     L x L      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // BACKPROP 3.1 [dC @ B^T -> dA]
+        // ~~~~~~~~~~~~~~~~~~~~~~   q   -T-> temp [q ^ T] ~~~~~~~~~~~~~~~~~~~~~~                                     (T8)
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L -T->    L x H     ~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  grad @ temp [q ^ T] -> k_diff [k_diff ^ T] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ (M5)
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ L x L @     L x H    ->      L x H          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~ "IN-PLACE"_TRANSFORM (k_diff) [L x H] -> [H x L] ~~~~~~~~~~~~~~~~~~                    (T9 & C4)
+        //
+        // BACKPROP 3.2 [A^T @ dC -> dB]
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   k   @ grad  -> q_diff ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                     (M6)
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L @ L x L -> H x L  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // T8
+        struct transp_args transp_args8;
+        transp_args8.matrix = q + i * L * H;
+        transp_args8.transp_matrix = temp;
+        transp_args8.N = H;
+        transp_args8.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args8);
+
+        // M5
         struct matMul_args matMul_args5;
-        matMul_args5.A = k + i*L*H; 
-        matMul_args5.B = grad; 
-        matMul_args5.C = q_diff + i*L*H;
-        matMul_args5.N = H;
+        matMul_args5.A = grad;
+        matMul_args5.B = temp;
+        matMul_args5.C = k_diff + i * L * H;
+        matMul_args5.N = L;
         matMul_args5.K = L;
-        matMul_args5.M = L;
+        matMul_args5.M = H;
         matMul_args5.trans_B = 0;
 
         #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args5); // i-th head Query gradient: (H x L)*(L x L) - > (H x L)
+        pi_cl_team_fork(NUM_CORES,  mm, &matMul_args5);
         #else
         struct mm_manager_args man_args5;
         man_args5.mm_args = &matMul_args5;
@@ -929,21 +948,35 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args5);
         #endif
 
+        // T9
+        struct transp_args transp_args9;
+        transp_args9.matrix = k_diff + i * L * H;
+        transp_args9.transp_matrix = temp;
+        transp_args9.N = L;
+        transp_args9.M = H;
 
-        // I-th head Key Gradients
+        pi_cl_team_fork(NUM_CORES, transpose, &transp_args9);
 
-        // matmul setup 6
+        // C4
+        struct copy_args copy_args4;
+        copy_args4.from = temp;
+        copy_args4.to = k_diff + i * L * H;
+        copy_args4.size = L*H;
+
+        pi_cl_team_fork(NUM_CORES, copy, &copy_args4);
+
+        // M6
         struct matMul_args matMul_args6;
-        matMul_args6.A = q + i*L*H; 
-        matMul_args6.B = grad; 
-        matMul_args6.C = k_diff + i*L*H;
+        matMul_args6.A = k + i * L * H;
+        matMul_args6.B = grad;
+        matMul_args6.C = q_diff + i * L * H;
         matMul_args6.N = H;
         matMul_args6.K = L;
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
 
         #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args6); // i-th head Key gradient: (H x L)*(L x L) - > (H x L)
+        pi_cl_team_fork(NUM_CORES, mm, &matMul_args6);
         #else
         struct mm_manager_args man_args6;
         man_args6.mm_args = &matMul_args6;
@@ -953,21 +986,43 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args6);
         #endif
     }
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    // Input projection Gradients
-    
-    // matmul setup 7
+    // ================================================== BACKPROP 1 ==================================================
+    // INITIAL OP [A @ B -> C]
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin @ inputData ->  qkv   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    3F x E    @   E x L   -> 3F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // BACKPROP 1.1 [dC @ B^T -> dA]
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ q_diff [qkvDiff] @ inputData ^ T -> coeffDiffWin ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    (M7)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      3F x L      @     L x E     ->   3F x E     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // BACKPROP 1.2 [A^T @ dC -> dB]
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin -T-> temp [coeffDataWin ^ T] ~~~~~~~~~~~~~~~~~~~~~~                           (T10)
+    // ~~~~~~~~~~~~~~~~~~~~~~    3F x E    -T->        E x 3F           ~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWin ^ T] @ q_diff [qkvDiff] -> inputDiff ~~~~~~~~~~~~~~~~~~~~~~~~~~    (M8)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~         E x 3F          @      3F x L      ->   E x L   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // TX
+    struct transp_args transp_argsX;
+    transp_argsX.matrix = inputData;
+    transp_argsX.transp_matrix = temp;
+    transp_argsX.N = E;
+    transp_argsX.M = L;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_argsX);
+
+    // M7
     struct matMul_args matMul_args7;
-    matMul_args7.A = q_diff; 
-    matMul_args7.B = inData; 
+    matMul_args7.A = q_diff;
+    matMul_args7.B = temp;
     matMul_args7.C = coeffDiffWin;
-    matMul_args7.N = 3*F;
+    matMul_args7.N = 3 * F;
     matMul_args7.K = L;
     matMul_args7.M = E;
     matMul_args7.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args7); // Input weight gradient: (3F x L)*(L x E) - > (3F x E)
+    pi_cl_team_fork(NUM_CORES,  mm, &matMul_args7);
     #else
     struct mm_manager_args man_args7;
     man_args7.mm_args = &matMul_args7;
@@ -977,39 +1032,27 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7);
     #endif
 
-    // Transpose input weight gradients
-    struct transp_args transp_args5;
-    transp_args5.matrix = coeffDiffWin;
-    transp_args5.transp_matrix = temp;
-    transp_args5.N = 3*F;
-    transp_args5.M = E;
+    // T10
+    struct transp_args transp_args10;
+    transp_args10.matrix = coeffDataWin;
+    transp_args10.transp_matrix = temp;
+    transp_args10.N = 3 * F;
+    transp_args10.M = E;
 
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args5); 
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args10);
 
-    struct copy_args copy_args4;
-    copy_args4.from = temp;
-    copy_args4.to = coeffDiffWin;
-    copy_args4.size = E*3*F;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args4); // Transpose input weight gradient: (3F x E) - > (E x 3F)
-
-
-
-
-    // Input Gradients
-
-    // matmul setup 8
+    // M8
     struct matMul_args matMul_args8;
-    matMul_args8.A = coeffDataWin; 
-    matMul_args8.B = q_diff; 
-    matMul_args8.C = inDiff;
+    matMul_args8.A = temp;
+    matMul_args8.B = q_diff;
+    matMul_args8.C = inputDiff;
     matMul_args8.N = E;
-    matMul_args8.K = 3*F;
+    matMul_args8.K = 3 * F;
     matMul_args8.M = L;
     matMul_args8.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8); // Input gradients: (E x 3F)*(3F x L) - > (E x L)
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8);
     #else
     struct mm_manager_args man_args8;
     man_args8.mm_args = &matMul_args8;
@@ -1018,26 +1061,4 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args) {
     man_args8.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8);
     #endif
-
-    // Transpose input weight gradients
-    struct transp_args transp_args6;
-    transp_args6.matrix = inDiff;
-    transp_args6.transp_matrix = temp;
-    transp_args6.N = E;
-    transp_args6.M = L;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args6); 
-
-    struct copy_args copy_args5;
-    copy_args5.from = temp;
-    copy_args5.to = inDiff;
-    copy_args5.size = L*E;
-
-    pi_cl_team_fork(NUM_CORES, copy, &copy_args5); // Input gradients transpose: (E x L) - > (L x E)
-
-
 }
-  
-
-
-
