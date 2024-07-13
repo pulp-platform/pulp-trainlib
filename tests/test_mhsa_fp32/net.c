@@ -16,13 +16,15 @@
  * Authors: Alberto Dequino (alberto.dequino@unibo.it), Calin Diaconu (calin.diaconu@studio.unibo.it)
  */
 
+// Required to be first library to be included!
+#include "pulp_train.h"
+
 #include "attention_scores.h"
 #include "init-defines.h"
 #include "input-sequence.h"
 #include "mhsa-grads.h"
 #include "mhsa-output.h"
 #include "net.h"
-#include "pulp_train.h"
 #include "stats.h"
 #include "step-check.h"
 
