@@ -42,7 +42,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     int F = mhsa_args->attention_map->W;                        //  Hidden dimension of attention (N. Heads * Head dimension)
 
     #ifdef DEBUG
-    printf("\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
+    printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
     #endif
 
     int H = F / n_heads;                                        //  Head dimension
@@ -66,22 +66,6 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     matMul_args1.M = L;
     matMul_args1.trans_B = 0;
 
-    #ifdef DEBUG
-    printf("\ninputData: %d %d\n", E, L);
-    for (int j=0; j<L*E; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.B[j]);
-    }
-    printf("\n");
-
-    printf("\nWin: %d %d\n", 3*F, E);
-    for (int j=0; j<E*3*F; j++){
-        if(!(j%(E))) printf("\n");
-        printf("%.8f ",  matMul_args1.A[j]);
-    }
-    printf("\n");
-    #endif
-
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1);
     #else
@@ -94,21 +78,25 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     #endif
 
     #ifdef DEBUG
-    printf("\nQKV Data: %d %d\n", 3*F, L);
-    for (int j=0; j<L*3*F; j++){
+    printf("\nM1 result\n\ncoeffDataWin: %d %d\n", 3*F, E);
+    for (int j=0; j<3*F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  matMul_args1.A[j]);
+    }
+    printf("\n");
+
+    printf("\ninputData: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args1.B[j]);
+    }
+    printf("\n");
+
+    printf("\nqkv: %d %d\n", 3*F, L);
+    for (int j=0; j<3*F*L; j++){
         if(!(j%(L))) printf("\n");
         printf("%.8f ", matMul_args1.C[j]);
     }
-    printf("\n");
-    #endif
-
-    #ifdef DEBUG
-    printf("\nWout: %d %d\n", E, F);
-    for(int i=0; i<E*F; i++){
-        if(!(i%F))
-            printf("\n");
-        printf("%.8f ", coeffDataWout[i]);
-    }   
     printf("\n");
     #endif
 
@@ -121,6 +109,36 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     q = qkv;
     k = qkv + L * F;
     v = qkv + L * 2 * F;
+
+    #ifdef DEBUG
+    printf("\nSplit result\n\nqkv: %d %d\n", 3*F, L);
+    for (int j=0; j<3*F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  qkv[j]);
+    }
+    printf("\n");
+
+    printf("\nq: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  q[j]);
+    }
+    printf("\n");
+
+    printf("\nk: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  k[j]);
+    }
+    printf("\n");
+
+    printf("\nv: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  v[j]);
+    }
+    printf("\n");
+    #endif
 
     //  Cycle on the different heads
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,6 +159,23 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
 
+        #ifdef DEBUG
+        printf("\nHead %d - T1 result\n\nk: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args1.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", transp_args1.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
+        // M2
         //  Multiply it with the i-th head's Q chunk
         struct matMul_args matMul_args2;
         matMul_args2.A = temp;
@@ -162,6 +197,29 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
         #endif
 
+        #ifdef DEBUG
+        printf("\nHead %d - M2 result\n\ntemp: %d %d\n", i, L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ",  matMul_args2.A[j]);
+        }
+        printf("\n");
+
+        printf("\nq: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args2.B[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args2.C[j]);
+        }
+        printf("\n");
+        #endif
+
 
         // ================================================== OP 4 ==================================================
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,7 +230,25 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         s_m_args.scalar = scaling;
         s_m_args.dim = L * L;
 
+        #ifdef DEBUG
+        printf("\nHead %d - scalar result\n\nsoftmax_buffer (BEFORE scaling): %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", s_m_args.input[j]);
+        }
+        printf("\n");
+        #endif
+
         pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &s_m_args);
+
+        #ifdef DEBUG
+        printf("\nsoftmax_buffer (AFTER scaling): %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", s_m_args.input[j]);
+        }
+        printf("\n");
+        #endif
 
 
         // ================================================== OP 5 ==================================================
@@ -195,10 +271,17 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
 
         #ifdef DEBUG
-        printf("\nCurrent head buffer Data: %d %d\n", L, L);
+        printf("\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", temp[j]);
+            printf("%.8f ",  transp_args2.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", transp_args2.transp_matrix[j]);
         }
         printf("\n");
         #endif
@@ -217,6 +300,22 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
         pulp_softmax_fp32_fw_cl(&softmax_arg);
 
+        #ifdef DEBUG
+        printf("\nHead %d - softmax result\n\ntemp: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  softmax_arg.input.data[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", softmax_arg.output.data[j]);
+        }
+        printf("\n");
+        #endif
+
 
         // ================================================== OP 6 ==================================================
         // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
@@ -225,6 +324,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
         // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
 
+        // T3
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
         struct transp_args transp_args3;
@@ -235,7 +335,23 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args3);
 
-        //  Multiply softmax result with the i-th head's Vt chunk
+        #ifdef DEBUG
+        printf("\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args3.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", transp_args3.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
+        // M3
         struct matMul_args matMul_args3;
         matMul_args3.A = v + L * i * H;
         matMul_args3.B = temp;
@@ -255,34 +371,37 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
         #endif
+
+        #ifdef DEBUG
+        printf("\nHead %d - M3 result\n\nv: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  matMul_args3.A[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args3.B[j]);
+        }
+        printf("\n");
+
+        printf("\nattention_map: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args3.C[j]);
+        }
+        printf("\n");
+        #endif
     }
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    #ifdef DEBUG
-    printf("\nAttention results: %d %d\n", F, L);
-    for(int i=0; i<F*L; i++){
-        if(!(i%L))
-            printf("\n");
-        printf("%.8f ", attention_map[i]);
-    }   
-    printf("\n");
-    #endif
-
-    #ifdef DEBUG
-    printf("\nWout: %d %d\n", E, F);
-    for(int i=0; i<E*F; i++){
-        if(!(i%F))
-            printf("\n");
-        printf("%.8f ", coeffDataWout[i]);
-    }   
-    printf("\n");
-    #endif
-
 
     // ================================================== OP 7 ==================================================
     // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> outData ~~~~~~~~~~~~~~~~~~~~~~       (M4)
     // ~~~~~~~~~~~~~~~~~~~~~~     E x F     @     F x L     ->  E x L  ~~~~~~~~~~~~~~~~~~~~~~
 
+    // M4
     //  Final attention map projection
     struct matMul_args matMul_args4;
     matMul_args4.A = coeffDataWout;
@@ -305,12 +424,26 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     #endif
 
     #ifdef DEBUG
-    printf("\nTransposed Output sequence Data: %d %d\n", E, L);
-    for (int j=0; j<L*E; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args4.C[j]);
-    }
-    printf("\n");
+    printf("\nM4 result\n\ncoeffDataWout: %d %d\n", E, F);
+        for (int j=0; j<E*F; j++){
+            if(!(j%(F))) printf("\n");
+            printf("%.8f ",  matMul_args4.A[j]);
+        }
+        printf("\n");
+
+        printf("\nq: %d %d\n", F, L);
+        for (int j=0; j<F*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args4.B[j]);
+        }
+        printf("\n");
+
+        printf("\noutData: %d %d\n", E, L);
+        for (int j=0; j<E*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args4.C[j]);
+        }
+        printf("\n");
     #endif
 }
 
@@ -383,6 +516,23 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
 
+    #ifdef DEBUG
+    printf("\n~~~~~~~~~~~~~~~BACKWARD PASS~~~~~~~~~~~~~~~\n\n");
+    printf("\nT1 result\n\nattention_map: %d %d\n", F, L);
+    for (int j=0; j<H*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  transp_args1.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", L, F);
+    for (int j=0; j<L*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ", transp_args1.transp_matrix[j]);
+    }
+    printf("\n");
+    #endif
+
     // M1
     struct matMul_args matMul_args1;
     matMul_args1.A = outDiff;
@@ -404,6 +554,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
     #endif
 
+    #ifdef DEBUG
+    printf("\nM1 result\n\noutDiff: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  matMul_args1.A[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", L, F);
+    for (int j=0; j<L*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ", matMul_args1.B[j]);
+    }
+    printf("\n");
+
+    printf("\ncoeffDiffWout: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ", matMul_args1.C[j]);
+    }
+    printf("\n");
+    #endif
+
     // T2
     struct transp_args transp_args2;
     transp_args2.matrix = coeffDataWout;
@@ -412,6 +585,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     transp_args2.M = F;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args2);
+
+    #ifdef DEBUG
+    printf("\ncoeffDataWout: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  transp_args2.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", transp_args2.transp_matrix[j]);
+    }
+    printf("\n");
+    #endif
 
     // M2
     struct matMul_args matMul_args2;
@@ -432,6 +621,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     man_args2.step_type = STEP_FW;
     man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nM2 result\n\ntemp: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  matMul_args2.A[j]);
+    }
+    printf("\n");
+
+    printf("\noutDiff: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args2.B[j]);
+    }
+    printf("\n");
+
+    printf("\nattention_map_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args2.C[j]);
+    }
+    printf("\n");
     #endif
 
     // Cycle on the heads
@@ -478,6 +690,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
         #endif
 
+        #ifdef DEBUG
+        printf("\nHead %d - M3 result\n\nattention_map_diff: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  matMul_args3.A[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args3.B[j]);
+        }
+        printf("\n");
+
+        printf("\nv_diff: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args3.C[j]);
+        }
+        printf("\n");
+        #endif
+
         // T3
         struct transp_args transp_args3;
         transp_args3.matrix = v + i * L * H;
@@ -486,6 +721,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         transp_args3.M = L;
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args3);
+
+        #ifdef DEBUG
+        printf("\nHead %d - T3 result\n\nv: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args3.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", transp_args3.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
 
         // M4
         struct matMul_args matMul_args4;
@@ -506,6 +757,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         man_args4.step_type = STEP_FW;
         man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args4);
+        #endif
+
+        #ifdef DEBUG
+        printf("\nHead %d - M4 result\n\ntemp: %d %d\n", i, L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ",  matMul_args4.A[j]);
+        }
+        printf("\n");
+
+        printf("\nattention_map_diff: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args4.B[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer_diff: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args4.C[j]);
+        }
+        printf("\n");
         #endif
 
 
@@ -532,6 +806,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args4);
 
+        #ifdef DEBUG
+        printf("\nHead %d - T4 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args4.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", transp_args4.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
         // C1
         struct copy_args copy_args1;
         copy_args1.from = temp;
@@ -539,6 +829,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         copy_args1.size = L * L;
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args1);
+
+        #ifdef DEBUG
+        printf("\nHead %d - C1 result\n\ntemp: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  copy_args1.from[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer_diff: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", copy_args1.to[j]);
+        }
+        printf("\n");
+        #endif
 
         // SM
         struct act_args softmax_arg;
@@ -554,6 +860,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(1, pulp_softmax_fp32_bw_cl, &softmax_arg);
 
+        #ifdef DEBUG
+        printf("\nHead %d - softmax backprop result\n\nsoftmax_buffer: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  softmax_arg.output.data[j]);
+        }
+        printf("\n");
+
+        printf("\nsoftmax_buffer_diff: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", softmax_arg.output.diff[j]);
+        }
+        printf("\n");
+
+        printf("\ngrad: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", softmax_arg.input.diff[j]);
+        }
+        printf("\n");
+        #endif
+
         // T5
         struct transp_args transp_args5;
         transp_args5.matrix = grad;
@@ -563,6 +892,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args5);
 
+        #ifdef DEBUG
+        printf("\nHead %d - T5 result\n\ngrad: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args5.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", transp_args5.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
         // C2
         struct copy_args copy_args2;
         copy_args2.from = temp;
@@ -570,6 +915,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         copy_args2.size = L * L;
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args2);
+
+        #ifdef DEBUG
+        printf("\nHead %d - C2 result\n\ntemp: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  copy_args2.from[j]);
+        }
+        printf("\n");
+
+        printf("\ngrad: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", copy_args1.to[j]);
+        }
+        printf("\n");
+        #endif
 
 
         // ================================================ BACKPROP 4 ================================================
@@ -587,7 +948,25 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         s_m_args.scalar = scaling;
         s_m_args.dim = L * L;
 
+        #ifdef DEBUG
+        printf("\nHead %d - backprop scalar result\n\ngrad (BEFORE scaling): %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", s_m_args.input[j]);
+        }
+        printf("\n");
+        #endif
+
         pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &s_m_args);
+
+        #ifdef DEBUG
+        printf("\ngrad (AFTER scaling): %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", s_m_args.input[j]);
+        }
+        printf("\n");
+        #endif
 
 
         // ================================================ BACKPROP 3 ================================================
@@ -619,6 +998,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args6);
 
+        #ifdef DEBUG
+        printf("\nHead %d - T6 result\n\nq: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  transp_args6.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", transp_args6.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
         // M5
         struct matMul_args matMul_args5;
         matMul_args5.A = grad;
@@ -640,6 +1035,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args5);
         #endif
 
+        #ifdef DEBUG
+        printf("\nHead %d - M5 result\n\ngrad: %d %d\n", i, L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  matMul_args5.A[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", matMul_args5.B[j]);
+        }
+        printf("\n");
+
+        printf("\nk_diff: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", matMul_args5.C[j]);
+        }
+        printf("\n");
+        #endif
+
         // T7
         struct transp_args transp_args7;
         transp_args7.matrix = k_diff + i * L * H;
@@ -649,6 +1067,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, transpose, &transp_args7);
 
+        #ifdef DEBUG
+        printf("\nHead %d - T7 result\n\nk_diff: %d %d\n", i, L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ",  transp_args7.matrix[j]);
+        }
+        printf("\n");
+
+        printf("\ntemp: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", transp_args7.transp_matrix[j]);
+        }
+        printf("\n");
+        #endif
+
         // C3
         struct copy_args copy_args3;
         copy_args3.from = temp;
@@ -656,6 +1090,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         copy_args3.size = L * H;
 
         pi_cl_team_fork(NUM_CORES, copy, &copy_args3);
+
+        #ifdef DEBUG
+        printf("\nHead %d - C3 result\n\ntemp: %d %d\n", i, L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ",  copy_args3.from[j]);
+        }
+        printf("\n");
+
+        printf("\nk_diff: %d %d\n", L, H);
+        for (int j=0; j<L*H; j++){
+            if(!(j%(H))) printf("\n");
+            printf("%.8f ", copy_args2.to[j]);
+        }
+        printf("\n");
+        #endif
 
         // M6
         struct matMul_args matMul_args6;
@@ -676,6 +1126,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         man_args6.step_type = STEP_FW;
         man_args6.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args6);
+        #endif
+
+        #ifdef DEBUG
+        printf("\nHead %d - M6 result\n\nk: %d %d\n", i, H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ",  matMul_args6.A[j]);
+        }
+        printf("\n");
+
+        printf("\ngrad: %d %d\n", L, L);
+        for (int j=0; j<L*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args6.B[j]);
+        }
+        printf("\n");
+
+        printf("\nq_diff: %d %d\n", H, L);
+        for (int j=0; j<H*L; j++){
+            if(!(j%(L))) printf("\n");
+            printf("%.8f ", matMul_args6.C[j]);
+        }
+        printf("\n");
         #endif
     }
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -707,6 +1180,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args8);
 
+    #ifdef DEBUG
+    printf("\nT8 result\n\ninputData: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  transp_args8.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", L, E);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", transp_args8.transp_matrix[j]);
+    }
+    printf("\n");
+    #endif
+
     // M7
     struct matMul_args matMul_args7;
     matMul_args7.A = q_diff;
@@ -728,6 +1217,29 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7);
     #endif
 
+    #ifdef DEBUG
+    printf("\nM7 result\n\nq_diff: %d %d\n", 3*F, L);
+    for (int j=0; j<3*F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  matMul_args7.A[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", L, E);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7.B[j]);
+    }
+    printf("\n");
+
+    printf("\ncoeffDiffWin: %d %d\n", 3*F, E);
+    for (int j=0; j<3*F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7.C[j]);
+    }
+    printf("\n");
+    #endif
+
     // T9
     struct transp_args transp_args9;
     transp_args9.matrix = coeffDataWin;
@@ -736,6 +1248,22 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     transp_args9.M = E;
 
     pi_cl_team_fork(NUM_CORES, transpose, &transp_args9);
+
+    #ifdef DEBUG
+    printf("\nT9 result\n\ncoeffDataWin: %d %d\n", 3 * F, E);
+    for (int j=0; j<3*F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  transp_args9.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", E, 3 * F);
+    for (int j=0; j<E*3*F; j++){
+        if(!(j%(3*F))) printf("\n");
+        printf("%.8f ", transp_args9.transp_matrix[j]);
+    }
+    printf("\n");
+    #endif
 
     // M8
     struct matMul_args matMul_args8;
@@ -756,5 +1284,28 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     man_args8.step_type = STEP_FW;
     man_args8.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8);
+    #endif
+
+    #ifdef DEBUG
+    printf("\nM8 result\n\ntemp: %d %d\n", E, 3*F);
+    for (int j=0; j<E*3*F; j++){
+        if(!(j%(3*F))) printf("\n");
+        printf("%.8f ",  matMul_args8.A[j]);
+    }
+    printf("\n");
+
+    printf("\nq_diff: %d %d\n", 3*F, L);
+    for (int j=0; j<3*F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8.B[j]);
+    }
+    printf("\n");
+
+    printf("\ninputDiff: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8.C[j]);
+    }
+    printf("\n");
     #endif
 }
