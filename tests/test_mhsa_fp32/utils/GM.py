@@ -26,6 +26,7 @@ import mhsa
 
 
 class MyNet(nn.Module):
+    # Define a simple network with a mhsa layer for testing
     def __init__(self, in_h, in_w, n_heads, att_dim):
         super().__init__()
         self.mhsa = mhsa.MultiHeadedSelfAttention(dim=in_w, num_heads=n_heads, att_dim=att_dim)

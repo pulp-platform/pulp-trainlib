@@ -114,44 +114,36 @@ class MultiHeadedSelfAttention(nn.Module):
         # self.softmax = own_softmax_fastexp
 
     def forward(self, x, tgt_len):
-        # OP A & SPLIT
         # OP 1
         qkv = self.proj_in(x)
 
+        # OP 2
         q = qkv[..., :int(qkv.shape[-1] / 3)]
         k = qkv[..., int(qkv.shape[-1] / 3):2 * int(qkv.shape[-1] / 3)]
         v = qkv[..., 2 * int(qkv.shape[-1] / 3):]
 
-        # OP RESHAPE 1
-        # OP 2
         q = q.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
         k = k.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
         v = v.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
 
-        # OP B
         # OP 3
         scores = torch.bmm(q, k.transpose(1, 2))
 
         assert list(scores.size()) == [self.n_heads, tgt_len, tgt_len]
 
-        # OP C
         # OP 4
         scores = scores * self.scaling
 
-        # OP D
         # OP 5
         scores = self.softmax(scores)
 
-        # OP E
         # OP 6
         scores = torch.bmm(scores, v)
         assert list(scores.size()) == [self.n_heads, tgt_len, self.head_dim]
 
-        # F x L output shape?
         scores = scores.transpose(0, 1).contiguous().view(tgt_len, self.att_dim)
         self.scores = scores
 
-        # OP F
         # OP 7
         h = self.proj_out(scores)
         return h
