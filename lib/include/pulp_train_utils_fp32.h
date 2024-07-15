@@ -309,35 +309,40 @@ struct update_weight_args{
   int dim;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized max on an input vector
- * @param input   input vector on which we want to find the max
- * @param maxes   vector on which each core saves the max they have found
- * @param dim     dimension of input
- * @param dim     dimension of input^2
+ * @param input     input vector on which we want to find the max
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     vector on which each core saves the max they have found
 */
-struct max_args{
-  float* input;
-  float* maxes;
-  int dim;
-  int dim2;
+struct max_args {
+    float *input;
+    int H;
+    int W;
+    float *maxes;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized exponential and sum on an input vector
- * @param input   input vector on which we want to calculate the exponential and summatory
- * @param sums    vector on which each core saves their sum
- * @param output  vector where the exponential is saved
- * @param dim     dimension of input
- * @param max     maximum value of the input map
+ * @param input     input vector on which we want to calculate the exponential and the summation
+ * @param output    vector where the exponential is saved
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     maximum value of the input map
+ * @param sums      vector on which each core saves their sum
 */
-struct exp_sum_args{
-  float* input;
-  float* sums;
-  float* output;
-  int dim;
-  float* maxes;
+struct exp_sum_args {
+    float *input;
+    float *output;
+    int H;
+    int W;
+    float *maxes;
+    float *sums;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized exponential and sum on an input vector
@@ -369,19 +374,21 @@ struct div_args{
   int dim;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized division of an input vector and a vector
- * @param input   input vector we want to divide
- * @param sums    values we want to divide the vector with
- * @param dim     dimension of input
- * @param dim2    dimension of input^2
+ * @param input     input vector we want to divide
+ * @param H         height of input
+ * @param W         width of input
+ * @param sums      values we want to divide the vector with
 */
-struct row_div_args{
-  float* input;
-  float* sums;
-  int dim;
-  int dim2;
+struct row_div_args {
+    float *input;
+    int H;
+    int W;
+    float *sums;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar

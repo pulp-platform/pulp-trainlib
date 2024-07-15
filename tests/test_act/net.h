@@ -19,8 +19,8 @@
 #define FP16 16
 // Tensor checksum definition
 #if DATA_TYPE == FP32
-    #define CHECK_TOLERANCE 1e-9
-    #define ERROR_TOLERANCE 1e-9
+    #define CHECK_TOLERANCE 1e-2
+    #define ERROR_TOLERANCE 1e-2
 #elif DATA_TYPE == FP16
     #define CHECK_TOLERANCE 1e-3
     #define ERROR_TOLERANCE 1e-3

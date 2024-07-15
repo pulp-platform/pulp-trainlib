@@ -1,15 +1,17 @@
 APP = test_act
 
-# User settings
+# ~~~~~~~~~~ User settings ~~~~~~~~~~
 # Standard matmul arguments
 IN_H?=4
 IN_W?=4
 IN_C?=4
 VALUE?=0.05
+
 # General arguments
-DATA_TYPE?='FP16'	# FP32 or FP16
+DATA_TYPE?='FP32'	# FP32 or FP16
 NUM_CORES?=8
-# End of user settings
+
+# ~~~~~~~~~~ End of user settings ~~~~~~~~~~
 
 TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
@@ -29,6 +31,7 @@ APP_CFLAGS += -DIN_W=$(IN_W)
 APP_CFLAGS += -DIN_C=$(IN_C)
 APP_CFLAGS += -DVALUE=$(VALUE)
 APP_CFLAGS += -DDATA_TYPE=$(DATA_TYPE)
+#APP_CFLAGS += -DDEBUG
 
 APP_LDFLAGS += -lm 
 

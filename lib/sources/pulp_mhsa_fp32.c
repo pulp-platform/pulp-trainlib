@@ -291,7 +291,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         struct blob input;
         struct blob output;
         input.data = temp;
-        input.dim = L;
+        input.H = L;
+        input.W = L;
         output.data = softmax_buffer + i * L * L;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
@@ -847,14 +848,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         #endif
 
         // SM
-        struct act_args softmax_arg;
+        struct softmax_args softmax_arg;
         struct blob input;
         struct blob output;
         input.diff = grad;
-        input.dim = i;
+        input.H = L;
+        input.W = L;
         output.data = softmax_buffer + i * L * L;
         output.diff = softmax_buffer_diff + i * L * L;
-        output.dim = L;
         softmax_arg.input = &input;
         softmax_arg.output = &output;
 

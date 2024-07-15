@@ -29,8 +29,10 @@
  * @param output blob structure for the output data of the activation layer
  */
 struct act_args {
-    struct blob * input;
-    struct blob * output;
+    struct blob *input;
+    struct blob *output;
+    int H;
+    int W;
 };
 
 /**
@@ -40,15 +42,17 @@ struct act_args {
  * @param output  pointer to output vector
  * @param sum     final sum value of all exponentials
 */
-struct softmax_args{
-  struct blob * input;
-  struct blob * output;
-  int L;
-  int n_heads;
-  float * global_max;
-  float * partial_exp_sum;
-  float * maxes;
-  float * sums;
+struct softmax_args {
+    struct blob *input;
+    struct blob *output;
+    int H;
+    int W;
+    int L;
+    int n_heads;
+    float *global_max;
+    float *partial_exp_sum;
+    float *maxes;
+    float *sums;
 };
 
 
