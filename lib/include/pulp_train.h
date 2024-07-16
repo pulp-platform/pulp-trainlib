@@ -25,6 +25,7 @@
 
 #include "pmsis.h"
 #include "pulp_train_defines.h"
+#include "pulp_random.h"
 
 // FP32 structures
 #include "pulp_train_utils_fp32.h"
