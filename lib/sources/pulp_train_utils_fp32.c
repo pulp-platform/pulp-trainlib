@@ -12,11 +12,10 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
+*/
+
 
 #include "pmsis.h"
 #include "pulp_train_utils_fp32.h"
@@ -344,6 +343,8 @@ float threshold(float x){
 }
 
 
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
 // Find the maximum value from each row of the passed matrix
 void pulp_row_max_fp32_cl(void *void_args) {
     // Extract variables from function arguments
@@ -377,6 +378,125 @@ void pulp_row_max_fp32_cl(void *void_args) {
         }
     }
 }
+
+
+// Row-wisely compute the sum of exponentials required for the softmax activation
+void pulp_exp_sum_fp32_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct exp_sum_args *args = (struct exp_sum_args *) void_args;
+
+    float *input = args->input;
+    float *output = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    float *sums = args->sums;
+    float *maxes = args->maxes;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // Iterate through allocated rows
+    for (int i = start; i < stop; i++) {
+        // Initialize sum array to 0
+        sums[i] = 0;
+
+        // Iterate through each element and update the sum accordingly
+        for (int j = 0; j < WIDTH; j++) {
+            float o = fastexp_gist(input[i * WIDTH + j] - maxes[i]);
+            // float o = expf(*input - maxes[i]);
+
+            output[i * WIDTH + j] = o;
+            sums[i] += o;
+        }
+    }
+}
+
+
+// Divide each element in a row with a value given in a sums array, used in the softmax activation
+void pulp_row_div_fp32_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct row_div_args *args = (struct row_div_args *) void_args;
+
+    float *input = args->input;
+    float *sums = args->sums;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each element in a row, divide with the corresponding precomputed sum
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        for (int j = 0; j < WIDTH; j++) {
+            input[row + j] = input[row + j] / sums[i];
+        }
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+void pulp_sm_bw_op_1(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_1_args *args = (struct sm_bw_op_1_args *) void_args;
+
+    float *input_A = args->A;
+    float *input_B = args->B;
+    float *output_S = args->S;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, compute the sum of the element-wise products of matrices A and B into array S
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        output_S[i] = 0;
+
+        for (int j = 0; j < WIDTH; j++) {
+            output_S[i] += (input_A[row + j] * input_B[row + j]);
+        }
+    }
+}
+
+
+void pulp_sm_bw_op_2(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_2_args *args = (struct sm_bw_op_2_args *) void_args;
+
+    float *input_A = args->A;
+    float *input_B = args->B;
+    float *sums = args->S;
+    float *output = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, do the necessary computation
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+
+        for (int j = 0; j < WIDTH; j++) {
+            output[row + j] = (input_A[row + j] - sums[i]) * input_B[row + j];
+        }
+    }
+}
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 void pulp_shift_sum_fp32_cl(void* void_args){
@@ -435,42 +555,6 @@ float q_rsqrt(float number)
 }
 
 
-// Row-wisely compute the sum of exponentials required for the softmax activation
-void pulp_exp_sum_fp32_cl(void *void_args) {
-    // Extract variable from function arguments
-    struct exp_sum_args *args = (struct exp_sum_args *) void_args;
-
-    float *input = args->input;
-    float *output = args->output;
-
-    int HEIGHT = args->H;
-    int WIDTH = args->W;
-
-    float *sums = args->sums;
-    float *maxes = args->maxes;
-
-    // Split work row-wise (each worker will receive a number of rows)
-    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
-    const int start = pi_core_id() * blockSize;
-    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
-
-    // Iterate through allocated rows
-    for (int i = start; i < stop; i++) {
-        // Initialize sum array to 0
-        sums[i] = 0;
-
-        // Iterate through each element and update the sum accordingly
-        for (int j = 0; j < WIDTH; j++) {
-            float o = fastexp_gist(input[i * WIDTH + j] - maxes[i]);
-            // float o = expf(*input - maxes[i]);
-
-            output[i * WIDTH + j] = o;
-            sums[i] += o;
-        }
-    }
-}
-
-
 void pulp_div_fp32_cl(void* void_args){
     struct div_args* args = (struct div_args *) void_args;
 
@@ -484,32 +568,6 @@ void pulp_div_fp32_cl(void* void_args){
 
     for(int i=start; i<stop; i++){
         input[i] = input[i]/n;
-    }
-}
-
-
-// Divide each element in a row with a value given in a sums array, used in the softmax activation
-void pulp_row_div_fp32_cl(void *void_args) {
-    // Extract variable from function arguments
-    struct row_div_args *args = (struct row_div_args *) void_args;
-
-    float *input = args->input;
-    float *sums = args->sums;
-
-    int HEIGHT = args->H;
-    int WIDTH = args->W;
-
-    // Split work row-wise (each worker will receive a number of rows)
-    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
-    const int start = pi_core_id() * blockSize;
-    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
-
-    // For each element in a row, divide with the corresponding precomputed sum
-    for (int i = start; i < stop; i++) {
-        int row = i * WIDTH;
-        for (int j = 0; j < WIDTH; j++) {
-            input[row + j] = input[row + j] / sums[i];
-        }
     }
 }
 

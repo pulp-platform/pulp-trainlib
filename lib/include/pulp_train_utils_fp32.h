@@ -12,11 +12,9 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
+*/
 
 #include "pmsis.h"
 #include "pulp_train_defines.h"
@@ -437,6 +435,43 @@ struct vector_exp_sum_args{
   float max;
 };
 
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A     *float: input matrix A [H x W]
+ * @param B     *float: input matrix B [H x W]
+ * @param S     *float: output vector S [H]
+ * @param H     int: height of input matrices, length of output array
+ * @param W     int: width of input matrices
+ */
+struct sm_bw_op_1_args{
+  float* A;
+  float* B;
+  float* S;
+  int H;
+  int W;
+};
+
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A         *float: input matrix A [H x W]
+ * @param B         *float: input matrix B [H x W]
+ * @param S         *float: input vector S [H]
+ * @param output    *float: output matrix [H x W]
+ * @param H         int: height of input matrices, length of output array
+ * @param W         int: width of input matrices
+ */
+struct sm_bw_op_2_args{
+    float* A;
+    float* B;
+    float* S;
+    float* output;
+    int H;
+    int W;
+};
+
+
 /**
  * =====> FUNCTIONS <=====
  */
@@ -525,18 +560,6 @@ void softmax (void * void_args);
 void pulp_max_fp32_cl(void * void_args);
 
 /**
- * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct max_args void_args)
- */
-void pulp_row_max_fp32_cl(void * void_args);
-
-/**
- * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct exp_sum_args void_args)
- */
-void pulp_exp_sum_fp32_cl(void* void_args);
-
-/**
  * @brief Calculate the 1/2^diff of each element and sum them. Set up the arguments by using a "struct shift_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_shift_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct shift_sum_args void_args)
  */
@@ -547,12 +570,6 @@ void pulp_shift_sum_fp32_cl(void* void_args);
  * @param (void *)  (struct div_args void_args)
  */
 void pulp_div_fp32_cl(void* void_args);
-
-/**
- * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct div_args void_args)
- */
-void pulp_row_div_fp32_cl(void* void_args);
 
 /**
  * @brief Element-wise multiplication of vector with a single constant. Set up the arguments by using a "struct scalar_mul_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &args) to parallelize.
@@ -605,4 +622,46 @@ void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
 void cordic_cos_sin_fp32(float angle, float* cos, float* sin);
 
 
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
+/**
+ * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_row_max_fp32_cl(void * void_args);
 
+
+/**
+ * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct exp_sum_args void_args)
+ */
+void pulp_exp_sum_fp32_cl(void* void_args);
+
+
+/**
+ * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_row_div_fp32_cl(void* void_args);
+
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+/**
+ * @brief The first operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and returns a vector S with the same length as the height of either of the 2 input matrices. Each unit of this
+ * output vector will be the sum of all the element-wise products of the corresponding row (element S[i] will contain
+ * the sum for row i).
+ * @param (void *)  (struct sm_bw_op_1_args void_args)
+ */
+void pulp_sm_bw_op_1(void *void_args);
+
+
+/**
+ * @brief The second operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and a vector S with the same length as the height of either of the 2 input matrices, and an output matrix of the size
+ * of either of the inputs. Each unit of this output matrix will have the value equal to (a - s) * b, where a and b are
+ * the equivalent elements from matrices A and B and s is the current row-th element of S.
+ * @param (void *)  (struct sm_bw_op_2_args void_args)
+ */
+void pulp_sm_bw_op_2(void *void_args);
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

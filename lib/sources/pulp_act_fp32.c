@@ -12,9 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
  * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
 */
 
@@ -213,7 +211,6 @@ void pulp_softmax_fp32_bw_cl(void *act_args) {
      *      - (outDiff[0] * S0 + outDiff[1] * S1 + ... + outDiff[j] * Sj + ...) -> sum
      */
     // Extract variables from function arguments
-    // TODO 0004: Parallelize like in the forward pass
     struct softmax_args *args = (struct softmax_args *) act_args;
 
     int HEIGHT = args->input->H;
@@ -223,19 +220,28 @@ void pulp_softmax_fp32_bw_cl(void *act_args) {
     float *outData = args->output->data;
     float *outDiff = args->output->diff;
 
-    // Iterate through the rows
-    for (int row = 0; row < HEIGHT; row++) {
-        // Prepare sum variable
-        float sum = 0.0f;
+    float *sums = args->sums;
 
-        // Compute sum as described above
-        for (int idx = 0; idx < WIDTH; idx++)
-            sum += (outDiff[row * WIDTH + idx] * outData[row * WIDTH + idx]);
+    // SM BW OP 1
+    struct sm_bw_op_1_args op_1_args;
+    op_1_args.A = outDiff;
+    op_1_args.B = outData;
+    op_1_args.S = sums;
+    op_1_args.H = HEIGHT;
+    op_1_args.W = WIDTH;
 
-        // Compute gradients
-        for (int idx = 0; idx < WIDTH; idx++)
-            inDiff[row * WIDTH + idx] = (outDiff[row * WIDTH + idx] - sum) * outData[row * WIDTH + idx];
-    }
+    pi_cl_team_fork(NUM_CORES, pulp_sm_bw_op_1, &op_1_args);
+
+    // SM BW OP 2
+    struct sm_bw_op_2_args op_2_args;
+    op_2_args.A = outDiff;
+    op_2_args.B = outData;
+    op_2_args.S = sums;
+    op_2_args.output = inDiff;
+    op_2_args.H = HEIGHT;
+    op_2_args.W = WIDTH;
+
+    pi_cl_team_fork(NUM_CORES, pulp_sm_bw_op_2, &op_2_args);
 }
 
 
