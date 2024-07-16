@@ -2,18 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 
-
-def fastexp_gist(x):
-    with torch.no_grad():
-        x_copy = x.type(torch.float32)
-        x_copy = x_copy * 12102203.17133801 + 1064986823.010288
-        x_copy = torch.where(x_copy < 8388608, 0, x_copy).type(torch.float32)
-        x_copy = torch.where(x_copy > 2139095040, 2139095040, x_copy).type(torch.float32)
-        n = x_copy.cpu().numpy().astype(np.uint32).view(np.float32)
-        
-        result = torch.from_numpy(n)
-    
-    return result
+from SoftmaxFastExp import SoftmaxFastExp
 
 
 def q_rsqrt(x):
@@ -29,15 +18,6 @@ def q_rsqrt(x):
         result = torch.from_numpy(y)
 
     return result
-
-
-def own_softmax_fastexp(x):
-    maxes = torch.max(x, -1, keepdim=True)[0]
-    # maxes = torch.swapaxes(maxes, -2, -1)
-    x_exp = fastexp_gist((x-maxes))
-    x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
-
-    return x_exp/x_exp_sum
 
 
 def own_softmax(x):
@@ -109,9 +89,9 @@ class MultiHeadedSelfAttention(nn.Module):
         # self.scaling = (self.head_dim) ** -0.5
         self.scaling = q_rsqrt(self.head_dim)
         self.scores = None  # for visualization
-        self.softmax = own_softmax
+        # self.softmax = own_softmax
         # self.softmax = own_partial_softmax_simple
-        # self.softmax = own_softmax_fastexp
+        self.softmax = SoftmaxFastExp
 
     def forward(self, x, tgt_len):
         # OP 1
@@ -135,7 +115,8 @@ class MultiHeadedSelfAttention(nn.Module):
         scores = scores * self.scaling
 
         # OP 5
-        scores = self.softmax(scores)
+        # scores = self.softmax(scores)
+        scores = SoftmaxFastExp.apply(scores)
 
         # OP 6
         scores = torch.bmm(scores, v)
