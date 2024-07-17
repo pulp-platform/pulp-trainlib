@@ -219,8 +219,10 @@ void net_step () {
     printf("\n----- SOFTMAX RESULTS -----\n");
 
     // Prepare softmax struct
-    softmax_args.input = &softmax_in_blob;
-    softmax_args.output = &softmax_out_blob;
+    softmax_args.input_data = SOFTMIN;
+    softmax_args.input_diff = softmax_in_grad;
+    softmax_args.output_data = softmax_out;
+    softmax_args.output_diff = SOFTMOUTPUT_GRAD;
     softmax_args.H = Tin_H;
     softmax_args.W = Tin_W;
     softmax_args.maxes = softmax_maxes;
