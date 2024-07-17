@@ -133,11 +133,11 @@ void pulp_softmax_fp32_fw_cl(void *act_args) {
     // Extract variables from function arguments
     struct softmax_args *args = (struct softmax_args *) act_args;
 
-    int HEIGHT = args->input->H;
-    int WIDTH = args->input->W;
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
 
-    float *inData = args->input->data;
-    float *outData = args->output->data;
+    float *inData = args->input_data;
+    float *outData = args->output_data;
 
     float *maxes = args->maxes;
     float *sums = args->sums;
@@ -184,6 +184,7 @@ void pulp_softmax_fp32_fw_cl(void *act_args) {
     #endif
 }
 
+
 // Backward pass of softmax
 void pulp_softmax_fp32_bw_cl(void *act_args) {
     /*
@@ -213,12 +214,12 @@ void pulp_softmax_fp32_bw_cl(void *act_args) {
     // Extract variables from function arguments
     struct softmax_args *args = (struct softmax_args *) act_args;
 
-    int HEIGHT = args->input->H;
-    int WIDTH = args->input->W;
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
 
-    float *inDiff = args->input->diff;
-    float *outData = args->output->data;
-    float *outDiff = args->output->diff;
+    float *inDiff = args->input_diff;
+    float *outData = args->output_data;
+    float *outDiff = args->output_diff;
 
     float *sums = args->sums;
 
@@ -245,6 +246,7 @@ void pulp_softmax_fp32_bw_cl(void *act_args) {
 }
 
 
+/*
 void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
 {
   struct softmax_args * args = (struct softmax_args *) act_args;
@@ -460,6 +462,7 @@ void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
     }
   }
 }
+*/
 
 
 void tanh_prll(void * args){

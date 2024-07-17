@@ -40,8 +40,12 @@ struct act_args {
  * @param sum     final sum value of all exponentials
 */
 struct softmax_args {
-    struct blob *input;
-    struct blob *output;
+//    struct blob *input;
+//    struct blob *output;
+    float *input_data;
+    float *input_diff;
+    float *output_data;
+    float *output_diff;
     int H;
     int W;
     int L;

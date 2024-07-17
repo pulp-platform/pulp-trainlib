@@ -288,16 +288,12 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
         //  Softmax algorithm
         struct softmax_args softmax_arg;
-        struct blob input;
-        struct blob output;
-        input.data = temp;
-        input.H = L;
-        input.W = L;
-        output.data = softmax_buffer + i * L * L;
-        softmax_arg.input = &input;
-        softmax_arg.output = &output;
+        softmax_arg.input_data = temp;
+        softmax_arg.output_data = softmax_buffer + i * L * L;
         softmax_arg.maxes = maxes;
         softmax_arg.sums = sums;
+        softmax_arg.H = L;
+        softmax_arg.W = L;
 
         pulp_softmax_fp32_fw_cl(&softmax_arg);
 
@@ -305,14 +301,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - softmax result\n\ntemp: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  softmax_arg.input->data[j]);
+            printf("%.8f ",  softmax_arg.input_data[j]);
         }
         printf("\n");
 
         printf("\nsoftmax_buffer: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_arg.output->data[j]);
+            printf("%.8f ", softmax_arg.output_data[j]);
         }
         printf("\n\n");
         #endif
@@ -485,6 +481,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     float *inputDiff = mhsa_args->input->diff; // L x E
     float *attention_map_diff = mhsa_args->attention_map->diff; // F x L
     float *softmax_buffer_diff = mhsa_args->softmax_buffer->diff;
+    float *sums = mhsa_args->sums;
 
     float scaling = q_rsqrt((float) H);
 
@@ -849,37 +846,38 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         // SM
         struct softmax_args softmax_arg;
-        struct blob input;
-        struct blob output;
-        input.diff = grad;
-        input.H = L;
-        input.W = L;
-        output.data = softmax_buffer + i * L * L;
-        output.diff = softmax_buffer_diff + i * L * L;
-        softmax_arg.input = &input;
-        softmax_arg.output = &output;
+//        struct blob input;
+//        struct blob output;
+        softmax_arg.input_diff = grad;
+        softmax_arg.output_data = softmax_buffer + i * L * L;
+        softmax_arg.output_diff = softmax_buffer_diff + i * L * L;
+//        softmax_arg.input = &input;
+//        softmax_arg.output = &output;
+        softmax_arg.sums = sums;
+        softmax_arg.H = L;
+        softmax_arg.W = L;
 
-        pi_cl_team_fork(1, pulp_softmax_fp32_bw_cl, &softmax_arg);
+        pulp_softmax_fp32_bw_cl(&softmax_arg);
 
         #ifdef DEBUG
         printf("\n\n\nHead %d - softmax backprop result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  softmax_arg.output->data[j]);
+            printf("%.8f ",  softmax_arg.output_data[j]);
         }
         printf("\n");
 
         printf("\nsoftmax_buffer_diff: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_arg.output->diff[j]);
+            printf("%.8f ", softmax_arg.output_diff[j]);
         }
         printf("\n");
 
         printf("\ngrad: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", softmax_arg.input->diff[j]);
+            printf("%.8f ", softmax_arg.input_diff[j]);
         }
         printf("\n\n");
         #endif

@@ -477,7 +477,7 @@ void pulp_sm_bw_op_2(void *void_args) {
     float *input_A = args->A;
     float *input_B = args->B;
     float *sums = args->S;
-    float *output = args->output;
+    float *result = args->output;
 
     int HEIGHT = args->H;
     int WIDTH = args->W;
@@ -492,7 +492,7 @@ void pulp_sm_bw_op_2(void *void_args) {
         int row = i * WIDTH;
 
         for (int j = 0; j < WIDTH; j++) {
-            output[row + j] = (input_A[row + j] - sums[i]) * input_B[row + j];
+            result[row + j] = (input_A[row + j] - sums[i]) * input_B[row + j];
         }
     }
 }
