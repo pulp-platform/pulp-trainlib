@@ -176,7 +176,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         #endif
 
         // M2
-        //  Multiply it with the i-th head's Q chunk
+        // Multiply it with the i-th head's Q chunk
         struct matMul_args matMul_args2;
         matMul_args2.A = temp;
         matMul_args2.B = q + L * i * H;
@@ -846,13 +846,9 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
         // SM
         struct softmax_args softmax_arg;
-//        struct blob input;
-//        struct blob output;
         softmax_arg.input_diff = grad;
         softmax_arg.output_data = softmax_buffer + i * L * L;
         softmax_arg.output_diff = softmax_buffer_diff + i * L * L;
-//        softmax_arg.input = &input;
-//        softmax_arg.output = &output;
         softmax_arg.sums = sums;
         softmax_arg.H = L;
         softmax_arg.W = L;

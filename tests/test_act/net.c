@@ -42,7 +42,6 @@ PI_L1 float softmax_in_grad[SOFTMAX_IN_SIZE];
 PI_L1 float softmax_maxes[Tin_H];
 PI_L1 float softmax_sums[Tin_H];
 
-
 PI_L1 struct blob sigmoid_in_blob;
 PI_L1 struct blob sigmoid_out_blob;
 PI_L1 float sigmoid_out[OUT_SIZE];
@@ -52,24 +51,27 @@ PI_L1 float sigmoid_in_grad[IN_SIZE];
 #elif DATA_TYPE == FP16
 // Inout data
 PI_L1 struct act_args_fp16 act_args;
+PI_L1 struct softmax_args_fp16 softmax_args;
 
-PI_L1 struct blob_fp16 reluin_blob;
-PI_L1 struct blob_fp16 reluout_blob;
-PI_L1 fp16 reluout[OUT_SIZE];
-PI_L1 fp16 reluout_grad[OUT_SIZE];
-PI_L1 fp16 reluin_grad[IN_SIZE];
+PI_L1 struct blob_fp16 relu_in_blob;
+PI_L1 struct blob_fp16 relu_out_blob;
+PI_L1 fp16 relu_out[OUT_SIZE];
+PI_L1 fp16 relu_out_grad[OUT_SIZE];
+PI_L1 fp16 relu_in_grad[IN_SIZE];
 
-// PI_L1 struct blob_fp16 softmin_blob;
-// PI_L1 struct blob_fp16 softmout_blob;
-// PI_L1 fp16 softmout[OUT_SIZE];
-// PI_L1 fp16 softmout_grad[OUT_SIZE];
-// PI_L1 fp16 softmin_grad[IN_SIZE];
+PI_L1 struct blob_fp16 softmax_in_blob;
+PI_L1 struct blob_fp16 softmax_out_blob;
+PI_L1 fp16 softmax_out[SOFTMAX_OUT_SIZE];
+PI_L1 fp16 softmax_out_grad[SOFTMAX_OUT_SIZE];
+PI_L1 fp16 softmax_in_grad[SOFTMAX_IN_SIZE];
+PI_L1 fp16 softmax_maxes[Tin_H];
+PI_L1 fp16 softmax_sums[Tin_H];
 
-PI_L1 struct blob_fp16 sigmoidin_blob;
-PI_L1 struct blob_fp16 sigmoidout_blob;
-PI_L1 fp16 sigmoidout[OUT_SIZE];
-PI_L1 fp16 sigmoidout_grad[OUT_SIZE];
-PI_L1 fp16 sigmoidin_grad[IN_SIZE];
+PI_L1 struct blob_fp16 sigmoid_in_blob;
+PI_L1 struct blob_fp16 sigmoid_out_blob;
+PI_L1 fp16 sigmoid_out[OUT_SIZE];
+PI_L1 fp16 sigmoid_out_grad[OUT_SIZE];
+PI_L1 fp16 sigmoid_in_grad[IN_SIZE];
 
 #else
 #endif
@@ -280,7 +282,7 @@ void net_step () {
     #if DATA_TYPE == FP32
     verify_tensor(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
     #elif DATA_TYPE == FP16
-    verify_tensor_fp16(softmaxin_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
+    verify_tensor_fp16(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
     #else
     #endif
 
@@ -296,7 +298,6 @@ void net_step () {
     #ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
-    printf("\n----- SIGMOID RESULTS PART 2 -----\n");
     #endif
 
     // Apply sigmoid activation

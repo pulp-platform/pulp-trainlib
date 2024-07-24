@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
 */ 
 
 #include "pmsis.h"
@@ -306,33 +306,54 @@ struct update_weight_args_fp16{
   int dim;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized max on an input vector
- * @param input   input vector on which we want to find the max
- * @param maxes   vector on which each core saves the max they have found
- * @param dim     dimension of input
+ * @param input     input vector on which we want to find the max
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     vector on which each core saves the max they have found
 */
-struct max_args_fp16{
-  fp16* input;
-  fp16* maxes;
-  int dim;
+struct max_args_fp16 {
+    fp16 *input;
+    int H;
+    int W;
+    fp16 *maxes;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized exponential and sum on an input vector
- * @param input   input vector on which we want to calculate the exponential and summatory
- * @param sums    vector on which each core saves their sum
- * @param output  vector where the exponential is saved
- * @param dim     dimension of input
- * @param max     maximum value of the input map
+ * @param input     input vector on which we want to calculate the exponential and the summation
+ * @param output    vector where the exponential is saved
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     maximum value of the input map
+ * @param sums      vector on which each core saves their sum
 */
-struct exp_sum_args_fp16{
-  fp16* input;
-  fp16* sums;
-  fp16* output;
-  int dim;
-  fp16* maxes;
+struct exp_sum_args_fp16 {
+    fp16 *input;
+    fp16 *output;
+    int H;
+    int W;
+    fp16 *maxes;
+    fp16 *sums;
 };
+
+
+/**
+ * @brief Arguments for implementing parallelized division of an input vector and a vector
+ * @param input   input vector we want to divide
+ * @param sums    values we want to divide the vector with
+ * @param dim     dimension of input
+*/
+struct row_div_args_fp16 {
+    fp16 *input;
+    int H;
+    int W;
+    fp16 *sums;
+};
+
 
 /**
  * @brief Arguments for implementing parallelized division of an input vector and a scalar
@@ -346,17 +367,6 @@ struct div_args_fp16{
   int dim;
 };
 
-/**
- * @brief Arguments for implementing parallelized division of an input vector and a vector
- * @param input   input vector we want to divide
- * @param sums    values we want to divide the vector with
- * @param dim     dimension of input
-*/
-struct row_div_args_fp16{
-  fp16* input;
-  fp16* sums;
-  int dim;
-};
 
 /**
  * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
@@ -387,6 +397,44 @@ struct mean_std_args_fp16{
   fp16 epsilon;
   int dim;
 };
+
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A     *fp16: input matrix A [H x W]
+ * @param B     *fp16: input matrix B [H x W]
+ * @param S     *fp16: output vector S [H]
+ * @param H     int: height of input matrices, length of output array
+ * @param W     int: width of input matrices
+ */
+struct sm_bw_op_1_args_fp16 {
+    fp16 *A;
+    fp16 *B;
+    fp16 *S;
+    int H;
+    int W;
+};
+
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A         *fp16: input matrix A [H x W]
+ * @param B         *fp16: input matrix B [H x W]
+ * @param S         *fp16: input vector S [H]
+ * @param output    *fp16: output matrix [H x W]
+ * @param H         int: height of input matrices, length of output array
+ * @param W         int: width of input matrices
+ */
+struct sm_bw_op_2_args_fp16 {
+    fp16 *A;
+    fp16 *B;
+    fp16 *S;
+    fp16 *output;
+    int H;
+    int W;
+};
+
+
 /**
  * =====> FUNCTIONS <=====
  */
@@ -468,12 +516,9 @@ void exponential_fp16 (void * void_args);
  */
 void softmax_fp16 (void * void_args);
 
-/**
- * @brief Calculate the maxes of a vector in parallelized fashion
- * @param (void *)  (struct max_args_fp16 void_args)
- */
-void pulp_max_fp16_cl(void * void_args);
 
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
 /**
  * @brief Calculate the maxes for each row of a square matrix in parallelized fashion
  * @param (void *)  (struct max_args void_args)
@@ -482,10 +527,47 @@ void pulp_row_max_fp16_cl(void * void_args);
 
 
 /**
+ * @brief Approximated version of exponential using bit manipulation of mantissa and exponent. Returns the exponential of x.
+ * @param x floating-point number to be exponentiated
+ */
+float fastexp_gist_fp16(float x);
+
+
+/**
  * @brief Calculate the exponential of each element and sum them
  * @param (void *)  (struct exp_sum_args_fp16 void_args)
  */
 void pulp_exp_sum_fp16_cl(void* void_args);
+
+
+/**
+ * @brief Element-wise division of vector with values obtained by shit_sum
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_row_div_fp16_cl(void* void_args);
+
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+/**
+ * @brief The first operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and returns a vector S with the same length as the height of either of the 2 input matrices. Each unit of this
+ * output vector will be the sum of all the element-wise products of the corresponding row (element S[i] will contain
+ * the sum for row i).
+ * @param (void *)  (struct sm_bw_op_1_args void_args)
+ */
+void pulp_sm_bw_op_1_fp16(void *void_args);
+
+
+/**
+ * @brief The second operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and a vector S with the same length as the height of either of the 2 input matrices, and an output matrix of the size
+ * of either of the inputs. Each unit of this output matrix will have the value equal to (a - s) * b, where a and b are
+ * the equivalent elements from matrices A and B and s is the current row-th element of S.
+ * @param (void *)  (struct sm_bw_op_2_args void_args)
+ */
+void pulp_sm_bw_op_2_fp16(void *void_args);
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 /**
  * @brief Element-wise division of vector with a single constant
@@ -493,11 +575,6 @@ void pulp_exp_sum_fp16_cl(void* void_args);
  */
 void pulp_div_fp16_cl(void* void_args);
 
-/**
- * @brief Element-wise division of vector with values obtained by shit_sum
- * @param (void *)  (struct div_args void_args)
- */
-void pulp_row_div_fp16_cl(void* void_args);
 
 /**
  * @brief Element-wise multiplication of vector with a single constant

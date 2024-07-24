@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 
 import dump_utils as dump
+from SoftmaxFastExp import SoftmaxFastExp
 
 
 # Define modules that use the required activations
@@ -115,12 +116,12 @@ def main():
 
     # Instantiate pooling functions
     relu = ReLU()
-    softmax = SoftMax()
+    softmax = SoftmaxFastExp
     sigmoid = Sigmoid()
 
     # Compute the output and the backward of both
     relu_out = relu(relu_input)
-    softmax_out = softmax(softmax_input)
+    softmax_out = softmax.apply(softmax_input[None, ...])
     sigmoid_out = sigmoid(sigmoid_input)
 
     relu_out.retain_grad()

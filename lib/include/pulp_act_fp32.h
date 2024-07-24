@@ -40,8 +40,6 @@ struct act_args {
  * @param sum     final sum value of all exponentials
 */
 struct softmax_args {
-//    struct blob *input;
-//    struct blob *output;
     float *input_data;
     float *input_diff;
     float *output_data;
@@ -133,7 +131,6 @@ void relu_core_fw_fp32( void * act_args );
 void relu_core_bw_fp32( void * act_args );
 
 
-
 /**
  * @brief Forward pass function.
  * @param input Input for softmax.
@@ -141,12 +138,14 @@ void relu_core_bw_fp32( void * act_args );
 */
 void pulp_softmax_fp32_fw_cl( void * act_args );
 
+
 /**
- * @brief Bakcward pass function.
+ * @brief Backward pass function.
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_softmax_fp32_bw_cl( void * act_args );
+
 
 /**
  * @brief Forward pass function, second version using partial algorithm

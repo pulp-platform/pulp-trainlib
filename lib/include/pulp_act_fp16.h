@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
 */ 
 
 /**
@@ -39,15 +39,20 @@ struct act_args_fp16 {
  * @param output  pointer to output vector
  * @param sum     final sum value of all exponentials
 */
-struct softmax_args_fp16{
-  struct blob_fp16 * input;
-  struct blob_fp16 * output;
-  int L;
-  int n_heads;
-  fp16 * maxes;
-  fp16 * sums;
+struct softmax_args_fp16 {
+    fp16 *input_data;
+    fp16 *input_diff;
+    fp16 *output_data;
+    fp16 *output_diff;
+    int H;
+    int W;
+    int L;
+    int n_heads;
+    fp16 *global_max;
+    fp16 *partial_exp_sum;
+    fp16 *maxes;
+    fp16 *sums;
 };
-
 
 
 /**
@@ -110,7 +115,6 @@ void relu_core_fw_fp16( void * act_args_fp16 );
 void relu_core_bw_fp16( void * act_args_fp16 );
 
 
-
 /**
  * @brief Forward pass function.
  * @param input Input for softmax.
@@ -118,12 +122,14 @@ void relu_core_bw_fp16( void * act_args_fp16 );
 */
 void pulp_softmax_fp16_fw_cl( void * act_args_fp16 );
 
+
 /**
- * @brief Bakcward pass function.
+ * @brief Backward pass function.
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_softmax_fp16_bw_cl( void * act_args_fp16 );
+
 
 /**
  * @brief Forward pass function. Configure and pass a act_args structure pointer as argument.

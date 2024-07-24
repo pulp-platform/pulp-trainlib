@@ -39,6 +39,7 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
+	rm -rf BUILD/
 	python3 ./utils/GM.py --in_c $(IN_C) --in_h $(IN_H) --in_w $(IN_W) --value $(VALUE) --data_type $(DATA_TYPE)
 
 include $(RULES_DIR)/pmsis_rules.mk
