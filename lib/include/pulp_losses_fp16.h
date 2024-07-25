@@ -36,6 +36,20 @@ struct loss_args_fp16 {
     fp16 * wr_loss;
 };
 
+/**
+ * @brief Structure to configure the berHu loss function
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target current sample's label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of the berHu loss
+ */
+struct berHu_loss_args_fp16 {
+    struct blob_fp16 * output;
+    fp16 * target;
+    fp16 * wr_loss;
+    fp16 alpha;
+};
+
 
 
 /**
@@ -89,3 +103,21 @@ void pulp_MSELoss_fp16( void * loss_args_fp16 );
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
 void pulp_MSELoss_backward_fp16( void * loss_args_fp16 );
+
+/**
+ * @brief berHu Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of berHu loss
+ */
+void pulp_berHuLoss_fp16( void * berHu_loss_args_fp16 );
+
+/**
+ * @brief berHu Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of berHu loss
+ */
+void pulp_berHuLoss_backward_fp16( void * berHu_loss_args_fp16 );

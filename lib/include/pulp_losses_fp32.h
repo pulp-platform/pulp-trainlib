@@ -35,6 +35,19 @@ struct loss_args {
     float * wr_loss;
 };
 
+/**
+ * @brief Structure to configure the berHu loss function
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target current sample's label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of the berHu loss
+ */
+struct berHu_loss_args {
+    struct blob * output;
+    float * target;
+    float * wr_loss;
+    float alpha;
+};
 
 
 /**
@@ -88,3 +101,21 @@ void pulp_MSELoss( void * loss_args );
  * @param wr_loss variable to retrieve the value of the calculated loss
  */
 void pulp_MSELoss_backward( void * loss_args );
+
+/**
+ * @brief berHu Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of berHu loss
+ */
+void pulp_berHuLoss( void * berHu_loss_args );
+
+/**
+ * @brief berHu Loss function 
+ * @param output pointer to the blob structure of the last DNN's layer (loss computation + calculation of the output gradient)
+ * @param target output label
+ * @param wr_loss variable to retrieve the value of the calculated loss
+ * @param alpha alpha value of berHu loss
+ */
+void pulp_berHuLoss_backward( void * berHu_loss_args );

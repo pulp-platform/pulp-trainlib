@@ -212,3 +212,95 @@ void pulp_MSELoss_backward ( void * loss_args )
   }
 
 }
+
+
+
+
+
+
+void pulp_berHuLoss ( void * berHu_loss_args ) 
+{
+  struct berHu_loss_args * args = (struct berHu_loss_args *) berHu_loss_args;
+  float * outData = args->output->data;
+  float * target = args->target;
+  float * wr_loss = args->wr_loss;
+  float alpha = args->alpha;
+  int size = args->output->dim;
+  int off = 0;
+
+  float loss = 0.0f;
+  float meanval = 1.0f / size;
+  
+  // Compute c constant
+  float c = 0;
+  for (int i=0; i<size; i++) {
+    float value = fabsf(outData[i] - target[i]);
+    if (value > c) {c = value;}
+  }
+  c = alpha * c;
+
+  // Compute loss
+  for(int i=0; i<size; i++){
+    float value = fabsf(outData[i] - target[i]);
+    if (value < c) {
+      loss += value;
+    }
+    else {
+      float num = value*value - c*c;
+      float den = 2*c;
+      loss += num / den; 
+    }
+  }
+  loss = loss * meanval;
+
+  // Skip printf profiling in debug mode
+  #ifdef DEBUG
+  #ifdef PROF_NET
+  pi_perf_stop();
+  #endif
+  printf("\nLoss: %+.4f\n", loss);
+  #ifdef PROF_NET
+  pi_perf_start();
+  #endif
+  #endif  
+
+  *wr_loss = loss;
+}
+
+
+void pulp_berHuLoss_backward ( void * berHu_loss_args ) 
+{
+  struct berHu_loss_args * args = (struct berHu_loss_args *) berHu_loss_args;
+  float * outData = args->output->data;
+  float * outDiff = args->output->diff;
+  float * target = args->target;
+  float * wr_loss = args->wr_loss;
+  float alpha = args->alpha;
+  int size = args->output->dim;
+  int off = 0;
+
+  float meanval = 1.0f / size;
+
+  // Compute c constant
+  float c = 0;
+  for (int i=0; i<size; i++) {
+    float value = fabsf(outData[i] - target[i]);
+    if (value > c) {c = value;}
+  }
+  c = alpha * c;
+
+  // Compute output grad
+  for(int i=0; i<size; i++){
+    float value  = fabsf(outData[i] - target[i]);
+    float derval = outData[i] - target[i];
+    if (value < c) {
+      if      (derval > 0)  outDiff[i] = meanval;
+      else if (derval == 0) outDiff[i] = 0;
+      else                  outDiff[i] = -meanval;
+    }
+    else {
+      outDiff[i] = meanval * derval / c;
+    }
+  }
+
+}
