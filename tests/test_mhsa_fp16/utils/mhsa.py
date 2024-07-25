@@ -46,7 +46,7 @@ class MultiHeadedSelfAttention(nn.Module):
         # self.scaling = (1 / math.sqrt(self.head_dim))
         self.scaling = q_rsqrt(self.head_dim)
         self.scores = None  # for visualization
-        self.softmax = SoftmaxFastExp
+        self.softmax = SoftmaxFastExp(bf16_format=bf16_format)
         self.bf16_format = bf16_format
 
     def forward(self, x, tgt_len):
@@ -68,12 +68,15 @@ class MultiHeadedSelfAttention(nn.Module):
         assert list(scores.size()) == [self.n_heads, tgt_len, tgt_len]
 
         # OP 4
+        if self.bf16_format == 0:
+            self.scaling = self.scaling.half()
+        else:
+            self.scaling = self.scaling.bfloat16()
         scores = scores * self.scaling
 
         # OP 5
         # scores = self.softmax(scores)
-        scores = SoftmaxFastExp.apply(scores)
-
+        scores = SoftmaxFastExp.apply(scores, self.bf16_format)
         if self.bf16_format == 0:
             scores = scores.half()
         else:

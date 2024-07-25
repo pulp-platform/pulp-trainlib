@@ -43,30 +43,16 @@ def hook_fn1(_, __, o):
         try:
             output_grad = torch.transpose(grad, 0, 1)
             f.write('#define G_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
-
-            if bf16_format == 0:
-                print(output_grad.half())
-            else:
-                print(output_grad.bfloat16())
+            print(output_grad)
 
             if current_step == 'BACKWARD_GRAD' or current_step == 'BACKWARD_ERROR':
-                if bf16_format == 0:
-                    f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
-                            dump.tensor_to_string(output_grad.half()) +
-                            '};\n')
-                else:
-                    f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
-                            dump.tensor_to_string(output_grad.bfloat16()) +
-                            '};\n')
+                f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
+                        dump.tensor_to_string(output_grad) +
+                        '};\n')
             else:
-                if bf16_format == 0:
-                    f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
-                            dump.tensor_to_string(output_grad.half()) +
-                            '};\n')
-                else:
-                    f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
-                            dump.tensor_to_string(output_grad.bfloat16()) +
-                            '};\n')
+                f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {' +
+                        dump.tensor_to_string(output_grad) +
+                        '};\n')
         except AttributeError:
             print("None found for Gradient (output)")
 
@@ -87,10 +73,10 @@ def hook_fn2(_, __, o):
 
                 if bf16_format == 0:
                     print(output_grad.half())
-                    f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.half())+'};\n')
+                    f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
                 else:
                     print(output_grad.bfloat16())
-                    f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad.bfloat16())+'};\n')
+                    f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
 
             cont += 1
         except AttributeError:
@@ -164,43 +150,29 @@ if __name__ == '__main__':
 
     # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
     # Generate random input data
-    if bf16_format == 0:
-        inp = torch.randn(ch_in, in_h, in_w).half()
-    else:
-        inp = torch.randn(ch_in, in_h, in_w).bfloat16()
-    inp.requires_grad = True
+    inp = torch.randn(ch_in, in_h, in_w)
 
     # Print input data to terminal
     print("------------Input sequence------------")
     print(inp)
 
     # Write transpose of input data to file
-    if bf16_format == 0:
-        inp_copy = torch.transpose(inp, -1, -2).half()
-    else:
-        inp_copy = torch.transpose(inp, -1, -2).bfloat16()
+    inp_copy = torch.transpose(inp, -1, -2)
 
     f = open("input-sequence.h", "w")
     f.write("#define INPUT_SIZE "+str(inp.numel())+'\n')
     f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp_copy)+'};\n')
     f.close()
 
+    if bf16_format == 0:
+        inp = inp.half()
+    else:
+        inp = inp.bfloat16()
+    inp.requires_grad = True
+
     # ~~~~~~~~~~ MANAGE INPUT WEIGHTS ~~~~~~~~~~
     # Generate random input weights
-    if bf16_format == 0:
-        in_wgt_init_tensor = torch.randn(att_dim * 3, in_w).half()
-    else:
-        in_wgt_init_tensor = torch.randn(att_dim * 3, in_w).bfloat16()
-
-    # Copy input weights to network
-    with torch.no_grad():
-        net.mhsa.proj_in.weight.data = deepcopy(in_wgt_init_tensor)
-
-    # Print input weights to terminal
-    print("Shape input weights:")
-    print(net.mhsa.proj_in.weight.shape)
-    print(net.mhsa.proj_in.weight.data)
-    print("\n")
+    in_wgt_init_tensor = torch.randn(att_dim * 3, in_w)
 
     # Write input weights to init file
     f = open("init-defines.h", 'a')
@@ -209,16 +181,29 @@ if __name__ == '__main__':
     f.write('PI_L2 fp16 INPUT_WEIGHTS[INPUT_WGT_SIZE] = {'+dump.tensor_to_string(in_wgt_init_tensor)+'};\n')
     f.close()
 
+    # Copy input weights to network
+    with torch.no_grad():
+        if bf16_format == 0:
+            net.mhsa.proj_in.weight.data = deepcopy(in_wgt_init_tensor.half())
+        else:
+            net.mhsa.proj_in.weight.data = deepcopy(in_wgt_init_tensor.bfloat16())
+
+    # Print input weights to terminal
+    print("Shape input weights:")
+    print(net.mhsa.proj_in.weight.shape)
+    print(net.mhsa.proj_in.weight.data)
+    print("\n")
+
     # ~~~~~~~~~~ MANAGE OUTPUT WEIGHTS ~~~~~~~~~~
     # Generate random output weights
-    if bf16_format == 0:
-        output_proj_wgt_init_tensor = torch.randn(in_w, att_dim).half()
-    else:
-        output_proj_wgt_init_tensor = torch.randn(in_w, att_dim).bfloat16()
+    output_proj_wgt_init_tensor = torch.randn(in_w, att_dim)
 
     # Copy output weights to network
     with torch.no_grad():
-        net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
+        if bf16_format == 0:
+            net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor.half())
+        else:
+            net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor.bfloat16())
 
     # Print output weights to terminal
     print("Shape output projection weights:")
@@ -251,10 +236,7 @@ if __name__ == '__main__':
     loss = criterion(out.float(), label.float())
 
     # Write output to file
-    if bf16_format == 0:
-        out_copy = torch.transpose(out, -1, -2).half()
-    else:
-        out_copy = torch.transpose(out, -1, -2).bfloat16()
+    out_copy = torch.transpose(out, -1, -2)
 
     f = open("mhsa-output.h", "w")
     f.write('#define OUTPUT_SIZE '+str(out.numel())+'\n')

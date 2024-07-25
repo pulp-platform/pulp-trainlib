@@ -13,10 +13,16 @@ def fastexp_gist(x):
 
 class SoftmaxFastExp(Function):
     @staticmethod
-    def forward(ctx, input):
+    def forward(ctx, input, bf16_format):
         maxes = torch.max(input, -1, keepdim=True)[0]
         # maxes = torch.swapaxes(maxes, -2, -1)
         x_exp = fastexp_gist((input - maxes).to(torch.float32))
+
+        if bf16_format == 0:
+            x_exp = x_exp.half()
+        else:
+            x_exp = x_exp.bfloat16()
+
         x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
         output = x_exp / x_exp_sum
         ctx.save_for_backward(output)
@@ -29,4 +35,4 @@ class SoftmaxFastExp(Function):
         sums = torch.sum(grad_output * out_data, 2, keepdim=True).repeat(1, 1, grad_output.shape[-1])
         grad_input = (grad_output - sums) * out_data
 
-        return grad_input
+        return grad_input, None

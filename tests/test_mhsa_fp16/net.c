@@ -385,8 +385,25 @@ static inline void compute_memory_occupation(){
 
 
 // ~~~~~~~~~~~~~~~~~~~~ UTILITY FUNCTIONS ~~~~~~~~~~~~~~~~~~~~
-// Mean error checker
+// Mean error checker - relative
 static inline void compare_tensors(fp16 *A, fp16 *B, int length) {
+    fp16 mean_err_rel = zero_init;
+    fp16 diff = zero_init;
+
+    for (int i = 0; i < length; i++) {
+        fp16 avg = ABS((A[i] + B[i]) / 2);
+
+        diff = A[i] - B[i];
+        if (diff > 0) diff = diff;
+        else diff = -diff;
+        mean_err_rel = mean_err_rel + (diff / (avg * length));
+    }
+    if (mean_err_rel < ERROR_TOLERANCE) printf("\n>>>TENSOR MATCHING!\nMEAN ERROR:%f\n", mean_err_rel);
+    else printf("\n>>>TENSOR NOT MATCHING!\nMEAN ERROR:%f\n", mean_err_rel);
+}
+
+// Mean error checker - absolute
+static inline void compare_tensors_absolute(fp16 *A, fp16 *B, int length) {
     fp16 mean_err_rel = zero_init;
     fp16 diff = zero_init;
 
@@ -401,8 +418,24 @@ static inline void compare_tensors(fp16 *A, fp16 *B, int length) {
 }
 
 
-// Elementwise checker
+// Elementwise checker - relative
 int check_tensor(fp16 *tensor_out, fp16 *tensor_ref, int size) {
+    int error_flag = 0;
+    for (int i = 0; i < size; i++) {
+        fp16 avg = ABS ((tensor_out[i] + tensor_ref[i]) / 2);
+        if ((ABS(tensor_out[i] - tensor_ref[i]) / avg) > CHECK_TOLERANCE) {
+            if (error_flag == 0) printf("\n");
+            printf("Error at index: %d   (Ideal = %.16f [HEX: %#x]  vs  Actual = %.16f [HEX: %#x])\n", i,
+                   tensor_ref[i], *(unsigned int *) &tensor_ref[i], tensor_out[i], *(unsigned int *) &tensor_out[i]);
+            error_flag = 1;
+        }
+    }
+    return error_flag;
+}
+
+
+// Elementwise checker - absolute
+int check_tensor_absolute(fp16 *tensor_out, fp16 *tensor_ref, int size) {
     int error_flag = 0;
     for (int i = 0; i < size; i++) {
         if (ABS(tensor_out[i] - tensor_ref[i]) > CHECK_TOLERANCE) {
