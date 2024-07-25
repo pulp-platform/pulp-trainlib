@@ -5,11 +5,13 @@ IN_H?=19 # Sequence Length (L)
 IN_W?=160 # Token Size (E)
 N_HEADS?=5 # Number of heads (H = F / N_HEADS)
 ATT_DIM?=160 #Hidden dimension (F)
+
 IN_CH?=1
 OUT_CH?=1
 
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
+
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=10
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms

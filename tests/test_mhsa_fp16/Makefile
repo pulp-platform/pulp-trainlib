@@ -5,14 +5,19 @@ IN_H?=196 # Sequence Length
 IN_W?=160 # Token Size
 N_HEADS?=5
 ATT_DIM?=160 #Hidden dimension
+
 IN_CH?=1
 OUT_CH?=1
+
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD'
+
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=3
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
+
+BF16_FORMAT=1		# 0 -> float16, 1 -> bfloat16
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -42,7 +47,8 @@ APP_LDFLAGS += -lm
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)
+	rm -rf BUILD/
+	python3 ./utils/GM.py --step $(STEP) --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM) --bf16_format $(BF16_FORMAT)
 
 profile_all_optim:
 	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_width $(IN_W) --in_height $(IN_H) --ch_in ${IN_CH} --ch_out ${OUT_CH} --n_heads $(N_HEADS) --att_dim $(ATT_DIM)

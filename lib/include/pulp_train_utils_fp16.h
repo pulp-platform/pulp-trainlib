@@ -12,18 +12,19 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-
-/**
+ *
  * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
 */ 
+
 
 #include "pmsis.h"
 #include "pulp_train_defines.h"
 
+
 /**
  * =====> BACKEND STRUCTURES <=====
  */
+
 
 /**
  * @brief "Bunch of data" structure, grouping a tensor and its gradient and sizes.
@@ -43,12 +44,13 @@ struct blob_fp16 {
    int C;
 };
 
+
 /**
  * @brief Arguments for im2col function
  * @param input input blob of the conv layer
  * @param c weight matrix blob of the conv layer
  * @param output output blob of the conv layer
- * @param pBuffer im2col buffer which will contain the transformed version of the data to be tranformed
+ * @param pBuffer im2col buffer which will contain the transformed version of the data to be transformed
  * @param Lpad left padding
  * @param Rpad right padding
  * @param Upad upper padding
@@ -76,10 +78,11 @@ struct im2col_args_fp16
   int USE_DMA;
 };
 
+
 /**
  * @brief Transposes an array containing a matrix (of sizes N and M) into another target array
  * @param matrix Matrix to be transposed
- * @param transp_matrix Output tranposed matrix
+ * @param transp_matrix Output transposed matrix
  * @param N Number of rows of the matrix
  * @param M Number of columns of the matrix
  */
@@ -89,6 +92,7 @@ struct transp_args_fp16 {
   int N;
   int M;
 };
+
 
 /**
  * @brief Args used to change the data layout of a tensor (CHW to HWC or vice versa)
@@ -103,6 +107,7 @@ struct layout_args_fp16 {
   int transpose_data;
   int transpose_grad;
 };
+
 
 /**
  * @brief Arguments for pulp_blocktransp_fp16 to block-transpose a weight matrix (for conv2d in grad)
@@ -123,6 +128,7 @@ struct blocktransp_args_fp16 {
   int HWC;
 };
 
+
 /**
  * @brief Arguments for the copy function
  * @param from source array
@@ -135,6 +141,7 @@ struct copy_args_fp16 {
   int size;
 };
 
+
 /**
  * @brief Arguments for the set_to_value function
  * @param to target array to set to a single value
@@ -146,6 +153,7 @@ struct set_to_value_args_fp16 {
   fp16 value;
   int size;
 };
+
 
 /**
  * @brief Arguments for the vect_copy function (sums two arrays)
@@ -161,6 +169,7 @@ struct vect_sum_args_fp16 {
   int size;
 };
 
+
 /**
  * @brief Arguments for the cast_fp32_tensor_to_fp16 function
  * @param source pointer to a fp32 tensor to be cast in float 
@@ -172,6 +181,7 @@ struct cast_32t16_args {
   fp16 * destination;
   int size;
 };
+
 
 /**
  * @brief Arguments for the pad_tensor
@@ -198,6 +208,7 @@ struct pad_args_fp16 {
   int T_DPAD;
   int HWC_lay;
 };
+
 
 /**
  * @brief Arguments for standard matrix multiplication C=A*B (A=N*K, B=K*M, result is C=N*M)
@@ -253,6 +264,7 @@ struct matMul_args_fp16 {
   int HWC;
 };
 
+
 /**
  * @brief Arguments for the naive core kernel of DepthWise Convolution (forward and backward)
  * @param input pointer to the input blob
@@ -265,12 +277,13 @@ struct kernel_DW_args_fp16 {
   struct blob_fp16 * output;
 };
 
+
 /**
  * @brief Arguments for mm_manager function, which selects which matmul to be executed.
  * @param mm_args The pointer to the structure to be used by the matmul to be chosen (not for DW convolution)
  * @param mm_dw_args The pointer to the structure to be used by the matmul to be chosen (DW convolution only)
  * @param layer_type The type of layer in which to select the correct matmul. Can be targeted by using defines of type "LAYER_LINEAR" (groupdef inside pulp_train_utils).
- * @param step_type The step to be performed (forward, weigth grad or input grad). Can be targeted by using defines of type "STEP_FW".
+ * @param step_type The step to be performed (forward, weight grad or input grad). Can be targeted by using defines of type "STEP_FW".
  * @param matmul_type The type of matmul to be selected for the chosen pass.
  */
 struct mm_manager_args_fp16 {
@@ -280,6 +293,7 @@ struct mm_manager_args_fp16 {
   int step_type;
   int matmul_type;
 };
+
 
 /**
  * @brief Arguments for tanh in parallel output=tanh(input)
@@ -380,6 +394,7 @@ struct scalar_mul_args_fp16{
   int dim;
 };
 
+
 /**
  * @brief Arguments for calculating mean, variance and standard deviation of a vector
  * @param input   input vector
@@ -439,6 +454,7 @@ struct sm_bw_op_2_args_fp16 {
  * =====> FUNCTIONS <=====
  */
 
+
 /**
  * @brief Checks if a tensor is equal to a reference one and notifies the index and the value of the incorrect values. If tensor_out contains errors, a flag is also raised as return value.
  * 
@@ -450,11 +466,13 @@ struct sm_bw_op_2_args_fp16 {
  */
 int verify_tensor_fp16(fp16 * tensor_out, fp16 * tensor_ref, int size, fp16 tolerance);
 
+
 /**
  * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose_fp16, &args) to parallelize.
  * @param void_args (void *) (struct transp_args_fp16 void_args)
  */
 void transpose_fp16(void * void_args);
+
 
 /**
  * @brief Copies an array of size "size" into another destination array. Set up the arguments by using a "struct copy_args_fp16" structure. Use pi_cl_team_fork(NUM_CORES, copy_fp16, &args) to parallelize.
@@ -462,11 +480,13 @@ void transpose_fp16(void * void_args);
  */
 void copy_fp16 (void * void_args);
 
+
 /**
  * @brief Sets an array of size "size" to a value "value". Set up the arguments by using a "struct set_to_value_args_fp16" structure. Use pi_cl_team_fork(NUM_CORES, set_to_value_fp16, &args) to parallelize.
  * @param (void * ) (struct set_to_value_args_fp16 void_args)
  */
 void set_to_value_fp16 (void * void_args);
+
 
 /**
  * @brief Sums two arrays of size "size" into a third one. Set up the arguments by using a "struct vect_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vect_sum, &args) to parallelize.
@@ -474,11 +494,13 @@ void set_to_value_fp16 (void * void_args);
  */
 void vect_sum_fp16 (void * vect_sum_args);
 
+
 /**
  * @brief Cast a FP32 tensor to FP16. Set up the arguments by using a "struct cast_32t16_args" structure. Use pi_cl_team_fork(NUM_CORES, cast_fp32_tensor_to_fp16, &args) to parallelize.
  * @param (void *) (struct cast_32t16_args cast_args)
  */
 void cast_fp32_tensor_to_fp16 (void * cast_32t16_args);
+
 
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to CHW from HWC
@@ -486,11 +508,13 @@ void cast_fp32_tensor_to_fp16 (void * cast_32t16_args);
  */
 void HWC_to_CHW_fp16 (void * layout_args);
 
+
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to HWC from CHW
  * @param layout_args (void *) (struct layout_args_fp16 layout_args) 
  */
 void CHW_to_HWC_fp16 (void * layout_args);
+
 
 /**
  * @brief Pad a tensor into a destination buffer specifying its size and the spatial sizes of the padding. Parallelize with pi_cl_team_fork(NUM_CORES, pad_tensor_fp16, &args).
@@ -498,17 +522,20 @@ void CHW_to_HWC_fp16 (void * layout_args);
 */
 void pad_tensor_fp16 (void * pad_args_fp16);
 
+
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &args) to parallelize.
  * @param (void *) (struct mm_manager_args_fp16 void_args)
  */
 void mm_manager_fp16 (void * void_args);
 
+
 /**
  * @brief Calculates the exponential value of each element in the input vector/matrix.
  * @param (void *) (struct softmax_args_fp16 void_args)
  */
 void exponential_fp16 (void * void_args);
+
 
 /**
  * @brief Divides each output vector element by their sum.
@@ -582,9 +609,11 @@ void pulp_div_fp16_cl(void* void_args);
  */
 void pulp_scalar_mul_fp16_cl(void* void_args);
 
+
 /**
  * =====> ASSEMBLY CALLS <=====
  */
+
 
 /**
  * @brief Assembly call to vfdotp (dot product of two v2f16 vectors)
@@ -593,6 +622,7 @@ void pulp_scalar_mul_fp16_cl(void* void_args);
  * @return fp16 result of the dot product
  */
 fp16 vfdotp(v2f16 a, v2f16 b);
+
 
 /**
  * @brief Packs two fp16 elements into a v2f16 vector
@@ -609,11 +639,13 @@ v2f16 vfpack(fp16 a, fp16 b);
  */
 void pulp_mean_std_fp16_cl(void * mean_std_args);
 
+
 /**
  * @brief Quick inverse-square root of a floating number, directly from the source code of Quake 3!
  * @param number number to be inverse square-rooted
  */
 float q_rsqrt_fp16(float number);
+
 
 /**
  * @brief CORDIC's sin and cos approximate calculator of input angle.

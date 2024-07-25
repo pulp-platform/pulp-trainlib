@@ -116,7 +116,7 @@ void pulp_mhsa_fp16_fw_cl(void * Mhsa_args_fp16);
  * @brief Forward pass function, forked on PULP cluster, with double buffering strategy
  * @param Mhsa_args_fp16 structure configuring the MHSA layer.
  */
-void pulp_mhsa_fp16_fw_cl_dblbuffer(void* Mhsa_args_fp16_db);
+// void pulp_mhsa_fp16_fw_cl_dblbuffer(void* Mhsa_args_fp16_db);
 
 
 // BACKWARD FUNCTIONS
