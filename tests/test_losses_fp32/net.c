@@ -56,7 +56,10 @@ void prepare_data ()
 
 void compute_loss ()
 {
-    #if LOSS_FN == MSE
+    #if LOSS_FN == L1Loss
+    pulp_L1Loss(&loss_args);
+    pulp_L1Loss_backward(&loss_args);
+    #elif LOSS_FN == MSE
     pulp_MSELoss(&loss_args);
     pulp_MSELoss_backward(&loss_args);
     #elif LOSS_FN == CrossEntropy
@@ -106,6 +109,7 @@ void net_step () {
     #endif
 
     print_tensors();
+    printf("\nEvaluating loss type %d\n", LOSS_FN);
     printf("\nLoss is %f, expected loss is %f\n", loss, LOSS);
     printf("\nChecking output..\n");
     verify_tensor(out, OUTPUT, OUT_SIZE, ERROR_TOLERANCE);

@@ -4,10 +4,10 @@ APP = test_loss_fp16
 # Standard matmul arguments
 OUT_SIZE?=16
 VALUE?=0.5
-LOSS_FN?='MSE'		# Available options: 'MSE', 'CrossEntropy'
+LOSS_FN?=0		# Available options: 0='L1Loss', 1='MSE', 2='CrossEntropy'
 # General arguments
 NUM_CORES?=1
-FP16_FORMAT?='FP16' # Available formats: 'FP16', 'bfloat16'
+FP16_FORMAT?=0 # Available formats: 0='FP16', 1='bfloat16'
 # End of user settings
 
 TRAIN_LIB=../../lib
