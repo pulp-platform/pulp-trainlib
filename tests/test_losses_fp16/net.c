@@ -28,7 +28,11 @@
 #endif
 
 #ifdef FLOAT16
+# if LOSS_FN == berHuLoss
+PI_L1 struct berHu_loss_args_fp16 loss_args;
+# else
 PI_L1 struct loss_args_fp16 loss_args;
+# endif 
 PI_L1 fp16 out[OUT_SIZE];
 PI_L1 fp16 out_diff[OUT_SIZE];
 PI_L1 fp16 loss = 0;
@@ -51,6 +55,9 @@ void prepare_data ()
     loss_args.output = &out_blob;
     loss_args.target = LABEL;
     loss_args.wr_loss = &loss;
+    # if LOSS_FN == berHuLoss
+    loss_args.alpha = 0.2;
+    # endif
 }
 
 
@@ -65,6 +72,9 @@ void compute_loss ()
     #elif LOSS_FN == CrossEntropy
     pulp_CrossEntropyLoss_fp16(&loss_args);
     pulp_CrossEntropyLoss_backward_fp16(&loss_args);
+    #elif LOSS_FN == berHuLoss
+    pulp_berHuLoss_fp16(&loss_args);
+    pulp_berHuLoss_backward_fp16(&loss_args);
     #else 
     printf("\nInvalid Loss Function selection!!\n");
     #endif

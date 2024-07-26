@@ -27,6 +27,7 @@ import torch
 import torch.nn as nn
 import argparse
 import dump_utils as dump
+import losses
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -38,6 +39,8 @@ parser.add_argument( '--out_size', type=int, default=16 )
 parser.add_argument( '--value', type=float, default=0.5 )
 parser.add_argument( '--loss_fn', type=int, default=0)
 parser.add_argument( '--format', type=int, default=0)
+
+device = 'cpu'
 
 args = parser.parse_args()
 
@@ -52,6 +55,8 @@ elif loss_type == 1:
     loss_type = 'MSE'
 elif loss_type == 2:
     loss_type = 'CrossEntropy'
+elif loss_type == 3:
+    loss_type = 'berHuLoss'
 
 if data_type == 0:
     data_type = 'FP16'
@@ -78,6 +83,14 @@ if loss_type == 'MSE':
     label = torch.ones(out_size)
 
 elif loss_type == 'CrossEntropy':
+    output = torch.ones(1, out_size)
+    with torch.no_grad():
+        for i in range(out_size):
+            output[0][i] += i*value
+    # Fake label
+    label = torch.ones(1, out_size)
+    
+elif loss_type == 'berHuLoss':
     output = torch.ones(1, out_size)
     with torch.no_grad():
         for i in range(out_size):
@@ -113,6 +126,11 @@ elif loss_type == 'CrossEntropy':
         loss_fn = nn.CrossEntropyLoss().half().to(device)
     elif data_type == 'bfloat16':
         loss_fn = nn.CrossEntropyLoss().bfloat16().to(device)
+elif loss_type == 'berHuLoss':
+    if data_type == 'FP16':
+        loss_fn = losses.berHuLoss_fp16().half().to(device)
+    elif data_type == 'bfloat16':
+        loss_fn = losses.berHuLoss_bfloat16().bfloat16().to(device)
 
 loss = loss_fn(output, label)
 loss.backward()

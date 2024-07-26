@@ -4,7 +4,7 @@ APP = test_loss
 # Standard matmul arguments
 OUT_SIZE?=32
 VALUE?=0.5
-LOSS_FN?=0		# Available options: 0='L1Loss', 1='MSE', 2='CrossEntropy'
+LOSS_FN?=0		# Available options: 0='L1Loss', 1='MSE', 2='CrossEntropy', 3='berHuLoss'
 # General arguments
 NUM_CORES?=1
 # End of user settings

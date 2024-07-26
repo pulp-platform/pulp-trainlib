@@ -30,5 +30,6 @@
 #define L1Loss 0
 #define MSE 1
 #define CrossEntropy 2
+#define berHuLoss 3
 
 void net_step();
