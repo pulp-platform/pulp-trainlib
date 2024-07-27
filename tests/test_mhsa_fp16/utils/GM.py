@@ -136,6 +136,10 @@ if __name__ == '__main__':
     f.write('#define Tn_heads_l1 '+str(n_heads)+'\n')
     f.write('#define Tatt_dim_l1 '+str(att_dim)+'\n')
     f.write('#define Thead_dim_l1 '+str(head_dim)+'\n')
+    if current_step == "FORWARD":
+        f.write('#define Ttemp_max '+str(int(max(in_h * head_dim, in_h * in_h)))+'\n')
+    else:
+        f.write('#define Ttemp_max '+str(int(max(in_h * att_dim, 3 * att_dim * in_w, in_h * in_h, in_h * in_w)))+'\n')
 
     f.close()
 

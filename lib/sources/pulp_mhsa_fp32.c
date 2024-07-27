@@ -105,7 +105,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 3F x L -> 3 (F x L) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // Separate Q, K and V entry points in the QKV matrix. Q, K and V are F x L vectors.
-    // TODO 0006: Maybe different key size (from q and v)
+    // TODO 0000: Maybe different key size (from q and v)
     q = qkv;
     k = qkv + L * F;
     v = qkv + L * 2 * F;
@@ -452,14 +452,12 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
     float *coeffDataWin = mhsa_args->coeff_in->data; // E x 3F
     float *coeffDataWout = mhsa_args->coeff_out->data; // E x F
-    float *inputData = mhsa_args->input->data; // L x E
-    // TODO 0007: THIS HAS TO BE DYNAMIC (calculate the max capacity required)
-    float *temp = mhsa_args->temp_buffer; // Temporary buffer to save transposed matrices
-    float *grad = mhsa_args->grad; // L x L
     float *attention_map = mhsa_args->attention_map->data; // F x L
-    float *coeffDiffWin = mhsa_args->coeff_in->diff; // E x 3F
-    float *coeffDiffWout = mhsa_args->coeff_out->diff; // E x F
+    float *inputData = mhsa_args->input->data; // L x E
+    float *temp = mhsa_args->temp_buffer; // Temporary buffer to save transposed matrices
     float *softmax_buffer = mhsa_args->softmax_buffer->data;
+    float *sums = mhsa_args->sums;
+    float *grad = mhsa_args->grad; // L x L
 
     int L = mhsa_args->input->H; // Input sequence length
     int E = mhsa_args->input->W; // Input sequence element size
@@ -481,7 +479,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     float *inputDiff = mhsa_args->input->diff; // L x E
     float *attention_map_diff = mhsa_args->attention_map->diff; // F x L
     float *softmax_buffer_diff = mhsa_args->softmax_buffer->diff;
-    float *sums = mhsa_args->sums;
+    float *coeffDiffWin = mhsa_args->coeff_in->diff; // E x 3F
+    float *coeffDiffWout = mhsa_args->coeff_out->diff; // E x F
 
     float scaling = q_rsqrt((float) H);
 
