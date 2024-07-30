@@ -33,6 +33,17 @@ struct act_args_fp16 {
 };
 
 /**
+ * @brief Structure for leaky relu activation functions
+ * @param input blob structure for the input data of the activation layer
+ * @param output blob structure for the output data of the activation layer
+ */
+struct leakyrelu_args_fp16 {
+    struct blob_fp16 * input;
+    struct blob_fp16 * output;
+    fp16 negative_slope;
+};
+
+/**
  * @brief Arguments for exponential and softmax in parallel
  * @param input   pointer to input vector
  * @param dim     dimension vector
@@ -108,6 +119,36 @@ void relu_core_fw_fp16( void * act_args_fp16 );
  * @param act_args Input and output data (gradients only will be used)
 */
 void relu_core_bw_fp16( void * act_args_fp16 );
+
+
+
+/**
+ * @brief Forward pass function. Configure and pass a leakyrelu_args structure pointer as argument.
+ * @param input Input for leaky relu.
+ * @param output Output of leaky relu.
+*/
+void pulp_leakyrelu_fp16_fw_cl( void * leakyrelu_args_fp16 );
+
+/**
+ * @brief Backward pass function.
+ * @param input Input for leaky relu.
+ * @param output Output of leaky relu.
+*/
+void pulp_leakyrelu_fp16_bw_cl( void * leakyrelu_args_fp16 );
+
+/**
+ * @brief Core function to implement the forward of Leaky ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, leakyrelu_core_fw_fp16, &leakyrelu_args)).
+ * @param leakyrelu_args_fp16 Input and output data (data only will be used)
+*/
+void leakyrelu_core_fw_fp16( void * leakyrelu_args_fp16 );
+
+/**
+ * @brief Core function to implement the backward of Leaky ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, leakyrelu_core_bw_fp16, &leakyrelu_args)).
+ * @param leakyrelu_args_fp16 Input and output data (gradients only will be used)
+*/
+void leakyrelu_core_bw_fp16( void * leakyrelu_args_fp16 );
+
+
 
 
 

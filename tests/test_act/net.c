@@ -25,12 +25,19 @@
 #if DATA_TYPE == FP32
 // Inout data
 PI_L1 struct act_args act_args;
+PI_L1 struct leakyrelu_args lkrel_args;
 
 PI_L1 struct blob reluin_blob;
 PI_L1 struct blob reluout_blob;
 PI_L1 float reluout[OUT_SIZE];
 PI_L1 float reluout_grad[OUT_SIZE];
 PI_L1 float reluin_grad[IN_SIZE];
+
+PI_L1 struct blob lkreluin_blob;
+PI_L1 struct blob lkreluout_blob;
+PI_L1 float lkreluout[OUT_SIZE];
+PI_L1 float lkreluout_grad[OUT_SIZE];
+PI_L1 float lkreluin_grad[IN_SIZE];
 
 // PI_L1 struct blob softmin_blob;
 // PI_L1 struct blob softmout_blob;
@@ -47,12 +54,19 @@ PI_L1 float sigmoidin_grad[IN_SIZE];
 #elif DATA_TYPE == FP16
 // Inout data
 PI_L1 struct act_args_fp16 act_args;
+PI_L1 struct leakyrelu_args_fp16 lkrel_args;
 
 PI_L1 struct blob_fp16 reluin_blob;
 PI_L1 struct blob_fp16 reluout_blob;
 PI_L1 fp16 reluout[OUT_SIZE];
 PI_L1 fp16 reluout_grad[OUT_SIZE];
 PI_L1 fp16 reluin_grad[IN_SIZE];
+
+PI_L1 struct blob_fp16 lkreluin_blob;
+PI_L1 struct blob_fp16 lkreluout_blob;
+PI_L1 fp16 lkreluout[OUT_SIZE];
+PI_L1 fp16 lkreluout_grad[OUT_SIZE];
+PI_L1 fp16 lkreluin_grad[IN_SIZE];
 
 // PI_L1 struct blob_fp16 softmin_blob;
 // PI_L1 struct blob_fp16 softmout_blob;
@@ -78,6 +92,8 @@ void prepare_data ()
     {
         reluout[i] = 0;
         reluin_grad[i] = 0;
+        lkreluout[i] = 0;
+        lkreluin_grad[i] = 0;
         //softmout[i] = 0;
         //softmin_grad[i] = 0;
     }
@@ -96,6 +112,21 @@ void prepare_data ()
     reluout_blob.H = Tout_H;
     reluout_blob.W = Tout_W;
     reluout_blob.C = Tout_C;
+
+    // LeakyReLU args
+    lkreluin_blob.data = LEAKYRELUIN;
+    lkreluin_blob.diff = lkreluin_grad;
+    lkreluin_blob.dim = Tin_C*Tin_H*Tin_W;
+    lkreluin_blob.H = Tin_H;
+    lkreluin_blob.W = Tin_W;
+    lkreluin_blob.C = Tin_C;
+
+    lkreluout_blob.data = lkreluout;
+    lkreluout_blob.diff = LEAKYRELUOUTPUT_GRAD;
+    lkreluout_blob.dim = Tout_C*Tout_H*Tout_W;
+    lkreluout_blob.H = Tout_H;
+    lkreluout_blob.W = Tout_W;
+    lkreluout_blob.C = Tout_C;
 
     // // Softmax args
     // softmin_blob.data = SOFTMIN;
@@ -200,6 +231,71 @@ void net_step () {
 
     #endif
 
+
+
+
+
+    printf("\n----- LEAKY RELU RESULTS -----\n");
+
+    // Prepare ReLU struct
+    lkrel_args.input = &lkreluin_blob;
+    lkrel_args.output = &lkreluout_blob;
+    lkrel_args.negative_slope = 0.01;
+
+    #ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+    #endif
+
+    #if DATA_TYPE == FP32
+    pulp_leakyrelu_fp32_fw_cl(&lkrel_args);
+    #elif DATA_TYPE == FP16
+    pulp_leakyrelu_fp16_fw_cl(&lkrel_args);
+    #else 
+
+    #endif
+
+
+    #ifdef PROF_NET
+    STOP_STATS();
+    #endif
+
+    printf("\nChecking output..\n");
+    #if DATA_TYPE == FP32
+    verify_tensor(lkreluout, LEAKYRELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(lkreluout, LEAKYRELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #else 
+
+    #endif
+
+
+    #ifdef PROF_NET
+    printf("\nBackward stats: \n");
+    START_STATS();
+    #endif
+    
+    #if DATA_TYPE == FP32
+    pulp_relu_fp32_bw_cl(&lkrel_args);
+    #elif DATA_TYPE == FP16
+    pulp_relu_fp16_bw_cl(&lkrel_args);
+    #else
+
+    #endif
+
+
+    #ifdef PROF_NET
+    STOP_STATS();
+    #endif
+
+    printf("\nChecking in grad..\n");
+    #if DATA_TYPE == FP32
+    verify_tensor(lkreluin_grad, LEAKYRELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(lkreluin_grad, LEAKYRELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #else 
+
+    #endif
 
 
 
