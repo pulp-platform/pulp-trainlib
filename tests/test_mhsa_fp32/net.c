@@ -36,7 +36,7 @@ PI_L1 float min_float = -340282346638528859811704183484516925440.0f;
 
 // Variables definition
 PI_L1 struct Mhsa_args mhsa_args;
-PI_L1 struct blob layer0_in, layer0_wgt_in, layer0_wgt_out, layer0_qkv, layer0_att_map, layer0_softmax_buffer, layer0_out;
+PI_L1 struct blob layer0_in, layer0_wgt_in_q, layer0_wgt_in_k, layer0_wgt_in_v, layer0_wgt_out, layer0_q, layer0_k, layer0_v, layer0_att_map, layer0_softmax_buffer, layer0_out;
 
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
@@ -45,9 +45,13 @@ PI_L2 int L2_memocc_bytes = 0;
 // Forward step variables
 #ifdef FORWARD
 PI_L1 float l0_in[Tin_H_l1*Tin_W_l1];
-PI_L1 float l0_ker_in[Tin_W_l1*Tatt_dim_l1*3];
+PI_L1 float l0_ker_in_q[Tin_W_l1*Tatt_dim_l1];
+PI_L1 float l0_ker_in_k[Tin_W_l1*Tatt_dim_l1];
+PI_L1 float l0_ker_in_v[Tin_W_l1*Tatt_dim_l1];
 PI_L1 float l0_ker_out[Tatt_dim_l1*Tin_W_l1]; 
-PI_L1 float l0_qkv[Tin_H_l1*Tatt_dim_l1*3];
+PI_L1 float l0_q[Tin_H_l1*Tatt_dim_l1];
+PI_L1 float l0_k[Tin_H_l1*Tatt_dim_l1];
+PI_L1 float l0_v[Tin_H_l1*Tatt_dim_l1];
 PI_L1 float l0_att_map[Tin_H_l1*Tatt_dim_l1];
 PI_L1 float l0_softmax_buffer[Tin_H_l1*Tin_H_l1*Tn_heads_l1];
 PI_L1 float l0_out[Tin_H_l1*Tin_W_l1];
@@ -61,14 +65,25 @@ PI_L1 float l0_maxes[Tin_H_l1];
 PI_L1 float l0_in[Tin_H_l1 * Tin_W_l1];
 PI_L1 float l0_in_diff[Tin_H_l1 * Tin_W_l1];
 
-PI_L1 float l0_ker_in[Tin_W_l1 * Tatt_dim_l1 * 3];
-PI_L1 float l0_ker_in_diff[Tin_W_l1 * Tatt_dim_l1 * 3];
+PI_L1 float l0_ker_in_q[Tin_W_l1 * Tatt_dim_l1];
+PI_L1 float l0_ker_in_k[Tin_W_l1 * Tatt_dim_l1];
+PI_L1 float l0_ker_in_v[Tin_W_l1 * Tatt_dim_l1];
+
+PI_L1 float l0_ker_in_q_diff[Tin_W_l1 * Tatt_dim_l1];
+PI_L1 float l0_ker_in_k_diff[Tin_W_l1 * Tatt_dim_l1];
+PI_L1 float l0_ker_in_v_diff[Tin_W_l1 * Tatt_dim_l1];
 
 PI_L1 float l0_ker_out[Tatt_dim_l1 * Tin_W_l1];
 PI_L1 float l0_ker_out_diff[Tatt_dim_l1 * Tin_W_l1];
 
-PI_L1 float l0_qkv[Tin_H_l1 * Tatt_dim_l1 * 3];
-PI_L1 float l0_qkv_diff[Tin_H_l1 * Tatt_dim_l1 * 3];
+PI_L1 float l0_q[Tin_H_l1 * Tatt_dim_l1];
+PI_L1 float l0_q_diff[Tin_H_l1 * Tatt_dim_l1];
+
+PI_L1 float l0_k[Tin_H_l1 * Tatt_dim_l1];
+PI_L1 float l0_k_diff[Tin_H_l1 * Tatt_dim_l1];
+
+PI_L1 float l0_v[Tin_H_l1 * Tatt_dim_l1];
+PI_L1 float l0_v_diff[Tin_H_l1 * Tatt_dim_l1];
 
 PI_L1 float l0_att_map[Tin_H_l1 * Tatt_dim_l1];
 PI_L1 float l0_att_map_diff[Tin_H_l1 * Tatt_dim_l1];
@@ -95,11 +110,15 @@ static inline void tensor_init()
 {
   printf("Initializing the things\n");
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_in[i] = INPUT[i];
-  for (int i=0; i<Tin_W_l1*Tatt_dim_l1*3; i++)          l0_ker_in[i] = INPUT_WEIGHTS[i]; 
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
+  for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
   for (int i=0; i<Tin_W_l1*Tatt_dim_l1; i++)            l0_ker_out[i] = OUTPUT_WEIGHTS[i]; 
   for (int i=0; i<Tin_H_l1*Tin_W_l1; i++)               l0_out[i] = zero_init;
   for (int i=0; i<Ttemp_max; i++)                       l0_temp[i] = zero_init;
-  for (int i=0; i<Tin_H_l1*Tatt_dim_l1*3; i++)          l0_qkv[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_q[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_k[i] = zero_init;
+  for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_v[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tatt_dim_l1; i++)            l0_att_map[i] = zero_init;
   for (int i=0; i<Tin_H_l1*Tin_H_l1*Tn_heads_l1; i++)   l0_softmax_buffer[i] = zero_init;
   for (int i=0; i<Tin_H_l1; i++)                        l0_sums[i] = zero_init;
@@ -116,11 +135,23 @@ static inline void connect_blobs()
   layer0_in.H = Tin_H_l1;
   layer0_in.C = Tin_C_l1;
 
-  layer0_wgt_in.data = l0_ker_in;
-  layer0_wgt_in.dim = Tin_W_l1*Tatt_dim_l1*3;
-  layer0_wgt_in.H = Tin_W_l1;
-  layer0_wgt_in.W = Tatt_dim_l1*3;
-  layer0_wgt_in.C = Tout_C_l1;
+  layer0_wgt_in_q.data = l0_ker_in_q;
+  layer0_wgt_in_q.dim = Tin_W_l1*Tatt_dim_l1;
+  layer0_wgt_in_q.H = Tatt_dim_l1;
+  layer0_wgt_in_q.W = Tin_W_l1;
+  layer0_wgt_in_q.C = Tout_C_l1;
+
+  layer0_wgt_in_k.data = l0_ker_in_k;
+  layer0_wgt_in_k.dim = Tin_W_l1*Tatt_dim_l1;
+  layer0_wgt_in_k.H = Tatt_dim_l1;
+  layer0_wgt_in_k.W = Tin_W_l1;
+  layer0_wgt_in_k.C = Tout_C_l1;
+
+  layer0_wgt_in_v.data = l0_ker_in_v;
+  layer0_wgt_in_v.dim = Tin_W_l1*Tatt_dim_l1;
+  layer0_wgt_in_v.H = Tatt_dim_l1;
+  layer0_wgt_in_v.W = Tin_W_l1;
+  layer0_wgt_in_v.C = Tout_C_l1;
 
   layer0_wgt_out.data = l0_ker_out;
   layer0_wgt_out.dim = Tin_W_l1*Tatt_dim_l1;
@@ -128,11 +159,23 @@ static inline void connect_blobs()
   layer0_wgt_out.W = Tatt_dim_l1;
   layer0_wgt_out.C = Tin_C_l1;
 
-  layer0_qkv.data = l0_qkv;
-  layer0_qkv.dim = Tatt_dim_l1*3*Tin_H_l1;
-  layer0_qkv.H = Tin_H_l1;
-  layer0_qkv.W = Tatt_dim_l1*3;
-  layer0_qkv.C = Tin_C_l1;
+  layer0_q.data = l0_q;
+  layer0_q.dim = Tatt_dim_l1*Tin_H_l1;
+  layer0_q.H = Tin_H_l1;
+  layer0_q.W = Tatt_dim_l1;
+  layer0_q.C = Tin_C_l1;
+
+  layer0_k.data = l0_k;
+  layer0_k.dim = Tatt_dim_l1*Tin_H_l1;
+  layer0_k.H = Tin_H_l1;
+  layer0_k.W = Tatt_dim_l1;
+  layer0_k.C = Tin_C_l1;
+
+  layer0_v.data = l0_v;
+  layer0_v.dim = Tatt_dim_l1*Tin_H_l1;
+  layer0_v.H = Tin_H_l1;
+  layer0_v.W = Tatt_dim_l1;
+  layer0_v.C = Tin_C_l1;
 
   layer0_out.data = l0_out;
   layer0_out.dim = Tin_W_l1*Tin_H_l1;
@@ -154,9 +197,13 @@ static inline void connect_blobs()
 
   mhsa_args.input = &layer0_in;
   mhsa_args.n_heads = Tn_heads_l1;
-  mhsa_args.qkv = &layer0_qkv;
+  mhsa_args.q = &layer0_q;
+  mhsa_args.k = &layer0_k;
+  mhsa_args.v = &layer0_v;
   mhsa_args.output = &layer0_out;
-  mhsa_args.coeff_in = &layer0_wgt_in;
+  mhsa_args.coeff_in_q = &layer0_wgt_in_q;
+  mhsa_args.coeff_in_k = &layer0_wgt_in_k;
+  mhsa_args.coeff_in_v = &layer0_wgt_in_v;
   mhsa_args.coeff_out = &layer0_wgt_out;
   mhsa_args.attention_map = &layer0_att_map;
   mhsa_args.softmax_buffer = &layer0_softmax_buffer;
@@ -221,9 +268,14 @@ static inline void tensor_init() {
     for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_in[i] = INPUT[i];
     for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_in_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1 * 3; i++) l0_ker_in[i] = INPUT_WEIGHTS[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
+
     // Initialization to zero, then it is overwritten the result in the function
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1 * 3; i++) l0_ker_in_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_q_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_k_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_v_diff[i] = zero_init;
 
     for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++) l0_ker_out[i] = OUTPUT_WEIGHTS[i];
     for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++) l0_ker_out_diff[i] = zero_init;
@@ -231,8 +283,14 @@ static inline void tensor_init() {
     for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++) l0_out[i] = OUTPUT[i];
     for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++) l0_out_diff[i] = OUTPUT_GRAD[i];
 
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1 * 3; i++) l0_qkv[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1 * 3; i++) l0_qkv_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_q[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_q_diff[i] = zero_init;
+
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_k[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_k_diff[i] = zero_init;
+
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_v[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_v_diff[i] = zero_init;
 
     for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_att_map[i] = zero_init;
     for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_att_map_diff[i] = zero_init;
@@ -255,12 +313,26 @@ static inline void connect_blobs() {
     layer0_in.C = Tin_C_l1;
     layer0_in.diff = l0_in_diff;
 
-    layer0_wgt_in.data = l0_ker_in;
-    layer0_wgt_in.dim = Tin_W_l1 * Tatt_dim_l1 * 3;
-    layer0_wgt_in.H = Tin_W_l1;
-    layer0_wgt_in.W = Tatt_dim_l1 * 3;
-    layer0_wgt_in.C = Tout_C_l1;
-    layer0_wgt_in.diff = l0_ker_in_diff;
+    layer0_wgt_in_q.data = l0_ker_in_q;
+    layer0_wgt_in_q.dim = Tin_W_l1 * Tatt_dim_l1;
+    layer0_wgt_in_q.H = Tatt_dim_l1;
+    layer0_wgt_in_q.W = Tin_W_l1;
+    layer0_wgt_in_q.C = Tout_C_l1;
+    layer0_wgt_in_q.diff = l0_ker_in_q_diff;
+
+    layer0_wgt_in_k.data = l0_ker_in_k;
+    layer0_wgt_in_k.dim = Tin_W_l1 * Tatt_dim_l1;
+    layer0_wgt_in_k.H = Tatt_dim_l1;
+    layer0_wgt_in_k.W = Tin_W_l1;
+    layer0_wgt_in_k.C = Tout_C_l1;
+    layer0_wgt_in_k.diff = l0_ker_in_k_diff;
+
+    layer0_wgt_in_v.data = l0_ker_in_v;
+    layer0_wgt_in_v.dim = Tin_W_l1 * Tatt_dim_l1;
+    layer0_wgt_in_v.H = Tatt_dim_l1;
+    layer0_wgt_in_v.W = Tin_W_l1;
+    layer0_wgt_in_v.C = Tout_C_l1;
+    layer0_wgt_in_v.diff = l0_ker_in_v_diff;
 
     layer0_wgt_out.data = l0_ker_out;
     layer0_wgt_out.dim = Tin_W_l1 * Tatt_dim_l1;
@@ -269,12 +341,26 @@ static inline void connect_blobs() {
     layer0_wgt_out.C = Tin_C_l1;
     layer0_wgt_out.diff = l0_ker_out_diff;
 
-    layer0_qkv.data = l0_qkv;
-    layer0_qkv.dim = Tatt_dim_l1 * 3 * Tin_H_l1;
-    layer0_qkv.H = Tin_H_l1;
-    layer0_qkv.W = Tatt_dim_l1 * 3;
-    layer0_qkv.C = Tin_C_l1;
-    layer0_qkv.diff = l0_qkv_diff;
+    layer0_q.data = l0_q;
+    layer0_q.dim = Tatt_dim_l1 * Tin_H_l1;
+    layer0_q.H = Tin_H_l1;
+    layer0_q.W = Tatt_dim_l1;
+    layer0_q.C = Tin_C_l1;
+    layer0_q.diff = l0_q_diff;
+
+    layer0_k.data = l0_k;
+    layer0_k.dim = Tatt_dim_l1 * Tin_H_l1;
+    layer0_k.H = Tin_H_l1;
+    layer0_k.W = Tatt_dim_l1;
+    layer0_k.C = Tin_C_l1;
+    layer0_k.diff = l0_k_diff;
+
+    layer0_v.data = l0_v;
+    layer0_v.dim = Tatt_dim_l1 * Tin_H_l1;
+    layer0_v.H = Tin_H_l1;
+    layer0_v.W = Tatt_dim_l1;
+    layer0_v.C = Tin_C_l1;
+    layer0_v.diff = l0_v_diff;
 
     layer0_out.data = l0_out;
     layer0_out.dim = Tin_W_l1 * Tin_H_l1;
@@ -299,9 +385,13 @@ static inline void connect_blobs() {
 
     mhsa_args.input = &layer0_in;
     mhsa_args.n_heads = Tn_heads_l1;
-    mhsa_args.qkv = &layer0_qkv;
+    mhsa_args.q = &layer0_q;
+    mhsa_args.k = &layer0_k;
+    mhsa_args.v = &layer0_v;
     mhsa_args.output = &layer0_out;
-    mhsa_args.coeff_in = &layer0_wgt_in;
+    mhsa_args.coeff_in_q = &layer0_wgt_in_q;
+    mhsa_args.coeff_in_k = &layer0_wgt_in_k;
+    mhsa_args.coeff_in_v = &layer0_wgt_in_v;
     mhsa_args.coeff_out = &layer0_wgt_out;
     mhsa_args.attention_map = &layer0_att_map;
     mhsa_args.softmax_buffer = &layer0_softmax_buffer;
@@ -479,8 +569,13 @@ static inline void train() {
     #ifdef BACKWARD
     printf("\nFINAL WEIGHTS GRADIENT CHECK: \n");
     printf("\nINPUT WEIGHTS GRADIENT CHECK: \n");
-    compare_tensors(l0_ker_in_diff, INPUT_WGT_GRAD, G_INPUT_WGT_SIZE);
-    check_tensor(l0_ker_in_diff, INPUT_WGT_GRAD, G_INPUT_WGT_SIZE);
+    compare_tensors(l0_ker_in_q_diff, INPUT_WGT_GRAD_Q, G_INPUT_WGT_SIZE);
+    compare_tensors(l0_ker_in_k_diff, INPUT_WGT_GRAD_K, G_INPUT_WGT_SIZE);
+    compare_tensors(l0_ker_in_v_diff, INPUT_WGT_GRAD_V, G_INPUT_WGT_SIZE);
+
+    check_tensor(l0_ker_in_q_diff, INPUT_WGT_GRAD_Q, G_INPUT_WGT_SIZE);
+    check_tensor(l0_ker_in_k_diff, INPUT_WGT_GRAD_K, G_INPUT_WGT_SIZE);
+    check_tensor(l0_ker_in_v_diff, INPUT_WGT_GRAD_V, G_INPUT_WGT_SIZE);
 
     printf("\nOUTPUT WEIGHTS GRADIENT CHECK: \n");
     compare_tensors(l0_ker_out_diff, OUTPUT_WGT_GRAD, G_OUTPUT_WGT_SIZE);

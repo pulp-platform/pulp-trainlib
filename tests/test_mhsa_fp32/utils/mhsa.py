@@ -11,7 +11,7 @@ def q_rsqrt(x):
         x2 = y * 0.5
         i = y.view(np.int32)
         i = np.right_shift(i, 1)
-        i = 0x5f3759df - i
+        i = 0x5F3759DF - i
         y = i.view(np.float32)
         y = y * (1.5 - (x2 * y * y))
 
@@ -23,10 +23,10 @@ def q_rsqrt(x):
 def own_softmax(x):
     maxes = torch.max(x, -1, keepdim=True)[0]
     # maxes = torch.swapaxes(maxes, -2, -1)
-    x_exp = torch.exp((x-maxes))
+    x_exp = torch.exp((x - maxes))
     x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
 
-    return x_exp/x_exp_sum
+    return x_exp / x_exp_sum
 
 
 def threshold(x):
@@ -35,8 +35,14 @@ def threshold(x):
     log2_3 = 0.3330246519889294
     log2_4 = 0.2308350985830834
     log2_5 = 0.1600026977571413
-    x[x < 3.14] = (1 - log2 * x + 0.5 * np.power(x, 2) * log2_2 - 0.16 * np.power(x, 3) * log2_3 + 0.0416 *
-                   np.power(x, 4) * log2_4 - 0.008 * np.power(x, 5) * log2_5)[x < 3.14]
+    x[x < 3.14] = (
+        1
+        - log2 * x
+        + 0.5 * np.power(x, 2) * log2_2
+        - 0.16 * np.power(x, 3) * log2_3
+        + 0.0416 * np.power(x, 4) * log2_4
+        - 0.008 * np.power(x, 5) * log2_5
+    )[x < 3.14]
     x[x >= 3.14] = 0
     return x
 
@@ -48,14 +54,20 @@ def own_partial_softmax_simple(x):
 
     print("Softmax input:")
     print(x)
-    
+
     lines_max = np.max(x_copy, axis=-1)
-    diff = np.repeat(lines_max, seq_length).reshape(n_heads, seq_length, seq_length) - x_copy
-    
+    diff = (
+        np.repeat(lines_max, seq_length).reshape(n_heads, seq_length, seq_length)
+        - x_copy
+    )
+
     exp_sum = np.sum(1 / 2**diff, axis=-1)
     exp_sum_inverse = 1 / exp_sum
-    
-    return torch.from_numpy(np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length) / 2**diff)
+
+    return torch.from_numpy(
+        np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length)
+        / 2**diff
+    )
 
 
 def own_partial_softmax_simple_approximate(x):
@@ -65,22 +77,30 @@ def own_partial_softmax_simple_approximate(x):
 
     print("Softmax input:")
     print(x)
-    
+
     lines_max = np.max(x_copy, axis=-1)
-    diff = np.repeat(lines_max, seq_length).reshape(n_heads, seq_length, seq_length) - x_copy
-    
+    diff = (
+        np.repeat(lines_max, seq_length).reshape(n_heads, seq_length, seq_length)
+        - x_copy
+    )
+
     exp_sum = np.sum(threshold(diff.copy()), axis=-1)
     exp_sum_inverse = 1 / exp_sum
-    
-    return torch.from_numpy(np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length) *
-                            threshold(diff.copy()))
+
+    return torch.from_numpy(
+        np.repeat(exp_sum_inverse, seq_length).reshape(n_heads, seq_length, seq_length)
+        * threshold(diff.copy())
+    )
 
 
 class MultiHeadedSelfAttention(nn.Module):
     """Multi-Headed Dot Product Attention"""
+
     def __init__(self, dim, num_heads, att_dim):
         super().__init__()
-        self.proj_in = nn.Linear(dim, 3*att_dim, bias=False)
+        self.proj_in_q = nn.Linear(dim, att_dim, bias=False)
+        self.proj_in_k = nn.Linear(dim, att_dim, bias=False)
+        self.proj_in_v = nn.Linear(dim, att_dim, bias=False)
         self.proj_out = nn.Linear(att_dim, dim, bias=False)
         self.dim = dim
         self.att_dim = att_dim
@@ -95,12 +115,9 @@ class MultiHeadedSelfAttention(nn.Module):
 
     def forward(self, x, tgt_len):
         # OP 1
-        qkv = self.proj_in(x)
-
-        # OP 2
-        q = qkv[..., :int(qkv.shape[-1] / 3)]
-        k = qkv[..., int(qkv.shape[-1] / 3):2 * int(qkv.shape[-1] / 3)]
-        v = qkv[..., 2 * int(qkv.shape[-1] / 3):]
+        q = self.proj_in_q(x)
+        k = self.proj_in_k(x)
+        v = self.proj_in_v(x)
 
         q = q.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
         k = k.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)

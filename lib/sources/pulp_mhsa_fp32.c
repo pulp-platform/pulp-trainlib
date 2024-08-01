@@ -20,7 +20,9 @@
 void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     // ======================================== DECLARATIONS ========================================
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
-    float *coeffDataWin = mhsa_args->coeff_in->data;            //  Input Projection Weights
+    float *coeffDataWinQ = mhsa_args->coeff_in_q->data;         //  TRANSPOSE of Input Projection Weights Query
+    float *coeffDataWinK = mhsa_args->coeff_in_k->data;         //  TRANSPOSE of Input Projection Weights Key
+    float *coeffDataWinV = mhsa_args->coeff_in_v->data;         //  TRANSPOSE of Input Projection Weights Value
     float *coeffDataWout = mhsa_args->coeff_out->data;          //  Output Projection Weights (Already transposed from GM)
     float *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
     float *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
@@ -29,10 +31,9 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     float *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
     float *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
     float *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
-    float *qkv = mhsa_args->qkv->data;                          //  Matrix containing the transposed Q, K and V (3*F x L)
-    float *q = mhsa_args->qkv->data;                            //  Pointer to the first element of Q
-    float *k = mhsa_args->qkv->data;                            //  Pointer to the first element of K 
-    float *v = mhsa_args->qkv->data;                            //  Pointer to the first element of V
+    float *q = mhsa_args->q->data;                              //  Pointer to the first element of Q
+    float *k = mhsa_args->k->data;                              //  Pointer to the first element of K
+    float *v = mhsa_args->v->data;                              //  Pointer to the first element of V
     int n_heads = mhsa_args->n_heads;                           //  Number of heads used for MHSA
 
     int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
@@ -51,91 +52,229 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
 
     // ================================================== OP 1 ==================================================
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin @ inputData ->  qkv   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         (M1)
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    3F x E    @   E x L   -> 3F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~ coeffDataWinQ [^T] -T-> temp [coeffDataWinQ]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         (T0_q)
+    // ~~~~~~~~~~~~~~~~~~~       E x F        -T->      F x E            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWinQ] @ inputData ->   q   ~~~~~~~~~~~~~~~~~~~~~~~         (M1_q)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         F x E        @   E x L   -> F x L ~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~ coeffDataWinK [^T] -T-> temp [coeffDataWinK]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         (T0_k)
+    // ~~~~~~~~~~~~~~~~~~~       E x F        -T->      F x E            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWinK] @ inputData ->   k   ~~~~~~~~~~~~~~~~~~~~~~~         (M1_k)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         F x E        @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~ coeffDataWinV [^T] -T-> temp [coeffDataWinV]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         (T0_v)
+    // ~~~~~~~~~~~~~~~~~~~       E x F        -T->      F x E            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWinV] @ inputData ->   v   ~~~~~~~~~~~~~~~~~~~~~~~         (M1_v)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         F x E        @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~
+    // TODO 0000: Maybe different key size (from q and v)
 
-    // M1
-    // Projecting input sequence into Q, K, V
-    struct matMul_args matMul_args1;
-    matMul_args1.A = coeffDataWin;                              //  3F x E
-    matMul_args1.B = inputData;                                 //  E x L 
-    matMul_args1.C = qkv;                                       //  Q, K, V are saved contiguously, in the same matrix. 
+    //  T0_q
+    struct transp_args transp_args0_q;
+    transp_args0_q.matrix = coeffDataWinQ;
+    transp_args0_q.transp_matrix = temp;
+    transp_args0_q.N = E;
+    transp_args0_q.M = F;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args0_q);
+
+    #ifdef DEBUG
+    printf("\n\n\nT0_q result\n\ncoeffDataWinQ [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  transp_args0_q.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", transp_args0_q.transp_matrix[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // M1_q
+    // Projecting input sequence into Q
+    struct matMul_args matMul_args1_q;
+    matMul_args1_q.A = temp;                                       //  F x E
+    matMul_args1_q.B = inputData;                                  //  E x L
+    matMul_args1_q.C = q;
     //  It is transposed so that the elements of the same head are contiguous in memory.
-    matMul_args1.N = 3 * F;
-    matMul_args1.K = E;
-    matMul_args1.M = L;
-    matMul_args1.trans_B = 0;
+    matMul_args1_q.N = F;
+    matMul_args1_q.K = E;
+    matMul_args1_q.M = L;
+    matMul_args1_q.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args1);
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_q);
     #else
-    struct mm_manager_args man_args1;
-    man_args1.mm_args = &matMul_args1;
-    man_args1.layer_type = LAYER_LINEAR;
-    man_args1.step_type = STEP_FW;
-    man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
+    struct mm_manager_args man_args1_q;
+    man_args1_q.mm_args = &matMul_args1_q;
+    man_args1_q.layer_type = LAYER_LINEAR;
+    man_args1_q.step_type = STEP_FW;
+    man_args1_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1_q);
     #endif
 
     #ifdef DEBUG
-    printf("\n\n\nM1 result\n\ncoeffDataWin: %d %d\n", 3*F, E);
-    for (int j=0; j<3*F*E; j++){
+    printf("\n\n\nM1_q result\n\ncoeffDataWinQ: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ",  matMul_args1.A[j]);
+        printf("%.8f ",  matMul_args1_q.A[j]);
     }
     printf("\n");
 
     printf("\ninputData: %d %d\n", E, L);
     for (int j=0; j<E*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.B[j]);
-    }
-    printf("\n");
-
-    printf("\nqkv: %d %d\n", 3*F, L);
-    for (int j=0; j<3*F*L; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1.C[j]);
-    }
-    printf("\n\n");
-    #endif
-
-    // ================================================== OP 2 ==================================================
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   qkv  ->  q, k, v  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 3F x L -> 3 (F x L) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    // Separate Q, K and V entry points in the QKV matrix. Q, K and V are F x L vectors.
-    // TODO 0000: Maybe different key size (from q and v)
-    q = qkv;
-    k = qkv + L * F;
-    v = qkv + L * 2 * F;
-
-    #ifdef DEBUG
-    printf("\n\n\nSplit result\n\nqkv: %d %d\n", 3*F, L);
-    for (int j=0; j<3*F*L; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ",  qkv[j]);
+        printf("%.8f ", matMul_args1_q.B[j]);
     }
     printf("\n");
 
     printf("\nq: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  q[j]);
+        printf("%.8f ", matMul_args1_q.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    //  T0_k
+    struct transp_args transp_args0_k;
+    transp_args0_k.matrix = coeffDataWinK;
+    transp_args0_k.transp_matrix = temp;
+    transp_args0_k.N = E;
+    transp_args0_k.M = F;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args0_k);
+
+    #ifdef DEBUG
+    printf("\n\n\nT0_k result\n\ncoeffDataWinK [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  transp_args0_k.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", transp_args0_k.transp_matrix[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // M1_k
+    // Projecting input sequence into K
+    struct matMul_args matMul_args1_k;
+    matMul_args1_k.A = temp;                                       //  F x E
+    matMul_args1_k.B = inputData;                                  //  E x L
+    matMul_args1_k.C = k;
+    //  It is transposed so that the elements of the same head are contiguous in memory.
+    matMul_args1_k.N = F;
+    matMul_args1_k.K = E;
+    matMul_args1_k.M = L;
+    matMul_args1_k.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_k);
+    #else
+    struct mm_manager_args man_args1_k;
+    man_args1_k.mm_args = &matMul_args1_k;
+    man_args1_k.layer_type = LAYER_LINEAR;
+    man_args1_k.step_type = STEP_FW;
+    man_args1_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1_k);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM1_k result\n\ncoeffDataWinK: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  matMul_args1_k.A[j]);
+    }
+    printf("\n");
+
+    printf("\ninputData: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args1_k.B[j]);
     }
     printf("\n");
 
     printf("\nk: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  k[j]);
+        printf("%.8f ", matMul_args1_k.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    //  T0_v
+    struct transp_args transp_args0_v;
+    transp_args0_v.matrix = coeffDataWinV;
+    transp_args0_v.transp_matrix = temp;
+    transp_args0_v.N = E;
+    transp_args0_v.M = F;
+
+    pi_cl_team_fork(NUM_CORES, transpose, &transp_args0_v);
+
+    #ifdef DEBUG
+    printf("\n\n\nT0_v result\n\ncoeffDataWinV [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  transp_args0_v.matrix[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", transp_args0_v.transp_matrix[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // M1_v
+    // Projecting input sequence into V
+    struct matMul_args matMul_args1_v;
+    matMul_args1_v.A = temp;                                       //  F x E
+    matMul_args1_v.B = inputData;                                  //  E x L
+    matMul_args1_v.C = v;
+    //  It is transposed so that the elements of the same head are contiguous in memory.
+    matMul_args1_v.N = F;
+    matMul_args1_v.K = E;
+    matMul_args1_v.M = L;
+    matMul_args1_v.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_v);
+    #else
+    struct mm_manager_args man_args1_v;
+    man_args1_v.mm_args = &matMul_args1_v;
+    man_args1_v.layer_type = LAYER_LINEAR;
+    man_args1_v.step_type = STEP_FW;
+    man_args1_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1_v);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM1_v result\n\ncoeffDataWinV: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ",  matMul_args1_v.A[j]);
+    }
+    printf("\n");
+
+    printf("\ninputData: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args1_v.B[j]);
     }
     printf("\n");
 
     printf("\nv: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  v[j]);
+        printf("%.8f ", matMul_args1_v.C[j]);
     }
     printf("\n\n");
     #endif
@@ -145,7 +284,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     for (int i = 0; i < n_heads; i++) {
         // ================================================== OP 3 ==================================================
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   k   -T-> temp [k ^ T] ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                    (T1)
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L  ->     L x H     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L -T->    L x H     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [k ^ T] @   q   -> softmax_buffer ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     (M2)
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    L x H     @ H x L ->      L x L     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -450,7 +589,9 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     // ======================================== DECLARATIONS ========================================
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
 
-    float *coeffDataWin = mhsa_args->coeff_in->data; // E x 3F
+    float *coeffDataWinQ = mhsa_args->coeff_in_q->data; // F x E
+    float *coeffDataWinK = mhsa_args->coeff_in_k->data; // F x E
+    float *coeffDataWinV = mhsa_args->coeff_in_v->data; // F x E
     float *coeffDataWout = mhsa_args->coeff_out->data; // E x F
     float *attention_map = mhsa_args->attention_map->data; // F x L
     float *inputData = mhsa_args->input->data; // L x E
@@ -466,20 +607,21 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     int H = F / n_heads;
     int opt_matmul_type = mhsa_args->opt_matmul_type_wg;
 
-    // qkv ~ 3F x L
-    float *q = mhsa_args->qkv->data;            // F x L
-    float *k = mhsa_args->qkv->data + F * L;      // F x L
-    float *v = mhsa_args->qkv->data + 2 * F * L;    // F x L
+    float *q = mhsa_args->q->data;            // F x L
+    float *k = mhsa_args->k->data;            // F x L
+    float *v = mhsa_args->v->data;            // F x L
 
-    float *q_diff = mhsa_args->qkv->diff; // 3F x L
-    float *k_diff = mhsa_args->qkv->diff + F * L;
-    float *v_diff = mhsa_args->qkv->diff + 2 * F * L;
+    float *q_diff = mhsa_args->q->diff;       // F x L
+    float *k_diff = mhsa_args->k->diff;       // F x L
+    float *v_diff = mhsa_args->v->diff;       // F x L
 
     float *outDiff = mhsa_args->output->diff; // L x E
     float *inputDiff = mhsa_args->input->diff; // L x E
     float *attention_map_diff = mhsa_args->attention_map->diff; // F x L
     float *softmax_buffer_diff = mhsa_args->softmax_buffer->diff;
-    float *coeffDiffWin = mhsa_args->coeff_in->diff; // E x 3F
+    float *coeffDiffWinQ = mhsa_args->coeff_in_q->diff; // E x F
+    float *coeffDiffWinK = mhsa_args->coeff_in_k->diff; // E x F
+    float *coeffDiffWinV = mhsa_args->coeff_in_v->diff; // E x F
     float *coeffDiffWout = mhsa_args->coeff_out->diff; // E x F
 
     float scaling = q_rsqrt((float) H);
@@ -1149,21 +1291,39 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 
     // ================================================== BACKPROP 1 ==================================================
     // INITIAL OP [A @ B -> C]
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin @ inputData ->  qkv   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    3F x E    @   E x L   -> 3F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinQ @ inputData ->   q   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     F x E     @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinK @ inputData ->   k   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     F x E     @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinV @ inputData ->   v   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     F x E     @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //
     // ------------------------------------------------------------------------------------------------------------
     // BACKPROP 1.1 [dC @ B^T -> dA]
-    // ~~~~~~~~~~~~~~~~~~~~~~ inputData -T-> temp [inputData ^ T] ~~~~~~~~~~~~~~~~~~~~~~                                 (T8)
+    // ~~~~~~~~~~~~~~~~~~~~~~ inputData -T-> temp [inputData ^ T] ~~~~~~~~~~~~~~~~~~~~~~                         (T8)
     // ~~~~~~~~~~~~~~~~~~~~~~   E x L   -T->        L x E         ~~~~~~~~~~~~~~~~~~~~~~
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ q_diff [qkvDiff] @ temp [inputData ^ T] -> coeffDiffWin ~~~~~~~~~~~~~~~~~~~~~~~~~~~   (M7)
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~      3F x L      @       L x E          ->    3F x E    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ q_diff  @ temp [inputData ^ T] -> coeffDiffWinQ ~~~~~~~~~~~~~~~~~~~~~~~~~~~   (M7_q)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~  F x L  @       L x E          ->     F x E     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ k_diff  @ temp [inputData ^ T] -> coeffDiffWinK ~~~~~~~~~~~~~~~~~~~~~~~~~~~   (M7_k)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~  F x L  @       L x E          ->     F x E     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ v_diff  @ temp [inputData ^ T] -> coeffDiffWinV ~~~~~~~~~~~~~~~~~~~~~~~~~~~   (M7_v)
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~  F x L  @       L x E          ->     F x E     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //
     // BACKPROP 1.2 [A^T @ dC -> dB]
-    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWin -T-> temp [coeffDataWin ^ T] ~~~~~~~~~~~~~~~~~~~~~~                           (T9)
-    // ~~~~~~~~~~~~~~~~~~~~~~    3F x E    -T->        E x 3F           ~~~~~~~~~~~~~~~~~~~~~~
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWin ^ T] @ q_diff [qkvDiff] -> inputDiff ~~~~~~~~~~~~~~~~~~~~~~~~~~    (M8)
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~         E x 3F          @      3F x L      ->   E x L   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinQ [coeffDataWinQ ^ T] @ q_diff -> temp  ~~~~~~~~~~~~~~~~~~~~~~~~~~~    (M8_q)
+    // ~~~~~~~~~~~~~~~~~~~~~~              E x F                @ F x L  -> E x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~ inputDiff + temp  -> inputDiff  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    (SUM_q)
+    // ~~~~~~~~~~~~~~~~~~~~~~   E x L   + E x L ->   E x L    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinK [coeffDataWinK ^ T] @ k_diff -> temp  ~~~~~~~~~~~~~~~~~~~~~~~~~~~    (M8_k)
+    // ~~~~~~~~~~~~~~~~~~~~~~              E x F                @ F x L  -> E x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~ inputDiff + temp  -> inputDiff  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    (SUM_k)
+    // ~~~~~~~~~~~~~~~~~~~~~~   E x L   + E x L ->   E x L    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWinV [coeffDataWinV ^ T] @ v_diff -> temp  ~~~~~~~~~~~~~~~~~~~~~~~~~~~    (M8_v)
+    // ~~~~~~~~~~~~~~~~~~~~~~              E x F                @ F x L  -> E x L ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~ inputDiff + temp  -> inputDiff  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    (SUM_v)
+    // ~~~~~~~~~~~~~~~~~~~~~~   E x L   + E x L ->   E x L    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // T8
     struct transp_args transp_args8;
@@ -1190,116 +1350,282 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     printf("\n\n");
     #endif
 
-    // M7
-    struct matMul_args matMul_args7;
-    matMul_args7.A = q_diff;
-    matMul_args7.B = temp;
-    matMul_args7.C = coeffDiffWin;
-    matMul_args7.N = 3 * F;
-    matMul_args7.K = L;
-    matMul_args7.M = E;
-    matMul_args7.trans_B = 0;
+    // M7_q
+    struct matMul_args matMul_args7_q;
+    matMul_args7_q.A = q_diff;
+    matMul_args7_q.B = temp;
+    matMul_args7_q.C = coeffDiffWinQ;
+    matMul_args7_q.N = F;
+    matMul_args7_q.K = L;
+    matMul_args7_q.M = E;
+    matMul_args7_q.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args7);
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_q);
     #else
-    struct mm_manager_args man_args7;
-    man_args7.mm_args = &matMul_args7;
-    man_args7.layer_type = LAYER_LINEAR;
-    man_args7.step_type = STEP_FW;
-    man_args7.matmul_type = opt_matmul_type; //MATMUL_TYPE
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7);
+    struct mm_manager_args man_args7_q;
+    man_args7_q.mm_args = &matMul_args7_q;
+    man_args7_q.layer_type = LAYER_LINEAR;
+    man_args7_q.step_type = STEP_FW;
+    man_args7_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7_q);
     #endif
 
     #ifdef DEBUG
-    printf("\n\n\nM7 result\n\nq_diff: %d %d\n", 3*F, L);
-    for (int j=0; j<3*F*L; j++){
+    printf("\n\n\nM7_q result\n\nq_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  matMul_args7.A[j]);
+        printf("%.8f ",  matMul_args7_q.A[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", L, E);
     for (int j=0; j<L*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", matMul_args7.B[j]);
+        printf("%.8f ", matMul_args7_q.B[j]);
     }
     printf("\n");
 
-    printf("\ncoeffDiffWin: %d %d\n", 3*F, E);
-    for (int j=0; j<3*F*E; j++){
+    printf("\ncoeffDiffWinQ: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", matMul_args7.C[j]);
+        printf("%.8f ", matMul_args7_q.C[j]);
     }
     printf("\n\n");
     #endif
 
-    // T9
-    struct transp_args transp_args9;
-    transp_args9.matrix = coeffDataWin;
-    transp_args9.transp_matrix = temp;
-    transp_args9.N = 3 * F;
-    transp_args9.M = E;
-
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args9);
-
-    #ifdef DEBUG
-    printf("\n\n\nT9 result\n\ncoeffDataWin: %d %d\n", 3 * F, E);
-    for (int j=0; j<3*F*E; j++){
-        if(!(j%(E))) printf("\n");
-        printf("%.8f ",  transp_args9.matrix[j]);
-    }
-    printf("\n");
-
-    printf("\ntemp: %d %d\n", E, 3 * F);
-    for (int j=0; j<E*3*F; j++){
-        if(!(j%(3*F))) printf("\n");
-        printf("%.8f ", transp_args9.transp_matrix[j]);
-    }
-    printf("\n\n");
-    #endif
-
-    // M8
-    struct matMul_args matMul_args8;
-    matMul_args8.A = temp;
-    matMul_args8.B = q_diff;
-    matMul_args8.C = inputDiff;
-    matMul_args8.N = E;
-    matMul_args8.K = 3 * F;
-    matMul_args8.M = L;
-    matMul_args8.trans_B = 0;
+    // M7_k
+    struct matMul_args matMul_args7_k;
+    matMul_args7_k.A = k_diff;
+    matMul_args7_k.B = temp;
+    matMul_args7_k.C = coeffDiffWinK;
+    matMul_args7_k.N = F;
+    matMul_args7_k.K = L;
+    matMul_args7_k.M = E;
+    matMul_args7_k.trans_B = 0;
 
     #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8);
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_k);
     #else
-    struct mm_manager_args man_args8;
-    man_args8.mm_args = &matMul_args8;
-    man_args8.layer_type = LAYER_LINEAR;
-    man_args8.step_type = STEP_FW;
-    man_args8.matmul_type = opt_matmul_type; //MATMUL_TYPE
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8);
+    struct mm_manager_args man_args7_k;
+    man_args7_k.mm_args = &matMul_args7_k;
+    man_args7_k.layer_type = LAYER_LINEAR;
+    man_args7_k.step_type = STEP_FW;
+    man_args7_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7_k);
     #endif
 
     #ifdef DEBUG
-    printf("\n\n\nM8 result\n\ntemp: %d %d\n", E, 3*F);
-    for (int j=0; j<E*3*F; j++){
-        if(!(j%(3*F))) printf("\n");
-        printf("%.8f ",  matMul_args8.A[j]);
+    printf("\n\n\nM7_k result\n\nk_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  matMul_args7_k.A[j]);
     }
     printf("\n");
 
-    printf("\nq_diff: %d %d\n", 3*F, L);
-    for (int j=0; j<3*F*L; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args8.B[j]);
+    printf("\ntemp: %d %d\n", L, E);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7_k.B[j]);
     }
     printf("\n");
 
-    printf("\ninputDiff: %d %d\n", E, L);
-    for (int j=0; j<E*L; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args8.C[j]);
+    printf("\ncoeffDiffWinK: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7_k.C[j]);
     }
     printf("\n\n");
     #endif
+
+    // M7_v
+    struct matMul_args matMul_args7_v;
+    matMul_args7_v.A = v_diff;
+    matMul_args7_v.B = temp;
+    matMul_args7_v.C = coeffDiffWinV;
+    matMul_args7_v.N = F;
+    matMul_args7_v.K = L;
+    matMul_args7_v.M = E;
+    matMul_args7_v.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_v);
+    #else
+    struct mm_manager_args man_args7_v;
+    man_args7_v.mm_args = &matMul_args7_v;
+    man_args7_v.layer_type = LAYER_LINEAR;
+    man_args7_v.step_type = STEP_FW;
+    man_args7_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7_v);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM7_v result\n\nv_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ",  matMul_args7_v.A[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", L, E);
+    for (int j=0; j<L*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7_v.B[j]);
+    }
+    printf("\n");
+
+    printf("\ncoeffDiffWinV: %d %d\n", F, E);
+    for (int j=0; j<F*E; j++){
+        if(!(j%(E))) printf("\n");
+        printf("%.8f ", matMul_args7_v.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // M8_q
+    struct matMul_args matMul_args8_q;
+    matMul_args8_q.A = coeffDataWinQ;
+    matMul_args8_q.B = q_diff;
+    matMul_args8_q.C = temp;
+    matMul_args8_q.N = E;
+    matMul_args8_q.K = F;
+    matMul_args8_q.M = L;
+    matMul_args8_q.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_q);
+    #else
+    struct mm_manager_args man_args8_q;
+    man_args8_q.mm_args = &matMul_args8_q;
+    man_args8_q.layer_type = LAYER_LINEAR;
+    man_args8_q.step_type = STEP_FW;
+    man_args8_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8_q);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM8_q result\n\ncoeffDataWinQ [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  matMul_args8_q.A[j]);
+    }
+    printf("\n");
+
+    printf("\nq_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_q.B[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_q.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // SUM_q
+    struct vect_sum_args vect_sum_args;
+    vect_sum_args.op_1 = inputDiff;
+    vect_sum_args.op_2 = temp;
+    vect_sum_args.dest = inputDiff;
+    vect_sum_args.size = E * L;
+
+    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
+
+    // M8_k
+    struct matMul_args matMul_args8_k;
+    matMul_args8_k.A = coeffDataWinK;
+    matMul_args8_k.B = k_diff;
+    matMul_args8_k.C = temp;
+    matMul_args8_k.N = E;
+    matMul_args8_k.K = F;
+    matMul_args8_k.M = L;
+    matMul_args8_k.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_k);
+    #else
+    struct mm_manager_args man_args8_k;
+    man_args8_k.mm_args = &matMul_args8_k;
+    man_args8_k.layer_type = LAYER_LINEAR;
+    man_args8_k.step_type = STEP_FW;
+    man_args8_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8_k);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM8_k result\n\ncoeffDataWinK [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  matMul_args8_k.A[j]);
+    }
+    printf("\n");
+
+    printf("\nk_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_k.B[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_k.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // SUM_k
+    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
+
+    // M8_v
+    struct matMul_args matMul_args8_v;
+    matMul_args8_v.A = coeffDataWinV;
+    matMul_args8_v.B = v_diff;
+    matMul_args8_v.C = temp;
+    matMul_args8_v.N = E;
+    matMul_args8_v.K = F;
+    matMul_args8_v.M = L;
+    matMul_args8_v.trans_B = 0;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_v);
+    #else
+    struct mm_manager_args man_args8_v;
+    man_args8_v.mm_args = &matMul_args8_v;
+    man_args8_v.layer_type = LAYER_LINEAR;
+    man_args8_v.step_type = STEP_FW;
+    man_args8_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8_v);
+    #endif
+
+    #ifdef DEBUG
+    printf("\n\n\nM8_v result\n\ncoeffDataWinV [^T]: %d %d\n", E, F);
+    for (int j=0; j<E*F; j++){
+        if(!(j%(F))) printf("\n");
+        printf("%.8f ",  matMul_args8_v.A[j]);
+    }
+    printf("\n");
+
+    printf("\nv_diff: %d %d\n", F, L);
+    for (int j=0; j<F*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_v.B[j]);
+    }
+    printf("\n");
+
+    printf("\ntemp: %d %d\n", E, L);
+    for (int j=0; j<E*L; j++){
+        if(!(j%(L))) printf("\n");
+        printf("%.8f ", matMul_args8_v.C[j]);
+    }
+    printf("\n\n");
+    #endif
+
+    // SUM_v
+    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
 }
