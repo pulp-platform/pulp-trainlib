@@ -11,7 +11,7 @@ def q_rsqrt(x):
         x2 = y * 0.5
         i = y.view(np.int32)
         i = np.right_shift(i, 1)
-        i = 0x5f3759df - i
+        i = 0x5F3759DF - i
         y = i.view(np.float32)
         y = y * (1.5 - (x2 * y * y))
 
@@ -25,18 +25,21 @@ def own_softmax(x):
     maxes = maxes.float()
     x_copy = x.float()
 
-    x_exp = torch.exp((x_copy-maxes))
+    x_exp = torch.exp((x_copy - maxes))
     x_exp = x_exp.bfloat16()
     x_exp_sum = torch.sum(x_exp, -1, keepdim=True)
 
-    return x_exp/x_exp_sum
+    return x_exp / x_exp_sum
 
 
 class MultiHeadedSelfAttention(nn.Module):
     """Multi-Headed Dot Product Attention"""
+
     def __init__(self, dim, num_heads, att_dim, bf16_format):
         super().__init__()
-        self.proj_in = nn.Linear(dim, 3*att_dim, bias=False)
+        self.proj_in_q = nn.Linear(dim, att_dim, bias=False)
+        self.proj_in_k = nn.Linear(dim, att_dim, bias=False)
+        self.proj_in_v = nn.Linear(dim, att_dim, bias=False)
         self.proj_out = nn.Linear(att_dim, dim, bias=False)
         self.dim = dim
         self.att_dim = att_dim
@@ -51,12 +54,9 @@ class MultiHeadedSelfAttention(nn.Module):
 
     def forward(self, x, tgt_len):
         # OP 1
-        qkv = self.proj_in(x)
-
-        # OP 2
-        q = qkv[..., :int(qkv.shape[-1] / 3)]
-        k = qkv[..., int(qkv.shape[-1] / 3):2 * int(qkv.shape[-1] / 3)]
-        v = qkv[..., 2 * int(qkv.shape[-1] / 3):]
+        q = self.proj_in_q(x)
+        k = self.proj_in_k(x)
+        v = self.proj_in_v(x)
 
         q = q.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
         k = k.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
