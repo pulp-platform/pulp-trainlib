@@ -1,10 +1,10 @@
 APP = mhsa_fp32
 
 # User settings
-IN_H?=19 # Sequence Length (L)
-IN_W?=160 # Token Size (E)
+IN_H?=10 # Sequence Length (L)
+IN_W?=10 # Token Size (E)
 N_HEADS?=5 # Number of heads (H = F / N_HEADS)
-ATT_DIM?=160 #Hidden dimension (F)
+ATT_DIM?=10 #Hidden dimension (F)
 IN_CH?=1
 OUT_CH?=1
 NUM_CORES?=8
