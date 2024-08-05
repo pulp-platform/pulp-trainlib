@@ -1037,5 +1037,3 @@ void cordic_cos_sin_fp32(float angle, float* cos, float* sin){
     *cos = cos_sign*x;
     *sin = y;
 }
-
-

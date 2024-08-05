@@ -28,7 +28,11 @@
 #endif
 
 #ifdef FLOAT32
+# if LOSS_FN == berHuLoss
+PI_L1 struct berHu_loss_args loss_args;
+# else
 PI_L1 struct loss_args loss_args;
+# endif 
 PI_L1 float out[OUT_SIZE];
 PI_L1 float out_diff[OUT_SIZE];
 PI_L1 float loss = 0;
@@ -51,17 +55,26 @@ void prepare_data ()
     loss_args.output = &out_blob;
     loss_args.target = LABEL;
     loss_args.wr_loss = &loss;
+    # if LOSS_FN == berHuLoss
+    loss_args.alpha = 0.2;
+    # endif
 }
 
 
 void compute_loss ()
 {
-    #if LOSS_FN == MSE
+    #if LOSS_FN == L1Loss
+    pulp_L1Loss(&loss_args);
+    pulp_L1Loss_backward(&loss_args);
+    #elif LOSS_FN == MSE
     pulp_MSELoss(&loss_args);
     pulp_MSELoss_backward(&loss_args);
     #elif LOSS_FN == CrossEntropy
     pulp_CrossEntropyLoss(&loss_args);
     pulp_CrossEntropyLoss_backward(&loss_args);
+    #elif LOSS_FN == berHuLoss
+    pulp_berHuLoss(&loss_args);
+    pulp_berHuLoss_backward(&loss_args);
     #else 
     printf("\nInvalid Loss Function selection!!\n");
     #endif
@@ -106,6 +119,7 @@ void net_step () {
     #endif
 
     print_tensors();
+    printf("\nEvaluating loss type %d\n", LOSS_FN);
     printf("\nLoss is %f, expected loss is %f\n", loss, LOSS);
     printf("\nChecking output..\n");
     verify_tensor(out, OUTPUT, OUT_SIZE, ERROR_TOLERANCE);

@@ -81,6 +81,26 @@ def ReLU_template(layer, data_type):
         exit() 
     return template
 
+def LeakyReLU_template(layer, data_type):
+    if data_type == 'FP32':
+        template = "\t\tself.l"+str(layer)+" = nn.LeakyReLU()\n"
+    elif data_type == 'FP16':
+        template = "\t\tself.l"+str(layer)+" = nn.LeakyReLU()\n"
+    else:
+        print("[GM_templates.LeakyReLU_template] Invalid data type!!")
+        exit() 
+    return template
+
+def Sigmoid_template(layer, data_type):
+    if data_type == 'FP32':
+        template = "\t\tself.l"+str(layer)+" = nn.Sigmoid()\n"
+    elif data_type == 'FP16':
+        template = "\t\tself.l"+str(layer)+" = nn.Sigmoid()\n"
+    else:
+        print("[GM_templates.LeakyReLU_template] Invalid data type!!")
+        exit() 
+    return template
+
 
 
 """"

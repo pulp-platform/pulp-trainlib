@@ -27,6 +27,7 @@ import torch
 import torch.nn as nn
 import argparse
 import dump_utils as dump
+import losses
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -36,16 +37,43 @@ else:
 parser = argparse.ArgumentParser("Loss Functions test")
 parser.add_argument( '--out_size', type=int, default=16 )
 parser.add_argument( '--value', type=float, default=0.5 )
-parser.add_argument( '--loss_fn', type=str, default='MSE')
-parser.add_argument( '--format', type=str, default='bfloat16')
+parser.add_argument( '--loss_fn', type=int, default=0)
+parser.add_argument( '--format', type=int, default=0)
+
+device = 'cpu'
 
 args = parser.parse_args()
 
 out_size = args.out_size
 value = args.value
 loss_type = args.loss_fn
+data_type = args.format
+
+if loss_type == 0:
+    loss_type = 'L1Loss'
+elif loss_type == 1:
+    loss_type = 'MSE'
+elif loss_type == 2:
+    loss_type = 'CrossEntropy'
+elif loss_type == 3:
+    loss_type = 'berHuLoss'
+
+if data_type == 0:
+    data_type = 'FP16'
+elif data_type == 1:
+    data_type = 'bfloat16'
+
+print(f"Evaluating {loss_type}..")
 
 # Fake output tensor
+if loss_type == 'L1Loss':
+    output = torch.ones(out_size)
+    with torch.no_grad():
+        for i in range(out_size):
+            output[i] += i*value + 0.25
+    # Fake label
+    label = torch.ones(out_size)
+
 if loss_type == 'MSE':
     output = torch.ones(out_size)
     with torch.no_grad():
@@ -61,11 +89,19 @@ elif loss_type == 'CrossEntropy':
             output[0][i] += i*value
     # Fake label
     label = torch.ones(1, out_size)
+    
+elif loss_type == 'berHuLoss':
+    output = torch.ones(1, out_size)
+    with torch.no_grad():
+        for i in range(out_size):
+            output[0][i] += i*value
+    # Fake label
+    label = torch.ones(1, out_size)
 
-if format == 'FP16':
+if data_type == 'FP16':
     output = output.half().to(device)
     label = label.half().to(device)
-elif format == 'bfloat16':
+elif data_type == 'bfloat16':
     output = output.bfloat16().to(device)
     label = label.bfloat16().to(device) 
 else:
@@ -75,16 +111,26 @@ else:
 output.requires_grad = True
 
 # Loss function
-if loss_type == 'MSE':
-    if format == 'FP16':
+if loss_type == 'L1Loss':
+    if data_type == 'FP16':
+        loss_fn = nn.L1Loss().half().to(device)
+    elif data_type == 'bfloat16':
+        loss_fn = nn.L1Loss().bfloat16().to(device)
+elif loss_type == 'MSE':
+    if data_type == 'FP16':
         loss_fn = nn.MSELoss().half().to(device)
-    elif format == 'bfloat16':
+    elif data_type == 'bfloat16':
         loss_fn = nn.MSELoss().bfloat16().to(device)
-if loss_type == 'CrossEntropy':
-    if format == 'FP16':
+elif loss_type == 'CrossEntropy':
+    if data_type == 'FP16':
         loss_fn = nn.CrossEntropyLoss().half().to(device)
-    elif format == 'bfloat16':
+    elif data_type == 'bfloat16':
         loss_fn = nn.CrossEntropyLoss().bfloat16().to(device)
+elif loss_type == 'berHuLoss':
+    if data_type == 'FP16':
+        loss_fn = losses.berHuLoss_fp16().half().to(device)
+    elif data_type == 'bfloat16':
+        loss_fn = losses.berHuLoss_bfloat16().bfloat16().to(device)
 
 loss = loss_fn(output, label)
 loss.backward()
