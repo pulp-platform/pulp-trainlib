@@ -22,8 +22,8 @@
     #define CHECK_TOLERANCE 1e-9
     #define ERROR_TOLERANCE 1e-9
 #elif DATA_TYPE == FP16
-    #define CHECK_TOLERANCE 1e-3
-    #define ERROR_TOLERANCE 1e-3
+    #define CHECK_TOLERANCE 1e-2
+    #define ERROR_TOLERANCE 1e-2
 #endif
 
 

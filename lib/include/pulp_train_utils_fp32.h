@@ -12,18 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
+*/
 
 #include "pmsis.h"
 #include "pulp_train_defines.h"
 
+
 /**
  * =====> BACKEND STRUCTURES <=====
  */
+
 
 /**
  * @brief "Bunch of data" structure, grouping a tensor and its gradient and sizes.
@@ -49,7 +49,7 @@ struct blob {
  * @param input input blob of the conv layer
  * @param c weight matrix blob of the conv layer
  * @param output output blob of the conv layer
- * @param pBuffer im2col buffer which will contain the transformed version of the data to be tranformed
+ * @param pBuffer im2col buffer which will contain the transformed version of the data to be transformed
  * @param Lpad left padding
  * @param Rpad right padding
  * @param Upad upper padding
@@ -81,7 +81,7 @@ struct im2col_args
 /**
  * @brief Transposes an array containing a matrix (of sizes N and M) into another target array
  * @param matrix Matrix to be transposed
- * @param transp_matrix Output tranposed matrix
+ * @param transp_matrix Output transposed matrix
  * @param N Number of rows of the matrix
  * @param M Number of columns of the matrix
  */
@@ -91,6 +91,7 @@ struct transp_args {
   int N;
   int M;
 };
+
 
 /**
  * @brief Args used to change the data layout of a tensor (CHW to HWC or vice versa)
@@ -105,6 +106,7 @@ struct layout_args {
   int transpose_data;
   int transpose_grad;
 };
+
 
 /**
  * @brief Arguments for pulp_blocktransp_fp32 to block-transpose a weight matrix (for conv2d in grad)
@@ -125,6 +127,7 @@ struct blocktransp_args {
   int HWC;
 };
 
+
 /**
  * @brief Arguments for the copy function
  * @param from source array
@@ -137,6 +140,7 @@ struct copy_args {
   int size;
 };
 
+
 /**
  * @brief Arguments for the set_to_value function
  * @param to target array to set to a single value
@@ -148,6 +152,7 @@ struct set_to_value_args {
   float value;
   int size;
 };
+
 
 /**
  * @brief Arguments for the vect_copy function (sums two arrays)
@@ -163,6 +168,7 @@ struct vect_sum_args {
   int size;
 };
 
+
 /**
  * @brief Arguments for the cast_fp16_tensor_to_fp32 function
  * @param source pointer to a fp16 tensor to be cast in float 
@@ -174,6 +180,7 @@ struct cast_16t32_args {
   float * destination;
   int size;
 };
+
 
 /**
  * @brief Arguments for the pad_tensor
@@ -200,6 +207,7 @@ struct pad_args {
   int T_DPAD;
   int HWC_lay;
 };
+
 
 /**
  * @brief Arguments for standard matrix multiplication C=A*B (A=N*K, B=K*M, result is C=N*M)
@@ -255,6 +263,7 @@ struct matMul_args {
   int HWC;
 };
 
+
 /**
  * @brief Arguments for the naive core kernel of DepthWise Convolution (forward and backward)
  * @param input pointer to the input blob
@@ -267,12 +276,13 @@ struct kernel_DW_args {
   struct blob * output;
 };
 
+
 /**
  * @brief Arguments for mm_manager function, which selects which matmul to be executed.
  * @param mm_args The pointer to the structure to be used by the matmul to be chosen (not for DW convolution)
  * @param mm_dw_args The pointer to the structure to be used by the matmul to be chosen (DW convolution only)
  * @param layer_type The type of layer in which to select the correct matmul. Can be targeted by using defines of type "LAYER_LINEAR" (groupdef inside pulp_train_utils).
- * @param step_type The step to be performed (forward, weigth grad or input grad). Can be targeted by using defines of type "STEP_FW".
+ * @param step_type The step to be performed (forward, weight grad or input grad). Can be targeted by using defines of type "STEP_FW".
  * @param matmul_type The type of matmul to be selected for the chosen pass.
  */
 struct mm_manager_args {
@@ -282,7 +292,6 @@ struct mm_manager_args {
   int step_type;
   int matmul_type;
 };
-
 
 
 /**
@@ -297,6 +306,7 @@ struct tanh_args{
   float* output;
 };
 
+
 /**
  * @brief Arguments weight updates output=output + gradient
  * @param accum    pointer to weight gradient accumulators
@@ -309,35 +319,40 @@ struct update_weight_args{
   int dim;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized max on an input vector
- * @param input   input vector on which we want to find the max
- * @param maxes   vector on which each core saves the max they have found
- * @param dim     dimension of input
- * @param dim     dimension of input^2
+ * @param input     input vector on which we want to find the max
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     vector on which each core saves the max they have found
 */
-struct max_args{
-  float* input;
-  float* maxes;
-  int dim;
-  int dim2;
+struct max_args {
+    float *input;
+    int H;
+    int W;
+    float *maxes;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized exponential and sum on an input vector
- * @param input   input vector on which we want to calculate the exponential and summatory
- * @param sums    vector on which each core saves their sum
- * @param output  vector where the exponential is saved
- * @param dim     dimension of input
- * @param max     maximum value of the input map
+ * @param input     input vector on which we want to calculate the exponential and the summation
+ * @param output    vector where the exponential is saved
+ * @param H         height of input
+ * @param W         width of input
+ * @param maxes     maximum value of the input map
+ * @param sums      vector on which each core saves their sum
 */
-struct exp_sum_args{
-  float* input;
-  float* sums;
-  float* output;
-  int dim;
-  float* maxes;
+struct exp_sum_args {
+    float *input;
+    float *output;
+    int H;
+    int W;
+    float *maxes;
+    float *sums;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized exponential and sum on an input vector
@@ -357,6 +372,7 @@ struct shift_sum_args{
   float* maxes;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized division of an input vector and a scalar
  * @param input   input vector we want to divide
@@ -369,19 +385,21 @@ struct div_args{
   int dim;
 };
 
+
 /**
  * @brief Arguments for implementing parallelized division of an input vector and a vector
- * @param input   input vector we want to divide
- * @param sums    values we want to divide the vector with
- * @param dim     dimension of input
- * @param dim2    dimension of input^2
+ * @param input     input vector we want to divide
+ * @param H         height of input
+ * @param W         width of input
+ * @param sums      values we want to divide the vector with
 */
-struct row_div_args{
-  float* input;
-  float* sums;
-  int dim;
-  int dim2;
+struct row_div_args {
+    float *input;
+    int H;
+    int W;
+    float *sums;
 };
+
 
 /**
  * @brief Arguments for implementing parallelized multiplication of an input vector and a scalar
@@ -414,6 +432,7 @@ struct mean_std_args{
   int dim;
 };
 
+
 /**
  * @brief Arguments for calculating the sum(exp(input - max(input)))
  * @param input   input vector
@@ -430,9 +449,47 @@ struct vector_exp_sum_args{
   float max;
 };
 
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A     *float: input matrix A [H x W]
+ * @param B     *float: input matrix B [H x W]
+ * @param S     *float: output vector S [H]
+ * @param H     int: height of input matrices, length of output array
+ * @param W     int: width of input matrices
+ */
+struct sm_bw_op_1_args{
+  float* A;
+  float* B;
+  float* S;
+  int H;
+  int W;
+};
+
+
+/**
+ * @brief Arguments for the first operation of the softmax backward pass.
+ * @param A         *float: input matrix A [H x W]
+ * @param B         *float: input matrix B [H x W]
+ * @param S         *float: input vector S [H]
+ * @param output    *float: output matrix [H x W]
+ * @param H         int: height of input matrices, length of output array
+ * @param W         int: width of input matrices
+ */
+struct sm_bw_op_2_args{
+    float* A;
+    float* B;
+    float* S;
+    float* output;
+    int H;
+    int W;
+};
+
+
 /**
  * =====> FUNCTIONS <=====
  */
+
 
 /**
  * @brief Checks if a tensor is equal to a reference one and notifies the index and the value of the incorrect values. If tensor_out contains errors, a flag is also raised as return value.
@@ -445,11 +502,13 @@ struct vector_exp_sum_args{
  */
 int verify_tensor(float * tensor_out, float * tensor_ref, int size, float tolerance);
 
+
 /**
  * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose, &args) to parallelize.
  * @param void_args (void *) (struct transp_args void_args)
  */
 void transpose(void * void_args);
+
 
 /**
  * @brief Copies an array of size "size" into another destination array. Set up the arguments by using a "struct copy_args" structure. Use pi_cl_team_fork(NUM_CORES, copy, &args) to parallelize.
@@ -457,11 +516,13 @@ void transpose(void * void_args);
  */
 void copy (void * void_args);
 
+
 /**
  * @brief Sets an array of size "size" to a value "value". Set up the arguments by using a "struct set_to_value_args" structure. Use pi_cl_team_fork(NUM_CORES, set_to_value, &args) to parallelize.
  * @param (void * ) (struct set_to_value_args void_args)
  */
 void set_to_value (void * void_args);
+
 
 /**
  * @brief Sums two arrays of size "size" into a third one. Set up the arguments by using a "struct vect_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vect_sum, &args) to parallelize.
@@ -469,11 +530,13 @@ void set_to_value (void * void_args);
  */
 void vect_sum (void * vect_sum_args);
 
+
 /**
  * @brief Cast a FP16 tensor to FP32. Set up the arguments by using a "struct cast_16t32_args" structure. Use pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &args) to parallelize.
  * @param (void *) (struct cast_16t32_args cast_args)
  */
 void cast_fp16_tensor_to_fp32 (void * cast_16t32_args);
+
 
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to CHW from HWC
@@ -481,11 +544,13 @@ void cast_fp16_tensor_to_fp32 (void * cast_16t32_args);
  */
 void HWC_to_CHW (void * layout_args);
 
+
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to HWC from CHW
  * @param layout_args (void *) (struct layout_args layout_args) 
  */
 void CHW_to_HWC (void * layout_args);
+
 
 /**
  * @brief Pad a tensor into a destination buffer specifying its size and the spatial sizes of the padding. Parallelize with pi_cl_team_fork(NUM_CORES, pad_tensor, &args).
@@ -493,11 +558,13 @@ void CHW_to_HWC (void * layout_args);
 */
 void pad_tensor (void * pad_args);
 
+
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager, &args) to parallelize.
  * @param (void *) (struct mm_manager_args void_args)
  */
 void mm_manager (void * void_args);
+
 
 /**
  * @brief Calculates the exponential value of each element in the input vector/matrix.
@@ -505,11 +572,13 @@ void mm_manager (void * void_args);
  */
 void exponential (void * void_args);
 
+
 /**
  * @brief Divides each output vector element by their sum.
  * @param (void *) (struct softmax_args void_args)
  */
 void softmax (void * void_args);
+
 
 /**
  * @brief Calculate the maxes of a vector in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &args) to parallelize.
@@ -517,17 +586,6 @@ void softmax (void * void_args);
  */
 void pulp_max_fp32_cl(void * void_args);
 
-/**
- * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct max_args void_args)
- */
-void pulp_row_max_fp32_cl(void * void_args);
-
-/**
- * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct exp_sum_args void_args)
- */
-void pulp_exp_sum_fp32_cl(void* void_args);
 
 /**
  * @brief Calculate the 1/2^diff of each element and sum them. Set up the arguments by using a "struct shift_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_shift_sum_fp32_cl, &args) to parallelize.
@@ -535,17 +593,13 @@ void pulp_exp_sum_fp32_cl(void* void_args);
  */
 void pulp_shift_sum_fp32_cl(void* void_args);
 
+
 /**
  * @brief Element-wise division of vector with a single constant. Set up the arguments by using a "struct div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct div_args void_args)
  */
 void pulp_div_fp32_cl(void* void_args);
 
-/**
- * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
- * @param (void *)  (struct div_args void_args)
- */
-void pulp_row_div_fp32_cl(void* void_args);
 
 /**
  * @brief Element-wise multiplication of vector with a single constant. Set up the arguments by using a "struct scalar_mul_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &args) to parallelize.
@@ -553,17 +607,21 @@ void pulp_row_div_fp32_cl(void* void_args);
  */
 void pulp_scalar_mul_fp32_cl(void* void_args);
 
+
 /**
  * @brief Simple thresholding function. x > threshold ? threshold : x. Also applies Taylor's series approximation of exponential to it.
  * @param float x
  */
 float threshold(float x);
 
+
 static inline float
 fasterexp (float p);
 
+
 static inline float
 fasterpow2 (float p);
+
 
 /**
  * @brief Mean, Variance and standard deviation calculation of a vector
@@ -571,11 +629,13 @@ fasterpow2 (float p);
  */
 void pulp_mean_std_fp32_cl(void * mean_std_args);
 
+
 /**
  * @brief Approximated version of exponential using bit manipulation of mantissa and exponent. Returns the exponential of x.
  * @param x floating-point number to be exponentiated
  */
 float fastexp_gist(float x);
+
 
 /**
  * @brief Approximated version of the inverse square root, AKA the "fastinversesquareroot" (https://en.wikipedia.org/wiki/Fast_inverse_square_root).
@@ -583,11 +643,13 @@ float fastexp_gist(float x);
  */
 float q_rsqrt(float number);
 
+
 /**
  * @brief sum(exp(input - max(input))). Set up the arguments by using a "struct vector_exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vector_exp_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct mean_std_args void_args)
  */
 void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
+
 
 /**
  * @brief CORDIC's sin and cos approximate calculator of input angle.
@@ -598,4 +660,46 @@ void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
 void cordic_cos_sin_fp32(float angle, float* cos, float* sin);
 
 
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
+/**
+ * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct max_args void_args)
+ */
+void pulp_row_max_fp32_cl(void * void_args);
 
+
+/**
+ * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct exp_sum_args void_args)
+ */
+void pulp_exp_sum_fp32_cl(void* void_args);
+
+
+/**
+ * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
+ * @param (void *)  (struct div_args void_args)
+ */
+void pulp_row_div_fp32_cl(void* void_args);
+
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+/**
+ * @brief The first operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and returns a vector S with the same length as the height of either of the 2 input matrices. Each unit of this
+ * output vector will be the sum of all the element-wise products of the corresponding row (element S[i] will contain
+ * the sum for row i).
+ * @param (void *)  (struct sm_bw_op_1_args void_args)
+ */
+void pulp_sm_bw_op_1(void *void_args);
+
+
+/**
+ * @brief The second operation of the backward pass of softmax. It receives 2 matrices, A and B, of the same size,
+ * and a vector S with the same length as the height of either of the 2 input matrices, and an output matrix of the size
+ * of either of the inputs. Each unit of this output matrix will have the value equal to (a - s) * b, where a and b are
+ * the equivalent elements from matrices A and B and s is the current row-th element of S.
+ * @param (void *)  (struct sm_bw_op_2_args void_args)
+ */
+void pulp_sm_bw_op_2(void *void_args);
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

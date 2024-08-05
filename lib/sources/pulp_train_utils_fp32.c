@@ -12,11 +12,10 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
+*/
+
 
 #include "pmsis.h"
 #include "pulp_train_utils_fp32.h"
@@ -301,26 +300,27 @@ void pad_tensor (void * pad_args)
 }
 
 
-void pulp_max_fp32_cl(void * void_args){
-    struct max_args* args = (struct max_args *) void_args;
+void pulp_max_fp32_cl(void *void_args) {
+    struct max_args *args = (struct max_args *) void_args;
 
-    float* input = args->input;
-    //float max = args->maxes[pi_core_id()];
+    float *input = args->input;
+
     float max;
-    int dim = args->dim;
+    int WIDTH = args->W;
 
-    const int blockSize=(args->dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
+    const int blockSize = (WIDTH + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > WIDTH ? WIDTH : start + blockSize;
 
     max = input[start];
 
-    for(int i=start; i<stop; i++)
-        if(max < input[i])
+    for (int i = start; i < stop; i++)
+        if (max < input[i])
             max = input[i];
 
     args->maxes[pi_core_id()] = max;
 }
+
 
 float threshold(float x){
   /*
@@ -342,30 +342,162 @@ float threshold(float x){
   return (T1 - LOG2 * x + T2 * x_2 * LOG2_2 - T3 * x_3 * LOG2_3 + T4 * x_4 * LOG2_4 - T5 * x_5 * LOG2_5);
 }
 
-void pulp_row_max_fp32_cl(void * void_args){
-    struct max_args* args = (struct max_args *) void_args;
 
-    float* input = args->input;
-    int dim = args->dim; // L
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
+// Find the maximum value from each row of the passed matrix
+void pulp_row_max_fp32_cl(void *void_args) {
+    // Extract variables from function arguments
+    struct max_args *args = (struct max_args *) void_args;
+
+    float *input = args->input;
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
     int i, j;
-    float* max = args->maxes;
-    
-    const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
+    float *max = args->maxes;
 
-    input = input + start * dim;
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
 
-    for(i=start; i<stop; i++){
+    // Set pointer at start position
+    input = input + start * WIDTH;
+
+    // Iterate through allocated rows
+    for (i = start; i < stop; i++) {
+        // Set the initial maximum value to the first element in the row and skip it
         max[i] = *input;
         input++;
-        for(j=1; j<dim; j++){
-            if(max[i] < *input)
+
+        // Iterate through the rest of the elements in the row and keep the maximum up to date
+        for (j = 1; j < WIDTH; j++) {
+            if (max[i] < *input)
                 max[i] = *input;
-            input++;    
-        }    
+            input++;
+        }
     }
 }
+
+
+// Row-wisely compute the sum of exponentials required for the softmax activation
+void pulp_exp_sum_fp32_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct exp_sum_args *args = (struct exp_sum_args *) void_args;
+
+    float *input = args->input;
+    float *output = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    float *sums = args->sums;
+    float *maxes = args->maxes;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // Iterate through allocated rows
+    for (int i = start; i < stop; i++) {
+        // Initialize sum array to 0
+        sums[i] = 0;
+
+        // Iterate through each element and update the sum accordingly
+        for (int j = 0; j < WIDTH; j++) {
+            float o = fastexp_gist(input[i * WIDTH + j] - maxes[i]);
+            // float o = expf(*input - maxes[i]);
+
+            output[i * WIDTH + j] = o;
+            sums[i] += o;
+        }
+    }
+}
+
+
+// Divide each element in a row with a value given in a sums array, used in the softmax activation
+void pulp_row_div_fp32_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct row_div_args *args = (struct row_div_args *) void_args;
+
+    float *input = args->input;
+    float *sums = args->sums;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each element in a row, divide with the corresponding precomputed sum
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        for (int j = 0; j < WIDTH; j++) {
+            input[row + j] = input[row + j] / sums[i];
+        }
+    }
+}
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+void pulp_sm_bw_op_1(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_1_args *args = (struct sm_bw_op_1_args *) void_args;
+
+    float *input_A = args->A;
+    float *input_B = args->B;
+    float *output_S = args->S;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, compute the sum of the element-wise products of matrices A and B into array S
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        output_S[i] = 0;
+
+        for (int j = 0; j < WIDTH; j++) {
+            output_S[i] += (input_A[row + j] * input_B[row + j]);
+        }
+    }
+}
+
+
+void pulp_sm_bw_op_2(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_2_args *args = (struct sm_bw_op_2_args *) void_args;
+
+    float *input_A = args->A;
+    float *input_B = args->B;
+    float *sums = args->S;
+    float *result = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, do the necessary computation
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+
+        for (int j = 0; j < WIDTH; j++) {
+            result[row + j] = (input_A[row + j] - sums[i]) * input_B[row + j];
+        }
+    }
+}
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 void pulp_shift_sum_fp32_cl(void* void_args){
     struct shift_sum_args* args = (struct shift_sum_args *) void_args;
@@ -422,34 +554,6 @@ float q_rsqrt(float number)
   return y;
 }
 
-void pulp_exp_sum_fp32_cl(void* void_args){
-    struct exp_sum_args* args = (struct exp_sum_args *) void_args;
-
-    float* input = args->input;
-    float* output = args->output;
-    float* sums = args->sums;
-    int dim = args->dim;
-    float* maxes = args->maxes;
-
-    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
-
-    input += start * dim;
-    output += start * dim;
-
-    for(int i=start; i<stop; i++){
-        sums[i] = 0;
-        for(int j=0; j<dim; j++){
-            float o = fastexp_gist(*input - maxes[i]);
-            //float o = expf(*input - maxes[i]);
-            *output = o;
-            sums[i] += o;
-            input++;
-            output++;    
-        }   
-    }
-}
 
 void pulp_div_fp32_cl(void* void_args){
     struct div_args* args = (struct div_args *) void_args;
@@ -467,26 +571,6 @@ void pulp_div_fp32_cl(void* void_args){
     }
 }
 
-void pulp_row_div_fp32_cl(void* void_args){
-    struct row_div_args* args = (struct row_div_args *) void_args;
-
-    float* input = args->input;
-    float* sums = args->sums;
-    int dim = args->dim;
-
-    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
-
-    int row = 0;
-
-    for(int i=start; i<stop; i++){
-        row = i * dim;
-        for(int j=0; j<dim; j++){
-            input[row + j] = input[row + j]/sums[i];    
-        }   
-    }
-}
 
 void pulp_scalar_mul_fp32_cl(void* void_args){
     struct scalar_mul_args* args = (struct scalar_mul_args *) void_args;

@@ -12,10 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
+ *
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
 */ 
 
 #include "pmsis.h"
@@ -324,45 +322,100 @@ void pad_tensor_fp16 (void * pad_args_fp16)
 }
 
 
-void pulp_max_fp16_cl(void * void_args){
-    struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
+// ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
+// Find the maximum value from each row of the passed matrix
+void pulp_row_max_fp16_cl(void *void_args) {
+    // Extract variables from function arguments
+    struct max_args_fp16 *args = (struct max_args_fp16 *) void_args;
 
-    fp16* input = args->input;
-    fp16 max = args->maxes[pi_core_id()];
-    int dim = args->dim;
+    fp16 *input = args->input;
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+    int i, j;
+    fp16 *max = args->maxes;
 
-    const int blockSize=(args->dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
 
-    for(int i=start; i<stop; i++)
-        if(max < input[i])
-            max = input[i];
+    // Set pointer at start position
+    input = input + start * WIDTH;
 
-    args->maxes[pi_core_id()] = max;
-}
-
-void pulp_row_max_fp16_cl(void * void_args){
-    struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
-
-    fp16* input = args->input;
-    int dim = args->dim; // L
-    fp16* max = args->maxes;
-    
-    const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
-
-    input = input + start * dim;
-
-    for(int i=start; i<stop; i++){
+    // Iterate through allocated rows
+    for (i = start; i < stop; i++) {
+        // Set the initial maximum value to the first element in the row and skip it
         max[i] = *input;
         input++;
-        for(int j=1; j<dim; j++){
-            if(max[i] < *input)
+
+        // Iterate through the rest of the elements in the row and keep the maximum up to date
+        for (j = 1; j < WIDTH; j++) {
+            if (max[i] < *input)
                 max[i] = *input;
-            input++;    
-        }    
+            input++;
+        }
+    }
+}
+
+
+// Row-wisely compute the sum of exponentials required for the softmax activation
+void pulp_exp_sum_fp16_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct exp_sum_args_fp16 *args = (struct exp_sum_args_fp16 *) void_args;
+
+    fp16 *input = args->input;
+    fp16 *output = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    fp16 *sums = args->sums;
+    fp16 *maxes = args->maxes;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // Iterate through allocated rows
+    for (int i = start; i < stop; i++) {
+        // Initialize sum array to 0
+        sums[i] = 0;
+
+        // Iterate through each element and update the sum accordingly
+        for (int j = 0; j < WIDTH; j++) {
+            fp16 o = (fp16)(fastexp_gist_fp16((float) (input[i * WIDTH + j] - maxes[i])));
+
+            output[i * WIDTH + j] = o;
+            sums[i] += o;
+        }
+    }
+}
+
+
+// Divide each element in a row with a value given in a sums array, used in the softmax activation
+void pulp_row_div_fp16_cl(void *void_args) {
+    // Extract variable from function arguments
+    struct row_div_args_fp16 *args = (struct row_div_args_fp16 *) void_args;
+
+    fp16 *input = args->input;
+    fp16 *sums = args->sums;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each element in a row, divide with the corresponding precomputed sum
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        for (int j = 0; j < WIDTH; j++) {
+            input[row + j] = input[row + j] / sums[i];
+        }
     }
 }
 
@@ -373,9 +426,68 @@ float fastexp_gist_fp16(float x) {
     if (x < GIST_C || x > GIST_D)
         x = (x < GIST_C) ? 0.0f : GIST_D;
 
-    uint32_t n = (uint32_t) (x);
-    return *(float*) &n;
+    uint32_t n = (uint32_t)(x);
+    return *(float *) &n;
 }
+
+
+// ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
+void pulp_sm_bw_op_1_fp16(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_1_args_fp16 *args = (struct sm_bw_op_1_args_fp16 *) void_args;
+
+    fp16 *input_A = args->A;
+    fp16 *input_B = args->B;
+    fp16 *output_S = args->S;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, compute the sum of the element-wise products of matrices A and B into array S
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        output_S[i] = 0;
+
+        for (int j = 0; j < WIDTH; j++) {
+            output_S[i] += (input_A[row + j] * input_B[row + j]);
+        }
+    }
+}
+
+
+void pulp_sm_bw_op_2_fp16(void *void_args) {
+    // Extract variable from function arguments
+    struct sm_bw_op_2_args_fp16 *args = (struct sm_bw_op_2_args_fp16 *) void_args;
+
+    fp16 *input_A = args->A;
+    fp16 *input_B = args->B;
+    fp16 *sums = args->S;
+    fp16 *result = args->output;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, do the necessary computation
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+
+        for (int j = 0; j < WIDTH; j++) {
+            result[row + j] = (input_A[row + j] - sums[i]) * input_B[row + j];
+        }
+    }
+}
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 float q_rsqrt_fp16(float number)
 {
@@ -393,55 +505,6 @@ float q_rsqrt_fp16(float number)
   return y;
 }
 
-void pulp_exp_sum_fp16_cl(void* void_args){
-    struct exp_sum_args_fp16* args = (struct exp_sum_args_fp16 *) void_args;
-
-    fp16* input = args->input;
-    fp16* output = args->output;
-    fp16* sums = args->sums;
-    int dim = args->dim;
-    fp16* maxes = args->maxes;
-
-    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
-
-    input += start * dim;
-    output += start * dim;
-
-    for(int i=start; i<stop; i++){
-        sums[i] = 0;
-        for(int j=0; j<dim; j++){
-            fp16 o = (fp16)(fastexp_gist_fp16((float)(*input - maxes[i])));
-            //fp16 o = (fp16)expf((float)(*input - maxes[i]));
-            *output = o;
-            sums[i] += o;
-            input++;
-            output++;    
-        }   
-    }
-}
-
-void pulp_row_div_fp16_cl(void* void_args){
-    struct row_div_args_fp16* args = (struct row_div_args_fp16 *) void_args;
-
-    fp16* input = args->input;
-    fp16* sums = args->sums;
-    int dim = args->dim;
-
-    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
-    const int start = pi_core_id()*blockSize;
-    const int stop = start + blockSize > dim ? dim : start+blockSize;
-
-    int row = 0;
-
-    for(int i=start; i<stop; i++){
-        row = i * dim;
-        for(int j=0; j<dim; j++){
-            input[row + j] = input[row + j]/sums[i];    
-        }   
-    }
-}
 
 void pulp_div_fp16_cl(void* void_args){
     struct div_args_fp16* args = (struct div_args_fp16 *) void_args;

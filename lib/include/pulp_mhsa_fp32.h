@@ -33,9 +33,13 @@
  * @param input             Input vector for the MHSA layer.
  * @param n_heads           Number of heads the attention operation is divided.
  * @param output            Output vector.
- * @param coeff_in          Weight for input projection.
+ * @param coeff_in_q        Weight for input projection for query.
+ * @param coeff_in_k        Weight for input projection for key.
+ * @param coeff_in_v        Weight for input projection for value.
  * @param coeff_out         Weight for output projection.
- * @param qkv               Query, Key and Values extracted from the input and packed into a single matrix
+ * @param q                 Query
+ * @param k                 Key
+ * @param v                 Value
  * @param attention_map     Output of the MHSA module, pre-projection
  * @param temp_buffer       Support buffer used to save transposed matrices
  * @param grad              Support buffer used when calculating gradients for each computational head during MHSA backprop
@@ -45,14 +49,18 @@
 
 struct Mhsa_args {
     struct blob * input;
-    int 	n_heads; 
+    int n_heads;
     int opt_matmul_type_fw;
     int opt_matmul_type_wg;
     int opt_matmul_type_ig;
     struct blob * output;
-    struct blob * coeff_in;
+    struct blob * coeff_in_q;
+    struct blob * coeff_in_k;
+    struct blob * coeff_in_v;
     struct blob * coeff_out;
-    struct blob * qkv;
+    struct blob * q;
+    struct blob * k;
+    struct blob * v;
     struct blob * attention_map;
     float * temp_buffer;
     float * grad;
