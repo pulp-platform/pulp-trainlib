@@ -487,6 +487,21 @@ struct sm_bw_op_2_args{
 
 
 /**
+ * @brief Arguments for the mat mul bias addition operation
+ * @param mat       *float: input matrix mat [H x W]
+ * @param bias      *float: bias [W]
+ * @param H         int: height of input matrix
+ * @param W         int: width of input matrix and length of bias
+ */
+struct mm_bias_add_args {
+    float *mat;
+    float *bias;
+    int H;
+    int W;
+};
+
+
+/**
  * =====> FUNCTIONS <=====
  */
 
@@ -703,3 +718,9 @@ void pulp_sm_bw_op_1(void *void_args);
  */
 void pulp_sm_bw_op_2(void *void_args);
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+/**
+ * @brief Bias addition for matrix multiplication. Element-wise addition between bias and each column of the given matrix.
+ * @param (void *) (struct mm_bias_add_args void_args)
+ */
+void mm_bias_add_transposed(void *void_args);

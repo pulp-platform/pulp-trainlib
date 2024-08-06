@@ -36,6 +36,9 @@
  * @param coeff_in_q        Weight for input projection for query.
  * @param coeff_in_k        Weight for input projection for key.
  * @param coeff_in_v        Weight for input projection for value.
+ * @param bias_in_q         Bias for input projection for query.
+ * @param bias_in_k         Bias for input projection for key.
+ * @param bias_in_v         Bias for input projection for value.
  * @param coeff_out         Weight for output projection.
  * @param q                 Query
  * @param k                 Key
@@ -54,9 +57,15 @@ struct Mhsa_args {
     int opt_matmul_type_wg;
     int opt_matmul_type_ig;
     struct blob * output;
+
     struct blob * coeff_in_q;
     struct blob * coeff_in_k;
     struct blob * coeff_in_v;
+
+    struct blob * bias_in_q;
+    struct blob * bias_in_k;
+    struct blob * bias_in_v;
+
     struct blob * coeff_out;
     struct blob * q;
     struct blob * k;

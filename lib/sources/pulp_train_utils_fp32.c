@@ -1123,3 +1123,25 @@ void cordic_cos_sin_fp32(float angle, float* cos, float* sin){
 }
 
 
+void mm_bias_add_transposed(void *void_args) {
+    // Extract variable from function arguments
+    struct mm_bias_add_args *args = (struct mm_bias_add_args *) void_args;
+
+    float *mat = args->mat;
+    float *bias = args->bias;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+
+    // For each row, sum it with the bias
+    for (int i = start; i < stop; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            mat[i * WIDTH + j] += bias[i];
+        }
+    }
+}
