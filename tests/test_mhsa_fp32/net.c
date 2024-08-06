@@ -376,7 +376,6 @@ static inline void connect_blobs() {
     layer0_bias_in_q.H = 1;
     layer0_bias_in_q.W = Tatt_dim_l1;
     layer0_bias_in_q.C = Tout_C_l1;
-    // layer0_bias_in_q.diff = l0_bias_in_q_diff;
 
     layer0_wgt_in_k.data = l0_ker_in_k;
     layer0_wgt_in_k.dim = Tin_W_l1 * Tatt_dim_l1;
@@ -390,7 +389,6 @@ static inline void connect_blobs() {
     layer0_bias_in_k.H = 1;
     layer0_bias_in_k.W = Tatt_dim_l1;
     layer0_bias_in_k.C = Tout_C_l1;
-    // layer0_bias_in_k.diff = l0_bias_in_k_diff;
 
     layer0_wgt_in_v.data = l0_ker_in_v;
     layer0_wgt_in_v.dim = Tin_W_l1 * Tatt_dim_l1;
@@ -404,7 +402,6 @@ static inline void connect_blobs() {
     layer0_bias_in_v.H = 1;
     layer0_bias_in_v.W = Tatt_dim_l1;
     layer0_bias_in_v.C = Tout_C_l1;
-    // layer0_bias_in_v.diff = l0_bias_in_v_diff;
 
     layer0_wgt_out.data = l0_ker_out;
     layer0_wgt_out.dim = Tin_W_l1 * Tatt_dim_l1;

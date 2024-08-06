@@ -20,9 +20,15 @@
 void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     // ======================================== DECLARATIONS ========================================
     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+
     fp16 *coeffDataWinQ = mhsa_args->coeff_in_q->data;          //  TRANSPOSE of Input Projection Weights Query
     fp16 *coeffDataWinK = mhsa_args->coeff_in_k->data;          //  TRANSPOSE of Input Projection Weights Key
     fp16 *coeffDataWinV = mhsa_args->coeff_in_v->data;          //  TRANSPOSE of Input Projection Weights Value
+
+    fp16 *coeffBiasWinQ = mhsa_args->bias_in_q->data;           //  Input Projection Biases Query
+    fp16 *coeffBiasWinK = mhsa_args->bias_in_k->data;           //  Input Projection Biases Key
+    fp16 *coeffBiasWinV = mhsa_args->bias_in_v->data;           //  Input Projection Biases Value
+
     fp16 *coeffDataWout = mhsa_args->coeff_out->data;           //  Output Projection Weights (Already transposed from GM)
     fp16 *attention_map = mhsa_args->attention_map->data;       //  Buffer saving the MHSA map before output projection
     fp16 *inputData = mhsa_args->input->data;                   //  Input vector (Transposed, E x L)
@@ -52,6 +58,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
 
     // ================================================== OP 1 ==================================================
+    // Custom bias addition needed, since original operation is a linear layer, applied here as a matrix multiplication
     // ~~~~~~~~~~~~~~~~~~~ coeffDataWinQ [^T] -T-> temp [coeffDataWinQ]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         (T0_q)
     // ~~~~~~~~~~~~~~~~~~~       E x F        -T->      F x E            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ temp [coeffDataWinQ] @ inputData ->   q   ~~~~~~~~~~~~~~~~~~~~~~~         (M1_q)
@@ -66,7 +73,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         F x E        @  E x L    -> F x L ~~~~~~~~~~~~~~~~~~~~~~~
     // TODO 0001: Maybe different key size (from q and v)
 
-    //  T0_q
+    // T0_q
     struct transp_args_fp16 transp_args0_q;
     transp_args0_q.matrix = coeffDataWinQ;
     transp_args0_q.transp_matrix = temp;
@@ -97,7 +104,6 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_q.A = temp;                                       //  F x E
     matMul_args1_q.B = inputData;                                  //  E x L
     matMul_args1_q.C = q;
-    //  It is transposed so that the elements of the same head are contiguous in memory.
     matMul_args1_q.N = F;
     matMul_args1_q.K = E;
     matMul_args1_q.M = L;
@@ -137,7 +143,16 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     printf("\n\n");
     #endif
 
-    //  T0_k
+    // Bias_addition_q
+    struct mm_bias_add_args_fp16 mm_bias_add_args_q;
+    mm_bias_add_args_q.mat = q;
+    mm_bias_add_args_q.bias = coeffBiasWinQ;
+    mm_bias_add_args_q.H = F;
+    mm_bias_add_args_q.W = L;
+
+    pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed_fp16, &mm_bias_add_args_q);
+
+    // T0_k
     struct transp_args_fp16 transp_args0_k;
     transp_args0_k.matrix = coeffDataWinK;
     transp_args0_k.transp_matrix = temp;
@@ -168,7 +183,6 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_k.A = temp;                                       //  F x E
     matMul_args1_k.B = inputData;                                  //  E x L
     matMul_args1_k.C = k;
-    //  It is transposed so that the elements of the same head are contiguous in memory.
     matMul_args1_k.N = F;
     matMul_args1_k.K = E;
     matMul_args1_k.M = L;
@@ -208,7 +222,16 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     printf("\n\n");
     #endif
 
-    //  T0_v
+    // Bias_addition_k
+    struct mm_bias_add_args_fp16 mm_bias_add_args_k;
+    mm_bias_add_args_k.mat = k;
+    mm_bias_add_args_k.bias = coeffBiasWinK;
+    mm_bias_add_args_k.H = F;
+    mm_bias_add_args_k.W = L;
+
+    pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed_fp16, &mm_bias_add_args_k);
+
+    // T0_v
     struct transp_args_fp16 transp_args0_v;
     transp_args0_v.matrix = coeffDataWinV;
     transp_args0_v.transp_matrix = temp;
@@ -239,7 +262,6 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_v.A = temp;                                       //  F x E
     matMul_args1_v.B = inputData;                                  //  E x L
     matMul_args1_v.C = v;
-    //  It is transposed so that the elements of the same head are contiguous in memory.
     matMul_args1_v.N = F;
     matMul_args1_v.K = E;
     matMul_args1_v.M = L;
@@ -278,6 +300,15 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     }
     printf("\n\n");
     #endif
+
+    // Bias_addition_v
+    struct mm_bias_add_args_fp16 mm_bias_add_args_v;
+    mm_bias_add_args_v.mat = v;
+    mm_bias_add_args_v.bias = coeffBiasWinV;
+    mm_bias_add_args_v.H = F;
+    mm_bias_add_args_v.W = L;
+
+    pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed_fp16, &mm_bias_add_args_v);
 
     //  Cycle on the different heads
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

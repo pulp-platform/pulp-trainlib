@@ -35,12 +35,12 @@
  * @param C number of channels of data
  */ 
 struct blob {
-   float * data;
-   float * diff;
-   int dim;
-   int W;
-   int H;
-   int C;
+    float *data;
+    float *diff;
+    int dim;
+    int W;
+    int H;
+    int C;
 };
 
 
@@ -60,21 +60,20 @@ struct blob {
  * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
  */
-struct im2col_args
-{
-  struct blob * input;
-  struct blob * c;
-  struct blob * output;
-  float * pBuffer;
-  int Lpad;
-  int Rpad;
-  int Upad;
-  int Dpad;
-  int mod;
-  int stride_w;
-  int stride_h;
-  int HWC;
-  int USE_DMA;
+struct im2col_args {
+    struct blob *input;
+    struct blob *c;
+    struct blob *output;
+    float *pBuffer;
+    int Lpad;
+    int Rpad;
+    int Upad;
+    int Dpad;
+    int mod;
+    int stride_w;
+    int stride_h;
+    int HWC;
+    int USE_DMA;
 };
 
 
@@ -86,10 +85,10 @@ struct im2col_args
  * @param M Number of columns of the matrix
  */
 struct transp_args {
-  float * matrix;
-  float * transp_matrix;
-  int N;
-  int M;
+    float *matrix;
+    float *transp_matrix;
+    int N;
+    int M;
 };
 
 
@@ -101,10 +100,10 @@ struct transp_args {
  * @param transpose_grad set this to 1 if you need to change the layout of tensor's grad
  */
 struct layout_args {
-  struct blob * tensor;
-  float * transp_buffer;
-  int transpose_data;
-  int transpose_grad;
+    struct blob *tensor;
+    float *transp_buffer;
+    int transpose_data;
+    int transpose_grad;
 };
 
 
@@ -118,13 +117,13 @@ struct layout_args {
  * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  */
 struct blocktransp_args {
-  float * weights;
-  float * bt_weights;
-  int Cin;
-  int Cout;
-  int Hk;
-  int Wk;
-  int HWC;
+    float *weights;
+    float *bt_weights;
+    int Cin;
+    int Cout;
+    int Hk;
+    int Wk;
+    int HWC;
 };
 
 
@@ -135,9 +134,9 @@ struct blocktransp_args {
  * @param size size of the arrays
  **/
 struct copy_args {
-  float * from;
-  float * to;
-  int size;
+    float *from;
+    float *to;
+    int size;
 };
 
 
@@ -148,9 +147,9 @@ struct copy_args {
  * @param size size of the array
  **/
 struct set_to_value_args {
-  float * to;
-  float value;
-  int size;
+    float *to;
+    float value;
+    int size;
 };
 
 
@@ -162,10 +161,10 @@ struct set_to_value_args {
  * @param size size of all the arrays
  */
 struct vect_sum_args {
-  float * op_1;
-  float * op_2;
-  float * dest;
-  int size;
+    float *op_1;
+    float *op_2;
+    float *dest;
+    int size;
 };
 
 
@@ -176,9 +175,9 @@ struct vect_sum_args {
  * @param size number of elements of the tensor to be cast
  */
 struct cast_16t32_args {
-  fp16 * source;
-  float * destination;
-  int size;
+    fp16 *source;
+    float *destination;
+    int size;
 };
 
 
@@ -196,16 +195,16 @@ struct cast_16t32_args {
  * @param HWC_lay Set to 0 if CHW layout, 1 if HWC
 */
 struct pad_args {
-  float * source;
-  float * dest;
-  int C;
-  int H;
-  int W;
-  int T_RPAD;
-  int T_LPAD;
-  int T_UPAD;
-  int T_DPAD;
-  int HWC_lay;
+    float *source;
+    float *dest;
+    int C;
+    int H;
+    int W;
+    int T_RPAD;
+    int T_LPAD;
+    int T_UPAD;
+    int T_DPAD;
+    int HWC_lay;
 };
 
 
@@ -236,31 +235,33 @@ struct pad_args {
  * @param HWC Set to 0 if CHW layout, 1 if HWC
  */
 struct matMul_args {
-  float * __restrict__ A;
-  float * __restrict__ B;
-  float * __restrict__ C;
-  int N;
-  int M;
-  int K;
-  int trans_B;
-  // For Conv2D in grad & naive
-  int H;
-  int W;
-  int pW;
-  int pH;
-  int pCin;
-  int pCout;
-  int stride_h;
-  int stride_w;
-  int Lpad;
-  int Rpad;
-  int Upad;
-  int Dpad;
-  // For bias handling
-  float * __restrict__ bias;
-  int bias_dim;
-  int USE_BIASES;
-  int HWC;
+    float *__restrict__ A;
+    float *__restrict__ B;
+    float *__restrict__ C;
+    int N;
+    int M;
+    int K;
+    int trans_B;
+
+    // For Conv2D in grad & naive
+    int H;
+    int W;
+    int pW;
+    int pH;
+    int pCin;
+    int pCout;
+    int stride_h;
+    int stride_w;
+    int Lpad;
+    int Rpad;
+    int Upad;
+    int Dpad;
+
+    // For bias handling
+    float *__restrict__ bias;
+    int bias_dim;
+    int USE_BIASES;
+    int HWC;
 };
 
 
@@ -271,9 +272,9 @@ struct matMul_args {
  * @param output pointer to the output blob
 */
 struct kernel_DW_args {
-  struct blob * input;
-  struct blob * weights;
-  struct blob * output;
+    struct blob *input;
+    struct blob *weights;
+    struct blob *output;
 };
 
 
@@ -286,11 +287,11 @@ struct kernel_DW_args {
  * @param matmul_type The type of matmul to be selected for the chosen pass.
  */
 struct mm_manager_args {
-  struct matMul_args * mm_args;
-  struct matMul_DW_args * mm_dw_args;
-  int layer_type;
-  int step_type;
-  int matmul_type;
+    struct matMul_args *mm_args;
+    struct matMul_DW_args *mm_dw_args;
+    int layer_type;
+    int step_type;
+    int matmul_type;
 };
 
 
@@ -300,10 +301,10 @@ struct mm_manager_args {
  * @param dim     dimension vector
  * @param output  pointer to output vector
 */
-struct tanh_args{
-  float* input;
-  int dim;
-  float* output;
+struct tanh_args {
+    float *input;
+    int dim;
+    float *output;
 };
 
 
@@ -313,10 +314,10 @@ struct tanh_args{
  * @param grad    pointer to weight gradient of the current timestep
  * @param dim       dimension vector
 */
-struct update_weight_args{
-  float* accum;
-  float* grad;
-  int dim;
+struct update_weight_args {
+    float *accum;
+    float *grad;
+    int dim;
 };
 
 
@@ -363,13 +364,13 @@ struct exp_sum_args {
  * @param dim     dimension of input^2
  * @param maxes   maximum value for each row of the input map
 */
-struct shift_sum_args{
-  float* input;
-  float* sums;
-  float* output;
-  int dim;
-  int dim2;
-  float* maxes;
+struct shift_sum_args {
+    float *input;
+    float *sums;
+    float *output;
+    int dim;
+    int dim2;
+    float *maxes;
 };
 
 
@@ -379,10 +380,10 @@ struct shift_sum_args{
  * @param n       scalar value we want to divide the vector with
  * @param dim     dimension of input
 */
-struct div_args{
-  float* input;
-  float n;
-  int dim;
+struct div_args {
+    float *input;
+    float n;
+    int dim;
 };
 
 
@@ -407,10 +408,10 @@ struct row_div_args {
  * @param scalar  scalar value we want to divide the vector with
  * @param dim     dimension of input
 */
-struct scalar_mul_args{
-  float* input;
-  float scalar;
-  int dim;
+struct scalar_mul_args {
+    float *input;
+    float scalar;
+    int dim;
 };
 
 
@@ -423,13 +424,13 @@ struct scalar_mul_args{
  * @param epsilon small number used to avoid division by zero
  * @param dim     dimension of input
 */
-struct mean_std_args{
-  float* input;
-  float* mean;
-  float* var;
-  float* std;
-  float epsilon;
-  int dim;
+struct mean_std_args {
+    float *input;
+    float *mean;
+    float *var;
+    float *std;
+    float epsilon;
+    int dim;
 };
 
 
@@ -441,12 +442,12 @@ struct mean_std_args{
  * @param dim     dimension of input
  * @param max     max(input)
 */
-struct vector_exp_sum_args{
-  float* input;
-  float* sums;
-  float* output;
-  int dim;
-  float max;
+struct vector_exp_sum_args {
+    float *input;
+    float *sums;
+    float *output;
+    int dim;
+    float max;
 };
 
 
@@ -458,12 +459,12 @@ struct vector_exp_sum_args{
  * @param H     int: height of input matrices, length of output array
  * @param W     int: width of input matrices
  */
-struct sm_bw_op_1_args{
-  float* A;
-  float* B;
-  float* S;
-  int H;
-  int W;
+struct sm_bw_op_1_args {
+    float *A;
+    float *B;
+    float *S;
+    int H;
+    int W;
 };
 
 
@@ -476,11 +477,11 @@ struct sm_bw_op_1_args{
  * @param H         int: height of input matrices, length of output array
  * @param W         int: width of input matrices
  */
-struct sm_bw_op_2_args{
-    float* A;
-    float* B;
-    float* S;
-    float* output;
+struct sm_bw_op_2_args {
+    float *A;
+    float *B;
+    float *S;
+    float *output;
     int H;
     int W;
 };

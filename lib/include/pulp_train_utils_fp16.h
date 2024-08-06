@@ -36,12 +36,12 @@
  * @param C number of channels of data
  */ 
 struct blob_fp16 {
-   fp16 * data;
-   fp16 * diff;
-   int dim;
-   int W;
-   int H;
-   int C;
+    fp16 *data;
+    fp16 *diff;
+    int dim;
+    int W;
+    int H;
+    int C;
 };
 
 
@@ -61,21 +61,20 @@ struct blob_fp16 {
  * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  * @param USE_DMA set this to 1 if your tensor data is in L2 and you want to im2col that data into local L1 stored im2colbuffer, using cluster DMA
  */
-struct im2col_args_fp16
-{
-  struct blob_fp16 * input;
-  struct blob_fp16 * c;
-  struct blob_fp16 * output;
-  fp16 * pBuffer;
-  int Lpad;
-  int Rpad;
-  int Upad;
-  int Dpad;
-  int mod;
-  int stride_w;
-  int stride_h;
-  int HWC;
-  int USE_DMA;
+struct im2col_args_fp16 {
+    struct blob_fp16 *input;
+    struct blob_fp16 *c;
+    struct blob_fp16 *output;
+    fp16 *pBuffer;
+    int Lpad;
+    int Rpad;
+    int Upad;
+    int Dpad;
+    int mod;
+    int stride_w;
+    int stride_h;
+    int HWC;
+    int USE_DMA;
 };
 
 
@@ -87,10 +86,10 @@ struct im2col_args_fp16
  * @param M Number of columns of the matrix
  */
 struct transp_args_fp16 {
-  fp16 * matrix;
-  fp16 * transp_matrix;
-  int N;
-  int M;
+    fp16 *matrix;
+    fp16 *transp_matrix;
+    int N;
+    int M;
 };
 
 
@@ -102,10 +101,10 @@ struct transp_args_fp16 {
  * @param transpose_grad set this to 1 if you need to change the layout of tensor's grad
  */
 struct layout_args_fp16 {
-  struct blob_fp16 * tensor;
-  fp16 * transp_buffer;
-  int transpose_data;
-  int transpose_grad;
+    struct blob_fp16 *tensor;
+    fp16 *transp_buffer;
+    int transpose_data;
+    int transpose_grad;
 };
 
 
@@ -119,13 +118,13 @@ struct layout_args_fp16 {
  * @param HWC sets if the format of the input (mod=0) or output grad (mod=1) is CHW (HWC=0) or HWC (HWC=1). In case of HWC, channels of the same "pixel" are adjacent, while in CHW the width elements are adjacent. Set this according to the format of your own input or output format (check format!) 
  */
 struct blocktransp_args_fp16 {
-  fp16 * weights;
-  fp16 * bt_weights;
-  int Cin;
-  int Cout;
-  int Hk;
-  int Wk;
-  int HWC;
+    fp16 *weights;
+    fp16 *bt_weights;
+    int Cin;
+    int Cout;
+    int Hk;
+    int Wk;
+    int HWC;
 };
 
 
@@ -136,9 +135,9 @@ struct blocktransp_args_fp16 {
  * @param size size of the arrays
  **/
 struct copy_args_fp16 {
-  fp16 * from;
-  fp16 * to;
-  int size;
+    fp16 *from;
+    fp16 *to;
+    int size;
 };
 
 
@@ -149,9 +148,9 @@ struct copy_args_fp16 {
  * @param size size of the array
  **/
 struct set_to_value_args_fp16 {
-  fp16 * to;
-  fp16 value;
-  int size;
+    fp16 *to;
+    fp16 value;
+    int size;
 };
 
 
@@ -163,10 +162,10 @@ struct set_to_value_args_fp16 {
  * @param size size of all the arrays
  */
 struct vect_sum_args_fp16 {
-  fp16 * op_1;
-  fp16 * op_2;
-  fp16 * dest;
-  int size;
+    fp16 *op_1;
+    fp16 *op_2;
+    fp16 *dest;
+    int size;
 };
 
 
@@ -177,9 +176,9 @@ struct vect_sum_args_fp16 {
  * @param size number of elements of the tensor to be cast
  */
 struct cast_32t16_args {
-  float * source;
-  fp16 * destination;
-  int size;
+    float *source;
+    fp16 *destination;
+    int size;
 };
 
 
@@ -197,16 +196,16 @@ struct cast_32t16_args {
  * @param HWC_lay Set to 0 if CHW layout, 1 if HWC
 */
 struct pad_args_fp16 {
-  fp16 * source;
-  fp16 * dest;
-  int C;
-  int H;
-  int W;
-  int T_RPAD;
-  int T_LPAD;
-  int T_UPAD;
-  int T_DPAD;
-  int HWC_lay;
+    fp16 *source;
+    fp16 *dest;
+    int C;
+    int H;
+    int W;
+    int T_RPAD;
+    int T_LPAD;
+    int T_UPAD;
+    int T_DPAD;
+    int HWC_lay;
 };
 
 
@@ -237,31 +236,33 @@ struct pad_args_fp16 {
  * @param HWC Set to 0 if CHW layout, 1 if HWC
  */
 struct matMul_args_fp16 {
-  fp16 * __restrict__ A;
-  fp16 * __restrict__ B;
-  fp16 * __restrict__ C;
-  int N;
-  int M;
-  int K;
-  int trans_B;
-  // For Conv2D in grad & naive
-  int H;
-  int W;
-  int pW;
-  int pH;
-  int pCin;
-  int pCout;
-  int stride_h;
-  int stride_w;
-  int Lpad;
-  int Rpad;
-  int Upad;
-  int Dpad;
-  // For bias handling
-  fp16 * __restrict__ bias;
-  int bias_dim;
-  int USE_BIASES;
-  int HWC;
+    fp16 *__restrict__ A;
+    fp16 *__restrict__ B;
+    fp16 *__restrict__ C;
+    int N;
+    int M;
+    int K;
+    int trans_B;
+
+    // For Conv2D in grad & naive
+    int H;
+    int W;
+    int pW;
+    int pH;
+    int pCin;
+    int pCout;
+    int stride_h;
+    int stride_w;
+    int Lpad;
+    int Rpad;
+    int Upad;
+    int Dpad;
+
+    // For bias handling
+    fp16 *__restrict__ bias;
+    int bias_dim;
+    int USE_BIASES;
+    int HWC;
 };
 
 
@@ -272,9 +273,9 @@ struct matMul_args_fp16 {
  * @param output pointer to the output blob
 */
 struct kernel_DW_args_fp16 {
-  struct blob_fp16 * input;
-  struct blob_fp16 * weights;
-  struct blob_fp16 * output;
+    struct blob_fp16 *input;
+    struct blob_fp16 *weights;
+    struct blob_fp16 *output;
 };
 
 
@@ -287,11 +288,11 @@ struct kernel_DW_args_fp16 {
  * @param matmul_type The type of matmul to be selected for the chosen pass.
  */
 struct mm_manager_args_fp16 {
-  struct matMul_args_fp16 * mm_args;
-  struct matMul_DW_args_fp16 * mm_dw_args;
-  int layer_type;
-  int step_type;
-  int matmul_type;
+    struct matMul_args_fp16 *mm_args;
+    struct matMul_DW_args_fp16 *mm_dw_args;
+    int layer_type;
+    int step_type;
+    int matmul_type;
 };
 
 
@@ -301,10 +302,10 @@ struct mm_manager_args_fp16 {
  * @param dim     dimension vector
  * @param output  pointer to output vector
 */
-struct tanh_args_fp16{
-  fp16* input;
-  int dim;
-  fp16* output;
+struct tanh_args_fp16 {
+    fp16 *input;
+    int dim;
+    fp16 *output;
 };
 
 
@@ -314,10 +315,10 @@ struct tanh_args_fp16{
  * @param grad    pointer to weight gradient of the current timestep
  * @param dim       dimension vector
 */
-struct update_weight_args_fp16{
-  fp16* accum;
-  fp16* grad;
-  int dim;
+struct update_weight_args_fp16 {
+    fp16 *accum;
+    fp16 *grad;
+    int dim;
 };
 
 
@@ -375,10 +376,10 @@ struct row_div_args_fp16 {
  * @param n       scalar value we want to divide the vector with
  * @param dim     dimension of input
 */
-struct div_args_fp16{
-  fp16* input;
-  fp16 n;
-  int dim;
+struct div_args_fp16 {
+    fp16 *input;
+    fp16 n;
+    int dim;
 };
 
 
@@ -388,10 +389,10 @@ struct div_args_fp16{
  * @param scalar  scalar value we want to divide the vector with
  * @param dim     dimension of input
 */
-struct scalar_mul_args_fp16{
-  fp16* input;
-  fp16 scalar;
-  int dim;
+struct scalar_mul_args_fp16 {
+    fp16 *input;
+    fp16 scalar;
+    int dim;
 };
 
 
@@ -404,13 +405,13 @@ struct scalar_mul_args_fp16{
  * @param epsilon small number used to avoid division by zero
  * @param dim     dimension of input
 */
-struct mean_std_args_fp16{
-  fp16* input;
-  fp16* mean;
-  fp16* var;
-  fp16* std;
-  fp16 epsilon;
-  int dim;
+struct mean_std_args_fp16 {
+    fp16 *input;
+    fp16 *mean;
+    fp16 *var;
+    fp16 *std;
+    fp16 epsilon;
+    int dim;
 };
 
 
@@ -445,6 +446,21 @@ struct sm_bw_op_2_args_fp16 {
     fp16 *B;
     fp16 *S;
     fp16 *output;
+    int H;
+    int W;
+};
+
+
+/**
+ * @brief Arguments for the mat mul bias addition operation
+ * @param mat       *fp16: input matrix mat [H x W]
+ * @param bias      *fp16: bias [H]
+ * @param H         int: height of input matrix
+ * @param W         int: width of input matrix and length of bias
+ */
+struct mm_bias_add_args_fp16 {
+    fp16 *mat;
+    fp16 *bias;
     int H;
     int W;
 };
@@ -654,3 +670,10 @@ float q_rsqrt_fp16(float number);
  * @param sin pointer to the value to save the angle's sin
  */
 void cordic_cos_sin_fp16(fp16 angle, fp16* cos, fp16* sin);
+
+
+/**
+ * @brief Bias addition for matrix multiplication. Element-wise addition between bias and each column of the given matrix.
+ * @param (void *) (struct mm_bias_add_args_fp16 void_args)
+ */
+void mm_bias_add_transposed_fp16(void *void_args);

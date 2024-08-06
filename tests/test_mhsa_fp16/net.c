@@ -33,7 +33,12 @@ PI_L1 fp16 min_float = -65504.0f;
 
 // Variables definition
 PI_L1 struct Mhsa_args_fp16 mhsa_args;
-PI_L1 struct blob_fp16 layer0_in, layer0_wgt_in_q, layer0_wgt_in_k, layer0_wgt_in_v, layer0_wgt_out, layer0_q, layer0_k, layer0_v, layer0_att_map, layer0_softmax_buffer, layer0_out;
+PI_L1 struct blob_fp16 layer0_in,
+        layer0_wgt_in_q, layer0_wgt_in_k, layer0_wgt_in_v,
+        layer0_bias_in_q, layer0_bias_in_k, layer0_bias_in_v,
+        layer0_wgt_out,
+        layer0_q, layer0_k, layer0_v,
+        layer0_att_map, layer0_softmax_buffer, layer0_out;
 
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
@@ -42,9 +47,15 @@ PI_L2 int L2_memocc_bytes = 0;
 // Forward step variables
 #ifdef FORWARD
 PI_L1 fp16 l0_in[Tin_H_l1*Tin_W_l1];
+
 PI_L1 fp16 l0_ker_in_q[Tin_W_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_ker_in_k[Tin_W_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_ker_in_v[Tin_W_l1*Tatt_dim_l1];
+
+PI_L1 fp16 l0_bias_in_q[Tatt_dim_l1];
+PI_L1 fp16 l0_bias_in_k[Tatt_dim_l1];
+PI_L1 fp16 l0_bias_in_v[Tatt_dim_l1];
+
 PI_L1 fp16 l0_ker_out[Tatt_dim_l1*Tin_W_l1];
 PI_L1 fp16 l0_q[Tin_H_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_k[Tin_H_l1*Tatt_dim_l1];
@@ -69,6 +80,10 @@ PI_L1 fp16 l0_ker_in_v[Tin_W_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_ker_in_q_diff[Tin_W_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_ker_in_k_diff[Tin_W_l1*Tatt_dim_l1];
 PI_L1 fp16 l0_ker_in_v_diff[Tin_W_l1*Tatt_dim_l1];
+
+PI_L1 fp16 l0_bias_in_q[Tatt_dim_l1];
+PI_L1 fp16 l0_bias_in_k[Tatt_dim_l1];
+PI_L1 fp16 l0_bias_in_v[Tatt_dim_l1];
 
 PI_L1 fp16 l0_ker_out[Tatt_dim_l1*Tin_W_l1];
 PI_L1 fp16 l0_ker_out_diff[Tatt_dim_l1*Tin_W_l1];
@@ -104,9 +119,15 @@ PI_L1 fp16 l0_maxes[Tin_H_l1];
 static inline void tensor_init() {
     printf("Initializing the things\n");
     for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_in[i] = INPUT[i];
+
     for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
     for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
     for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
+
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_q[i] = INPUT_BIASES_Q[i];
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_k[i] = INPUT_BIASES_K[i];
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_v[i] = INPUT_BIASES_V[i];
+
     for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_out[i] = OUTPUT_WEIGHTS[i];
     for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_out[i] = zero_init;
     for (int i = 0; i < Ttemp_max; i++)                             l0_temp[i] = zero_init;
@@ -134,17 +155,35 @@ static inline void connect_blobs() {
     layer0_wgt_in_q.W = Tin_W_l1;
     layer0_wgt_in_q.C = Tout_C_l1;
 
+    layer0_bias_in_q.data = l0_bias_in_q;
+    layer0_bias_in_q.dim = Tatt_dim_l1;
+    layer0_bias_in_q.H = 1;
+    layer0_bias_in_q.W = Tatt_dim_l1;
+    layer0_bias_in_q.C = Tout_C_l1;
+
     layer0_wgt_in_k.data = l0_ker_in_k;
     layer0_wgt_in_k.dim = Tin_W_l1 * Tatt_dim_l1;
     layer0_wgt_in_k.H = Tatt_dim_l1;
     layer0_wgt_in_k.W = Tin_W_l1;
     layer0_wgt_in_k.C = Tout_C_l1;
 
+    layer0_bias_in_k.data = l0_bias_in_k;
+    layer0_bias_in_k.dim = Tatt_dim_l1;
+    layer0_bias_in_k.H = 1;
+    layer0_bias_in_k.W = Tatt_dim_l1;
+    layer0_bias_in_k.C = Tout_C_l1;
+
     layer0_wgt_in_v.data = l0_ker_in_v;
     layer0_wgt_in_v.dim = Tin_W_l1 * Tatt_dim_l1;
     layer0_wgt_in_v.H = Tatt_dim_l1;
     layer0_wgt_in_v.W = Tin_W_l1;
     layer0_wgt_in_v.C = Tout_C_l1;
+
+    layer0_bias_in_v.data = l0_bias_in_v;
+    layer0_bias_in_v.dim = Tatt_dim_l1;
+    layer0_bias_in_v.H = 1;
+    layer0_bias_in_v.W = Tatt_dim_l1;
+    layer0_bias_in_v.C = Tout_C_l1;
 
     layer0_wgt_out.data = l0_ker_out;
     layer0_wgt_out.dim = Tin_W_l1 * Tatt_dim_l1;
@@ -194,9 +233,15 @@ static inline void connect_blobs() {
     mhsa_args.k = &layer0_k;
     mhsa_args.v = &layer0_v;
     mhsa_args.output = &layer0_out;
+
     mhsa_args.coeff_in_q = &layer0_wgt_in_q;
     mhsa_args.coeff_in_k = &layer0_wgt_in_k;
     mhsa_args.coeff_in_v = &layer0_wgt_in_v;
+
+    mhsa_args.bias_in_q = &layer0_bias_in_q;
+    mhsa_args.bias_in_k = &layer0_bias_in_k;
+    mhsa_args.bias_in_v = &layer0_bias_in_v;
+
     mhsa_args.coeff_out = &layer0_wgt_out;
     mhsa_args.attention_map = &layer0_att_map;
     mhsa_args.softmax_buffer = &layer0_softmax_buffer;
@@ -214,6 +259,8 @@ static inline void compute_memory_occupation() {
     L1_memocc_bytes += Tin_H_l1 * Tin_W_l1 * sizeof(fp16);
     // Kernel input
     L1_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * 3 * sizeof(fp16);
+    // Bias input
+    L1_memocc_bytes += Tatt_dim_l1 * 3 * sizeof(fp16);
     // Kernel output
     L1_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * sizeof(fp16);
     // QKV
@@ -235,6 +282,8 @@ static inline void compute_memory_occupation() {
     L2_memocc_bytes += Tin_H_l1 * Tin_W_l1 * sizeof(fp16);
     // Kernel input
     L2_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * 3 * sizeof(fp16);
+    // Bias input
+    L2_memocc_bytes += Tatt_dim_l1 * 3 * sizeof(fp16);
     // Kernel output
     L2_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * sizeof(fp16);
     // QKV
@@ -258,44 +307,48 @@ static inline void compute_memory_occupation() {
 #ifdef BACKWARD
 static inline void tensor_init() {
     // Backward grad
-    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_in[i] = INPUT[i];
-    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_in_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_in[i] = INPUT[i];
+    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_in_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
+
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_q[i] = INPUT_BIASES_Q[i];
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_k[i] = INPUT_BIASES_K[i];
+    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_v[i] = INPUT_BIASES_V[i];
 
     //initialization to zero, then it is overwritten the result in the function
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_q_diff[i] = zero_init;
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_k_diff[i] = zero_init;
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_v_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_q_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_k_diff[i] = zero_init;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_v_diff[i] = zero_init;
 
-    for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++) l0_ker_out[i] = OUTPUT_WEIGHTS[i];
-    for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++) l0_ker_out_diff[i] = zero_init;
+    for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++)                l0_ker_out[i] = OUTPUT_WEIGHTS[i];
+    for (int i = 0; i < Tatt_dim_l1 * Tin_W_l1; i++)                l0_ker_out_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++) l0_out[i] = OUTPUT[i];
-    for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++) l0_out_diff[i] = OUTPUT_GRAD[i];
+    for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++)                   l0_out[i] = OUTPUT[i];
+    for (int i = 0; i < Tin_W_l1 * Tin_H_l1; i++)                   l0_out_diff[i] = OUTPUT_GRAD[i];
 
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_q[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_q_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_q[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_q_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_k[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_k_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_k[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_k_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_v[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_v_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_v[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_v_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_att_map[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_att_map_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_att_map[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_att_map_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++) l0_softmax_buffer[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++) l0_softmax_buffer_diff[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++)     l0_softmax_buffer[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++)     l0_softmax_buffer_diff[i] = zero_init;
 
-    for (int i = 0; i < Tin_H_l1; i++) l0_sums[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1; i++) l0_maxes[i] = min_float;
+    for (int i = 0; i < Tin_H_l1; i++)                              l0_sums[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1; i++)                              l0_maxes[i] = min_float;
 
-    for (int i = 0; i < Ttemp_max; i++) l0_temp[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tin_H_l1; i++) l0_grad[i] = zero_init;
+    for (int i = 0; i < Ttemp_max; i++)                             l0_temp[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tin_H_l1; i++)                   l0_grad[i] = zero_init;
 }
 
 
@@ -314,6 +367,12 @@ static inline void connect_blobs() {
     layer0_wgt_in_q.C = Tout_C_l1;
     layer0_wgt_in_q.diff = l0_ker_in_q_diff;
 
+    layer0_bias_in_q.data = l0_bias_in_q;
+    layer0_bias_in_q.dim = Tatt_dim_l1;
+    layer0_bias_in_q.H = 1;
+    layer0_bias_in_q.W = Tatt_dim_l1;
+    layer0_bias_in_q.C = Tout_C_l1;
+
     layer0_wgt_in_k.data = l0_ker_in_k;
     layer0_wgt_in_k.dim = Tin_W_l1 * Tatt_dim_l1;
     layer0_wgt_in_k.H = Tatt_dim_l1;
@@ -321,12 +380,24 @@ static inline void connect_blobs() {
     layer0_wgt_in_k.C = Tout_C_l1;
     layer0_wgt_in_k.diff = l0_ker_in_k_diff;
 
+    layer0_bias_in_k.data = l0_bias_in_k;
+    layer0_bias_in_k.dim = Tatt_dim_l1;
+    layer0_bias_in_k.H = 1;
+    layer0_bias_in_k.W = Tatt_dim_l1;
+    layer0_bias_in_k.C = Tout_C_l1;
+
     layer0_wgt_in_v.data = l0_ker_in_v;
     layer0_wgt_in_v.dim = Tin_W_l1 * Tatt_dim_l1;
     layer0_wgt_in_v.H = Tatt_dim_l1;
     layer0_wgt_in_v.W = Tin_W_l1;
     layer0_wgt_in_v.C = Tout_C_l1;
     layer0_wgt_in_v.diff = l0_ker_in_v_diff;
+
+    layer0_bias_in_v.data = l0_bias_in_v;
+    layer0_bias_in_v.dim = Tatt_dim_l1;
+    layer0_bias_in_v.H = 1;
+    layer0_bias_in_v.W = Tatt_dim_l1;
+    layer0_bias_in_v.C = Tout_C_l1;
 
     layer0_wgt_out.data = l0_ker_out;
     layer0_wgt_out.dim = Tin_W_l1 * Tatt_dim_l1;
@@ -383,9 +454,15 @@ static inline void connect_blobs() {
     mhsa_args.k = &layer0_k;
     mhsa_args.v = &layer0_v;
     mhsa_args.output = &layer0_out;
+
     mhsa_args.coeff_in_q = &layer0_wgt_in_q;
     mhsa_args.coeff_in_k = &layer0_wgt_in_k;
     mhsa_args.coeff_in_v = &layer0_wgt_in_v;
+
+    mhsa_args.bias_in_q = &layer0_bias_in_q;
+    mhsa_args.bias_in_k = &layer0_bias_in_k;
+    mhsa_args.bias_in_v = &layer0_bias_in_v;
+
     mhsa_args.coeff_out = &layer0_wgt_out;
     mhsa_args.attention_map = &layer0_att_map;
     mhsa_args.softmax_buffer = &layer0_softmax_buffer;
@@ -399,54 +476,53 @@ static inline void connect_blobs() {
 }
 
 
-static inline void compute_memory_occupation(){
-  // Input
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1 *sizeof(fp16);
-  // Kernel input
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
-  // Kernel output
-  L1_memocc_bytes += Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
-  // QKV + grad
-  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*3*sizeof(fp16);
-  // Output + grad
-  L1_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(fp16);
-  // Attention Map + grad
-  L1_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
-  // Heads Softmax Output + Grad
-  L1_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
-  // Temp buffer
-  L1_memocc_bytes += Ttemp_max*sizeof(fp16);
-  // Sums buffer
-  L1_memocc_bytes += Tin_H_l1 * sizeof(fp16);
-  // Maxes buffer
-  L1_memocc_bytes += Tin_H_l1 * sizeof(fp16);
-  // Gradient buffer
-  L1_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(fp16);
+static inline void compute_memory_occupation() {
+    // Input
+    L1_memocc_bytes += Tin_H_l1 * Tin_W_l1 * sizeof(fp16);
+    // Kernel input
+    L1_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * 3 * sizeof(fp16);
+    // Kernel output
+    L1_memocc_bytes += Tin_W_l1 * Tatt_dim_l1 * sizeof(fp16);
+    // QKV + grad
+    L1_memocc_bytes += 2 * Tatt_dim_l1 * Tin_H_l1 * 3 * sizeof(fp16);
+    // Output + grad
+    L1_memocc_bytes += 2 * Tin_W_l1 * Tin_H_l1 * sizeof(fp16);
+    // Attention Map + grad
+    L1_memocc_bytes += 2 * Tatt_dim_l1 * Tin_H_l1 * sizeof(fp16);
+    // Heads Softmax Output + Grad
+    L1_memocc_bytes += 2 * Tin_H_l1 * Tin_H_l1 * Tn_heads_l1 * sizeof(fp16);
+    // Temp buffer
+    L1_memocc_bytes += Ttemp_max * sizeof(fp16);
+    // Sums buffer
+    L1_memocc_bytes += Tin_H_l1 * sizeof(fp16);
+    // Maxes buffer
+    L1_memocc_bytes += Tin_H_l1 * sizeof(fp16);
+    // Gradient buffer
+    L1_memocc_bytes += Tin_H_l1 * Tin_H_l1 * sizeof(fp16);
 
 
-
-  // Input + grad
-  L2_memocc_bytes += 2*Tin_H_l1*Tin_W_l1*sizeof(fp16);
-  // Kernel input + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16); 
-  // Kernel output + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*sizeof(fp16);
-  // QKV + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tatt_dim_l1*3*sizeof(fp16);
-  // Output + grad
-  L2_memocc_bytes += 2*Tin_W_l1*Tin_H_l1*sizeof(fp16);
-  // Attention Map + grad
-  L2_memocc_bytes += 2*Tatt_dim_l1*Tin_H_l1*sizeof(fp16);
-  // Heads Softmax + grad
-  L2_memocc_bytes += 2*Tin_H_l1*Tin_H_l1*Tn_heads_l1*sizeof(fp16);
-  // Sums buffer
-  L2_memocc_bytes += Tin_H_l1 * sizeof(fp16);
-  // Maxes buffer
-  L2_memocc_bytes += Tin_H_l1 * sizeof(fp16);
-  // Temp buffer
-  L2_memocc_bytes += Ttemp_max*sizeof(fp16);
-  // Gradient buffer
-  L2_memocc_bytes += Tin_H_l1*Tin_H_l1*sizeof(fp16);
+    // Input + grad
+    L2_memocc_bytes += 2 * Tin_H_l1 * Tin_W_l1 * sizeof(fp16);
+    // Kernel input + grad
+    L2_memocc_bytes += 2 * Tin_W_l1 * Tatt_dim_l1 * 3 * sizeof(fp16);
+    // Kernel output + grad
+    L2_memocc_bytes += 2 * Tin_W_l1 * Tatt_dim_l1 * sizeof(fp16);
+    // QKV + grad
+    L2_memocc_bytes += 2 * Tin_W_l1 * Tatt_dim_l1 * 3 * sizeof(fp16);
+    // Output + grad
+    L2_memocc_bytes += 2 * Tin_W_l1 * Tin_H_l1 * sizeof(fp16);
+    // Attention Map + grad
+    L2_memocc_bytes += 2 * Tatt_dim_l1 * Tin_H_l1 * sizeof(fp16);
+    // Heads Softmax + grad
+    L2_memocc_bytes += 2 * Tin_H_l1 * Tin_H_l1 * Tn_heads_l1 * sizeof(fp16);
+    // Sums buffer
+    L2_memocc_bytes += Tin_H_l1 * sizeof(fp16);
+    // Maxes buffer
+    L2_memocc_bytes += Tin_H_l1 * sizeof(fp16);
+    // Temp buffer
+    L2_memocc_bytes += Ttemp_max * sizeof(fp16);
+    // Gradient buffer
+    L2_memocc_bytes += Tin_H_l1 * Tin_H_l1 * sizeof(fp16);
 }
 #endif
 
@@ -489,7 +565,7 @@ static inline void compare_tensors_absolute(fp16 *A, fp16 *B, int length) {
 int check_tensor(fp16 *tensor_out, fp16 *tensor_ref, int size) {
     int error_flag = 0;
     for (int i = 0; i < size; i++) {
-        fp16 avg = ABS ((tensor_out[i] + tensor_ref[i]) / 2);
+        fp16 avg = ABS((tensor_out[i] + tensor_ref[i]) / 2);
         if ((ABS(tensor_out[i] - tensor_ref[i]) / avg) > CHECK_TOLERANCE) {
             if (error_flag == 0) printf("\n");
             printf("Error at index: %d   (Ideal = %.16f [HEX: %#x]  vs  Actual = %.16f [HEX: %#x])\n", i,

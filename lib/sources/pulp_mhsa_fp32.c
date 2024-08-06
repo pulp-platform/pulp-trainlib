@@ -152,13 +152,6 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
     pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed, &mm_bias_add_args_q);
 
-    printf("\nq: %d %d\n", F, L);
-    for (int j=0; j<F*L; j++){
-        if(!(j%(L))) printf("\n");
-        printf("%.8f ", matMul_args1_q.C[j]);
-    }
-    printf("\n\n");
-
     // T0_k
     struct transp_args transp_args0_k;
     transp_args0_k.matrix = coeffDataWinK;
@@ -630,10 +623,6 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     float *coeffDataWinQ = mhsa_args->coeff_in_q->data; // F x E
     float *coeffDataWinK = mhsa_args->coeff_in_k->data; // F x E
     float *coeffDataWinV = mhsa_args->coeff_in_v->data; // F x E
-
-    float *coeffBiasWinQ = mhsa_args->bias_in_q->data; // F
-    float *coeffBiasWinK = mhsa_args->bias_in_k->data; // F
-    float *coeffBiasWinV = mhsa_args->bias_in_v->data; // F
 
     float *coeffDataWout = mhsa_args->coeff_out->data; // E x F
     float *attention_map = mhsa_args->attention_map->data; // F x L

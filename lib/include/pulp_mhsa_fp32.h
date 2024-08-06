@@ -17,10 +17,8 @@
 
 /**
  * Recurrent layer training functions, grouped into FW and BW
-*/
-
-/**
- * Authors: Alberto Dequino
+ *
+ * Authors: Alberto Dequino, Calin Diaconu
 */ 
 
 
@@ -51,37 +49,35 @@
  */
 
 struct Mhsa_args {
-    struct blob * input;
+    struct blob *input;
     int n_heads;
     int opt_matmul_type_fw;
     int opt_matmul_type_wg;
     int opt_matmul_type_ig;
-    struct blob * output;
+    struct blob *output;
 
-    struct blob * coeff_in_q;
-    struct blob * coeff_in_k;
-    struct blob * coeff_in_v;
+    struct blob *coeff_in_q;
+    struct blob *coeff_in_k;
+    struct blob *coeff_in_v;
 
-    struct blob * bias_in_q;
-    struct blob * bias_in_k;
-    struct blob * bias_in_v;
+    struct blob *bias_in_q;
+    struct blob *bias_in_k;
+    struct blob *bias_in_v;
 
-    struct blob * coeff_out;
-    struct blob * q;
-    struct blob * k;
-    struct blob * v;
-    struct blob * attention_map;
-    float * temp_buffer;
-    float * grad;
-    struct blob * head_buffer;
-    struct blob * softmax_buffer;
-    float * global_max;
-    float * partial_exp_sum;
-    float * maxes;
-    float * sums;
+    struct blob *coeff_out;
+    struct blob *q;
+    struct blob *k;
+    struct blob *v;
+    struct blob *attention_map;
+    float *temp_buffer;
+    float *grad;
+    struct blob *head_buffer;
+    struct blob *softmax_buffer;
+    float *global_max;
+    float *partial_exp_sum;
+    float *maxes;
+    float *sums;
 };
-
-
 
 
 /**
