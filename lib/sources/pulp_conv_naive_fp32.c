@@ -423,8 +423,8 @@ void naive_conv2d_in_grad_kernel_CHW (void * matMul_args)
   }
   else {
 
-    int h_start = pH - 1 - Lpad;
-    int w_start = pW - 1 - Upad;
+    int h_start = pH - 1 - Upad;
+    int w_start = pW - 1 - Lpad;
 
     for (uint32_t ci=start; ci<stop; ci++) {
       for (uint32_t hi=0; hi<H_in; hi++) {
@@ -809,6 +809,178 @@ void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1 (void * matMul_args)
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
       printf("[naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p2:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+             USE_BIASES);
+  }
+}
+
+
+
+
+
+
+
+
+/** TRANSPOSED CONV2D KERNELS **/
+
+void naive_transp_conv2d_fw_kernel_CHW (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inData = args->A;
+  float * __restrict__ coeffData = args->B;
+  float * __restrict__ outData = args->C;
+
+  float *__restrict__ biasData = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  // Start indices
+  int h_start = pH - 1 - Upad;
+  int w_start = pW - 1 - Lpad;
+  // Computational kernel
+  for (uint32_t co=0; co<C_out; co++) {
+    for (uint32_t ho=0; ho<H_out; ho++) {
+      for (uint32_t wo=0; wo<W_out; wo++) {
+        float temp = 0;
+        for (uint32_t ci=0; ci<C_in; ci++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
+              // Indices
+              int ker_idx = wk + hk*pW + ci*pH*pW + co*C_in*pH*pW;
+              // Border conditions
+              int bord_h = (ho + hk - h_start) / h_str;
+              int bord_w = (wo + wk - w_start) / w_str;
+              int borders = (bord_h < H_in) && (bord_w < W_in);
+              // Data 
+              float in_dat = 0;
+              float k_dat = coeffData[ker_idx];
+              // Computation
+              if (((ho+hk-h_start) % h_str == 0) && ((wo+wk-w_start) % w_str == 0) && borders == 1)
+              {
+                int in_idx = bord_w + bord_h*W_in + ci*H_in*W_in;
+                in_dat = inData[in_idx];
+                temp += in_dat * k_dat;
+              }
+            }
+          }
+        }
+        outData[wo + ho*W_out + co*H_out*W_out] = temp;
+      }
+    }
+  }  
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_fw_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
+}
+
+
+
+void naive_transp_conv2d_param_grad_kernel_CHW (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inData = args->A;
+  float * __restrict__ coeffDiff = args->B;
+  float * __restrict__ outDiff = args->C;
+
+  float *__restrict__ biasDiff = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  // TODO: Design kernel
+  printf("[naive_transp_conv2d_param_grad_kernel_CHW:] Kernel not implemented!!");
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_param_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
+}
+
+
+
+void naive_transp_conv2d_in_grad_kernel_CHW (void * matMul_args) 
+{
+  struct matMul_args* args = (struct matMul_args *)matMul_args;
+  float * __restrict__ inDiff = args->A;
+  float * __restrict__ coeffData = args->B;
+  float * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
+  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+  const uint32_t pHW = pH*pW-1;
+
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
+
+  int padding = Lpad + Rpad + Upad + Dpad;
+  int stride = h_str + w_str;
+
+  // TODO: Design kernel
+  printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Kernel not implemented!!");
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
              USE_BIASES);
   }
 }
