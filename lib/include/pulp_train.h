@@ -37,9 +37,11 @@
 #include "pulp_conv2d_fp32.h"
 #include "pulp_conv_naive_fp32.h"
 #include "pulp_im2col_fp32.h"
+#include "pulp_instnorm_fp32.h"
 #include "pulp_linear_fp32.h"
 #include "pulp_losses_fp32.h"
 #include "pulp_matmul_fp32.h"
+#include "pulp_mhsa_fp32.h"
 #include "pulp_optimizers_fp32.h"
 #include "pulp_pooling_fp32.h"
 #include "pulp_residual_fp32.h"
@@ -47,6 +49,7 @@
 #include "pulp_mhsa_fp32.h"
 #include "pulp_instnorm_fp32.h"
 #include "pulp_dropout_fp32.h"
+#include "pulp_transp_conv2d_fp32.h"
 
 
 // FP16 structures
@@ -59,13 +62,16 @@
 #include "pulp_conv2d_fp16.h"
 #include "pulp_conv_naive_fp16.h"
 #include "pulp_im2col_fp16.h"
+#include "pulp_instnorm_fp16.h"
 #include "pulp_linear_fp16.h"
 #include "pulp_losses_fp16.h"
 #include "pulp_matmul_fp16.h"
+#include "pulp_mhsa_fp16.h"
 #include "pulp_optimizers_fp16.h"
 #include "pulp_pooling_fp16.h"
 #include "pulp_residual_fp16.h"
 #include "pulp_mhsa_fp16.h"
 #include "pulp_instnorm_fp16.h"
 #include "pulp_dropout_fp16.h"
+#include "pulp_transp_conv2d_fp16.h"
 
