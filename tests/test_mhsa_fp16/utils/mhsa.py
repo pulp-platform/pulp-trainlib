@@ -37,26 +37,27 @@ class MultiHeadedSelfAttention(nn.Module):
 
     def __init__(self, dim, num_heads, att_dim, bf16_format):
         super().__init__()
-        self.proj_in_q = nn.Linear(dim, att_dim, bias=False)
-        self.proj_in_k = nn.Linear(dim, att_dim, bias=False)
-        self.proj_in_v = nn.Linear(dim, att_dim, bias=False)
-        self.proj_out = nn.Linear(att_dim, dim, bias=False)
-        self.dim = dim
-        self.att_dim = att_dim
+
         self.n_heads = num_heads
+        self.att_dim = att_dim
         self.head_dim = att_dim // num_heads
-        # self.scaling = q_rsqrt(self.head_dim).bfloat16()
-        # self.scaling = (1 / math.sqrt(self.head_dim))
+
+        self.proj_q = nn.Linear(dim, att_dim, bias=True)
+        self.proj_k = nn.Linear(dim, att_dim, bias=True)
+        self.proj_v = nn.Linear(dim, att_dim, bias=True)
+
         self.scaling = q_rsqrt(self.head_dim)
-        self.scores = None  # for visualization
         self.softmax = SoftmaxFastExp(bf16_format=bf16_format)
+        self.proj_out = nn.Linear(att_dim, dim, bias=False)
+
+        self.scores = None  # for visualization
         self.bf16_format = bf16_format
 
     def forward(self, x, tgt_len):
         # OP 1
-        q = self.proj_in_q(x)
-        k = self.proj_in_k(x)
-        v = self.proj_in_v(x)
+        q = self.proj_q(x)
+        k = self.proj_k(x)
+        v = self.proj_v(x)
 
         q = q.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
         k = k.contiguous().view(tgt_len, self.n_heads, self.head_dim).transpose(0, 1)
