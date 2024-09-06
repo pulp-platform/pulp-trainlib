@@ -211,26 +211,40 @@ if __name__ == "__main__":
     in_wgt_init_tensor_k = torch.randn(att_dim, in_w)
     in_wgt_init_tensor_v = torch.randn(att_dim, in_w)
 
+    in_bias_init_tensor_q = torch.randn(att_dim)
+    in_bias_init_tensor_k = torch.randn(att_dim)
+    in_bias_init_tensor_v = torch.randn(att_dim)
+
     # Copy input weights to network
     with torch.no_grad():
         if bf16_format == 0:
-            net.mhsa.proj_in_q.weight.data = deepcopy(in_wgt_init_tensor_q.half())
-            net.mhsa.proj_in_k.weight.data = deepcopy(in_wgt_init_tensor_k.half())
-            net.mhsa.proj_in_v.weight.data = deepcopy(in_wgt_init_tensor_v.half())
+            net.mhsa.proj_q.weight.data = deepcopy(in_wgt_init_tensor_q.half())
+            net.mhsa.proj_k.weight.data = deepcopy(in_wgt_init_tensor_k.half())
+            net.mhsa.proj_v.weight.data = deepcopy(in_wgt_init_tensor_v.half())
+
+            net.mhsa.proj_q.bias.data = deepcopy(in_bias_init_tensor_q.half())
+            net.mhsa.proj_k.bias.data = deepcopy(in_bias_init_tensor_k.half())
+            net.mhsa.proj_v.bias.data = deepcopy(in_bias_init_tensor_v.half())
         else:
-            net.mhsa.proj_in_q.weight.data = deepcopy(in_wgt_init_tensor_q.bfloat16())
-            net.mhsa.proj_in_k.weight.data = deepcopy(in_wgt_init_tensor_k.bfloat16())
-            net.mhsa.proj_in_v.weight.data = deepcopy(in_wgt_init_tensor_v.bfloat16())
+            net.mhsa.proj_q.weight.data = deepcopy(in_wgt_init_tensor_q.bfloat16())
+            net.mhsa.proj_k.weight.data = deepcopy(in_wgt_init_tensor_k.bfloat16())
+            net.mhsa.proj_v.weight.data = deepcopy(in_wgt_init_tensor_v.bfloat16())
+
+            net.mhsa.proj_q.bias.data = deepcopy(in_bias_init_tensor_q.bfloat16())
+            net.mhsa.proj_k.bias.data = deepcopy(in_bias_init_tensor_k.bfloat16())
+            net.mhsa.proj_v.bias.data = deepcopy(in_bias_init_tensor_v.bfloat16())
 
     # Print input weights to terminal
     print("Shape input weights:")
-    print(net.mhsa.proj_in_q.weight.shape)
+    print(net.mhsa.proj_q.weight.shape)
+    print("Shape input biases:")
+    print(net.mhsa.proj_q.bias.shape)
     print("q:")
-    print(net.mhsa.proj_in_q.weight.data)
+    print(net.mhsa.proj_q.weight.data)
     print("k:")
-    print(net.mhsa.proj_in_k.weight.data)
+    print(net.mhsa.proj_k.weight.data)
     print("v:")
-    print(net.mhsa.proj_in_v.weight.data)
+    print(net.mhsa.proj_v.weight.data)
     print("\n")
 
     # Write input weights to init file
@@ -250,6 +264,24 @@ if __name__ == "__main__":
     f.write(
         "PI_L2 fp16 INPUT_WEIGHTS_V[INPUT_WGT_SIZE] = {"
         + dump.tensor_to_string(in_wgt_init_tensor_v.transpose(0, 1))
+        + "};\n"
+    )
+
+    f.write("\n\n// Input Projections Biases Initialization\n")
+    f.write("#define INPUT_BIAS_SIZE (" + str(in_bias_init_tensor_q.numel()) + ")\n")
+    f.write(
+        "PI_L2 fp16 INPUT_BIASES_Q[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_q)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 fp16 INPUT_BIASES_K[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_k)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 fp16 INPUT_BIASES_V[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_v)
         + "};\n"
     )
     f.close()
@@ -317,9 +349,9 @@ if __name__ == "__main__":
     net.zero_grad()
     loss.backward()
 
-    input_wgt_grad_q = net.mhsa.proj_in_q.weight.grad
-    input_wgt_grad_k = net.mhsa.proj_in_k.weight.grad
-    input_wgt_grad_v = net.mhsa.proj_in_v.weight.grad
+    input_wgt_grad_q = net.mhsa.proj_q.weight.grad
+    input_wgt_grad_k = net.mhsa.proj_k.weight.grad
+    input_wgt_grad_v = net.mhsa.proj_v.weight.grad
     output_wgt_grad = net.mhsa.proj_out.weight.grad
     input_grad = inp.grad.transpose(1, 2)
 
