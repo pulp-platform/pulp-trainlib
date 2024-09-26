@@ -558,6 +558,7 @@ void mm_bias_add_transposed(void *void_args) {
     // Extract variable from function arguments
     struct mm_bias_add_args *args = (struct mm_bias_add_args *) void_args;
 
+    int t = args->t;
     float *mat = args->mat;
     float *bias = args->bias;
     float temp;
@@ -570,14 +571,27 @@ void mm_bias_add_transposed(void *void_args) {
     const int start = pi_core_id() * blockSize;
     const int stop = start+blockSize > HEIGHT ? HEIGHT : start+blockSize;
 
-    // For each row, sum it with the bias
-    for (int i = start; i < stop; i++) {
-        int row = i * WIDTH;
-        for (int j = 0; j < WIDTH; j++) {
-            temp = mat[row + j]+bias[j];
-            mat[row + j] = temp;
+    if(t == 0){
+        // For each row, sum it with the bias
+        for (int i = start; i < stop; i++) {
+            int row = i * WIDTH;
+            for (int j = 0; j < WIDTH; j++) {
+                temp = mat[row + j]+bias[j];
+                mat[row + j] = temp;
+            }
         }
     }
+    else{
+       // For each column, sum it with the bias
+       for (int i = start; i < stop; i++){
+        int row = i*WIDTH;
+        for(int j = 0; j<WIDTH; j++){
+            temp = mat[row+j] + bias[i];
+            mat[row+j] = temp;
+        }
+       } 
+    }
+    
 }
 
 
@@ -932,6 +946,7 @@ void mm_manager(void *void_args) {
         mm_bias_add_args_q.bias = args->mm_args->bias;
         mm_bias_add_args_q.H = args->mm_args->N;
         mm_bias_add_args_q.W = args->mm_args->M;
+        mm_bias_add_args_q.t = args->mm_args->bias_transposed;
 
         mm_bias_add_transposed((void *) &mm_bias_add_args_q);
     }
