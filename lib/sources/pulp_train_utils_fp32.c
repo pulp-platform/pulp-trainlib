@@ -551,6 +551,35 @@ void pulp_scalar_mul_fp32_cl(void *void_args) {
     }
 }
 
+/**
+ * Bias addition.
+ */
+void mm_bias_add_transposed(void *void_args) {
+    // Extract variable from function arguments
+    struct mm_bias_add_args *args = (struct mm_bias_add_args *) void_args;
+
+    float *mat = args->mat;
+    float *bias = args->bias;
+    float temp;
+
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
+
+    // Split work row-wise (each worker will receive a number of rows)
+    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start+blockSize > HEIGHT ? HEIGHT : start+blockSize;
+
+    // For each row, sum it with the bias
+    for (int i = start; i < stop; i++) {
+        int row = i * WIDTH;
+        for (int j = 0; j < WIDTH; j++) {
+            temp = mat[row + j]+bias[j];
+            mat[row + j] = temp;
+        }
+    }
+}
+
 
 /**
  * Choose the user-selected matmul for the chosen layer.
@@ -563,6 +592,8 @@ void mm_manager(void *void_args) {
     int layer_type = args->layer_type;
     int step_type = args->step_type;
     int matmul_type = args->matmul_type;
+    int use_bias = args->mm_args->USE_BIASES;
+
 
     #ifdef DEBUG
     printf("Running layer %d, step %d, matmul %d\n", layer_type, step_type, matmul_type);
@@ -893,6 +924,17 @@ void mm_manager(void *void_args) {
     else {
         printf("\nWrong layer_type selection!!\n");
     }
+
+    if(use_bias){
+        // Bias_addition
+        struct mm_bias_add_args mm_bias_add_args_q;
+        mm_bias_add_args_q.mat = args->mm_args->C;
+        mm_bias_add_args_q.bias = args->mm_args->bias;
+        mm_bias_add_args_q.H = args->mm_args->N;
+        mm_bias_add_args_q.W = args->mm_args->M;
+
+        mm_bias_add_transposed((void *) &mm_bias_add_args_q);
+    }
 }
 
 void pulp_mean_std_fp32_cl(void *mean_std_args) {
@@ -1030,28 +1072,4 @@ void cordic_cos_sin_fp32(float angle, float *cos, float *sin) {
     }
     *cos = cos_sign * x;
     *sin = y;
-}
-
-
-void mm_bias_add_transposed(void *void_args) {
-    // Extract variable from function arguments
-    struct mm_bias_add_args *args = (struct mm_bias_add_args *) void_args;
-
-    float *mat = args->mat;
-    float *bias = args->bias;
-
-    int HEIGHT = args->H;
-    int WIDTH = args->W;
-
-    // Split work row-wise (each worker will receive a number of rows)
-    const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
-    const int start = pi_core_id() * blockSize;
-    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
-
-    // For each row, sum it with the bias
-    for (int i = start; i < stop; i++) {
-        for (int j = 0; j < WIDTH; j++) {
-            mat[i * WIDTH + j] += bias[i];
-        }
-    }
 }

@@ -47,6 +47,7 @@
 #include "pulp_mhsa_fp32.h"
 #include "pulp_instnorm_fp32.h"
 #include "pulp_dropout_fp32.h"
+#include "pulp_nonorm_fp32.h"
 
 
 // FP16 structures
@@ -68,4 +69,5 @@
 #include "pulp_mhsa_fp16.h"
 #include "pulp_instnorm_fp16.h"
 #include "pulp_dropout_fp16.h"
+
 
