@@ -1,4 +1,4 @@
-APP = rng
+APP = mobilebert
 
 # User code
 NUM_CORES?=8

@@ -165,7 +165,7 @@ print("Count of classifier: " + str(count_classifier))
 if not skipgen:
     # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
     # Generate random input data
-    inp = torch.randn(1, args.seq_len, config.hidden_size)
+    inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 1000)
     inp.requires_grad = False
 
     # Print input data to terminal
@@ -179,7 +179,7 @@ if not skipgen:
 
     f.write("#define INPUT_SIZE " + str(inp.numel()) + "\n")
     f.write(
-        "PI_L2 float INPUT[INPUT_SIZE] = {" + dump.tensor_to_string(inp_copy) + "};\n"
+        "PI_L2 float INPUT[INPUT_SIZE] = {" + dump.tensor_to_string(inp) + "};\n"
     )
 
     f.close()
