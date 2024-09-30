@@ -53,6 +53,7 @@ config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
 
 data_type = args.type
 skipgen = args.skipgen
+skipgenio = args.skipgenio
 
 # Prepare GLUE task
 args.task_name = args.task_name.lower()
@@ -162,10 +163,10 @@ print("Count of encoder: " + str(count_encoder))
 print("Count of classifier: " + str(count_classifier))
 #f.close()
 
-if not skipgen:
+if not skipgenio:
     # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
     # Generate random input data
-    inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 1000)
+    inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 1)
     inp.requires_grad = False
 
     # Print input data to terminal
@@ -197,6 +198,8 @@ if not skipgen:
 
     f.close()
 
+
+if not skipgen:
 
     # ~~~~~~~~~~ ENCODER LAYER DATA ~~~~~~~~~~
 
