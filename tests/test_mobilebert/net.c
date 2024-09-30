@@ -30,17 +30,57 @@ PI_L2 struct blob mhsa_input, mhsa_input_bn, mhsa_output, mhsa_output_wgt, mhsa_
 // Residual connection MHSA output + input bottleneck
 PI_L2 struct blob residual_1_skip, residual_1_lout, residual_1_output;
 PI_L2 struct blob attention_output_norm_bias, attention_output_norm_in, attention_output_norm_out, attention_output_norm_wgt;
-
+// FFN 0
+PI_L2 struct blob ffn_0_relu_input, ffn_0_relu_output, ffn_0_residual_skip, ffn_0_residual_lout, ffn_0_residual_output;
+PI_L2 struct blob ffn_0_norm_in, ffn_0_norm_wgt, ffn_0_norm_bias, ffn_0_norm_out;
+// FFN 1
+PI_L2 struct blob ffn_1_relu_input, ffn_1_relu_output, ffn_1_residual_skip, ffn_1_residual_lout, ffn_1_residual_output;
+PI_L2 struct blob ffn_1_norm_in, ffn_1_norm_wgt, ffn_1_norm_bias, ffn_1_norm_out;
+// FFN 2
+PI_L2 struct blob ffn_2_relu_input, ffn_2_relu_output, ffn_2_residual_skip, ffn_2_residual_lout, ffn_2_residual_output;
+PI_L2 struct blob ffn_2_norm_in, ffn_2_norm_wgt, ffn_2_norm_bias, ffn_2_norm_out;
+// Intermediate
+PI_L2 struct blob intermediate_relu_input, intermediate_relu_output;
+// Output
+PI_L2 struct blob output_residual_skip, output_residual_lout, output_residual_output;
+PI_L2 struct blob output_norm_in, output_norm_wgt, output_norm_bias, output_norm_out;
+// Output Bottleneck
+PI_L2 struct blob output_bottleneck_residual_skip, output_bottleneck_residual_lout, output_bottleneck_residual_output;
+PI_L2 struct blob output_bottleneck_norm_in, output_bottleneck_norm_wgt, output_bottleneck_norm_bias, output_bottleneck_norm_out;
 
 // Define DNN layer structures
 
-PI_L2 struct matMul_args bneck_dense_att_args;          // Bottleneck for attention values
-PI_L2 struct Nonorm_args bneck_norm_att_args;
-PI_L2 struct matMul_args bneck_dense_inp_args;          // Bottleneck for input values
-PI_L2 struct Nonorm_args bneck_norm_inp_args;
-PI_L2 struct Mhsa_args mhsa_args;                       // MHSA
-PI_L2 struct SkipConn_args residual_1_args;             // Residual connection MHSA output + input bottleneck
-PI_L2 struct Nonorm_args attention_output_norm_args;    
+PI_L2 struct matMul_args bneck_dense_att_args;                  // Bottleneck for attention values
+PI_L2 struct Nonorm_args bneck_norm_att_args;       
+PI_L2 struct matMul_args bneck_dense_inp_args;                  // Bottleneck for input values
+PI_L2 struct Nonorm_args bneck_norm_inp_args;       
+PI_L2 struct Mhsa_args mhsa_args;                               // MHSA
+PI_L2 struct SkipConn_args residual_1_args;                     // Residual connection MHSA output + input bottleneck
+PI_L2 struct Nonorm_args attention_output_norm_args;            
+PI_L2 struct matMul_args ffn_0_intermediate_args;               // FFN 0
+PI_L2 struct act_args ffn_0_relu_args;      
+PI_L2 struct matMul_args ffn_0_output_args;     
+PI_L2 struct SkipConn_args ffn_0_residual_args;     
+PI_L2 struct Nonorm_args ffn_0_norm_args;       
+PI_L2 struct matMul_args ffn_1_intermediate_args;               // FFN 1
+PI_L2 struct act_args ffn_1_relu_args;      
+PI_L2 struct matMul_args ffn_1_output_args;     
+PI_L2 struct SkipConn_args ffn_1_residual_args;     
+PI_L2 struct Nonorm_args ffn_1_norm_args;       
+PI_L2 struct matMul_args ffn_2_intermediate_args;               // FFN 2
+PI_L2 struct act_args ffn_2_relu_args;      
+PI_L2 struct matMul_args ffn_2_output_args;     
+PI_L2 struct SkipConn_args ffn_2_residual_args;     
+PI_L2 struct Nonorm_args ffn_2_norm_args;       
+PI_L2 struct matMul_args intermediate_args;                     // Intermediate
+PI_L2 struct act_args intermediate_relu_args;       
+PI_L2 struct matMul_args output_dense_args;                     // Output
+PI_L2 struct SkipConn_args output_residual_args;        
+PI_L2 struct Nonorm_args output_norm_args;      
+PI_L2 struct matMul_args output_bottleneck_dense_args;          // Output Bottleneck
+PI_L2 struct SkipConn_args output_bottleneck_residual_args;     
+PI_L2 struct Nonorm_args output_bottleneck_norm_args;
+
 
 // Define I/O tensors
 
@@ -256,9 +296,269 @@ void DNN_init()
     attention_output_norm_out.W = EMBED_SIZE;
     attention_output_norm_out.C = 1;
 
+    // Connecting FFN 0
+    ffn_0_relu_input.data = buff_d;
+    ffn_0_relu_input.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_0_relu_input.H = SEQ_LEN;
+    ffn_0_relu_input.W = HIDDEN_SIZE;
+    ffn_0_relu_input.C = 1;
 
+    ffn_0_relu_output.data = buff_d;
+    ffn_0_relu_output.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_0_relu_output.H = SEQ_LEN;
+    ffn_0_relu_output.W = HIDDEN_SIZE;
+    ffn_0_relu_output.C = 1;
 
+    ffn_0_residual_skip.data = buff_b;
+    ffn_0_residual_skip.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_0_residual_skip.H = SEQ_LEN;
+    ffn_0_residual_skip.W = EMBED_SIZE;
+    ffn_0_residual_skip.C = 1;
 
+    ffn_0_residual_lout.data = buff_c;
+    ffn_0_residual_lout.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_0_residual_lout.H = SEQ_LEN;
+    ffn_0_residual_lout.W = EMBED_SIZE;
+    ffn_0_residual_lout.C = 1;
+
+    ffn_0_residual_output.data = buff_a;
+    ffn_0_residual_output.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_0_residual_output.H = SEQ_LEN;
+    ffn_0_residual_output.W = EMBED_SIZE;
+    ffn_0_residual_output.C = 1;
+
+    ffn_0_norm_in.data = buff_a;
+    ffn_0_norm_in.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_0_norm_in.H = SEQ_LEN;
+    ffn_0_norm_in.W = EMBED_SIZE;
+    ffn_0_norm_in.C = 1;
+
+    ffn_0_norm_wgt.data = FFN0_OUTPUT_NORM_WEIGHTS;
+    ffn_0_norm_wgt.dim = EMBED_SIZE;
+    ffn_0_norm_wgt.H = 1;
+    ffn_0_norm_wgt.W = EMBED_SIZE;
+    ffn_0_norm_wgt.C = 1;
+
+    ffn_0_norm_bias.data = FFN0_OUTPUT_NORM_BIASES;
+    ffn_0_norm_bias.dim = EMBED_SIZE;
+    ffn_0_norm_bias.H = 1;
+    ffn_0_norm_bias.W = EMBED_SIZE;
+    ffn_0_norm_bias.C = 1;
+
+    ffn_0_norm_out.data = buff_a;
+    ffn_0_norm_out.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_0_norm_out.H = SEQ_LEN;
+    ffn_0_norm_out.W = EMBED_SIZE;
+    ffn_0_norm_out.C = 1;
+
+    // Connecting FFN 1
+    ffn_1_relu_input.data = buff_d;
+    ffn_1_relu_input.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_1_relu_input.H = SEQ_LEN;
+    ffn_1_relu_input.W = HIDDEN_SIZE;
+    ffn_1_relu_input.C = 1;
+
+    ffn_1_relu_output.data = buff_d;
+    ffn_1_relu_output.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_1_relu_output.H = SEQ_LEN;
+    ffn_1_relu_output.W = HIDDEN_SIZE;
+    ffn_1_relu_output.C = 1;
+
+    ffn_1_residual_skip.data = buff_b;
+    ffn_1_residual_skip.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_1_residual_skip.H = SEQ_LEN;
+    ffn_1_residual_skip.W = EMBED_SIZE;
+    ffn_1_residual_skip.C = 1;
+
+    ffn_1_residual_lout.data = buff_a;
+    ffn_1_residual_lout.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_1_residual_lout.H = SEQ_LEN;
+    ffn_1_residual_lout.W = EMBED_SIZE;
+    ffn_1_residual_lout.C = 1;
+
+    ffn_1_residual_output.data = buff_c;
+    ffn_1_residual_output.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_1_residual_output.H = SEQ_LEN;
+    ffn_1_residual_output.W = EMBED_SIZE;
+    ffn_1_residual_output.C = 1;
+
+    ffn_1_norm_in.data = buff_c;
+    ffn_1_norm_in.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_1_norm_in.H = SEQ_LEN;
+    ffn_1_norm_in.W = EMBED_SIZE;
+    ffn_1_norm_in.C = 1;
+
+    ffn_1_norm_wgt.data = FFN1_OUTPUT_NORM_WEIGHTS;
+    ffn_1_norm_wgt.dim = EMBED_SIZE;
+    ffn_1_norm_wgt.H = 1;
+    ffn_1_norm_wgt.W = EMBED_SIZE;
+    ffn_1_norm_wgt.C = 1;
+
+    ffn_1_norm_bias.data = FFN1_OUTPUT_NORM_BIASES;
+    ffn_1_norm_bias.dim = EMBED_SIZE;
+    ffn_1_norm_bias.H = 1;
+    ffn_1_norm_bias.W = EMBED_SIZE;
+    ffn_1_norm_bias.C = 1;
+
+    ffn_1_norm_out.data = buff_c;
+    ffn_1_norm_out.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_1_norm_out.H = SEQ_LEN;
+    ffn_1_norm_out.W = EMBED_SIZE;
+    ffn_1_norm_out.C = 1;
+
+    // Connecting FFN 2
+    ffn_2_relu_input.data = buff_d;
+    ffn_2_relu_input.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_2_relu_input.H = SEQ_LEN;
+    ffn_2_relu_input.W = HIDDEN_SIZE;
+    ffn_2_relu_input.C = 1;
+
+    ffn_2_relu_output.data = buff_d;
+    ffn_2_relu_output.dim = SEQ_LEN * HIDDEN_SIZE;
+    ffn_2_relu_output.H = SEQ_LEN;
+    ffn_2_relu_output.W = HIDDEN_SIZE;
+    ffn_2_relu_output.C = 1;
+
+    ffn_2_residual_skip.data = buff_b;
+    ffn_2_residual_skip.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_2_residual_skip.H = SEQ_LEN;
+    ffn_2_residual_skip.W = EMBED_SIZE;
+    ffn_2_residual_skip.C = 1;
+
+    ffn_2_residual_lout.data = buff_c;
+    ffn_2_residual_lout.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_2_residual_lout.H = SEQ_LEN;
+    ffn_2_residual_lout.W = EMBED_SIZE;
+    ffn_2_residual_lout.C = 1;
+
+    ffn_2_residual_output.data = buff_a;
+    ffn_2_residual_output.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_2_residual_output.H = SEQ_LEN;
+    ffn_2_residual_output.W = EMBED_SIZE;
+    ffn_2_residual_output.C = 1;
+
+    ffn_2_norm_in.data = buff_a;
+    ffn_2_norm_in.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_2_norm_in.H = SEQ_LEN;
+    ffn_2_norm_in.W = EMBED_SIZE;
+    ffn_2_norm_in.C = 1;
+
+    ffn_2_norm_wgt.data = FFN2_OUTPUT_NORM_WEIGHTS;
+    ffn_2_norm_wgt.dim = EMBED_SIZE;
+    ffn_2_norm_wgt.H = 1;
+    ffn_2_norm_wgt.W = EMBED_SIZE;
+    ffn_2_norm_wgt.C = 1;
+
+    ffn_2_norm_bias.data = FFN2_OUTPUT_NORM_BIASES;
+    ffn_2_norm_bias.dim = EMBED_SIZE;
+    ffn_2_norm_bias.H = 1;
+    ffn_2_norm_bias.W = EMBED_SIZE;
+    ffn_2_norm_bias.C = 1;
+
+    ffn_2_norm_out.data = buff_a;
+    ffn_2_norm_out.dim = SEQ_LEN*EMBED_SIZE;
+    ffn_2_norm_out.H = SEQ_LEN;
+    ffn_2_norm_out.W = EMBED_SIZE;
+    ffn_2_norm_out.C = 1;
+
+    // Connecting Intermediate
+    intermediate_relu_input.data = buff_d;
+    intermediate_relu_input.dim = SEQ_LEN * HIDDEN_SIZE;
+    intermediate_relu_input.H = SEQ_LEN;
+    intermediate_relu_input.W = HIDDEN_SIZE;
+    intermediate_relu_input.C = 1;
+
+    intermediate_relu_output.data = buff_d;
+    intermediate_relu_output.dim = SEQ_LEN * HIDDEN_SIZE;
+    intermediate_relu_output.H = SEQ_LEN;
+    intermediate_relu_output.W = HIDDEN_SIZE;
+    intermediate_relu_output.C = 1;
+
+    // Connecting Output
+    output_residual_skip.data = buff_b;
+    output_residual_skip.dim = SEQ_LEN*EMBED_SIZE;
+    output_residual_skip.H = SEQ_LEN;
+    output_residual_skip.W = EMBED_SIZE;
+    output_residual_skip.C = 1;
+
+    output_residual_lout.data = buff_a;
+    output_residual_lout.dim = SEQ_LEN*EMBED_SIZE;
+    output_residual_lout.H = SEQ_LEN;
+    output_residual_lout.W = EMBED_SIZE;
+    output_residual_lout.C = 1;
+
+    output_residual_output.data = buff_c;
+    output_residual_output.dim = SEQ_LEN*EMBED_SIZE;
+    output_residual_output.H = SEQ_LEN;
+    output_residual_output.W = EMBED_SIZE;
+    output_residual_output.C = 1;
+
+    output_norm_in.data = buff_c;
+    output_norm_in.dim = SEQ_LEN*EMBED_SIZE;
+    output_norm_in.H = SEQ_LEN;
+    output_norm_in.W = EMBED_SIZE;
+    output_norm_in.C = 1;
+
+    output_norm_wgt.data = OUTPUT_NORM_WEIGHTS;
+    output_norm_wgt.dim = EMBED_SIZE;
+    output_norm_wgt.H = 1;
+    output_norm_wgt.W = EMBED_SIZE;
+    output_norm_wgt.C = 1;
+
+    output_norm_bias.data = OUTPUT_NORM_BIASES;
+    output_norm_bias.dim = EMBED_SIZE;
+    output_norm_bias.H = 1;
+    output_norm_bias.W = EMBED_SIZE;
+    output_norm_bias.C = 1;
+
+    output_norm_out.data = buff_c;
+    output_norm_out.dim = SEQ_LEN*EMBED_SIZE;
+    output_norm_out.H = SEQ_LEN;
+    output_norm_out.W = EMBED_SIZE;
+    output_norm_out.C = 1;
+
+    // Connecting Output Bottleneck
+    output_bottleneck_residual_skip.data = buff_d;
+    output_bottleneck_residual_skip.dim = SEQ_LEN*HIDDEN_SIZE;
+    output_bottleneck_residual_skip.H = SEQ_LEN;
+    output_bottleneck_residual_skip.W = HIDDEN_SIZE;
+    output_bottleneck_residual_skip.C = 1;
+
+    output_bottleneck_residual_lout.data = INPUT;
+    output_bottleneck_residual_lout.dim = SEQ_LEN*HIDDEN_SIZE;
+    output_bottleneck_residual_lout.H = SEQ_LEN;
+    output_bottleneck_residual_lout.W = HIDDEN_SIZE;
+    output_bottleneck_residual_lout.C = 1;
+
+    output_bottleneck_residual_output.data = buff_d;
+    output_bottleneck_residual_output.dim = SEQ_LEN*HIDDEN_SIZE;
+    output_bottleneck_residual_output.H = SEQ_LEN;
+    output_bottleneck_residual_output.W = HIDDEN_SIZE;
+    output_bottleneck_residual_output.C = 1;
+
+    output_bottleneck_norm_in.data = buff_d;
+    output_bottleneck_norm_in.dim = SEQ_LEN*HIDDEN_SIZE;
+    output_bottleneck_norm_in.H = SEQ_LEN;
+    output_bottleneck_norm_in.W = HIDDEN_SIZE;
+    output_bottleneck_norm_in.C = 1;
+
+    output_bottleneck_norm_wgt.data = OUTPUT_BOTTLENECK_NORM_WEIGHTS;
+    output_bottleneck_norm_wgt.dim = HIDDEN_SIZE;
+    output_bottleneck_norm_wgt.H = 1;
+    output_bottleneck_norm_wgt.W = HIDDEN_SIZE;
+    output_bottleneck_norm_wgt.C = 1;
+
+    output_bottleneck_norm_bias.data = OUTPUT_BOTTLENECK_NORM_BIASES;
+    output_bottleneck_norm_bias.dim = HIDDEN_SIZE;
+    output_bottleneck_norm_bias.H = 1;
+    output_bottleneck_norm_bias.W = HIDDEN_SIZE;
+    output_bottleneck_norm_bias.C = 1;
+
+    output_bottleneck_norm_out.data = buff_d;
+    output_bottleneck_norm_out.dim = SEQ_LEN*HIDDEN_SIZE;
+    output_bottleneck_norm_out.H = SEQ_LEN;
+    output_bottleneck_norm_out.W = HIDDEN_SIZE;
+    output_bottleneck_norm_out.C = 1;
 
 
     // ~~~~~~~~~~ CONFIGURE LAYER STRUCTURES ~~~~~~~~~~
@@ -377,7 +677,7 @@ void DNN_init()
     ffn_0_norm_args.output = &ffn_0_norm_out;
 
     // FFN 1
-    ffn_1_intermediate_args.A = buff_c;
+    ffn_1_intermediate_args.A = buff_a;
     ffn_1_intermediate_args.B = FFN1_INTERMEDIATE_WEIGHTS;
     ffn_1_intermediate_args.C = buff_d;
     ffn_1_intermediate_args.N = SEQ_LEN;
@@ -454,12 +754,69 @@ void DNN_init()
     ffn_2_norm_args.bias = &ffn_2_norm_bias;
     ffn_2_norm_args.output = &ffn_2_norm_out;
 
+    // Intermediate
+    intermediate_args.A = buff_a;
+    intermediate_args.B = INTERMEDIATE_WEIGHTS;
+    intermediate_args.C = buff_d;
+    intermediate_args.N = SEQ_LEN;
+    intermediate_args.K = EMBED_SIZE;
+    intermediate_args.M = HIDDEN_SIZE;
+    intermediate_args.trans_B = 0;
+    intermediate_args.bias = INTERMEDIATE_BIASES;
+    intermediate_args.bias_dim = HIDDEN_SIZE;
+    intermediate_args.USE_BIASES = 1;
+    intermediate_args.bias_transposed = 0;
 
+    intermediate_relu_args.input = &intermediate_relu_input;
+    intermediate_relu_args.output = &intermediate_relu_output;
+    intermediate_relu_args.H = SEQ_LEN;
+    intermediate_relu_args.W = HIDDEN_SIZE;
 
+    // Output
+    output_dense_args.A = buff_d;
+    output_dense_args.B = OUTPUT_WEIGHTS;
+    output_dense_args.C = buff_b;
+    output_dense_args.N = SEQ_LEN;
+    output_dense_args.K = HIDDEN_SIZE;
+    output_dense_args.M = EMBED_SIZE;
+    output_dense_args.trans_B = 0;
+    output_dense_args.bias = OUTPUT_BIASES;
+    output_dense_args.bias_dim = EMBED_SIZE;
+    output_dense_args.USE_BIASES = 1;
+    output_dense_args.bias_transposed = 0;
 
+    output_residual_args.skip = &output_residual_skip;
+    output_residual_args.lout = &output_residual_lout;
+    output_residual_args.output = &output_residual_output;
 
+    output_norm_args.input = &output_norm_in;
+    output_norm_args.coeff = &output_norm_wgt;
+    output_norm_args.bias = &output_norm_bias;
+    output_norm_args.output = &output_norm_out;
 
+    // Output Bottleneck
+    output_bottleneck_dense_args.A = buff_c;
+    output_bottleneck_dense_args.B = OUTPUT_BOTTLENECK_WEIGHTS;
+    output_bottleneck_dense_args.C = buff_d;
+    output_bottleneck_dense_args.N = SEQ_LEN;
+    output_bottleneck_dense_args.K = EMBED_SIZE;
+    output_bottleneck_dense_args.M = HIDDEN_SIZE;
+    output_bottleneck_dense_args.trans_B = 0;
+    output_bottleneck_dense_args.bias = OUTPUT_BOTTLENECK_BIASES;
+    output_bottleneck_dense_args.bias_dim = HIDDEN_SIZE;
+    output_bottleneck_dense_args.USE_BIASES = 1;
+    output_bottleneck_dense_args.bias_transposed = 0;
 
+    output_bottleneck_residual_args.skip = &output_bottleneck_residual_skip;
+    output_bottleneck_residual_args.lout = &output_bottleneck_residual_lout;
+    output_bottleneck_residual_args.output = &output_bottleneck_residual_output;
+
+    output_bottleneck_norm_args.input = &output_bottleneck_norm_in;
+    output_bottleneck_norm_args.coeff = &output_bottleneck_norm_wgt;
+    output_bottleneck_norm_args.bias = &output_bottleneck_norm_bias;
+    output_bottleneck_norm_args.output = &output_bottleneck_norm_out;
+
+    return;
 
 }
 
@@ -577,16 +934,66 @@ void forward(){
     pulp_residualconn_fp32_fw((void*) &ffn_2_residual_args);
     pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_2_norm_args);
 
+    // Intermediate
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &intermediate_args);
+    #else
+    struct mm_manager_args man_args9;
+    man_args9.mm_args = &intermediate_args;
+    man_args9.layer_type = LAYER_LINEAR;
+    man_args9.step_type = STEP_FW;
+    man_args9.matmul_type = MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args9);
+    #endif
+    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &intermediate_relu_args);
+
+    // Output
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &output_dense_args);
+    #else
+    struct mm_manager_args man_args10;
+    man_args10.mm_args = &output_dense_args;
+    man_args10.layer_type = LAYER_LINEAR;
+    man_args10.step_type = STEP_FW;
+    man_args10.matmul_type = MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args10);
+    #endif
+    pulp_residualconn_fp32_fw((void*) &output_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_norm_args);
+
+    // Output Bottleneck
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm, &output_bottleneck_dense_args);
+    #else
+    struct mm_manager_args man_args11;
+    man_args11.mm_args = &output_bottleneck_dense_args;
+    man_args11.layer_type = LAYER_LINEAR;
+    man_args11.step_type = STEP_FW;
+    man_args11.matmul_type = MATMUL_TYPE;
+    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args11);
+    #endif
+    pulp_residualconn_fp32_fw((void*) &output_bottleneck_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_bottleneck_norm_args);
+
     return;
 }
 
 void print_stuff(){
     //printf("\n%f %f %f\n", buff_a[0], buff_b[0], buff_c[0]);
 
+    /*
     for(int i = 0; i < (EMBED_SIZE*SEQ_LEN); i++){
         if(!(i % EMBED_SIZE))
             printf("\n");
         printf("%f ", buff_c[i]);
+    }
+    printf("\n");
+    */
+
+    for(int i = 0; i < (HIDDEN_SIZE*SEQ_LEN); i++){
+        if(!(i % HIDDEN_SIZE))
+            printf("\n");
+        printf("%f ", buff_d[i]);
     }
     printf("\n");
 }
