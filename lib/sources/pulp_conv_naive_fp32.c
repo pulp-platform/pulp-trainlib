@@ -855,41 +855,6 @@ void naive_transp_conv2d_fw_kernel_CHW (void * matMul_args)
 
   int padding = Lpad + Rpad + Upad + Dpad;
 
-  // // Start indices
-  // int h_start = pH - 1 - Upad;
-  // int w_start = pW - 1 - Lpad;
-  // // Computational kernel
-  // for (uint32_t co=0; co<C_out; co++) {
-  //   for (uint32_t ho=0; ho<H_out; ho++) {
-  //     for (uint32_t wo=0; wo<W_out; wo++) {
-  //       float temp = 0;
-  //       for (uint32_t ci=0; ci<C_in; ci++) {
-  //         for (uint32_t hk=0; hk<pH; hk++) {
-  //           for (uint32_t wk=0; wk<pW; wk++) {
-  //             // Indices
-  //             int ker_idx = wk + hk*pW + ci*pH*pW + co*C_in*pH*pW;
-  //             // Border conditions
-  //             int bord_h = (ho + hk - h_start) / h_str;
-  //             int bord_w = (wo + wk - w_start) / w_str;
-  //             int borders = (bord_h < H_in) && (bord_w < W_in);
-  //             // Data 
-  //             float in_dat = 0;
-  //             float k_dat = coeffData[ker_idx];
-  //             // Computation
-  //             if (((ho+hk-h_start) % h_str == 0) && ((wo+wk-w_start) % w_str == 0) && borders == 1)
-  //             {
-  //               int in_idx = bord_w + bord_h*W_in + ci*H_in*W_in;
-  //               in_dat = inData[in_idx];
-  //               temp += in_dat * k_dat;
-  //             }
-  //           }
-  //         }
-  //       }
-  //       outData[wo + ho*W_out + co*H_out*W_out] = temp;
-  //     }
-  //   }
-  // }  
-
   //printf("IN: [%d, %d, %d], KER: [%d, %d, %d, %d], OUT: [%d, %d, %d]\n", C_in, H_in, W_in, C_out, C_in, pH, pW, C_out, H_out, W_out);
   //printf("MAX BOUNDARIES: H -> [0, %d], W -> [0, %d]\n\n", H_out-1+pH-1, W_out-1+pW-1);
 
@@ -909,7 +874,7 @@ void naive_transp_conv2d_fw_kernel_CHW (void * matMul_args)
               int w_adv = (wo + wk - wpad);
               int h_adv = (ho + hk - hpad);
               int ker_idx = (pH*pW - wk - hk*pW - 1) + ci*pW*pH + co*C_in*pW*pH;
-              int inp_idx = w_adv/w_str + h_adv/h_str + ci*H_in*W_in;
+              int inp_idx = w_adv/w_str + (h_adv/h_str)*W_in + ci*H_in*W_in;
               // Input data
               float ker_dat = 0;
               float inp_dat = 0;

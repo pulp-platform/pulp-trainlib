@@ -1,8 +1,8 @@
 APP = transp_conv2d_fp32
 
 # User settings
-IMAGE_H?=2
-IMAGE_W?=2
+IMAGE_H?=8
+IMAGE_W?=8
 KER_H?=3
 KER_W?=3
 IN_CH?=1
