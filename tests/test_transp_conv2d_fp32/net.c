@@ -65,8 +65,12 @@ PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 #ifdef BACKWARD_GRAD
+#if (IM2COL == 1)
 //#define IM2COL_SIZE (Tker_W_l1*Tker_H_l1*Tout_W_l1*Tout_H_l1*Tout_C_l1)
 #define IM2COL_SIZE (Tker_W_l1*Tker_H_l1*Tout_W_l1*Tout_H_l1*Tin_C_l1)
+#else
+#define IM2COL_SIZE 1
+#endif
 PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
@@ -74,7 +78,7 @@ PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 PI_L1 float l1_bias_diff[Tout_C_l1];
 #endif
 PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 float bt_buffer[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 float bt_buffer[1];
 #endif
 
 
@@ -242,6 +246,7 @@ static inline void connect_blobs(){
 
   C2D_args.input = &layer1_in;
   C2D_args.coeff = &layer1_wgt;
+  C2D_args.bias = &layer1_bias;
   C2D_args.output = &layer1_out;
   C2D_args.inLpad = PAD_L;
   C2D_args.inRpad = PAD_R;
@@ -254,9 +259,9 @@ static inline void connect_blobs(){
   C2D_args.skip_wg_grad = 0;
   C2D_args.skip_in_grad = 0;
   C2D_args.HWC = HWC_LAYOUT;
-  C2D_args.opt_matmul_type_fw = MATMUL_TYPE;
-  C2D_args.opt_matmul_type_wg = MATMUL_TYPE;
-  C2D_args.opt_matmul_type_ig = MATMUL_TYPE;
+  C2D_args.opt_matmul_type_fw = 0; //MATMUL_TYPE;
+  C2D_args.opt_matmul_type_wg = 0; //MATMUL_TYPE;
+  C2D_args.opt_matmul_type_ig = 0; //MATMUL_TYPE;
   C2D_args.USE_IM2COL = IM2COL;
   C2D_args.USE_BIASES = USE_BIAS;
 }
@@ -439,6 +444,7 @@ static inline void train(){
   #endif
 
   #ifdef BACKWARD_GRAD
+  printf("weight grad primitive!\n");
   pulp_transp_conv2d_fp32_bw_param_grads_cl(&C2D_args);
   #endif
 
