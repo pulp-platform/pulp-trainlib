@@ -92,6 +92,7 @@ f.close()
 out_size_h = int((image_height-1)*hstr-2*hpad+(ker_h-1)+1) #math.floor((image_height-ker_h+2*hpad+hstr)/hstr)
 out_size_w = int((image_width -1)*wstr-2*wpad+(ker_w-1)+1) #math.floor((image_width-ker_w+2*wpad+wstr)/wstr)
 
+#import pdb; pdb.set_trace()
 
 class myNet(nn.Module):
   def __init__(self):
@@ -363,6 +364,8 @@ loss = criterion(out, label)
 net.zero_grad()
 
 loss.backward()
+
+#import pdb; pdb.set_trace()
 
 if HWC_layout == 0:
   print("\n\nCHW data layout:")

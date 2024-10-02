@@ -1,19 +1,19 @@
 APP = transp_conv2d_fp32
 
 # User settings
-IMAGE_H?=4
-IMAGE_W?=4
-KER_H?=2
-KER_W?=2
+IMAGE_H?=2
+IMAGE_W?=2
+KER_H?=3
+KER_W?=3
 IN_CH?=1
 OUT_CH?=1
-PAD_L?=0
-PAD_R?=0
-PAD_U?=0
-PAD_D?=0
-STRIDE_H?=1
-STRIDE_W?=1
-NUM_CORES?=8
+PAD_L?=1
+PAD_R?=1
+PAD_U?=1
+PAD_D?=1
+STRIDE_H?=2
+STRIDE_W?=2
+NUM_CORES?=1
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
@@ -22,7 +22,7 @@ NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=0			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 HWC_LAYOUT?=0		# Choose if data layout is CHW (=0) or HWC (=1)
-USE_BIASES?=1		# Choose whether to include biases or not
+USE_BIASES?=0		# Choose whether to include biases or not
 # End of user settings
 
 TRAIN_LIB=../../lib

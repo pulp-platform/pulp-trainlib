@@ -119,8 +119,9 @@ void pulp_transp_conv2d_fp32_fw_cl( void * Transp_Conv2D_args )
       //pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k5x5_s2_p1, &matMul_args);
       //else
       pi_cl_team_fork(NUM_CORES, naive_transp_conv2d_fw_kernel_CHW, &matMul_args);
-      #endif
+      #else
       pi_cl_team_fork(NUM_CORES, naive_transp_conv2d_fw_kernel_CHW, &matMul_args);
+      #endif
     }
 
     /**
