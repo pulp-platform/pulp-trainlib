@@ -950,8 +950,8 @@ void naive_transp_conv2d_param_grad_kernel_CHW (void * matMul_args)
 {
   struct matMul_args* args = (struct matMul_args *)matMul_args;
   float * __restrict__ inData = args->A;
-  float * __restrict__ outDiff = args->B;
-  float * __restrict__ coeffDiff = args->C;
+  float * __restrict__ coeffDiff = args->B;
+  float * __restrict__ outDiff = args->C;
 
   float *__restrict__ biasDiff = args->bias;
   const uint32_t USE_BIASES = args->USE_BIASES;
@@ -1059,11 +1059,35 @@ void naive_transp_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
-  int padding = Lpad + Rpad + Upad + Dpad;
-  int stride = h_str + w_str;
+  // int padding = Lpad + Rpad + Upad + Dpad;
+  // int stride = h_str + w_str;
 
-  // TODO: Design kernel
-  printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Kernel not implemented!!");
+  // Padding
+  int wpad = 0;
+  int hpad = 0;
+  // Computational kernel
+  for (uint32_t ci=start; ci<stop; ci++) {
+    for (uint32_t hi=0; hi<H_in; hi++) {
+      for (uint32_t wi=0; wi<W_in; wi++) {
+        float temp = 0;
+        for (uint32_t co=0; co<C_out; co++) {
+          for (uint32_t hk=0; hk<pH; hk++) {
+            for (uint32_t wk=0; wk<pW; wk++) {
+              // Indices
+              int ker_idx = (pW*pH - wk - hk*pW - 1) + ci*pH*pW + co*C_out*pH*pW;
+              int out_idx = (wk+wi*w_str) + (hk+hi*h_str)*H_out + co*H_out*W_out;
+              // Data
+              float ker_dat = coeffData[ker_idx];
+              float out_dif = outDiff[out_idx];
+              // Input grad comp
+              temp += ker_dat * out_dif;
+            }
+          } 
+        }
+        inDiff[wi + hi*W_in + ci*H_in*W_in] = temp;
+      }
+    }
+  }
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
       printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",

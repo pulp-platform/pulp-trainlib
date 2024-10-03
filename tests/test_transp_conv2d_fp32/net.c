@@ -55,8 +55,11 @@ PI_L1 float bt_buffer[1];
 #endif
 
 #ifdef BACKWARD_ERROR   
-//#define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tout_C_l1*Tin_H_l1*Tin_W_l1)
+#if (IM2COL == 1)
 #define IM2COL_SIZE (Tin_H_l1*Tin_W_l1*Tin_C_l1*Tout_C_l1*Tker_W_l1*Tker_H_l1)
+#else
+#define IM2COL_SIZE 1
+#endif
 PI_L1 float l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
 PI_L1 float im2col_buffer[IM2COL_SIZE];
 PI_L1 float bt_buffer[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
