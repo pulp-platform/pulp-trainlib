@@ -17,9 +17,31 @@
 
 // ~~~~~~~~~~ VARIABLE DEFINITION ~~~~~~~~~~
 
+// ~~~~~~~~~~ L1 DATA ~~~~~~~~~~
+
 // Constants definition
 PI_L1 float zero_init = 0.0f;
 PI_L1 float min_float = -340282346638528859811704183484516925440.0f;
+
+// Define structures and pointers to data in L1 memory
+PI_L1 float * IN_DATA, * W_DATA, * OUT_DATA, * BIAS_DATA;
+PI_L1 float  BUFF[MAX_SIZE];
+PI_L1 struct blob input_blob;
+PI_L1 struct blob weight_blob;
+PI_L1 struct blob output_blob;
+PI_L1 struct blob bias_blob;
+PI_L1 struct matMul_args mm_args;
+PI_L1 struct Nonorm_args nn_args;
+PI_L1 struct SkipConn_args skip_args;
+PI_L1 struct act_args relu_args;
+PI_L1 pi_cl_dma_cmd_t * cmd_store;
+PI_L1 pi_cl_dma_cmd_t * cmd_load;
+
+PI_L1 struct mm_manager_args man_args;
+
+
+
+
 
 // ~~~~~~~~~~ L2 DATA ~~~~~~~~~~
 
@@ -85,19 +107,20 @@ PI_L2 struct matMul_args output_bottleneck_dense_args;          // Output Bottle
 PI_L2 struct SkipConn_args output_bottleneck_residual_args;     
 PI_L2 struct Nonorm_args output_bottleneck_norm_args;
 
-
-// Define I/O tensors
+// Define L2 I/O tensors
 
 PI_L2 float buff_a[SEQ_LEN * EMBED_SIZE];
 PI_L2 float buff_b[SEQ_LEN * EMBED_SIZE];
 PI_L2 float buff_c[SEQ_LEN * EMBED_SIZE];
 PI_L2 float buff_d[SEQ_LEN * HIDDEN_SIZE];
 
-// Other Data
+// Other Data for MHSA
 
 PI_L2 float mhsa_maxes[SEQ_LEN];
 PI_L2 float mhsa_sums[SEQ_LEN];
 PI_L2 float mhsa_softmax_buffer_v[SEQ_LEN * SEQ_LEN * N_HEADS];
+
+
 
 
 // ~~~~~~~~~~ DNN BACKEND FUNCTIONS ~~~~~~~~~~
@@ -105,10 +128,26 @@ PI_L2 float mhsa_softmax_buffer_v[SEQ_LEN * SEQ_LEN * N_HEADS];
 // DNN initialization function
 void DNN_init()
 {
-    for(int i=0; i<EMBED_SIZE*SEQ_LEN; i++)		buff_a[i] = zero_init;
-    for(int i=0; i<EMBED_SIZE*SEQ_LEN; i++)		buff_b[i] = zero_init;
-    // ~~~~~~~~~~ CONNECT TENSOR TO BLOBS ~~~~~~~~~~
+    // ~~~~~~~~~~ ASSIGN POINTERS IN L1 ~~~~~~~~~~
+    IN_DATA = BUFF;
+    W_DATA = BUFF;
+    OUT_DATA = BUFF;
+    BIAS_DATA = BUFF;
+    update_blob();
+    reset_arguments();
 
+
+    // ~~~~~~~~~~ INITIALIZING L2 BUFFER DATA TO ZERO ~~~~~~~~~~
+
+    for(int i=0; i<EMBED_SIZE*SEQ_LEN; i++)		        buff_a[i] = zero_init;
+    for(int i=0; i<EMBED_SIZE*SEQ_LEN; i++)		        buff_b[i] = zero_init;
+    for(int i=0; i<EMBED_SIZE*SEQ_LEN; i++)		        buff_c[i] = zero_init;
+    for(int i=0; i<HIDDEN_SIZE*SEQ_LEN; i++)	        buff_d[i] = zero_init;
+    for(int i=0; i<SEQ_LEN; i++)		                mhsa_maxes[i] = zero_init;
+    for(int i=0; i<SEQ_LEN; i++)		                mhsa_sums[i] = zero_init;
+    for(int i=0; i<SEQ_LEN * SEQ_LEN * N_HEADS; i++)	mhsa_softmax_buffer_v[i] = zero_init;
+
+    // ~~~~~~~~~~ CONNECT TENSOR TO BLOBS ~~~~~~~~~~
 
     // Connecting Bottleneck for attention values
     bneck_norm_att_in.data = buff_a;
@@ -824,11 +863,118 @@ void DNN_init()
 
 }
 
+void tiled_matmul(void* matmul_args){
+    struct matMul_args * args = (struct matMul_args *)matmul_args;
+    
+    int n_tiles_i = (args->N) / TILE_H;
+    int n_tiles_j = (args->M) / TILE_W;
+    int K = args->K;
+    
+    IN_DATA = BUFF;
+    W_DATA = BUFF + K * TILE_H;
+    OUT_DATA = W_DATA + K * TILE_W;
+    BIAS_DATA = OUT_DATA + TILE_DIM;
+    
+    mm_args.A = IN_DATA;
+    mm_args.B = W_DATA;
+    mm_args.C = OUT_DATA;
+    mm_args.N = TILE_H;
+    mm_args.K = K;
+    mm_args.M = TILE_W;
+    mm_args.trans_B = args->trans_B;
+    mm_args.bias = BIAS_DATA;
+    mm_args.bias_dim = TILE_W;
+    mm_args.USE_BIASES = args->USE_BIASES;
+    mm_args.bias_transposed = args->bias_transposed;
+    
+    for(int j = 0; j < n_tiles_j; j++){
+        pi_cl_dma_cmd_2d((uint32_t) (args->B + j * TILE_W), (uint32_t) (W_DATA), 4 * TILE_W * K, 4 * (args->M), 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+        pi_cl_dma_cmd_wait(cmd_load);
+        pi_cl_dma_cmd((uint32_t) (args->bias + j * TILE_W), (uint32_t) (BIAS_DATA), 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+        pi_cl_dma_cmd_wait(cmd_load);
+        for(int i = 0; i < n_tiles_i; i++){
+            pi_cl_dma_cmd((uint32_t) (args->A + i * K * TILE_H), (uint32_t) (IN_DATA), 4 * K * TILE_H, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            man_args.mm_args = &mm_args;
+            pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
+            pi_cl_dma_cmd_2d((uint32_t) (args->C + i * args->M * TILE_H + TILE_W * j), (uint32_t) (OUT_DATA), 4 * TILE_DIM, 4 * (args->M), 4 * TILE_W, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+        }
+    }
+}
+
 
 void forward(){
-
+    /*
+    reset_dim();
+    update_blob();
+    reset_arguments();
     
     // Bottleneck for attention values
+    tiled_matmul(&bneck_dense_att_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_att_args);
+    
+    
+    
+    // MHSA HERE
+    pulp_mhsa_mobilebert_inference_fp32_fw_cl((void*) &mhsa_args);
+
+    
+    // Bottleneck for input values
+    tiled_matmul(&bneck_dense_inp_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_inp_args);
+
+
+    // Residual connection MHSA output + input bottleneck
+    pulp_residualconn_fp32_fw((void*) &residual_1_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &attention_output_norm_args);
+    
+    // FFN 0
+    tiled_matmul(&ffn_0_intermediate_args);
+    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_0_relu_args);
+    tiled_matmul(&ffn_0_output_args);
+    pulp_residualconn_fp32_fw((void*) &ffn_0_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_0_norm_args);
+
+    // FFN 1
+    tiled_matmul(&ffn_1_intermediate_args);
+    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_1_relu_args);
+    tiled_matmul(&ffn_1_output_args);
+    pulp_residualconn_fp32_fw((void*) &ffn_1_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_1_norm_args);
+
+    // FFN 2
+    tiled_matmul(&ffn_2_intermediate_args);
+    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_2_relu_args);
+    tiled_matmul(&ffn_2_output_args);
+    pulp_residualconn_fp32_fw((void*) &ffn_2_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_2_norm_args);
+
+    // Intermediate
+    tiled_matmul(&intermediate_args);
+    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &intermediate_relu_args);
+
+    // Output
+    tiled_matmul(&output_dense_args);
+    pulp_residualconn_fp32_fw((void*) &output_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_norm_args);
+
+    // Output Bottleneck
+    tiled_matmul(&output_bottleneck_dense_args);
+    pulp_residualconn_fp32_fw((void*) &output_bottleneck_residual_args);
+    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_bottleneck_norm_args);
+
+    return;
+    */
+    reset_dim();
+    update_blob();
+    reset_arguments();
+
+    
+
+    // Bottleneck for attention values
+    tiled_matmul(&bneck_dense_att_args);
+    /*
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &bneck_dense_att_args);
     #else
@@ -839,6 +985,7 @@ void forward(){
     man_args1.matmul_type = MATMUL_TYPE;
     pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
     #endif
+    */
     pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_att_args);
     
     
@@ -1051,18 +1198,6 @@ int check_tensor(float *tensor_out, float *tensor_ref, int size) {
 
 // A thing
 void print_stuff(){
-    //printf("\n%f %f %f\n", buff_a[0], buff_b[0], buff_c[0]);
-
-    /*
-    for(int i = 0; i < (EMBED_SIZE*SEQ_LEN); i++){
-        if(!(i % EMBED_SIZE))
-            printf("\n");
-        printf("%f ", buff_c[i]);
-    }
-    printf("\n");
-    */
-
-    
     for(int i = 0; i < (HIDDEN_SIZE*SEQ_LEN); i++){
         if(!(i % HIDDEN_SIZE))
             printf("\n");
@@ -1071,7 +1206,9 @@ void print_stuff(){
     printf("\n");
 }
 
-// Main function
+
+
+// ~~~~~~~~~~~~~~~~~~~~ MAIN FUNCTION ~~~~~~~~~~~~~~~~~~~~
 void net_step () 
 {
     #ifdef PROF_NET
@@ -1096,3 +1233,38 @@ void net_step ()
 
     return;
 }
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~ DMA MANAGEMENT FUNCTIONS ~~~~~~~~~~~~~~~~~~~~
+
+void reset_dim(){
+	input_blob.dim = 0;
+	weight_blob.dim = 0;
+	output_blob.dim = 0;
+}
+
+void update_blob(){
+	input_blob.data = IN_DATA;
+	output_blob.data = OUT_DATA;
+	weight_blob.data = W_DATA;
+	bias_blob.data = BIAS_DATA;
+}
+
+void reset_arguments(){
+	nn_args.input = &input_blob;
+    nn_args.coeff = &weight_blob;
+    nn_args.bias = &bias_blob;
+    nn_args.output = &output_blob;
+    skip_args.skip = &input_blob;
+    skip_args.lout = &weight_blob;
+    skip_args.output = &output_blob;
+    relu_args.input = &input_blob;
+    relu_args.output = &output_blob;
+    man_args.layer_type = LAYER_LINEAR;
+    man_args.step_type = STEP_FW;
+    man_args.matmul_type = MATMUL_TYPE;
+}
+
+
+

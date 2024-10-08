@@ -163,10 +163,63 @@ print("Count of encoder: " + str(count_encoder))
 print("Count of classifier: " + str(count_classifier))
 #f.close()
 
+def load_and_cache_examples(args, task, tokenizer, data_type='train'):
+    if args.local_rank not in [-1, 0] and not evaluate:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
+
+    processor = processors[task]()
+    output_mode = output_modes[task]
+    # Load data features from cache or dataset file
+    cached_features_file = os.path.join(args.data_dir, 'cached_{}_{}_{}_{}'.format(
+        data_type,
+        list(filter(None, args.model_name_or_path.split('/'))).pop(),
+        str(args.max_seq_length),
+        str(task)))
+    if os.path.exists(cached_features_file):
+        logger.info("Loading features from cached file %s", cached_features_file)
+        features = torch.load(cached_features_file)
+    else:
+        logger.info("Creating features from dataset file at %s", args.data_dir)
+        label_list = processor.get_labels()
+        if task in ['mnli', 'mnli-mm'] and 'roberta' in args.model_type:
+            # HACK(label indices are swapped in RoBERTa pretrained model)
+            label_list[1], label_list[2] = label_list[2], label_list[1]
+
+        if data_type == 'train':
+            examples = processor.get_train_examples(args.data_dir)
+        elif data_type == 'dev':
+            examples = processor.get_dev_examples(args.data_dir)
+        else:
+            examples = processor.get_test_examples(args.data_dir)
+
+        features = convert_examples_to_features(examples,
+                                                tokenizer,
+                                                label_list=label_list,
+                                                max_seq_length=args.max_seq_length,
+                                                output_mode=output_mode)
+        if args.local_rank in [-1, 0]:
+            logger.info("Saving features into cached file %s", cached_features_file)
+            torch.save(features, cached_features_file)
+
+    if args.local_rank == 0 and not evaluate:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
+    # Convert to Tensors and build dataset
+    all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
+    all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
+    all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    all_lens = torch.tensor([f.input_len for f in features], dtype=torch.long)
+    if output_mode == "classification":
+        all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
+    elif output_mode == "regression":
+        all_labels = torch.tensor([f.label for f in features], dtype=torch.float)
+    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_lens, all_labels)
+    return dataset
+
 if not skipgenio:
     # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
+    
     # Generate random input data
-    inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 1)
+    inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 0.001)
     inp.requires_grad = False
 
     # Print input data to terminal
@@ -184,7 +237,25 @@ if not skipgenio:
     )
 
     f.close()
+    '''
+    # Take a real data sequence
+    eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, data_type='dev')
+    args.eval_batch_size = 1
+    # Note that DistributedSampler samples randomly
+    eval_sampler = SequentialSampler(eval_dataset) if args.local_rank == -1 else DistributedSampler(eval_dataset)
+    eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size, collate_fn=collate_fn)
+    thing = next(iter(eval_dataloader))
+    inp = model.bert.embeddings(thing[0].to(args.device))
 
+    f = open("input-sequence.h", "w")
+
+    f.write("#define INPUT_SIZE " + str(inp.numel()) + "\n")
+    f.write(
+        "PI_L2 float INPUT[INPUT_SIZE] = {" + dump.tensor_to_string(inp) + "};\n"
+    )
+
+    f.close()
+    '''
     # ~~~~~~~~~~ MANAGE OUTPUT ~~~~~~~~~~
     # Save Encoder's output
     
@@ -622,6 +693,8 @@ if not skipgen:
             )
 
     f.close()
+
+
 
 
 

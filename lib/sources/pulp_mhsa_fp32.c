@@ -1663,7 +1663,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
 }
 
-//FORWARD
+//FORWARD INFERENCE
 void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
     // ======================================== DECLARATIONS ========================================
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
