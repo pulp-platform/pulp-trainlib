@@ -34,10 +34,10 @@ PI_L1 struct matMul_args mm_args;
 PI_L1 struct Nonorm_args nn_args;
 PI_L1 struct SkipConn_args skip_args;
 PI_L1 struct act_args relu_args;
+PI_L1 struct mm_manager_args man_args;
 PI_L1 pi_cl_dma_cmd_t * cmd_store;
 PI_L1 pi_cl_dma_cmd_t * cmd_load;
 
-PI_L1 struct mm_manager_args man_args;
 
 
 
@@ -146,6 +146,7 @@ void DNN_init()
     for(int i=0; i<SEQ_LEN; i++)		                mhsa_maxes[i] = zero_init;
     for(int i=0; i<SEQ_LEN; i++)		                mhsa_sums[i] = zero_init;
     for(int i=0; i<SEQ_LEN * SEQ_LEN * N_HEADS; i++)	mhsa_softmax_buffer_v[i] = zero_init;
+    for(int i = 0; i < MAX_SIZE; i++)                   BUFF[i] = zero_init;
 
     // ~~~~~~~~~~ CONNECT TENSOR TO BLOBS ~~~~~~~~~~
 
@@ -893,7 +894,7 @@ void tiled_matmul(void* matmul_args){
         pi_cl_dma_cmd((uint32_t) (args->bias + j * TILE_W), (uint32_t) (BIAS_DATA), 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
         pi_cl_dma_cmd_wait(cmd_load);
         for(int i = 0; i < n_tiles_i; i++){
-            pi_cl_dma_cmd((uint32_t) (args->A + i * K * TILE_H), (uint32_t) (IN_DATA), 4 * K * TILE_H, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_2d((uint32_t) (args->A + i * K * TILE_H), (uint32_t) (IN_DATA), 4 * K * TILE_H, 4 * K, 4 * K, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
             pi_cl_dma_cmd_wait(cmd_load);
             man_args.mm_args = &mm_args;
             pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
@@ -903,230 +904,177 @@ void tiled_matmul(void* matmul_args){
     }
 }
 
+void tiled_norm(void *nonorm_args){
+    struct Nonorm_args * args = (struct Nonorm_args*) nonorm_args;
+
+    int W = args->input->W;
+    int n_tiles_i = args->input->H / TILE_H;
+    int n_tiles_j = W / TILE_W;
+
+    input_blob.data = BUFF;
+    input_blob.dim = TILE_DIM;
+    input_blob.W = TILE_W;
+    input_blob.H = TILE_H;
+
+    weight_blob.data = BUFF + TILE_DIM;
+    weight_blob.dim = TILE_W;
+    weight_blob.W = TILE_W;
+    weight_blob.H = TILE_W;
+
+    output_blob.data = BUFF + TILE_DIM + TILE_W;
+    output_blob.dim = TILE_DIM;
+    output_blob.W = TILE_W;
+    output_blob.H = TILE_H;
+
+    bias_blob.data = BUFF + TILE_DIM + TILE_W + TILE_DIM;
+    bias_blob.dim = TILE_W;
+    bias_blob.W = TILE_W;
+    bias_blob.H = TILE_W;
+
+    nn_args.input = &input_blob;
+    nn_args.coeff = &weight_blob;
+    nn_args.bias = &bias_blob;
+    nn_args.output = &output_blob;
+
+    for(int j=0; j < n_tiles_j; j++){
+       pi_cl_dma_cmd((uint32_t) (args->coeff->data + j * TILE_W), (uint32_t) (nn_args.coeff->data), 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+       pi_cl_dma_cmd_wait(cmd_load);
+       pi_cl_dma_cmd((uint32_t) (args->bias->data + j * TILE_W), (uint32_t) (nn_args.bias->data), 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+       pi_cl_dma_cmd_wait(cmd_load);
+       for(int i=0; i < n_tiles_i; i++){
+            pi_cl_dma_cmd_2d((uint32_t) (args->input->data + i * TILE_H * W + j * TILE_W), (uint32_t) (nn_args.input->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &nn_args);
+            pi_cl_dma_cmd_2d((uint32_t) (args->output->data + i * W * TILE_H + TILE_W * j), (uint32_t) (nn_args.output->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+       } 
+    }
+}
+
+void tiled_skip(void *residual_args){
+    struct SkipConn_args * args = (struct SkipConn_args*) residual_args;
+
+    int W = args->skip->W;
+    int n_tiles_i = args->skip->H / TILE_H;
+    int n_tiles_j = W / TILE_W; 
+
+    input_blob.data = BUFF;
+    input_blob.dim = TILE_DIM;
+    input_blob.H = TILE_H;
+    input_blob.W = TILE_W;
+
+    weight_blob.data = BUFF + TILE_DIM;
+    weight_blob.dim = TILE_DIM;
+    weight_blob.H = TILE_H;
+    weight_blob.W = TILE_W;
+    
+    output_blob.data = BUFF + TILE_DIM + TILE_DIM;
+    output_blob.dim = TILE_DIM;
+    output_blob.H = TILE_H;
+    output_blob.W = TILE_W;
+
+    skip_args.skip = &input_blob;
+    skip_args.lout = &weight_blob;
+    skip_args.output = &output_blob;
+
+    for(int i = 0; i < n_tiles_i; i++){
+        for(int j = 0; j < n_tiles_j; j++){
+            pi_cl_dma_cmd_2d((uint32_t) (args->skip->data + i * TILE_H * W + j * TILE_W), (uint32_t) (skip_args.skip->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            pi_cl_dma_cmd_2d((uint32_t) (args->lout->data + i * TILE_H * W + j * TILE_W), (uint32_t) (skip_args.lout->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            pulp_residualconn_fp32_fw((void*) &skip_args);
+            pi_cl_dma_cmd_2d((uint32_t) (args->output->data + i * W * TILE_H + TILE_W * j), (uint32_t) (skip_args.output->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+        }
+    }
+}
+
+void tiled_relu(void* Relu_args){
+    struct act_args * args = (struct act_args*) Relu_args;
+
+    int W = args->input->W;
+    int H = args->input->H;
+    int n_tiles_i = H / TILE_H;
+    int n_tiles_j = W / TILE_W;
+
+    input_blob.data = BUFF;
+    input_blob.dim = TILE_DIM;
+    input_blob.H = TILE_H;
+    input_blob.W = TILE_W;
+
+    output_blob.data = BUFF + TILE_DIM;
+    output_blob.dim = TILE_DIM;
+    output_blob.H = TILE_H;
+    output_blob.W = TILE_W;
+
+    relu_args.input = &input_blob;
+    relu_args.output = &output_blob;
+    relu_args.H = H;
+    relu_args.W = W;
+
+    for(int i = 0; i < n_tiles_i; i++){
+        for(int j=0; j<n_tiles_j; j++){
+            pi_cl_dma_cmd_2d((uint32_t) (args->input->data + i * TILE_H * W + j * TILE_W), (uint32_t) (relu_args.input->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &relu_args);
+            pi_cl_dma_cmd_2d((uint32_t) (args->output->data + i * W * TILE_H + TILE_W * j), (uint32_t) (relu_args.output->data), 4 * TILE_DIM, 4 * W, 4 * TILE_W, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+        }
+    }
+}
+
 
 void forward(){
-    /*
-    reset_dim();
-    update_blob();
-    reset_arguments();
-    
     // Bottleneck for attention values
     tiled_matmul(&bneck_dense_att_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_att_args);
-    
-    
+    tiled_norm(&bneck_norm_att_args);
     
     // MHSA HERE
     pulp_mhsa_mobilebert_inference_fp32_fw_cl((void*) &mhsa_args);
-
     
     // Bottleneck for input values
     tiled_matmul(&bneck_dense_inp_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_inp_args);
-
+    tiled_norm(&bneck_norm_inp_args);
 
     // Residual connection MHSA output + input bottleneck
-    pulp_residualconn_fp32_fw((void*) &residual_1_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &attention_output_norm_args);
+    tiled_skip((void*) &residual_1_args);
+    tiled_norm(&attention_output_norm_args);
     
     // FFN 0
     tiled_matmul(&ffn_0_intermediate_args);
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_0_relu_args);
+    tiled_relu(&ffn_0_relu_args);
     tiled_matmul(&ffn_0_output_args);
-    pulp_residualconn_fp32_fw((void*) &ffn_0_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_0_norm_args);
+    tiled_skip((void*) &ffn_0_residual_args);
+    tiled_norm(&ffn_0_norm_args);
 
     // FFN 1
     tiled_matmul(&ffn_1_intermediate_args);
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_1_relu_args);
+    tiled_relu(&ffn_1_relu_args);
     tiled_matmul(&ffn_1_output_args);
-    pulp_residualconn_fp32_fw((void*) &ffn_1_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_1_norm_args);
+    tiled_skip((void*) &ffn_1_residual_args);
+    tiled_norm(&ffn_1_norm_args);
 
     // FFN 2
     tiled_matmul(&ffn_2_intermediate_args);
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_2_relu_args);
+    tiled_relu(&ffn_2_relu_args);
     tiled_matmul(&ffn_2_output_args);
-    pulp_residualconn_fp32_fw((void*) &ffn_2_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_2_norm_args);
+    tiled_skip((void*) &ffn_2_residual_args);
+    tiled_norm(&ffn_2_norm_args);
 
     // Intermediate
     tiled_matmul(&intermediate_args);
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &intermediate_relu_args);
+    tiled_relu(&intermediate_relu_args);
 
     // Output
     tiled_matmul(&output_dense_args);
-    pulp_residualconn_fp32_fw((void*) &output_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_norm_args);
+    tiled_skip((void*) &output_residual_args);
+    tiled_norm(&output_norm_args);
 
     // Output Bottleneck
     tiled_matmul(&output_bottleneck_dense_args);
-    pulp_residualconn_fp32_fw((void*) &output_bottleneck_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_bottleneck_norm_args);
-
-    return;
-    */
-    reset_dim();
-    update_blob();
-    reset_arguments();
-
-    
-
-    // Bottleneck for attention values
-    tiled_matmul(&bneck_dense_att_args);
-    /*
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &bneck_dense_att_args);
-    #else
-    struct mm_manager_args man_args1;
-    man_args1.mm_args = &bneck_dense_att_args;
-    man_args1.layer_type = LAYER_LINEAR;
-    man_args1.step_type = STEP_FW;
-    man_args1.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args1);
-    #endif
-    */
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_att_args);
-    
-    
-    
-    // MHSA HERE
-    pulp_mhsa_mobilebert_inference_fp32_fw_cl((void*) &mhsa_args);
-
-    
-    // Bottleneck for input values
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &bneck_dense_inp_args);
-    #else
-    struct mm_manager_args man_args2;
-    man_args2.mm_args = &bneck_dense_inp_args;
-    man_args2.layer_type = LAYER_LINEAR;
-    man_args2.step_type = STEP_FW;
-    man_args2.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args2);
-    #endif
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &bneck_norm_inp_args);
-
-
-    // Residual connection MHSA output + input bottleneck
-    pulp_residualconn_fp32_fw((void*) &residual_1_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &attention_output_norm_args);
-    
-    // FFN 0
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_0_intermediate_args);
-    #else
-    struct mm_manager_args man_args3;
-    man_args3.mm_args = &ffn_0_intermediate_args;
-    man_args3.layer_type = LAYER_LINEAR;
-    man_args3.step_type = STEP_FW;
-    man_args3.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args3);
-    #endif
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_0_relu_args);
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_0_output_args);
-    #else
-    struct mm_manager_args man_args4;
-    man_args4.mm_args = &ffn_0_output_args;
-    man_args4.layer_type = LAYER_LINEAR;
-    man_args4.step_type = STEP_FW;
-    man_args4.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args4);
-    #endif
-    pulp_residualconn_fp32_fw((void*) &ffn_0_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_0_norm_args);
-
-    // FFN 1
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_1_intermediate_args);
-    #else
-    struct mm_manager_args man_args5;
-    man_args5.mm_args = &ffn_1_intermediate_args;
-    man_args5.layer_type = LAYER_LINEAR;
-    man_args5.step_type = STEP_FW;
-    man_args5.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args5);
-    #endif
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_1_relu_args);
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_1_output_args);
-    #else
-    struct mm_manager_args man_args6;
-    man_args6.mm_args = &ffn_1_output_args;
-    man_args6.layer_type = LAYER_LINEAR;
-    man_args6.step_type = STEP_FW;
-    man_args6.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args6);
-    #endif
-    pulp_residualconn_fp32_fw((void*) &ffn_1_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_1_norm_args);
-
-    // FFN 2
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_2_intermediate_args);
-    #else
-    struct mm_manager_args man_args7;
-    man_args7.mm_args = &ffn_2_intermediate_args;
-    man_args7.layer_type = LAYER_LINEAR;
-    man_args7.step_type = STEP_FW;
-    man_args7.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args7);
-    #endif
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &ffn_2_relu_args);
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &ffn_2_output_args);
-    #else
-    struct mm_manager_args man_args8;
-    man_args8.mm_args = &ffn_2_output_args;
-    man_args8.layer_type = LAYER_LINEAR;
-    man_args8.step_type = STEP_FW;
-    man_args8.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8);
-    #endif
-    pulp_residualconn_fp32_fw((void*) &ffn_2_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &ffn_2_norm_args);
-
-    // Intermediate
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &intermediate_args);
-    #else
-    struct mm_manager_args man_args9;
-    man_args9.mm_args = &intermediate_args;
-    man_args9.layer_type = LAYER_LINEAR;
-    man_args9.step_type = STEP_FW;
-    man_args9.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args9);
-    #endif
-    pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &intermediate_relu_args);
-
-    // Output
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &output_dense_args);
-    #else
-    struct mm_manager_args man_args10;
-    man_args10.mm_args = &output_dense_args;
-    man_args10.layer_type = LAYER_LINEAR;
-    man_args10.step_type = STEP_FW;
-    man_args10.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args10);
-    #endif
-    pulp_residualconn_fp32_fw((void*) &output_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_norm_args);
-
-    // Output Bottleneck
-    #ifndef OPTIMIZE
-    pi_cl_team_fork(NUM_CORES, mm, &output_bottleneck_dense_args);
-    #else
-    struct mm_manager_args man_args11;
-    man_args11.mm_args = &output_bottleneck_dense_args;
-    man_args11.layer_type = LAYER_LINEAR;
-    man_args11.step_type = STEP_FW;
-    man_args11.matmul_type = MATMUL_TYPE;
-    pi_cl_team_fork(NUM_CORES, mm_manager, &man_args11);
-    #endif
-    pulp_residualconn_fp32_fw((void*) &output_bottleneck_residual_args);
-    pi_cl_team_fork(NUM_CORES, pulp_nonorm_fp32_fw_cl, &output_bottleneck_norm_args);
+    tiled_skip((void*) &output_bottleneck_residual_args);
+    tiled_norm(&output_bottleneck_norm_args);
 
     return;
 }
@@ -1198,10 +1146,17 @@ int check_tensor(float *tensor_out, float *tensor_ref, int size) {
 
 // A thing
 void print_stuff(){
+    /*
     for(int i = 0; i < (HIDDEN_SIZE*SEQ_LEN); i++){
         if(!(i % HIDDEN_SIZE))
             printf("\n");
         printf("%f ", buff_d[i]);
+    }
+    printf("\n");*/
+    for(int i = 0; i < (EMBED_SIZE*SEQ_LEN); i++){
+        if(!(i % EMBED_SIZE))
+            printf("\n");
+        printf("%f ", buff_a[i]);
     }
     printf("\n");
 }

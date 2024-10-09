@@ -8,7 +8,7 @@ EMBEDDING_SIZE??=128
 INTERMEDIATE_SIZE=512
 N_HEADS?=4
 N_LAYERS?=1
-SEQ_LEN?=32
+SEQ_LEN?=128
 TILE_H?= 32
 TILE_W?= 16
 TILE_DIM?= 512
@@ -56,4 +56,4 @@ include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:
 	rm -rf BUILD/
-	python3 utils/GM.py --type=$(DATA_TYPE) --model_type=mobilebert --model_name_or_path=$(BERT_BASE_DIR) --task_name=$(TASK_NAME) --data_dir=$(DATA_DIR)/$(TASK_NAME)/ --output_dir=$(OUTPUT_DIR)/$(TASK_NAME)_output/ --eval_model_dir=$(OUTPUT_DIR)/$(TASK_NAME)_output/mobilebert --n_layers=$(N_LAYERS) --seq_len=$(SEQ_LEN) --skipgen --skipgenio
+	python3 utils/GM.py --type=$(DATA_TYPE) --model_type=mobilebert --model_name_or_path=$(BERT_BASE_DIR) --task_name=$(TASK_NAME) --data_dir=$(DATA_DIR)/$(TASK_NAME)/ --output_dir=$(OUTPUT_DIR)/$(TASK_NAME)_output/ --eval_model_dir=$(OUTPUT_DIR)/$(TASK_NAME)_output/mobilebert --n_layers=$(N_LAYERS) --seq_len=$(SEQ_LEN) --skipgen 

@@ -19,6 +19,9 @@ void DNN_init();
 void forward();
 void net_step();
 void tiled_matmul(void* matmul_args);
+void tiled_norm(void* nonorm_args);
+void tiled_skip(void* residual_args);
+void tiled_relu(void* Relu_args);
 
 // DMA managment functions
 void load_input(void * src_blob, uint8_t data_diff_both);

@@ -23,5 +23,5 @@
 
 #define TYPE_VOCAB_SIZE 2
 
-#define SEQ_LEN 32
+#define SEQ_LEN 128
 
