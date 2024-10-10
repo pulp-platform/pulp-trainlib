@@ -970,54 +970,43 @@ void naive_transp_conv2d_param_grad_kernel_CHW (void * matMul_args)
   uint32_t Upad = args->Upad;
   uint32_t Dpad = args->Dpad;
 
-  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
-  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
 
-  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
-  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
   int padding = Lpad + Rpad + Upad + Dpad;
 
-  if (USE_BIASES == 0) {
-    // Padding
-    int wpad = (W_in-1);
-    int hpad = (H_in-1);
-    // Computational kernel
-    for (uint32_t ci=0; ci<C_in; ci++) {
-      for (uint32_t hk=0; hk<pH; hk++) {
-        for (uint32_t wk=0; wk<pW; wk++) {
-          float temp = 0;
-          for (uint32_t co=0; co<C_out; co++) {
-            for (uint32_t hi=0; hi<H_in; hi++) {
-              for (uint32_t wi=0; wi<W_in; wi++) {
-                // Indices
-                int w_adv = wk + wi - wpad;
-                int h_adv = hk + hi - hpad;
-                int inp_idx = (H_in*W_in - wi - hi*W_in - 1) + ci*H_in*W_in;
-                int out_idx = w_adv/w_str + (h_adv/h_str)*W_out + co*H_out*W_out;
-                // Loaded data
-                float inp_dat  = 0;
-                float out_grad = 0;
-                // Load correct data
-                int w_condition = (w_adv >= 0) && (w_adv < W_out*w_str) && (w_adv % w_str == 0);
-                int h_condition = (h_adv >= 0) && (h_adv < H_out*h_str) && (h_adv % h_str == 0);
-                if (w_condition && h_condition) {
-                  inp_dat  = inData[inp_idx];
-                  out_grad = outDiff[out_idx];
-                  temp += inp_dat * out_grad;
-                }
+  // Compute the weight gradient
+  for (uint32_t co = 0; co < C_out; ++co) {
+    for (uint32_t ci = 0; ci < C_in; ++ci) {
+      for (uint32_t hi = 0; hi < H_in; ++hi) {
+        for (uint32_t wi = 0; wi < W_in; ++wi) {
+          for (uint32_t hk = 0; hk < pH; ++hk) {
+            for (uint32_t wk = 0; wk < pW; ++wk) {
+              int out_i = hi * h_str + hk - Upad;
+              int out_j = wi * w_str + wk - Lpad;
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                coeffDiff[wk + hk*pW + co*pW*pH + ci*C_out*pW*pH] += inData[wi + hi*W_in + ci*H_in*W_in] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
               }
             }
-            coeffDiff[(pH*pW - 1 - wk - hk*pW) + ci*pW*pH + co*C_in*pW*pH] = temp;
           }
         }
       }
     }
   }
 
-  else if (USE_BIASES == 1) {
-
+  if (USE_BIASES == 1) {
+    // Compute the bias gradient as the sum of dY for each output channel
+    for (int c_o = 0; c_o < C_out; ++c_o) {
+      for (int ho = 0; ho < H_out; ++ho) {
+        for (int wo = 0; wo < W_out; ++wo) {
+          biasDiff[c_o] += outDiff[wo + ho*W_out + c_o*H_out*W_out];
+        }
+      }
+    }
   }
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
@@ -1051,43 +1040,33 @@ void naive_transp_conv2d_in_grad_kernel_CHW (void * matMul_args)
   uint32_t Upad = args->Upad;
   uint32_t Dpad = args->Dpad;
 
-  const uint32_t H_out = (H_in - pH + Upad + Dpad)/h_str + 1;
-  const uint32_t W_out = (W_in - pW + Lpad + Rpad)/w_str + 1;
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
   const uint32_t pHW = pH*pW-1;
 
   const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
-  // int padding = Lpad + Rpad + Upad + Dpad;
-  // int stride = h_str + w_str;
-
-  // Padding
-  int wpad = 0;
-  int hpad = 0;
-  // Computational kernel
-  for (uint32_t ci=start; ci<stop; ci++) {
-    for (uint32_t hi=0; hi<H_in; hi++) {
-      for (uint32_t wi=0; wi<W_in; wi++) {
-        float temp = 0;
-        for (uint32_t co=0; co<C_out; co++) {
-          for (uint32_t hk=0; hk<pH; hk++) {
-            for (uint32_t wk=0; wk<pW; wk++) {
-              // Indices
-              int ker_idx = (pW*pH - wk - hk*pW - 1) + ci*pH*pW + co*C_out*pH*pW;
-              int out_idx = (wk+wi*w_str) + (hk+hi*h_str)*H_out + co*H_out*W_out;
-              // Data
-              float ker_dat = coeffData[ker_idx];
-              float out_dif = outDiff[out_idx];
-              // Input grad comp
-              temp += ker_dat * out_dif;
+  // Compute the input gradient
+  for (uint32_t ci=0; ci<C_in; ++ci) {
+    for (int hi = 0; hi < H_in; ++hi) {
+      for (int wi = 0; wi < W_in; ++wi) {
+        for (uint32_t co=0; co<C_out; ++co) {
+          for (int hk = 0; hk < pH; ++hk) {
+            for (int wk = 0; wk < pW; ++wk) {
+              int out_i = hi * h_str + hk - Upad;
+              int out_j = wi * w_str + wk - Lpad; 
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                inDiff[wi + hi*W_in + ci*H_in*W_in] += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+              }
             }
-          } 
+          }
         }
-        inDiff[wi + hi*W_in + ci*H_in*W_in] = temp;
       }
     }
   }
+
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
       printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
