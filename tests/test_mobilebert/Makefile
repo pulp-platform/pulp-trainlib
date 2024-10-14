@@ -43,6 +43,7 @@ APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 # STATISTICS
 APP_CFLAGS += -DSTATS
 
+
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_random.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_linear_fp32.c
@@ -53,6 +54,10 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_residual_fp32.c
 
 include $(RULES_DIR)/pmsis_rules.mk
+
+
+
+
 
 get_golden:
 	rm -rf BUILD/

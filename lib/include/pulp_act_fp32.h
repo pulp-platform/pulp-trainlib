@@ -181,6 +181,12 @@ void leakyrelu_core_bw_fp32( void * leakyrelu_args );
 */
 void pulp_softmax_fp32_fw_cl( void * act_args );
 
+/**
+ * @brief Forward pass function tiled in L1.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_softmax_fp32_fw_cl_tiled( void * act_args , void * Tiled_matmul_mhsa_args);
 
 /**
  * @brief Backward pass function.

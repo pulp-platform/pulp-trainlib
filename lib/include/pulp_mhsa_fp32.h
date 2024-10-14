@@ -20,7 +20,7 @@
  *
  * Authors: Alberto Dequino, Calin Diaconu
 */ 
-
+#include "pmsis.h"
 
 /**
  * Multi-Head Self Attention layer configuration structure
@@ -83,6 +83,18 @@ struct Mhsa_args {
 };
 
 
+struct Tiled_Matmul_Mhsa_args{
+    struct matMul_args * mm_args;
+    struct mm_manager_args * man_args;
+    float* BUFF;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    pi_cl_dma_cmd_t * cmd_store;
+    pi_cl_dma_cmd_t * cmd_load;
+};
+
+
 /**
  * MHSA layer training functions, grouped into FW and BW
  */
@@ -118,3 +130,10 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args);
  * @param Mhsa_args structure configuring the MHSA layer.
  */
 void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void* Mhsa_args);
+
+
+void tiled_mhsa_fp32(void* Mhsa_args, void* tiled_matmul_mhsa_args);
+
+void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args);
+
+void tiled_transpose_mhsa(void* transpose_args, void* Tiled_matmul_mhsa_args);

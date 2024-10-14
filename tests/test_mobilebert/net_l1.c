@@ -35,6 +35,7 @@ PI_L1 struct Nonorm_args nn_args;
 PI_L1 struct SkipConn_args skip_args;
 PI_L1 struct act_args relu_args;
 PI_L1 struct mm_manager_args man_args;
+PI_L1 struct Tiled_Matmul_Mhsa_args tiled_matmul_mhsa_args;
 PI_L1 pi_cl_dma_cmd_t * cmd_store;
 PI_L1 pi_cl_dma_cmd_t * cmd_load;
 
@@ -116,8 +117,8 @@ PI_L2 float buff_d[SEQ_LEN * HIDDEN_SIZE];
 
 // Other Data for MHSA
 
-PI_L2 float mhsa_maxes[SEQ_LEN];
-PI_L2 float mhsa_sums[SEQ_LEN];
+PI_L1 float mhsa_maxes[SEQ_LEN];
+PI_L1 float mhsa_sums[SEQ_LEN];
 PI_L2 float mhsa_softmax_buffer_v[SEQ_LEN * SEQ_LEN * N_HEADS];
 
 
@@ -929,7 +930,7 @@ void tiled_norm(void *nonorm_args){
     bias_blob.data = BUFF + TILE_DIM + TILE_W + TILE_DIM;
     bias_blob.dim = TILE_W;
     bias_blob.W = TILE_W;
-    bias_blob.H = TILE_W;
+    bias_blob.H = TILE_H;
 
     nn_args.input = &input_blob;
     nn_args.coeff = &weight_blob;
@@ -1031,7 +1032,7 @@ void forward(){
     tiled_norm(&bneck_norm_att_args);
     
     // MHSA HERE
-    pulp_mhsa_mobilebert_inference_fp32_fw_cl((void*) &mhsa_args);
+    tiled_mhsa_fp32((void*) &mhsa_args, (void*) &tiled_matmul_mhsa_args);
     
     // Bottleneck for input values
     tiled_matmul(&bneck_dense_inp_args);
@@ -1219,6 +1220,14 @@ void reset_arguments(){
     man_args.layer_type = LAYER_LINEAR;
     man_args.step_type = STEP_FW;
     man_args.matmul_type = MATMUL_TYPE;
+    tiled_matmul_mhsa_args.mm_args = &mm_args;
+    tiled_matmul_mhsa_args.BUFF = BUFF;
+    tiled_matmul_mhsa_args.tile_h = TILE_H;
+    tiled_matmul_mhsa_args.tile_w = TILE_W;
+    tiled_matmul_mhsa_args.tile_dim = TILE_DIM;
+    tiled_matmul_mhsa_args.man_args = &man_args;
+    tiled_matmul_mhsa_args.cmd_load = cmd_load;
+    tiled_matmul_mhsa_args.cmd_store = cmd_store;
 }
 
 

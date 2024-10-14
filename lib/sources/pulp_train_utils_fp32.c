@@ -327,12 +327,8 @@ void pulp_row_max_fp32_cl(void *void_args) {
 
     // Iterate through allocated rows
     for (i = start; i < stop; i++) {
-        // Set the initial maximum value to the first element in the row and skip it
-        max[i] = *input;
-        input++;
-
         // Iterate through the rest of the elements in the row and keep the maximum up to date
-        for (j = 1; j < WIDTH; j++) {
+        for (j = 0; j < WIDTH; j++) {
             if (max[i] < *input)
                 max[i] = *input;
             input++;
@@ -362,9 +358,6 @@ void pulp_exp_sum_fp32_cl(void *void_args) {
 
     // Iterate through allocated rows
     for (int i = start; i < stop; i++) {
-        // Initialize sum array to 0
-        sums[i] = 0;
-
         // Iterate through each element and update the sum accordingly
         for (int j = 0; j < WIDTH; j++) {
             float o = fastexp_gist(input[i * WIDTH + j] - maxes[i]);

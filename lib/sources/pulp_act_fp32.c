@@ -19,6 +19,7 @@
 #include "pulp_train_utils_fp32.h"
 #include "pulp_act_fp32.h"
 #include "math.h"
+#include "pulp_mhsa_fp32.h"
 
 
 void pulp_sigmoid_fp32_fw_cl( void * act_args )
@@ -142,6 +143,11 @@ void pulp_softmax_fp32_fw_cl(void *act_args) {
     float *maxes = args->maxes;
     float *sums = args->sums;
 
+    for(int i = 0; i < HEIGHT; i++){
+      maxes[i]=-340282346638528859811704183484516925440.0f;
+      sums[i]=0.0f;
+    }
+
     // OP A: Compute the maximum value on each row
     struct max_args m_args;
     m_args.input = inData;
@@ -184,6 +190,89 @@ void pulp_softmax_fp32_fw_cl(void *act_args) {
     #endif
 }
 
+void pulp_softmax_fp32_fw_cl_tiled(void *act_args, void* Tiled_matmul_mhsa_args){
+  struct softmax_args *args = (struct softmax_args *) act_args;
+  struct Tiled_Matmul_Mhsa_args * tiled_args = (struct Tiled_Matmul_Mhsa_args*) Tiled_matmul_mhsa_args;
+
+  int H = args->H;
+  int W = args->W;
+
+  float *maxes = args->maxes;
+  float *sums = args->sums;
+
+  int tile_h = tiled_args->tile_h;
+  int tile_w = tiled_args->tile_w;
+  int tile_dim = tiled_args->tile_dim;
+  float* BUFF = tiled_args->BUFF;
+  pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+  pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+
+  int n_tiles_i = H / tile_h;
+  int n_tiles_j = W / tile_w;
+
+  float* IN_DATA = BUFF;
+  float* OUT_DATA = BUFF + tile_dim;
+
+  for(int i = 0; i < H; i++){
+      maxes[i]=-340282346638528859811704183484516925440.0f;
+      sums[i]=0.0f;
+    }
+
+  // OP A: Compute the maximum value on each row
+  struct max_args m_args;
+  m_args.input = IN_DATA;
+  m_args.maxes = maxes;
+  m_args.H = tile_h;
+  m_args.W = tile_w;
+
+  for(int i = 0; i < n_tiles_i; i++){
+    m_args.maxes = maxes + i * tile_h;
+    for(int j = 0; j < n_tiles_j; j++){
+        pi_cl_dma_cmd_2d((uint32_t) (args->input_data + i * W * tile_h + j * tile_w), (uint32_t) (IN_DATA), 4 * tile_dim, 4 * W, 4 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+        pi_cl_dma_cmd_wait(cmd_load);
+        pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &m_args);
+    }
+  }
+
+  // OP B: For each row, compute the sum of exponential of the difference between input values and the max of the row
+  struct exp_sum_args e_s_args;
+  e_s_args.input = IN_DATA;
+  e_s_args.output = OUT_DATA;
+  e_s_args.H = tile_h;
+  e_s_args.W = tile_w;
+  e_s_args.sums = sums;
+  e_s_args.maxes = maxes;
+
+  for(int i = 0; i < n_tiles_i; i++){
+    e_s_args.maxes = maxes + i * tile_h;
+    e_s_args.sums = sums + i * tile_h;
+    for(int j = 0; j < n_tiles_j; j++){
+      pi_cl_dma_cmd_2d((uint32_t) (args->input_data + i * W * tile_h + j * tile_w), (uint32_t) (IN_DATA), 4 * tile_dim, 4 * W, 4 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+      pi_cl_dma_cmd_wait(cmd_load);
+      pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &e_s_args);
+      pi_cl_dma_cmd_2d((uint32_t) (args->output_data + i * W * tile_h + j * tile_w), (uint32_t) (OUT_DATA), 4 * tile_dim, 4 * W, 4 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+      pi_cl_dma_cmd_wait(cmd_store);
+    }
+  }
+
+  // OP C: Per-row division with the sum computed in the previous function
+  struct row_div_args r_d_args;
+  r_d_args.input = OUT_DATA;
+  r_d_args.sums = sums;
+  r_d_args.H = tile_h;
+  r_d_args.W = tile_w;
+
+  for(int i=0; i < n_tiles_i; i++){
+    e_s_args.sums = sums + i * tile_h;
+    for(int j=0; j < n_tiles_j; j++){
+      pi_cl_dma_cmd_2d((uint32_t) (args->output_data + i * W * tile_h + j * tile_w), (uint32_t) (OUT_DATA), 4 * tile_dim, 4 * W, 4 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+      pi_cl_dma_cmd_wait(cmd_load);
+      pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
+      pi_cl_dma_cmd_2d((uint32_t) (args->output_data + i * W * tile_h + j * tile_w), (uint32_t) (OUT_DATA), 4 * tile_dim, 4 * W, 4 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+      pi_cl_dma_cmd_wait(cmd_store);
+    }
+  }
+}
 
 // Backward pass of softmax
 void pulp_softmax_fp32_bw_cl(void *act_args) {
