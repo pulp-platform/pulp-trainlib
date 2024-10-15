@@ -33,6 +33,9 @@ PI_L1 float zero_init = 0.0f;
 PI_L1 struct Transp_Conv2D_args C2D_args;
 PI_L1 struct blob layer1_in, layer1_wgt, layer1_bias, layer1_out;
 
+// Performances
+PI_L1 int num_mac = 0;
+
 // Memory occupation counter
 PI_L2 int L1_memocc_bytes = 0;
 PI_L2 int L2_memocc_bytes = 0;
@@ -95,6 +98,8 @@ static inline void tensor_init(){
   #endif
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init;
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out[i] =  zero_init;
+  // Compute the number of MACs
+  num_mac = Tin_C_l1*Tout_C_l1*Tout_H_l1*Tout_W_l1*Tker_H_l1*Tker_W_l1 + USE_BIAS*Tout_C_l1;
 }
 
 static inline void connect_blobs(){
@@ -218,6 +223,8 @@ static inline void tensor_init(){
   for (int i=0; i<Tout_C_l1; i++)                                              l1_bias_diff[i] = zero_init;
   #endif
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i];
+  // Compute the number of MACs
+  num_mac = Tin_C_l1*Tout_C_l1*Tout_H_l1*Tout_W_l1*Tker_H_l1*Tker_W_l1 + USE_BIAS*Tout_C_l1;
 }
 
 static inline void connect_blobs(){
@@ -305,6 +312,8 @@ static inline void tensor_init(){
   for (int i=0; i<Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1; i++)                 l1_ker[i] = WEIGHTS[i]; //weight_init;
   for (int i=0; i<IM2COL_SIZE; i++)                                            im2col_buffer[i] = zero_init; 
   for (int i=0; i<Tout_H_l1*Tout_W_l1*Tout_C_l1; i++)                          l1_out_diff[i] = OUTPUT_GRAD[i]; //0.0f;
+  // Compute the number of MACs
+  num_mac = Tin_C_l1*Tout_C_l1*Tin_H_l1*Tin_W_l1*Tker_H_l1*Tker_W_l1;
 }
 
 static inline void connect_blobs(){
@@ -438,6 +447,7 @@ static inline void train(){
 
   #ifdef PROF_FWD
   STOP_STATS();
+  printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 
 
@@ -457,6 +467,7 @@ static inline void train(){
 
   #ifdef PROF_BKWD
   STOP_STATS();
+  printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 
 
