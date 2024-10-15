@@ -304,12 +304,8 @@ void pulp_row_max_fp16_cl(void *void_args) {
 
     // Iterate through allocated rows
     for (i = start; i < stop; i++) {
-        // Set the initial maximum value to the first element in the row and skip it
-        max[i] = *input;
-        input++;
-
         // Iterate through the rest of the elements in the row and keep the maximum up to date
-        for (j = 1; j < WIDTH; j++) {
+        for (j = 0; j < WIDTH; j++) {
             if (max[i] < *input)
                 max[i] = *input;
             input++;
@@ -339,9 +335,6 @@ void pulp_exp_sum_fp16_cl(void *void_args) {
 
     // Iterate through allocated rows
     for (int i = start; i < stop; i++) {
-        // Initialize sum array to 0
-        sums[i] = 0;
-
         // Iterate through each element and update the sum accordingly
         for (int j = 0; j < WIDTH; j++) {
             fp16 o = (fp16)(fastexp_gist_fp16((float) (input[i * WIDTH + j] - maxes[i])));
@@ -508,6 +501,7 @@ void mm_manager_fp16(void *void_args) {
     int layer_type = args->layer_type;
     int step_type = args->step_type;
     int matmul_type = args->matmul_type;
+    int use_bias = args->mm_args->USE_BIASES;
 
     #ifdef DEBUG
     printf("Running layer %d, step %d, matmul %d\n", layer_type, step_type, matmul_type);
@@ -712,6 +706,18 @@ void mm_manager_fp16(void *void_args) {
     else {
         printf("\nWrong layer_type selection!!\n");
     }
+
+    if(use_bias){
+        // Bias_addition
+        struct mm_bias_add_args_fp16 mm_bias_add_args_q;
+        mm_bias_add_args_q.mat = args->mm_args->C;
+        mm_bias_add_args_q.bias = args->mm_args->bias;
+        mm_bias_add_args_q.H = args->mm_args->N;
+        mm_bias_add_args_q.W = args->mm_args->M;
+        mm_bias_add_args_q.t = args->mm_args->bias_transposed;
+
+        mm_bias_add_transposed_fp16((void *) &mm_bias_add_args_q);
+    }
 }
 
 
@@ -846,8 +852,10 @@ void mm_bias_add_transposed_fp16(void *void_args) {
     // Extract variable from function arguments
     struct mm_bias_add_args_fp16 *args = (struct mm_bias_add_args_fp16 *) void_args;
 
-    fp16 * mat = args->mat;
-    fp16 * bias = args->bias;
+    int t = args->t;
+    fp16 *mat = args->mat;
+    fp16 *bias = args->bias;
+    fp16 temp;
 
     int HEIGHT = args->H;
     int WIDTH = args->W;
@@ -855,12 +863,27 @@ void mm_bias_add_transposed_fp16(void *void_args) {
     // Split work row-wise (each worker will receive a number of rows)
     const int blockSize = (HEIGHT + NUM_CORES - 1) / NUM_CORES;
     const int start = pi_core_id() * blockSize;
-    const int stop = start + blockSize > HEIGHT ? HEIGHT : start + blockSize;
+    const int stop = start+blockSize > HEIGHT ? HEIGHT : start+blockSize;
 
-    // For each row, sum it with the bias
-    for (int i = start; i < stop; i++) {
-        for (int j = 0; j < WIDTH; j++) {
-            mat[i * WIDTH + j] += bias[i];
+    if(t == 0){
+        // For each row, sum it with the bias
+        for (int i = start; i < stop; i++) {
+            int row = i * WIDTH;
+            for (int j = 0; j < WIDTH; j++) {
+                temp = mat[row + j]+bias[j];
+                mat[row + j] = temp;
+            }
         }
     }
+    else{
+       // For each column, sum it with the bias
+       for (int i = start; i < stop; i++){
+        int row = i*WIDTH;
+        for(int j = 0; j<WIDTH; j++){
+            temp = mat[row+j] + bias[i];
+            mat[row+j] = temp;
+        }
+       } 
+    }
+    
 }

@@ -70,6 +70,7 @@
 #include "pulp_pooling_fp16.h"
 #include "pulp_residual_fp16.h"
 #include "pulp_dropout_fp16.h"
+#include "pulp_nonorm_fp16.h"
 #include "pulp_transp_conv2d_fp16.h"
 
 

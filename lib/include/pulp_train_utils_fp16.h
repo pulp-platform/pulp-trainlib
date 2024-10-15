@@ -233,6 +233,7 @@ struct pad_args_fp16 {
  * @param bias pointer to bias vector
  * @param bias_dim dimension of bias (should be equal to C_out of layer)
  * @param USE_BIASES Set to 0 if not using biases, 1 if using biases
+ * @param bias_transposed Set to 1 if you want to do column-wise bias add
  * @param HWC Set to 0 if CHW layout, 1 if HWC
  */
 struct matMul_args_fp16 {
@@ -262,6 +263,7 @@ struct matMul_args_fp16 {
     fp16 *__restrict__ bias;
     int bias_dim;
     int USE_BIASES;
+    int bias_transposed;
     int HWC;
 };
 
@@ -457,12 +459,14 @@ struct sm_bw_op_2_args_fp16 {
  * @param bias      *fp16: bias [H]
  * @param H         int: height of input matrix
  * @param W         int: width of input matrix and length of bias
+ * @param t         int: 1 if you want column-based bias add
  */
 struct mm_bias_add_args_fp16 {
     fp16 *mat;
     fp16 *bias;
     int H;
     int W;
+    int t;
 };
 
 
