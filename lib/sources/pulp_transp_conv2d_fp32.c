@@ -110,13 +110,6 @@ void pulp_transp_conv2d_fp32_fw_cl( void * Transp_Conv2D_args )
       matMul_args.Dpad = inDpad;
 
       #ifdef OPTIMIZE
-      //int padding = Lpad + Rpad + Upad + Dpad;
-      //int stride = stride_h + stride_w;
-      //if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
-      //pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k3x3_s2_p1, &matMul_args);
-      //else if (pH == 5 && pW == 5 && padding == 4 && stride == 4)
-      //pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k5x5_s2_p1, &matMul_args);
-      //else
       pi_cl_team_fork(NUM_CORES, naive_transp_conv2d_fw_kernel_CHW, &matMul_args);
       #else
       pi_cl_team_fork(NUM_CORES, naive_transp_conv2d_fw_kernel_CHW, &matMul_args);
@@ -142,6 +135,24 @@ void pulp_transp_conv2d_fp32_fw_cl( void * Transp_Conv2D_args )
 
 
 
+void pulp_transp_conv2d_fp32_bw_cl( void * Transp_Conv2D_args )
+{
+    struct Transp_Conv2D_args * C2D_args = (struct Transp_Conv2D_args *) Transp_Conv2D_args;
+    int skip_wg_grad = C2D_args->skip_wg_grad;
+    int skip_in_grad = C2D_args->skip_in_grad;
+
+    if (skip_wg_grad == 0)
+    {
+      pulp_transp_conv2d_fp32_bw_param_grads_cl(Conv2D_args);
+    }
+
+    if (skip_in_grad == 0)
+    {
+      pulp_transp_conv2d_fp32_bw_input_grads_cl(Conv2D_args); 
+    }
+}
+
+
 
 void pulp_transp_conv2d_fp32_bw_param_grads_cl( void * Transp_Conv2D_args ) {
     struct Transp_Conv2D_args * C2D_args = (struct Transp_Conv2D_args *) Transp_Conv2D_args;
@@ -155,18 +166,12 @@ void pulp_transp_conv2d_fp32_bw_param_grads_cl( void * Transp_Conv2D_args ) {
     float *outDiff = C2D_args->output->diff;
     float *inData = C2D_args->input->data;
 
-    // printf("pW=%d, pH=%d, coeffDiff=0x%x, biasDiff=0x%x, outDiff=0x%x, inData=0x%x\n", 
-    //         pW, pH, (int)coeffDiff, (int)biasDiff, (int)outDiff, (int)inData);
-
     int W_in = C2D_args->input->W;
     int H_in = C2D_args->input->H;
     int W_out = C2D_args->output->W;
     int H_out = C2D_args->output->H;
     int C_in = C2D_args->input->C;
     int C_out = C2D_args->output->C;
-
-    // printf("W_in=%d, H_in=%d, W_out=%d, H_out=%d, C_in=%d, C_out=%d\n", 
-    //         W_in, H_in, W_out, H_out, C_in, C_out);
 
     int stride_w = C2D_args->stride_w;
     int stride_h = C2D_args->stride_h;
@@ -175,20 +180,12 @@ void pulp_transp_conv2d_fp32_bw_param_grads_cl( void * Transp_Conv2D_args ) {
     int inUpad = C2D_args->inUpad;
     int inDpad = C2D_args->inDpad;
 
-    // printf("stride_w=%d, stride_h=%d, inLpad=%d, inRpad=%d, inUpad=%d, inDpad=%d\n",
-    //         stride_w, stride_h, inLpad, inRpad, inUpad, inDpad);
-
     float * i2c_buffer = C2D_args->i2c_buffer;
-
-    // printf("i2c_buffer=0x%x\n", (int)i2c_buffer);
 
     int HWC_layout = C2D_args->HWC;
     int USE_BIASES = C2D_args->USE_BIASES;
     int USE_IM2COL = C2D_args->USE_IM2COL;
     int opt_matmul_type = C2D_args->opt_matmul_type_wg;
-
-    // printf("HWC=%d, USE_BIASES=%d, USE_IM2COL=%d, opt_matmul_type=%d\n\n", 
-    //         HWC_layout, USE_BIASES, USE_IM2COL, opt_matmul_type);
 
   /**
    * USE OPTIMIZED ALGORITHM

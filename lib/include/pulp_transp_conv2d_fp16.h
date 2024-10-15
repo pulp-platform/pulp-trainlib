@@ -101,7 +101,7 @@ struct Transp_Conv2D_args_fp16 {
  * @param USE_IM2COL if set to 0, the convd kernel calls for the naive implementation, if set to 1 for the im2col+matmul optimized execution
  * @param USE_DMA_IM2COL in case the primitive uses IM2COL + MM, select if to perform im2col using DMA-managed transfers from L2 to L1 (input tensor needs to be stored in L2, im2col_buffer in L1)
  */
-void pulp_conv2d_fp16_fw_cl( void * Transp_Conv2D_args_fp16 );
+void pulp_transp_conv2d_fp16_fw_cl( void * Transp_Conv2D_args_fp16 );
 
 
 // BACKWARD FUNCTIONS

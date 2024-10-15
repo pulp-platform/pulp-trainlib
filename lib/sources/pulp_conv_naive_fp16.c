@@ -812,3 +812,221 @@ void naive_conv2d_in_grad_kernel_CHW_k5x5_s2_p1_fp16 (void * matMul_args)
              USE_BIASES);
   }
 }
+
+
+
+
+
+
+
+
+/** TRANSPOSED CONV2D KERNELS **/
+
+void naive_transp_conv2d_fw_kernel_CHW_fp16 (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inData = args->A;
+  fp16 * __restrict__ coeffData = args->B;
+  fp16 * __restrict__ outData = args->C;
+
+  fp16 *__restrict__ biasData = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  if (USE_BIASES == 1) {
+    // Initialize the output with bias term for each output channel
+    for (int co = start; co < stop; ++co) {
+      for (int ho = 0; ho < H_out; ++ho) {
+        for (int wo = 0; wo < W_out; ++wo) {
+          outData[wo + ho*W_out + co*H_out*W_out] = biasData[co];
+        }
+      }
+    }
+  }
+
+  // Perform the transposed convolution
+  for (int hi = 0; hi < H_in; ++hi) {
+    for (int wi = 0; wi < W_in; ++wi) {
+      for (int hk = 0; hk < pH; ++hk) {
+        for (int wk = 0; wk < pW; ++wk) {
+          int out_i = hi * h_str + hk - Upad;
+          int out_j = wi * w_str + wk - Lpad;
+          for (int co = start; co < stop; ++co) {
+            fp16 temp = 0;
+            for (int ci = 0; ci < C_in; ++ci) {
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                //outData[out_j + out_i*W_out + co*H_out*W_out] += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
+                temp += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
+              }
+            }
+            outData[out_j + out_i*W_out + co*H_out*W_out] += temp;
+          }
+        }
+      }
+    }
+  }
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_fw_kernel_CHW_fp16:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
+}
+
+
+
+void naive_transp_conv2d_param_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inData = args->A;
+  fp16 * __restrict__ coeffDiff = args->B;
+  fp16 * __restrict__ outDiff = args->C;
+
+  fp16 *__restrict__ biasDiff = args->bias;
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
+
+  const uint32_t blockSize = (C_out+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
+
+  int padding = Lpad + Rpad + Upad + Dpad;
+
+  for (uint32_t co = start; co < stop; ++co) {
+    for (uint32_t hk = 0; hk < pH; ++hk) {
+      for (uint32_t wk = 0; wk < pW; ++wk) {
+        for (uint32_t ci = 0; ci < C_in; ++ci) {
+          fp16 temp = 0;
+          for (uint32_t hi = 0; hi < H_in; ++hi) {
+            for (uint32_t wi = 0; wi < W_in; ++wi) {
+              int out_i = hi * h_str + hk - Upad;
+              int out_j = wi * w_str + wk - Lpad;
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                //coeffDiff[wk + hk*pW + co*pW*pH + ci*C_out*pW*pH] += inData[wi + hi*W_in + ci*H_in*W_in] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+                temp += inData[wi + hi*W_in + ci*H_in*W_in] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+              }
+            }
+          }
+          coeffDiff[wk + hk*pW + co*pW*pH + ci*C_out*pW*pH] = temp;
+        }
+      }
+    }
+  }
+
+  if (USE_BIASES == 1) {
+    // Compute the bias gradient as the sum of dY for each output channel
+    for (int c_o = start; c_o < stop; ++c_o) {
+      float temp = 0;
+      for (int ho = 0; ho < H_out; ++ho) {
+        for (int wo = 0; wo < W_out; ++wo) {
+          //biasDiff[c_o] += outDiff[wo + ho*W_out + c_o*H_out*W_out];
+          temp += outDiff[wo + ho*W_out + c_o*H_out*W_out];
+        }
+      }
+      biasDiff[c_o] = temp;
+    }
+  }
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_param_grad_kernel_CHW_fp16:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Biases not used, even if provided!\n",
+             USE_BIASES);
+  }
+}
+
+
+
+void naive_transp_conv2d_in_grad_kernel_CHW_fp16 (void * matMul_args_fp16) 
+{
+  struct matMul_args_fp16* args = (struct matMul_args_fp16 *)matMul_args_fp16;
+  fp16 * __restrict__ inDiff = args->A;
+  fp16 * __restrict__ coeffData = args->B;
+  fp16 * __restrict__ outDiff = args->C;
+
+  const uint32_t USE_BIASES = args->USE_BIASES;
+
+  const uint32_t H_in = args->H;
+  const uint32_t W_in = args->W;
+  const uint32_t pW = args->pW;
+  const uint32_t pH = args->pH;
+  const uint32_t C_in = args->pCin;
+  const uint32_t C_out = args->pCout;
+
+  uint32_t h_str = args->stride_h;
+  uint32_t w_str = args->stride_w;
+  uint32_t Lpad = args->Lpad;
+  uint32_t Rpad = args->Rpad;
+  uint32_t Upad = args->Upad;
+  uint32_t Dpad = args->Dpad;
+
+  const uint32_t H_out = (H_in - 1) * h_str - (Upad + Dpad) + (pH - 1) + 1;
+  const uint32_t W_out = (W_in - 1) * w_str - (Lpad + Rpad) + (pW - 1) + 1;
+  const uint32_t pHW = pH*pW-1;
+
+  const uint32_t blockSize = (C_in+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
+
+  // Compute the input gradient
+  for (int hi = 0; hi < H_in; ++hi) {
+    for (int wi = 0; wi < W_in; ++wi) {
+      for (int hk = 0; hk < pH; ++hk) {
+        for (int wk = 0; wk < pW; ++wk) {
+          int out_i = hi * h_str + hk - Upad;
+          int out_j = wi * w_str + wk - Lpad; 
+          for (int ci = start; ci < stop; ++ci) {
+            fp16 temp = 0;
+            for (int co = 0; co < C_out; ++co) {
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                //inDiff[wi + hi*W_in + ci*H_in*W_in] += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+                temp += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+              }
+            }
+            inDiff[wi + hi*W_in + ci*H_in*W_in] += temp;
+          }
+        }
+      }
+    }
+  }
+
+  if (USE_BIASES != 0 && USE_BIASES != 1) {
+      printf("[naive_transp_conv2d_in_grad_kernel_CHW_fp16:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
+             USE_BIASES);
+  }
+}
