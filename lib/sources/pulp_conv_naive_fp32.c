@@ -855,87 +855,34 @@ void naive_transp_conv2d_fw_kernel_CHW (void * matMul_args)
 
   int padding = Lpad + Rpad + Upad + Dpad;
 
-  //printf("IN: [%d, %d, %d], KER: [%d, %d, %d, %d], OUT: [%d, %d, %d]\n", C_in, H_in, W_in, C_out, C_in, pH, pW, C_out, H_out, W_out);
-  //printf("MAX BOUNDARIES: H -> [0, %d], W -> [0, %d]\n\n", H_out-1+pH-1, W_out-1+pW-1);
-
-  if (USE_BIASES == 0) {
-    // Padding
-    int wpad = (pW-1) - Lpad;
-    int hpad = (pH-1) - Upad;
-    //int numel = 0;
-    // Computational kernel
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                // Indices
-                int w_adv = (wo + wk - wpad);
-                int h_adv = (ho + hk - hpad);
-                int ker_idx = (pH*pW - wk - hk*pW - 1) + ci*pW*pH + co*C_in*pW*pH;
-                int inp_idx = w_adv/w_str + (h_adv/h_str)*W_in + ci*H_in*W_in;
-                // Input data
-                float ker_dat = 0;
-                float inp_dat = 0;
-                // Load correct data
-                int w_condition = (w_adv >= 0) && (w_adv < W_in*w_str) && (w_adv % w_str == 0); 
-                int h_condition = (h_adv >= 0) && (h_adv < H_in*h_str) && (h_adv % h_str == 0);
-                //printf("w_condition = %d && %d && %d\t", (w_adv >= 0), (w_adv < W_in*h_str), (w_adv % w_str == 0));
-                if (h_condition && w_condition) {
-                  inp_dat = inData[inp_idx];
-                  ker_dat = coeffData[ker_idx];
-                  temp += inp_dat * ker_dat;
-                  //printf("(%d) (%d) VALID   outData[%d] (%f) += inData[%d] (%f) * coeffData[%d] (%f)\n", numel, w_adv, wo+ho*W_out+co*H_out*W_out, temp, inp_idx, inp_dat, ker_idx, coeffData[ker_idx]);
-                }
-                //else printf("(%d) (%d) INVALID outData[%d] (%f) += inData[%d] (%f) * coeffData[%d] (%f)\n", numel, w_adv, wo+ho*W_out+co*H_out*W_out, temp, inp_idx, inp_dat, ker_idx, coeffData[ker_idx]);
-                //numel++;
-              }
-            }
-          }
-          outData[wo + ho*W_out + co*H_out*W_out] = temp;
+  if (USE_BIASES == 1) {
+    // Initialize the output with bias term for each output channel
+    for (int co = start; co < stop; ++co) {
+      for (int ho = 0; ho < H_out; ++ho) {
+        for (int wo = 0; wo < W_out; ++wo) {
+          outData[wo + ho*W_out + co*H_out*W_out] = biasData[co];
         }
       }
-    }  
+    }
   }
 
-  else if (USE_BIASES == 1) {
-    // Padding
-    int wpad = (pW-1) - Lpad;
-    int hpad = (pH-1) - Upad;
-    // Computational kernel
-    for (uint32_t co=start; co<stop; co++) {
-      for (uint32_t ho=0; ho<H_out; ho++) {
-        for (uint32_t wo=0; wo<W_out; wo++) {
-          float temp = 0;
-          for (uint32_t ci=0; ci<C_in; ci++) {
-            for (uint32_t hk=0; hk<pH; hk++) {
-              for (uint32_t wk=0; wk<pW; wk++) {
-                // Indices
-                int w_adv = (wo + wk - wpad);
-                int h_adv = (ho + hk - hpad);
-                int ker_idx = (pH*pW - wk - hk*pW - 1) + ci*pW*pH + co*C_in*pW*pH;
-                int inp_idx = w_adv/w_str + (h_adv/h_str)*W_in + ci*H_in*W_in;
-                // Input data
-                float ker_dat = 0;
-                float inp_dat = 0;
-                // Load correct data
-                int w_condition = (w_adv >= 0) && (w_adv < W_in*w_str) && (w_adv % w_str == 0); 
-                int h_condition = (h_adv >= 0) && (h_adv < H_in*h_str) && (h_adv % h_str == 0);
-                if (h_condition && w_condition) {
-                  inp_dat = inData[inp_idx];
-                  ker_dat = coeffData[ker_idx];
-                  temp += inp_dat * ker_dat;
-                }
+  // Perform the transposed convolution
+  for (int hi = 0; hi < H_in; ++hi) {
+    for (int wi = 0; wi < W_in; ++wi) {
+      for (int hk = 0; hk < pH; ++hk) {
+        for (int wk = 0; wk < pW; ++wk) {
+          int out_i = hi * h_str + hk - Upad;
+          int out_j = wi * w_str + wk - Lpad;
+          for (int co = start; co < stop; ++co) {
+            for (int ci = 0; ci < C_in; ++ci) {
+              if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
+                outData[out_j + out_i*W_out + co*H_out*W_out] += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
               }
             }
           }
-          temp += biasData[co];
-          outData[wo + ho*W_out + co*H_out*W_out] = temp;
         }
       }
-    }  
+    }
   }
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
@@ -978,25 +925,6 @@ void naive_transp_conv2d_param_grad_kernel_CHW (void * matMul_args)
   const uint32_t stop = start+blockSize > C_out ? C_out : start+blockSize;  
 
   int padding = Lpad + Rpad + Upad + Dpad;
-
-  // Compute the weight gradient
-  // for (uint32_t co = 0; co < C_out; ++co) {
-  //   for (uint32_t ci = 0; ci < C_in; ++ci) {
-  //     for (uint32_t hi = 0; hi < H_in; ++hi) {
-  //       for (uint32_t wi = 0; wi < W_in; ++wi) {
-  //         for (uint32_t hk = 0; hk < pH; ++hk) {
-  //           for (uint32_t wk = 0; wk < pW; ++wk) {
-  //             int out_i = hi * h_str + hk - Upad;
-  //             int out_j = wi * w_str + wk - Lpad;
-  //             if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
-  //               coeffDiff[wk + hk*pW + co*pW*pH + ci*C_out*pW*pH] += inData[wi + hi*W_in + ci*H_in*W_in] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
 
   for (uint32_t co = start; co < stop; ++co) {
     for (uint32_t hk = 0; hk < pH; ++hk) {
