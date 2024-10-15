@@ -874,11 +874,14 @@ void naive_transp_conv2d_fw_kernel_CHW (void * matMul_args)
           int out_i = hi * h_str + hk - Upad;
           int out_j = wi * w_str + wk - Lpad;
           for (int co = start; co < stop; ++co) {
+            float temp = 0;
             for (int ci = 0; ci < C_in; ++ci) {
               if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
-                outData[out_j + out_i*W_out + co*H_out*W_out] += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
+                //outData[out_j + out_i*W_out + co*H_out*W_out] += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
+                temp += inData[wi + hi*W_in + ci*H_in*W_in] * coeffData[wk + hk*pW + ci*pH*pW + co*C_in*pH*pW];
               }
             }
+            outData[out_j + out_i*W_out + co*H_out*W_out] += temp;
           }
         }
       }
@@ -1001,24 +1004,26 @@ void naive_transp_conv2d_in_grad_kernel_CHW (void * matMul_args)
   const uint32_t stop = start+blockSize > C_in ? C_in : start+blockSize;  
 
   // Compute the input gradient
-  for (uint32_t ci=0; ci<C_in; ++ci) {
-    for (int hi = 0; hi < H_in; ++hi) {
-      for (int wi = 0; wi < W_in; ++wi) {
-        for (uint32_t co=0; co<C_out; ++co) {
-          for (int hk = 0; hk < pH; ++hk) {
-            for (int wk = 0; wk < pW; ++wk) {
-              int out_i = hi * h_str + hk - Upad;
-              int out_j = wi * w_str + wk - Lpad; 
+  for (int hi = 0; hi < H_in; ++hi) {
+    for (int wi = 0; wi < W_in; ++wi) {
+      for (int hk = 0; hk < pH; ++hk) {
+        for (int wk = 0; wk < pW; ++wk) {
+          int out_i = hi * h_str + hk - Upad;
+          int out_j = wi * w_str + wk - Lpad; 
+          for (int ci = start; ci < stop; ++ci) {
+            float temp = 0;
+            for (int co = 0; co < C_out; ++co) {
               if (out_i >= 0 && out_i < H_out && out_j >= 0 && out_j < W_out) {
-                inDiff[wi + hi*W_in + ci*H_in*W_in] += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+                //inDiff[wi + hi*W_in + ci*H_in*W_in] += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
+                temp += coeffData[wk + hk*pW + co*pH*pW + ci*pW*pH*C_out] * outDiff[out_j + out_i*W_out + co*H_out*W_out];
               }
             }
+            inDiff[wi + hi*W_in + ci*H_in*W_in] += temp;
           }
         }
       }
     }
   }
-
 
   if (USE_BIASES != 0 && USE_BIASES != 1) {
       printf("[naive_transp_conv2d_in_grad_kernel_CHW:] Invalid selection of the bias option (1 or 0 - use biases or not). Actual value: %d. Current step not affected by this.\n",
