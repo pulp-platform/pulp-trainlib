@@ -1,7 +1,7 @@
 APP = interpolation_fp32
 
 # User code
-NUM_CORES?=1
+NUM_CORES?=8
 DATA_TYPE?='float'	# 'float' or 'bfloat16'
 INTP_TYPE?=1 		# 0='NEAREST', 1='BILINEAR' 
 CH?=8

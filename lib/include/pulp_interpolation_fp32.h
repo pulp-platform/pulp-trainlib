@@ -46,7 +46,7 @@ void pulp_nearest_neighbour_interpolation_fp32_cl (void * interpolation_args);
  * @brief Bilinear interpolation. Call this function in you code.
  * @param interpolation_args pointer to a interpolation_args structure
  */
-void pulp_bilinear_interpolation_fp32_fw_cl (void * interpolation_args);
+void pulp_bilinear_interpolation_fp32_cl (void * interpolation_args);
 
 
 /**

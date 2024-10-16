@@ -560,6 +560,15 @@ void exponential_fp16 (void * void_args);
 void softmax_fp16 (void * void_args);
 
 
+/**
+ * @brief Function that clamps an input value between a minimum and a maximum 
+ * @param value the value to be clamped
+ * @param min minimum value to be clamped to 
+ * @param max maximum value to be clamped to
+ */
+fp16 clamp_fp16(fp16 value, fp16 min, fp16 max);
+
+
 // ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
 // ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
 /**

@@ -281,6 +281,13 @@ void pad_tensor_fp16(void *pad_args_fp16) {
 }
 
 
+fp16 clamp_fp16(fp16 value, fp16 min, fp16 max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+
 // ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
 // ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
 // Find the maximum value from each row of the passed matrix

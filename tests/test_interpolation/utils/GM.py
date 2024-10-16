@@ -83,6 +83,10 @@ bil_outdata = F.interpolate(indata, size=[H_out, W_out], mode='bilinear')
 # Print data and create data header file
 f = open('net_args.h', "w") 
 
+# Ifdef guard
+f.write('#ifndef GENERAL_DEFINES\n')
+f.write('#define GENERAL_DEFINES\n\n')
+
 # Setup the compilation parameter for the data type
 if data_type == 'float':
     f.write('// Float32 Interpolation\n#define FLOAT32\n\n')
@@ -99,6 +103,9 @@ f.write('#define OUT_H ' + str(H_out) + '\n')
 f.write('#define OUT_W ' + str(W_out) + '\n')
 f.write('\n')
 
+# end of ifdef guard
+f.write('\n#endif\n')
+
 f.close()
 
 # Write data to file
@@ -109,8 +116,8 @@ print("\nInput is: ", indata, indata.shape, indata.dtype)
 print("\nNearest output is: ", near_oudata, near_oudata.shape, near_oudata.dtype)
 print("\nBilinear output is: ", bil_outdata, bil_outdata.shape, bil_outdata.dtype)
 f.write('PI_L1 ' + wr_data_type + ' INDATA[IN_CH*IN_H*IN_W] = {'+dump.tensor_to_string(indata)+'};\n')
-f.write('PI_L1 ' + wr_data_type + ' OUTDATA_NEAR[IN_CH*OUT_H*OUT_W] = {'+dump.tensor_to_string(near_oudata)+'};\n')
-f.write('PI_L1 ' + wr_data_type + ' OUTDATA_BIL[IN_CH*OUT_H*OUT_W] = {'+dump.tensor_to_string(bil_outdata)+'};\n')
+f.write('PI_L2 ' + wr_data_type + ' OUTDATA_NEAR[IN_CH*OUT_H*OUT_W] = {'+dump.tensor_to_string(near_oudata)+'};\n')
+f.write('PI_L2 ' + wr_data_type + ' OUTDATA_BIL[IN_CH*OUT_H*OUT_W] = {'+dump.tensor_to_string(bil_outdata)+'};\n')
 
 print("\n\n")
 

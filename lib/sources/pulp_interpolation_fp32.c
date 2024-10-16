@@ -186,47 +186,60 @@ void pulp_bilinear_core_fp32 (void * interpolation_args)
 
 
     if (intp_grad == 1) {
-        // Iterate over each channel
-        for (int c = start; c < stop; ++c) {
-            // Iterate over output height
-            for (int h = 0; h < H_out; ++h) {
-                // Corresponding floating point position in the input tensor
-                float in_h = h * H_scale;
-                int h0 = (int)in_h; // Top row index
-                int h1 = h0 + 1;    // Bottom row index
-                h1 = (int)clamp(h1, 0, H_in - 1); // Ensure within bounds
+        // Calculate the scale factors for height and width
+        float scale_y = 1;
+        if (H_in > 1) {scale_y = (float)(H_in) / (H_out);}
+        float scale_x = 1;
+        if (W_in > 1) {scale_x = (float)(W_in) / (W_out);}
 
-                // Relative vertical position (0.0 to 1.0)
-                float h_lerp = in_h - h0;
+        for (int c = start; c < stop; c++) {
+            for (int y = 0; y < H_out; y++) {
+                float in_y; 
+                if (y == 0) {
+                    // Special case for the first point
+                    in_y = 0.0f;
+                } else {
+                    in_y = (y + 0.5f) * scale_y - 0.5f;
+                }
+                int top_index = (int)in_y;
+                int bottom_index = top_index + 1;
+                float y_weight = in_y - top_index;
 
-                // Iterate over output width
-                for (int w = 0; w < W_out; ++w) {
-                    // Corresponding floating point position in the input tensor
-                    float in_w = w * W_scale;
-                    int w0 = (int)in_w; // Left column index
-                    int w1 = w0 + 1;    // Right column index
-                    w1 = (int)clamp(w1, 0, W_in - 1); // Ensure within bounds
+                if (bottom_index >= H_in) {
+                    bottom_index = H_in - 1;
+                }
 
-                    // Relative horizontal position (0.0 to 1.0)
-                    float w_lerp = in_w - w0;
+                for (int x = 0; x < W_out; x++) {
+                    float in_x;
+                    if (x == 0) {
+                        // Special case for the first point
+                        in_x = 0.0f;
+                    } else {
+                        in_x = (x + 0.5f) * scale_x - 0.5f;
+                    }
 
-                    // Fetch the four neighboring pixels for interpolation
-                    float top_left     = inDiff[c*H_in*W_in + h0*W_in + w0];
-                    float top_right    = inDiff[c*H_in*W_in + h0*W_in + w1];
-                    float bottom_left  = inDiff[c*H_in*W_in + h1*W_in + w0];
-                    float bottom_right = inDiff[c*H_in*W_in + h1*W_in + w1];
+                    int left_index = (int)in_x;
+                    int right_index = left_index + 1;
+                    float x_weight = in_x - left_index;
 
-                    // Perform the bilinear interpolation
-                    float top    = top_left + (top_right - top_left) * w_lerp;
-                    float bottom = bottom_left + (bottom_right - bottom_left) * w_lerp;
-                    outDiff[c*H_out*W_out + h*W_out + w] = top + (bottom - top) * h_lerp;
+                    if (right_index >= W_in) {
+                        right_index = W_in - 1;
+                    }
+
+                    float top_interp = inDiff[c*H_in*W_in + top_index * W_in + left_index] * (1.0f - x_weight)
+                                    + inDiff[c*H_in*W_in + top_index * W_in + right_index] * x_weight;
+
+                    float bottom_interp = inDiff[c*H_in*W_in + bottom_index * W_in + left_index] * (1.0f - x_weight)
+                                        + inDiff[c*H_in*W_in + bottom_index * W_in + right_index] * x_weight;
+
+                    outDiff[c*H_out*W_out + y * W_out + x] = top_interp * (1.0f - y_weight) + bottom_interp * y_weight;
                 }
             }
-        }   
+        }
     }
 }
 
-void pulp_bilinear_interpolation_fp32_fw_cl (void * interpolation_args) 
+void pulp_bilinear_interpolation_fp32_cl (void * interpolation_args) 
 {
     struct interpolation_args * args = (struct interpolation_args *) interpolation_args;
     pi_cl_team_fork(NUM_CORES, pulp_bilinear_core_fp32, interpolation_args);
