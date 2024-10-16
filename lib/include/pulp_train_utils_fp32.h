@@ -631,6 +631,16 @@ void pulp_scalar_mul_fp32_cl(void* void_args);
 float threshold(float x);
 
 
+/**
+ * @brief Function that clamps an input value between a minimum and a maximum (both for integers and float)
+ * @param value the value to be clamped
+ * @param min minimum value to be clamped to 
+ * @param max maximum value to be clamped to
+ */
+int clamp_int(int value, int min, int max);
+float clamp(float value, float min, float max);
+
+
 static inline float
 fasterexp (float p);
 
