@@ -13,7 +13,10 @@
 #include "intermediate-defines.h"
 #include "output-defines.h"
 #include "output-sequence.h"
-//#include "vocabulary.h"
+#include "vocabulary.h"
+#include "position_embeds.h"
+#include "token_type_embeds.h"
+#include "embeddings.h"
 
 // ~~~~~~~~~~ VARIABLE DEFINITION ~~~~~~~~~~
 
@@ -38,11 +41,6 @@ PI_L1 struct mm_manager_args_fp16 man_args;
 PI_L1 struct Tiled_Matmul_Mhsa_args_fp16 tiled_matmul_mhsa_args;
 PI_L1 pi_cl_dma_cmd_t * cmd_store;
 PI_L1 pi_cl_dma_cmd_t * cmd_load;
-
-
-
-
-
 
 // ~~~~~~~~~~ L2 DATA ~~~~~~~~~~
 
@@ -1028,6 +1026,11 @@ void tiled_relu(void* Relu_args){
 
 void forward(){
     // EMBEDDER
+
+    // Embedding input sequence ids
+    //SEI ARRIVATO QUI, DEVI CAPIRE COME CAZZO PASSARE GLI INPUT IDS, COME GENERARLI, E CAPIRE UN ATTIMO SE FARE POSITION/TYPE EMBEDDING
+    tiled_embedding(INPUT_IDS, VOCABULARY, INPUT);
+    tiled_embedding()
 
     
     
