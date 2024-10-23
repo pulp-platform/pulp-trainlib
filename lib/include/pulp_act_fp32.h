@@ -12,15 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
 
-/**
  * Activation functions configuration structure
- */  
+ */
 
 
 /**
@@ -29,9 +25,12 @@
  * @param output blob structure for the output data of the activation layer
  */
 struct act_args {
-    struct blob * input;
-    struct blob * output;
+    struct blob *input;
+    struct blob *output;
+    int H;
+    int W;
 };
+
 
 /**
  * @brief Arguments for exponential and softmax in parallel
@@ -40,15 +39,19 @@ struct act_args {
  * @param output  pointer to output vector
  * @param sum     final sum value of all exponentials
 */
-struct softmax_args{
-  struct blob * input;
-  struct blob * output;
-  int L;
-  int n_heads;
-  float * global_max;
-  float * partial_exp_sum;
-  float * maxes;
-  float * sums;
+struct softmax_args {
+    float *input_data;
+    float *input_diff;
+    float *output_data;
+    float *output_diff;
+    int H;
+    int W;
+    int L;
+    int n_heads;
+    float *global_max;
+    float *partial_exp_sum;
+    float *maxes;
+    float *sums;
 };
 
 
@@ -67,7 +70,6 @@ struct swiglu_args{
 };
 
 
-
 /**
  * Activation functions, both FW and BW
  **/
@@ -80,6 +82,7 @@ struct swiglu_args{
 */
 void pulp_sigmoid_fp32_fw_cl( void * act_args );
 
+
 /**
  * @brief Backward pass function.
  * @param input Input for sigmoid.
@@ -87,18 +90,19 @@ void pulp_sigmoid_fp32_fw_cl( void * act_args );
 */
 void pulp_sigmoid_fp32_bw_cl( void * act_args );
 
+
 /**
  * @brief Core function to implement the forward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_fw_fp32, &args)).
  * @param act_args Input and output data (data only will be used)
 */
 void sigmoid_core_fw_fp32( void * act_args );
 
+
 /**
  * @brief Core function to implement the backward of sigmoid (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, sigmoid_core_bw_fp32, &args)).
  * @param act_args Input and output data (gradients only will be used)
 */
 void sigmoid_core_bw_fp32( void * act_args );
-
 
 
 /**
@@ -108,6 +112,7 @@ void sigmoid_core_bw_fp32( void * act_args );
 */
 void pulp_relu_fp32_fw_cl( void * act_args );
 
+
 /**
  * @brief Backward pass function.
  * @param input Input for relu.
@@ -115,18 +120,19 @@ void pulp_relu_fp32_fw_cl( void * act_args );
 */
 void pulp_relu_fp32_bw_cl( void * act_args );
 
+
 /**
  * @brief Core function to implement the forward of ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, relu_core_fw_fp32, &args)).
  * @param act_args Input and output data (data only will be used)
 */
 void relu_core_fw_fp32( void * act_args );
 
+
 /**
  * @brief Core function to implement the backward of ReLU (allows parallelization, parallelize with pi_cl_team_fork(NUM_CORES, relu_core_bw_fp32, &args)).
  * @param act_args Input and output data (gradients only will be used)
 */
 void relu_core_bw_fp32( void * act_args );
-
 
 
 /**
@@ -136,12 +142,14 @@ void relu_core_bw_fp32( void * act_args );
 */
 void pulp_softmax_fp32_fw_cl( void * act_args );
 
+
 /**
- * @brief Bakcward pass function.
+ * @brief Backward pass function.
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_softmax_fp32_bw_cl( void * act_args );
+
 
 /**
  * @brief Forward pass function, second version using partial algorithm
@@ -150,12 +158,14 @@ void pulp_softmax_fp32_bw_cl( void * act_args );
 */
 void pulp_partial_softmax_fp32_fw_cl( void * act_args );
 
+
 /**
  * @brief Forward pass function, second version using partial algorithm
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args );
+
 
 /**
  * @brief Forward pass function, second version using partial algorithm.
@@ -164,12 +174,14 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args );
 */
 void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args );
 
+
 /**
  * @brief Forward pass function, third version using partial algorithm and taylor approximation.
  * @param input Input for softmax.
  * @param output Output of softmax.
 */
 void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args);
+
 
 /**
  * @brief Forward pass function that parallelize the fastertanh function (below).
@@ -188,6 +200,7 @@ static inline float fasttanh (
     float p
 );
 
+
 /**
  * @brief A power of 2 implementation exploiting bit manipulation and "magic numbers" to be a bit faster.
  * @param float value
@@ -195,6 +208,7 @@ static inline float fasttanh (
 static inline float fastpow2 (
     float p
 );
+
 
 /**
  * @brief An exponential implementation exploiting bit manipulation and "magic numbers" to be a bit faster.
@@ -220,5 +234,3 @@ void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsi
  * @param (void*) (struct swiglu_args void_args) 
  */
 void pulp_swiglu_fp32_cl(void *swiglu_args);
-
-

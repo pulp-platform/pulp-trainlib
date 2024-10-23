@@ -12,10 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
 
-/**
- * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Alberto Dequino, Calin Diaconu
 */
 
 #include "pulp_train_utils_fp32.h"
@@ -128,49 +126,57 @@ void relu_core_bw_fp32( void * act_args )
 }
 
 
+// ~~~~~~~~~~~~~~~~~~~~ SOFTMAX ~~~~~~~~~~~~~~~~~~~~
+// Forward pass of the FP32 softmax
+// Performs a softmax activation on each row
+void pulp_softmax_fp32_fw_cl(void *act_args) {
+    // Extract variables from function arguments
+    struct softmax_args *args = (struct softmax_args *) act_args;
 
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
 
-void pulp_softmax_fp32_fw_cl( void * act_args )
-{
-  struct softmax_args * args = (struct softmax_args *) act_args;
+    float *inData = args->input_data;
+    float *outData = args->output_data;
 
-  int dim = args->input->dim;
-  float* inData = args->input->data;
-  float* outData = args->output->data;
+    float *maxes = args->maxes;
+    float *sums = args->sums;
 
-  float* maxes = args->maxes;
-  float* sums = args->sums;
+    // OP A: Compute the maximum value on each row
+    struct max_args m_args;
+    m_args.input = inData;
+    m_args.maxes = maxes;
+    m_args.H = HEIGHT;
+    m_args.W = WIDTH;
 
-  struct max_args m_args;
-  m_args.input = inData;
-  m_args.maxes = maxes;
-  m_args.dim = dim;
+    pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &m_args);
 
-  pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &m_args);
-  
-  struct exp_sum_args e_s_args;
-  e_s_args.input = inData;
-  e_s_args.sums = sums;
-  e_s_args.output = outData;
-  e_s_args.dim = dim;
-  e_s_args.maxes = maxes;
-  
-  pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &e_s_args);
+    // OP B: For each row, compute the sum of exponential of the difference between input values and the max of the row
+    struct exp_sum_args e_s_args;
+    e_s_args.input = inData;
+    e_s_args.output = outData;
+    e_s_args.H = HEIGHT;
+    e_s_args.W = WIDTH;
+    e_s_args.sums = sums;
+    e_s_args.maxes = maxes;
 
+    pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &e_s_args);
 
-  struct row_div_args r_d_args;
-  r_d_args.input = outData;
-  r_d_args.sums = sums;
-  r_d_args.dim = dim;
+    // OP C: Per-row division with the sum computed in the previous function
+    struct row_div_args r_d_args;
+    r_d_args.input = outData;
+    r_d_args.sums = sums;
+    r_d_args.H = HEIGHT;
+    r_d_args.W = WIDTH;
 
-  pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
+    pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
 
-  #ifdef DEBUG
+    // Print to terminal for debugging purposes
+    #ifdef DEBUG
     if(pi_core_id()==0){
-        int L = dim;
-        printf("\nCurrent softmax output: %d %d\n", L, L);
-        for (int j=0; j<L*L; j++){
-            if(!(j%((int)L))) printf("\n");
+        printf("\nCurrent softmax output: %d %d\n", HEIGHT, WIDTH);
+        for (int j=0; j<HEIGHT*WIDTH; j++){
+            if(!(j%((int)WIDTH))) printf("\n");
             printf("%.8f ", outData[j]);
         }
     }
@@ -178,60 +184,69 @@ void pulp_softmax_fp32_fw_cl( void * act_args )
     #endif
 }
 
-/*
-void pulp_softmax_fp32_fw_cl( void * act_args ){
-  struct softmax_args * args = (struct softmax_args *) act_args;
 
-  int dim = args->input->dim;
-  int i, j;
-  float* inData = args->input->data;
-  float* outData = args->output->data;
+// Backward pass of softmax
+void pulp_softmax_fp32_bw_cl(void *act_args) {
+    /*
+     * The derivative of softmax is computed according to:
+     * https://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
+     *
+     * The explanation below applies to each row of the input.
+     * The array that results from the softmax forward pass (named outData in the code) will be noted with
+     * S(input) = [S0, S1, ..., Si, ...].
+     * The partial derivative of the i-th output w.r.t. the j-th input will be noted as DjSi and stored in a DS matrix.
+     *
+     * For i == j, DiSi = Si * (1 - Si)
+     * For i != j, DiSi = -(Si * Sj)
+     *
+     * If the incoming array of gradients is marked with outDiff, the d_i gradient for the i-th element of a row is
+     * computed as:
+     * d_i = D0Si * outDiff[0] + D1Si * outDiff[1] + ... + DjSi * outDiff[j] + ...
+     *
+     * Which, if expanded and then simplified, will result to:
+     * d_i = Si * (outDiff[i] - (outDiff[0] * S0 + outDiff[1] * S1 + ... + outDiff[j] * Sj + ...)
+     *
+     * The notation in the code is:
+     *      - d_i -> inDiff[row, i]
+     *      - Si  -> outData[row, i]
+     *      - (outDiff[0] * S0 + outDiff[1] * S1 + ... + outDiff[j] * Sj + ...) -> sum
+     */
+    // Extract variables from function arguments
+    struct softmax_args *args = (struct softmax_args *) act_args;
 
-  float* maxes = args->maxes;
-  float* sums = args->sums;
+    int HEIGHT = args->H;
+    int WIDTH = args->W;
 
-  const int blockSize=(dim + NUM_CORES-1)/NUM_CORES;
-  const int start = pi_core_id()*blockSize;
-  const int stop = start + blockSize > dim ? dim : start+blockSize;
+    float *inDiff = args->input_diff;
+    float *outData = args->output_data;
+    float *outDiff = args->output_diff;
 
-  float* input = inData + start * dim;
-  float* output = outData + start * dim;
+    float *sums = args->sums;
 
-  for(i=start; i<stop; i++){
-    for(j=0; j<dim; j++){
-      if(maxes[i] < *input || j==0)
-        maxes[i] = *input;
-      input++;    
-    }
-  }
+    // SM BW OP 1
+    struct sm_bw_op_1_args op_1_args;
+    op_1_args.A = outDiff;
+    op_1_args.B = outData;
+    op_1_args.S = sums;
+    op_1_args.H = HEIGHT;
+    op_1_args.W = WIDTH;
 
-  input = inData + start * dim;
-  float o;
+    pi_cl_team_fork(NUM_CORES, pulp_sm_bw_op_1, &op_1_args);
 
-  for(i=start; i<stop; i++){
-    sums[i] = 0;
-    for(j=0; j<dim; j++){
-      o = fastexp_gist(*input - maxes[i]);
-      //float o = expf(*input - maxes[i]);
-      *output = o;
-      sums[i] += o;
-      input++;
-      output++;    
-    }   
-  }
+    // SM BW OP 2
+    struct sm_bw_op_2_args op_2_args;
+    op_2_args.A = outDiff;
+    op_2_args.B = outData;
+    op_2_args.S = sums;
+    op_2_args.output = inDiff;
+    op_2_args.H = HEIGHT;
+    op_2_args.W = WIDTH;
 
-  output = outData + start * dim;
-
-  
-  for(int i=start; i<stop; i++){
-    for(int j=0; j<dim; j++){
-      *output = *output/sums[i];
-      output++;    
-    }
-  }
+    pi_cl_team_fork(NUM_CORES, pulp_sm_bw_op_2, &op_2_args);
 }
-*/
 
+
+/*
 void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
 {
   struct softmax_args * args = (struct softmax_args *) act_args;
@@ -247,8 +262,8 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
   struct max_args m_args;
   m_args.input = inData;
   m_args.maxes = maxes;
-  m_args.dim = dim;
-  m_args.dim2 = dim2;
+  m_args.H = dim;
+  m_args.W = dim2;
 
   pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &m_args);
 
@@ -266,35 +281,10 @@ void pulp_partial_softmax_simple_fp32_fw_cl( void * act_args )
   struct row_div_args r_d_args;
   r_d_args.input = outData;
   r_d_args.sums = sums;
-  r_d_args.dim = dim;
-  r_d_args.dim2 = dim2;
+  r_d_args.H = dim;
+  r_d_args.W = dim2;
 
   pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &r_d_args);
-}
-
-void pulp_softmax_fp32_bw_cl( void * act_args )
-{
-  struct act_args * args = (struct act_args *) act_args;
-  int dim = args->input->dim;
-  int i = args->output->dim;
-  float* inDiff = args->input->diff;
-  float* outData = args->output->data;
-  float* outDiff = args->output->diff;
-  //float sum = 0.0f;
-
-  for(int j = 0; j < dim; j++){ // Cycle over the elements of the i-th head buffer
-      float sum = 0.0f;
-      const float neg_sft_j  =  -(outData)[j]; 
-      for(int z = 0; z < dim; ++z){ // Softmax involves all the elements of the i-th head buffer
-          float mul =  (outDiff)[z] * (outData)[z] * neg_sft_j;
-          sum +=  mul; // adding to the total sum of this row.
-      }
-      inDiff[j] = sum;
-  }
-
-  for(int j=0; j<dim; j++){
-      inDiff[j] += (outData)[j] * (outDiff)[j]; // Gradient of pre-softmax head buffer: (L x L)
-  }
 }
 
 
@@ -356,6 +346,7 @@ void pulp_partial_softmax_fp32_fw_cl( void * act_args )
   }
 }
 
+
 void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
 {
   struct softmax_args * args = (struct softmax_args *) act_args;
@@ -414,6 +405,7 @@ void pulp_partial_softmax_shift_fp32_fw_cl( void * act_args )
   }
 }
 
+
 void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
   struct softmax_args * args = (struct softmax_args *) act_args;
 
@@ -470,6 +462,7 @@ void pulp_partial_softmax_approximate_fp32_fw_cl(void * act_args){
     }
   }
 }
+*/
 
 
 void tanh_prll(void * args){
@@ -513,7 +506,7 @@ void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsi
   struct max_args ma;
   ma.input = in;
   ma.maxes = buffer_n_cores;
-  ma.dim = size;
+  ma.W = size;
 
   pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &ma);
 
