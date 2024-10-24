@@ -1,6 +1,8 @@
 BUILD
 
-input-sequence.h
-model-defines.h
+input_sequence.h
+model_components.c
+model_components.h
+model_defines.h
 net_args.h
-output-sequence.h
+output_sequence.h

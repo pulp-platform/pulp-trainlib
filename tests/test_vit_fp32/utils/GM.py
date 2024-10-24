@@ -1,16 +1,20 @@
+import os
+
 import numpy as np
 import torch
 from PIL import Image
 
-from utils.file_writers import (
-    header_writer,
-    input_writer,
-    model_writer,
-    output_writer
-)
 from utils.vit_lr.ViTLR_model import ViTLR
 from utils.vit_lr.vit_lr_utils import bordering_resize
 from utils.vit_lr.vit_lr_utils import vit_lr_image_preprocessing
+from utils.writers.file_writers import (
+    header_writer,
+    input_writer,
+    model_writer,
+    output_writer,
+    model_components_writer,
+    IMPLEMENTED_DATA_TYPES,
+)
 
 
 def get_cuda_device():
@@ -92,12 +96,20 @@ def get_input(path, original_image_size, input_image_size, in_channels, device):
 def main():
     # Parse arguments
     print("Parsing arguments...")
-    weights_path = "utils/sample_data/lite_weights_sample.pth"
+
+    # TODO: Extract some of these from input, output, and weights
+    if "utils" in os.getcwd():
+        weights_path = "sample_data/lite_weights_sample.pth"
+        input_path = "sample_data/input_sample.png"
+    else:
+        weights_path = "utils/sample_data/lite_weights_sample.pth"
+        input_path = "utils/sample_data/input_sample.png"
     num_classes = 50
-    input_path = "utils/sample_data/input_sample.png"
     original_image_size = (350, 350)
     input_image_size = (384, 384)
     in_channels = 3
+    data_type = "fp32"
+    assert data_type in IMPLEMENTED_DATA_TYPES, "Invalid data type"
 
     # Set seed
     print("Setting seed...")
@@ -126,21 +138,31 @@ def main():
 
     y_pred = model(x=x, get_activation=False)
 
+    ordered_nodes, all_nodes = model.get_model_graph_information(
+        x=x, get_activation=False
+    )
+
     # Write header file
     print("\n------------------------------ Writing header file...")
-    header_writer(data_type="fp32")
+    # header_writer(data_type=data_type)
 
     # Write input data file
     print("\n------------------------------ Writing input data file...")
-    input_writer(data=x[1][0], data_type="fp32")
+    # input_writer(data=x[1][0], data_type=data_type)
 
     # Write model file
     print("\n------------------------------ Writing model file...")
-    model_writer(model=model, data_type="fp32")
+    # model_writer(model=model, data_type=data_type)
 
     # Write output data file
     print("\n------------------------------ Writing output file...")
-    output_writer(data=y_pred, data_type="fp32")
+    # output_writer(data=y_pred, data_type=data_type)
+
+    # Write header with structures and blobs for model components
+    print("\n------------------------------ Writing model components file...")
+    model_components_writer(
+        ordered_nodes=ordered_nodes, all_nodes=all_nodes, data_type=data_type
+    )
 
     return None
 

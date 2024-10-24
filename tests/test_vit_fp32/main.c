@@ -1,4 +1,5 @@
 #include "pmsis.h"
+#include "net.h"
 
 int main (void) {
     printf("\nHello there.\nConfiguring cluster..\n");
@@ -13,6 +14,9 @@ int main (void) {
     if (pi_cluster_open(&cluster_dev)) {
         return -1;
     }
+
+    printf("Launching ViT procedure...\n");
+    pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, net_step, NULL));
 
     printf("Done, successful!\n");
     pi_cluster_close(&cluster_dev);

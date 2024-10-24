@@ -1,4 +1,4 @@
-APP = vit
+APP = vit_fp32
 
 # User code
 NUM_CORES?=8
@@ -16,7 +16,7 @@ MATMUL_TYPE?=10
 TASK_NAME=sst-2
 TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
-APP_SRCS = main.c
+APP_SRCS = main.c net.c
 
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
@@ -39,8 +39,14 @@ APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 # STATISTICS
 APP_CFLAGS += -DSTATS
 
-# SOURCES
+# =============== SOURCES ===============
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+
+# CONV2D REQUIRED SOURCES
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp32.c
 
 include $(RULES_DIR)/pmsis_rules.mk
 
