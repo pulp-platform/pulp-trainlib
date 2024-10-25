@@ -1,3 +1,6 @@
+#ifndef NET_H
+#define NET_H
+
 // PULP DEFINES
 #define STACK_SIZE      40960
 #define MOUNT           1
@@ -8,6 +11,7 @@
 #include "pulp_train_defines.h"
 
 // net functions
+void forward();
 void net_step();
 
 // DMA managment functions
@@ -24,3 +28,4 @@ void get_weight_dim(void * b);
 void reset_arguments();
 void update_blob();
 void reset_dim();
+#endif

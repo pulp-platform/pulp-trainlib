@@ -155,6 +155,9 @@ def conv2d_writer(
     blob_connect += "\t" + args_name + ".coeff = &" + weight_name + ";\n"
     blob_connect += "\t" + args_name + ".output = &" + output_name + ";\n"
 
+    blob_connect += "\t" + args_name + ".stride_h = " + str(component["stride_h"]) + ";\n"
+    blob_connect += "\t" + args_name + ".stride_w = " + str(component["stride_w"]) + ";\n"
+
     if "bias_shape" in component.keys():
         blob_connect += "\t" + args_name + ".bias = &" + bias_name + ";\n"
         blob_connect += "\t" + args_name + ".USE_BIASES = 1;\n"

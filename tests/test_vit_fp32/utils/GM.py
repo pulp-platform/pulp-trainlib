@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import numpy as np
@@ -17,6 +18,85 @@ from utils.writers.file_writers import (
 )
 
 
+def create_arg_parser():
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--weights_path",
+        help="Path to the saved model.",
+        type=str,
+        required=False,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--input_path",
+        help="Path to a single input file.",
+        type=str,
+        required=False,
+        default=None,
+    )
+
+    parser.add_argument(
+        "--data_type",
+        help="Data type to be used.",
+        type=str,
+        required=False,
+        default="fp32",
+    )
+
+    parser.add_argument(
+        "--in_channels",
+        help="Number of input channels.",
+        type=int,
+        required=False,
+        default=3,
+    )
+
+    parser.add_argument(
+        "--num_classes",
+        help="Number of classes.",
+        type=int,
+        required=False,
+        default=50,
+    )
+
+    parser.add_argument(
+        "--input_image_width",
+        help="Width of the input image.",
+        type=int,
+        required=False,
+        default=350,
+    )
+
+    parser.add_argument(
+        "--input_image_height",
+        help="Height of the input image.",
+        type=int,
+        required=False,
+        default=350,
+    )
+
+    parser.add_argument(
+        "--original_image_width",
+        help="Width of the original image.",
+        type=int,
+        required=False,
+        default=384,
+    )
+
+    parser.add_argument(
+        "--original_image_height",
+        help="Height of the original image.",
+        type=int,
+        required=False,
+        default=384,
+    )
+
+    return parser
+
+
 def get_cuda_device():
     cuda_device = None
     if torch.cuda.is_available():
@@ -31,31 +111,53 @@ def get_cuda_device():
     return device
 
 
-def load_model(weights_path, num_classes, device):
+def load_model(weights_path, num_classes, device, input_size):
+    """
+    A None weights_path will result in defining a minimal model with one block, for testing purposes.
+    """
     print("Loading weights...")
-    weights = torch.load(weights_path, weights_only=False, map_location=device)
+    if weights_path is not None:
+        weights = torch.load(weights_path, weights_only=False, map_location=device)
 
-    if "model_state_dict" in weights.keys():
-        weights = weights["model_state_dict"]
+        if "model_state_dict" in weights.keys():
+            weights = weights["model_state_dict"]
 
-    # Find number of blocks
-    max_block = 0
-    for el in weights.keys():
-        if "blocks" in el:
-            current_block = int(el.split(".")[2])
+        # Find number of blocks
+        max_block = 0
+        for el in weights.keys():
+            if "blocks" in el:
+                current_block = int(el.split(".")[2])
 
-            if current_block > max_block:
-                max_block = current_block
+                if current_block > max_block:
+                    max_block = current_block
+
+        n_blocks = max_block + 1
+
+        # Find patch size
+        patch_size = tuple(list(weights["patch_embedding.weight"].shape)[-2:])
+
+        # Find hidden dimension
+        hidden_dimension = list(weights["patch_embedding.weight"].shape)[0]
+    else:
+        # Generate demo values
+        n_blocks = 1
+        patch_size = (2, 2)
+        hidden_dimension = 12
 
     print("Creating model object...")
     model = ViTLR(
         device=device,
-        num_blocks=max_block + 1,
-        input_size=(384, 384),
+        num_blocks=n_blocks,
+        input_size=input_size,
         num_classes=num_classes,
         dropout_rate=0.0,
+        patch_size=patch_size,
+        hidden_dimension=hidden_dimension,
     )
-    model.load_state_dict(weights)
+
+    if weights_path is not None:
+        model.load_state_dict(weights)
+
     model.to(device)
     model.eval()
 
@@ -74,12 +176,16 @@ def get_input(path, original_image_size, input_image_size, in_channels, device):
         dtype=np.uint8,
     )
 
-    # Load as grayscale
-    if in_channels == 1:
-        x[0, :, :, 0] = np.array(Image.open(path).convert("L"))
-    # Load normally
+    if path is not None:
+        # Load as grayscale
+        if in_channels == 1:
+            x[0, :, :, 0] = np.array(Image.open(path).convert("L"))
+        # Load normally
+        else:
+            x[0] = np.array(Image.open(path))
     else:
-        x[0] = np.array(Image.open(path))
+        # Generate random image if no path provided
+        x = np.random.randint(0, 255, x.shape)
 
     x = x.astype(np.uint8)
     x = bordering_resize(
@@ -94,22 +200,41 @@ def get_input(path, original_image_size, input_image_size, in_channels, device):
 
 
 def main():
-    # Parse arguments
+    # Parse and preprocess arguments
     print("Parsing arguments...")
+    parser = create_arg_parser()
+    args = parser.parse_args()
 
-    # TODO: Extract some of these from input, output, and weights
-    if "utils" in os.getcwd():
-        weights_path = "sample_data/lite_weights_sample.pth"
-        input_path = "sample_data/input_sample.png"
-    else:
-        weights_path = "utils/sample_data/lite_weights_sample.pth"
-        input_path = "utils/sample_data/input_sample.png"
-    num_classes = 50
-    original_image_size = (350, 350)
-    input_image_size = (384, 384)
-    in_channels = 3
-    data_type = "fp32"
+    data_type = args.data_type
     assert data_type in IMPLEMENTED_DATA_TYPES, "Invalid data type"
+
+    weights_path = args.weights_path
+    input_path = args.input_path
+    in_channels = args.in_channels
+    num_classes = args.num_classes
+
+    input_image_size = (args.input_image_width, args.input_image_height)
+    original_image_size = (args.original_image_width, args.original_image_height)
+
+    if (weights_path is not None) and (weights_path != "None"):
+        if "utils" in os.getcwd() and "utils" in weights_path:
+            weights_path = weights_path.replace("utils/", "")
+        elif "utils" not in os.getcwd() and "utils" not in weights_path:
+            weights_path = os.path.join("utils", weights_path)
+    else:
+        # Demo data
+        weights_path = None
+        num_classes = 1
+        input_image_size = (8, 8)
+
+    if (input_path is not None) and (input_path != "None"):
+        if "utils" in os.getcwd() and "utils" in input_path:
+            input_path = input_path.replace("utils/", "")
+        elif "utils" not in os.getcwd() and "utils" not in input_path:
+            input_path = os.path.join("utils", input_path)
+    else:
+        input_path = None
+        original_image_size = (6, 6)
 
     # Set seed
     print("Setting seed...")
@@ -124,7 +249,7 @@ def main():
 
     # Load model and weights
     model = load_model(
-        weights_path=weights_path, num_classes=num_classes, device=device
+        weights_path=weights_path, num_classes=num_classes, device=device, input_size=input_image_size
     )
 
     # Load sample input data - currently from class 32
@@ -144,19 +269,19 @@ def main():
 
     # Write header file
     print("\n------------------------------ Writing header file...")
-    # header_writer(data_type=data_type)
+    header_writer(data_type=data_type)
 
     # Write input data file
     print("\n------------------------------ Writing input data file...")
-    # input_writer(data=x[1][0], data_type=data_type)
+    input_writer(data=x[1][0], data_type=data_type)
 
     # Write model file
     print("\n------------------------------ Writing model file...")
-    # model_writer(model=model, data_type=data_type)
+    model_writer(model=model, data_type=data_type)
 
     # Write output data file
     print("\n------------------------------ Writing output file...")
-    # output_writer(data=y_pred, data_type=data_type)
+    output_writer(data=y_pred, data_type=data_type)
 
     # Write header with structures and blobs for model components
     print("\n------------------------------ Writing model components file...")

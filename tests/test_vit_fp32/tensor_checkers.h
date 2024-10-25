@@ -1,5 +1,17 @@
+#ifndef TENSOR_CHECKERS_H
+#define TENSOR_CHECKERS_H
+
+// Constants definition
+#define CHECK_TOLERANCE 0.001
+#define ERROR_TOLERANCE 0.001
+
+// Includes
+#include "math.h"
+
+
+// Functions definition
 // Mean error checker
-static inline void mean_error_checker(float *A, float *B, int length) {
+void mean_error_checker(float *A, float *B, int length) {
     float mean_err_rel = zero_init;
     float diff;
     float mean_abs_value = zero_init;
@@ -61,3 +73,5 @@ int elementwise_checker(float *tensor_out, float *tensor_ref, int size) {
 
     return error_flag;
 }
+
+#endif

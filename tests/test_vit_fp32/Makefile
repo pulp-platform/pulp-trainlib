@@ -4,11 +4,19 @@ APP = vit_fp32
 NUM_CORES?=8
 DATA_TYPE?=fp32
 
-N_HEADS?=12
+WEIGHTS_PATH?=None
+#WEIGHTS_PATH?=sample_data/lite_weights_sample.pth
+#WEIGHTS_PATH?=sample_data/weights_sample.pth
 
-TILE_H?= 32
-TILE_W?= 16
-TILE_DIM?= 512
+INPUT_PATH?=None
+#INPUT_PATH?=sample_data/input_sample.png
+
+# Will be ignored if weights path is None
+NUM_CLASSES?=50
+ORIGINAL_IMAGE_WIDTH?=350
+ORIGINAL_IMAGE_HEIGHT?=350
+INPUT_IMAGE_WIDTH?=384
+INPUT_IMAGE_HEIGHT?=384
 
 MATMUL_TYPE?=10
 # End of user code
@@ -52,4 +60,4 @@ include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:
 	rm -rf BUILD/
-	python3 utils/GM.py
+	python3 utils/GM.py --weights_path $(WEIGHTS_PATH) --data_type $(DATA_TYPE) --num_classes $(NUM_CLASSES) --original_image_width $(ORIGINAL_IMAGE_WIDTH) --original_image_height $(ORIGINAL_IMAGE_HEIGHT) --input_image_width $(INPUT_IMAGE_WIDTH) --input_image_height $(INPUT_IMAGE_HEIGHT)
