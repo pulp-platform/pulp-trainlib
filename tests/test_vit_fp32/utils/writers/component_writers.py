@@ -133,7 +133,6 @@ def conv2d_writer(
     blob_initializations += "\n"
 
     # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
-    # Populate blobs
     blob_connect = "\t// " + component_name.upper() + "\n"
 
     blob_connect += get_connect_text(
@@ -150,7 +149,7 @@ def conv2d_writer(
             bias_name, bias_data_name, bias_dim, bias_c, bias_w, bias_h
         )
 
-    # Connect blobs
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
     blob_connect += "\t" + args_name + ".input = &" + input_name + ";\n"
     blob_connect += "\t" + args_name + ".coeff = &" + weight_name + ";\n"
     blob_connect += "\t" + args_name + ".output = &" + output_name + ";\n"
@@ -163,6 +162,8 @@ def conv2d_writer(
         blob_connect += "\t" + args_name + ".USE_BIASES = 1;\n"
     else:
         blob_connect += "\t" + args_name + ".USE_BIASES = 0;\n"
+
+    blob_connect += "\n"
 
     return structures_and_blobs, blob_initializations, blob_connect
 
@@ -191,5 +192,56 @@ def flatten_writer(component, data_marker):
     return None
 
 
-def transpose_writer(component, data_marker):
-    return None
+def transpose_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_transpose_args"
+
+    if "input_from" in component.keys():
+        input_data_name = component["input_from"] + "_output_data"
+    else:
+        raise NotImplementedError("Transpose component must have an input_from key")
+
+    output_w, output_h = component["output_shape"]
+    output_c = 1
+    output_dim = output_c * output_w * output_h
+
+    output_data_name = component_name + "_output_data"
+
+    output_filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct transp_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+            "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_dim) + "];\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_dim, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".matrix = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".transp_matrix = " + output_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".M = " + str(output_w) + ";\n"
+    blob_connect += "\t" + args_name + ".N = " + str(output_h) + ";\n"
+
+    blob_connect += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect

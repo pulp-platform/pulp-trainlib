@@ -84,11 +84,11 @@ class ViTLR(nn.Module):
             # b, c, h, w
             x = self.patch_embedding(x)
 
-            # FIXME
-            return x
-
             # b, dim, nph, npw (number of patches - height and width)
             x = x.flatten(2).transpose(1, 2)
+
+            # FIXME
+            return x
 
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)
@@ -192,6 +192,13 @@ class ViTLR(nn.Module):
 
             # b, dim, nph, npw (number of patches - height and width)
             x = x.flatten(2).transpose(1, 2)
+
+            # This works because b will always be 1 (working with "virtual" batch sizes). TODO: Caution if this changes!
+            self.all_nodes["flatten_and_transpose"] = {
+                "input_from": "patch_embedding",
+                "output_shape": tuple(x.shape[1:]),
+            }
+            self.ordered_nodes.append("flatten_and_transpose")
 
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)

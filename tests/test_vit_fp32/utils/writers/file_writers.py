@@ -11,7 +11,7 @@ def header_writer(data_type):
     f = open("net_args.h", "w")
 
     f.write("#ifndef NET_ARGS_H\n")
-    f.write("#define NET_ARGS_H\n")
+    f.write("#define NET_ARGS_H\n\n")
 
     # Introductory elements
     if data_type == "fp32":
@@ -35,7 +35,7 @@ def input_writer(data, data_type):
     f = open("input_sequence.h", "w")
 
     f.write("#ifndef INPUT_SEQUENCE_H\n")
-    f.write("#define INPUT_SEQUENCE_H\n")
+    f.write("#define INPUT_SEQUENCE_H\n\n")
 
     # Introductory elements
     if data_type == "fp32":
@@ -68,7 +68,7 @@ def model_writer(model, data_type):
     f = open("model_defines.h", "w")
 
     f.write("#ifndef MODEL_DEFINES_H\n")
-    f.write("#define MODEL_DEFINES_H\n")
+    f.write("#define MODEL_DEFINES_H\n\n")
 
     # Introductory elements
     if data_type == "fp32":
@@ -110,7 +110,7 @@ def output_writer(data, data_type):
     f = open("output_sequence.h", "w")
 
     f.write("#ifndef OUTPUT_SEQUENCE_H\n")
-    f.write("#define OUTPUT_SEQUENCE_H\n")
+    f.write("#define OUTPUT_SEQUENCE_H\n\n")
 
     # Introductory elements
     if data_type == "fp32":
@@ -167,7 +167,7 @@ def model_components_writer(ordered_nodes, all_nodes, data_type):
     # Write to header
     f = open("model_components.h", "w")
     f.write("#ifndef MODEL_COMPONENTS_H\n")
-    f.write("#define MODEL_COMPONENTS_H\n")
+    f.write("#define MODEL_COMPONENTS_H\n\n")
     f.write("\n")
 
     f.write("// =============== Includes ===============\n")

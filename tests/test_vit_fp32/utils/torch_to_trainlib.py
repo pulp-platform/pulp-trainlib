@@ -13,6 +13,7 @@ from utils.writers.component_writers import (
 
 VIT_COMPONENTS_WRITERS = {
     "patch_embedding": conv2d_writer,
+    "flatten_and_transpose": transpose_writer,
     # "class_token": [
     #     {
     #         "trainlib_name": None,  # "Parameter",

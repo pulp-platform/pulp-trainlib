@@ -14,6 +14,10 @@ void forward() {
     // patch_embedding fw pass
     pulp_conv2d_fp32_fw_cl(&patch_embedding_conv2d_args);
 
+    // Shape: b, dim, nph, npw (number of patches - height and width)
+    // flatten and transpose
+    pi_cl_team_fork(NUM_CORES, transpose, &flatten_and_transpose_transpose_args);
+
     return;
 }
 
@@ -42,8 +46,8 @@ void net_step() {
 
     // Perform forward check
     printf("\nChecking forward step results: \n");
-    mean_error_checker(patch_embedding_output_data, OUTPUT, OUTPUT_SIZE);
-    elementwise_checker(patch_embedding_output_data, OUTPUT, OUTPUT_SIZE);
+    mean_error_checker(flatten_and_transpose_output_data, OUTPUT, OUTPUT_SIZE);
+    elementwise_checker(flatten_and_transpose_output_data, OUTPUT, OUTPUT_SIZE);
 
     return;
 }
