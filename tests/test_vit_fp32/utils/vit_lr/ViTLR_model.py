@@ -87,11 +87,11 @@ class ViTLR(nn.Module):
             # b, dim, nph, npw (number of patches - height and width)
             x = x.flatten(2).transpose(1, 2)
 
-            # FIXME
-            return x
-
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)
+
+            # FIXME
+            return x
 
             # b, nph * npw + 1, dim
             x = self.positional_embedding(x)
@@ -169,39 +169,59 @@ class ViTLR(nn.Module):
             activation = x.clone().detach()
 
         if is_pattern:
+            # ================== input ==================
             b, c, h, w = x.shape
 
             self.all_nodes["input"] = {
                 "output_shape": tuple(x.shape[1:]),
             }
             self.ordered_nodes.append("input")
+            next_input_shape = tuple(x.shape[1:])
 
+            # ================== patch_embedding ==================
             # b, c, h, w
             x = self.patch_embedding(x)
 
             self.all_nodes["patch_embedding"] = {
                 "input_from": "input",
+                "available_input": True,
                 "weights_shape": tuple(self.patch_embedding.weight.shape),
                 "bias_shape": tuple(self.patch_embedding.bias.shape),
+                "input_shape": next_input_shape,
                 "output_shape": tuple(x.shape[1:]),
 
                 "stride_h": self.patch_embedding.stride[0],
                 "stride_w": self.patch_embedding.stride[1],
             }
             self.ordered_nodes.append("patch_embedding")
+            next_input_shape = tuple(x.shape[1:])
 
+            # ================== flatten_and_transpose ==================
             # b, dim, nph, npw (number of patches - height and width)
             x = x.flatten(2).transpose(1, 2)
 
             # This works because b will always be 1 (working with "virtual" batch sizes). TODO: Caution if this changes!
             self.all_nodes["flatten_and_transpose"] = {
                 "input_from": "patch_embedding",
+                "available_input": False,
+                "input_shape": next_input_shape,
                 "output_shape": tuple(x.shape[1:]),
             }
             self.ordered_nodes.append("flatten_and_transpose")
+            next_input_shape = tuple(x.shape[1:])
 
+            # ================== cat ==================
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)
+
+            # This works because b will always be 1 (working with "virtual" batch sizes). TODO: Caution if this changes!
+            self.all_nodes["concat"] = {
+                "input_from": ["class_token", "flatten_and_transpose"],
+                "available_input": [True, False],
+                "input_shape": [tuple(self.class_token.expand(b, -1, -1).shape), next_input_shape],
+                "output_shape": tuple(x.shape[1:]),
+            }
+            self.ordered_nodes.append("concat")
 
             # b, nph * npw + 1, dim
             x = self.positional_embedding(x)

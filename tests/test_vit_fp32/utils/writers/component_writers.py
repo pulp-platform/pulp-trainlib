@@ -21,8 +21,99 @@ def parameter_writer(component, data_marker):
     return None
 
 
-def concat_writer(component, data_marker):
-    return None
+def copy_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    if "copy" in component_name:
+        args_name = component_name + "_args"
+    else:
+        args_name = component_name + "_copy_args"
+
+    if component["available_input"]:
+        input_data_name = component["input_from"].upper()
+    else:
+        input_data_name = component["input_from"] + "_output_data"
+
+    if len(component["output_shape"]) == 2:
+        output_w, output_h = component["output_shape"]
+        output_c = 1
+    else:
+        output_c, output_w, output_h = component["output_shape"]
+    output_dim = output_c * output_w * output_h
+
+    output_data_name = component["output_target"]
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct copy_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".from = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".to = " + output_data_name + " + " + str(component["output_offset"]) + ";\n"
+    blob_connect += "\t" + args_name + ".size = " + str(output_dim) + ";\n"
+
+    blob_connect += "\n"
+
+    return structures_and_blobs, "", blob_connect
+
+
+def concat_writer(component_name, component, data_marker):
+    # Initialize
+    structures_and_blobs, blob_initializations, blob_connect = "", "", ""
+
+    # Prepare output target
+    output_data_name = component_name + "_output_data"
+    output_dim = 0
+    output_filler = "zero_init"
+    for i, el in enumerate(component["input_from"]):
+        element_size = 1
+        for size in component["input_shape"][i]:
+            element_size *= size
+        output_dim += element_size
+
+    structures_and_blobs += "// " + component_name.upper() + "\n"
+    structures_and_blobs += (
+            "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_dim) + "];\n"
+    )
+    structures_and_blobs += "\n"
+
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+    blob_initializations += get_initialization_text(
+        output_dim, output_data_name, output_filler
+    )
+    blob_initializations += "\n"
+
+    output_offset = 0
+    for i, el in enumerate(component["input_from"]):
+        copy_name = component_name + "_copy_" + str(i)
+        copy_component = {
+            "input_from": el,
+            "output_target": output_data_name,
+            "available_input": component["available_input"][i],
+            "output_shape": component["input_shape"][i],
+            "output_offset": output_offset,
+        }
+
+        r1, r2, r3 = copy_writer(copy_name, copy_component, data_marker)
+
+        # Compute new offset
+        current_size = 1
+        for size in component["input_shape"][i]:
+            current_size *= size
+        output_offset += current_size
+
+        # Store text
+        structures_and_blobs += r1
+        blob_initializations += r2
+        blob_connect += r3
+
+    return structures_and_blobs, blob_initializations, blob_connect
 
 
 def conv2d_writer(

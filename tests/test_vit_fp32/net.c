@@ -18,6 +18,11 @@ void forward() {
     // flatten and transpose
     pi_cl_team_fork(NUM_CORES, transpose, &flatten_and_transpose_transpose_args);
 
+    // Shape: b, nph*npw, dim
+    // concat
+    pi_cl_team_fork(NUM_CORES, copy, &concat_copy_0_args);
+    pi_cl_team_fork(NUM_CORES, copy, &concat_copy_1_args);
+
     return;
 }
 
@@ -46,8 +51,8 @@ void net_step() {
 
     // Perform forward check
     printf("\nChecking forward step results: \n");
-    mean_error_checker(flatten_and_transpose_output_data, OUTPUT, OUTPUT_SIZE);
-    elementwise_checker(flatten_and_transpose_output_data, OUTPUT, OUTPUT_SIZE);
+    mean_error_checker(concat_output_data, OUTPUT, OUTPUT_SIZE);
+    elementwise_checker(concat_output_data, OUTPUT, OUTPUT_SIZE);
 
     return;
 }

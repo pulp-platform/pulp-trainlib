@@ -80,7 +80,7 @@ def model_writer(model, data_type):
     for i, (name, el) in enumerate(model.named_parameters()):
         print("[" + str(i) + "] Working on: " + name)
         # FIXME
-        if "patch_embedding" not in name:
+        if ("patch_embedding" not in name) and ("class_token" not in name):
             continue
 
         f.write(
@@ -149,10 +149,6 @@ def model_components_writer(ordered_nodes, all_nodes, data_type):
     # Write actual data
     for node in ordered_nodes:
         if node in VIT_COMPONENTS_WRITERS.keys():
-            all_nodes[node]["input_shape"] = all_nodes[all_nodes[node]["input_from"]][
-                "output_shape"
-            ]
-
             text_content = VIT_COMPONENTS_WRITERS[node](
                 component_name=node,
                 component=all_nodes[node],
