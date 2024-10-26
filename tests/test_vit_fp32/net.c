@@ -18,10 +18,14 @@ void forward() {
     // flatten and transpose
     pi_cl_team_fork(NUM_CORES, transpose, &flatten_and_transpose_transpose_args);
 
-    // Shape: b, nph*npw, dim
+    // Shape: b, nph * npw, dim
     // concat
     pi_cl_team_fork(NUM_CORES, copy, &concat_copy_0_args);
     pi_cl_team_fork(NUM_CORES, copy, &concat_copy_1_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // vect_sum
+    pi_cl_team_fork(NUM_CORES, vect_sum, &positional_embedding_vect_sum_args);
 
     return;
 }

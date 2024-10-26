@@ -80,7 +80,11 @@ def model_writer(model, data_type):
     for i, (name, el) in enumerate(model.named_parameters()):
         print("[" + str(i) + "] Working on: " + name)
         # FIXME
-        if ("patch_embedding" not in name) and ("class_token" not in name):
+        if (
+                ("patch_embedding" not in name) and
+                ("class_token" not in name) and
+                ("positional_embedding" not in name)
+        ):
             continue
 
         f.write(

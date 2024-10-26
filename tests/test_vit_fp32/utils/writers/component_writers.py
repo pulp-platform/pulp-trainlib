@@ -259,8 +259,47 @@ def conv2d_writer(
     return structures_and_blobs, blob_initializations, blob_connect
 
 
-def add_writer(component, data_marker):
-    return None
+def vector_sum_writer(component_name, component, **kwargs):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_vect_sum_args"
+
+    if component["available_input"][0]:
+        input_0_data_name = component["input_from"][0].upper()
+    else:
+        input_0_data_name = component["input_from"][0] + "_output_data"
+
+    if component["available_input"][1]:
+        input_1_data_name = component["input_from"][1].upper()
+    else:
+        input_1_data_name = component["input_from"][1] + "_output_data"
+
+    if len(component["shape"]) == 2:
+        w, h = component["shape"]
+        c = 1
+    else:
+        c, w, h = component["shape"]
+    dim = c * w * h
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct vect_sum_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".op_1 = " + input_0_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".op_2 = " + input_1_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".dest = " + input_0_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".size = " + str(dim) + ";\n"
+
+    blob_connect += "\n"
+
+    return structures_and_blobs, "", blob_connect
 
 
 def layer_norm_writer(component, data_marker):

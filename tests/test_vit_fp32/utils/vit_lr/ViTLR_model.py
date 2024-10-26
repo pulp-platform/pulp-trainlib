@@ -90,11 +90,11 @@ class ViTLR(nn.Module):
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)
 
-            # FIXME
-            return x
-
             # b, nph * npw + 1, dim
             x = self.positional_embedding(x)
+
+            # FIXME
+            return x
 
         # b, nph * npw + 1, dim
         assert (
@@ -210,21 +210,29 @@ class ViTLR(nn.Module):
             self.ordered_nodes.append("flatten_and_transpose")
             next_input_shape = tuple(x.shape[1:])
 
-            # ================== cat ==================
+            # ================== concat ==================
             # b, nph * npw, dim
             x = torch.cat((self.class_token.expand(b, -1, -1), x), dim=1)
 
             # This works because b will always be 1 (working with "virtual" batch sizes). TODO: Caution if this changes!
             self.all_nodes["concat"] = {
-                "input_from": ["class_token", "flatten_and_transpose"],
+                "input_from": ["CLASS_TOKEN", "flatten_and_transpose"],
                 "available_input": [True, False],
                 "input_shape": [tuple(self.class_token.expand(b, -1, -1).shape), next_input_shape],
                 "output_shape": tuple(x.shape[1:]),
             }
             self.ordered_nodes.append("concat")
 
+            # ================== positional_embedding ==================
             # b, nph * npw + 1, dim
             x = self.positional_embedding(x)
+
+            self.all_nodes["positional_embedding"] = {
+                "input_from": ["concat", "POSITIONAL_EMBEDDING_POS_EMBEDDING"],
+                "available_input": [False, True],
+                "shape": tuple(x.shape),
+            }
+            self.ordered_nodes.append("positional_embedding")
 
         # b, nph * npw + 1, dim
         assert (
