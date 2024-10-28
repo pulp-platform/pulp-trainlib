@@ -45,6 +45,7 @@
 #include "pulp_rnn_fp32.h"
 #include "pulp_mhsa_fp32.h"
 #include "pulp_instnorm_fp32.h"
+#include "pulp_layernorm_fp32.h"
 
 
 // FP16 structures
