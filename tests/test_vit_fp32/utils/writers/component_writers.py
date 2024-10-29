@@ -2,19 +2,32 @@ def get_initialization_text(dim, data_name, filler):
     to_return = (
             "\tfor (int i = 0; i < " + str(dim) + "; i++) " + data_name + "[i] = " + filler
     )
-    to_return += "[i];\n" if filler != "zero_init" else ";\n"
+    to_return += "[i];\n" if filler not in ["zero_init", "min_float"] else ";\n"
 
     return to_return
 
 
-def get_connect_text(name, data_name, dim, c, w, h):
-    return (
-            ("\t" + name + ".data = " + data_name + ";\n")
-            + ("\t" + name + ".dim = " + str(dim) + ";\n")
-            + ("\t" + name + ".C = " + str(c) + ";\n")
-            + ("\t" + name + ".W = " + str(w) + ";\n")
-            + ("\t" + name + ".H = " + str(h) + ";\n\n")
-    )
+def get_connect_text(blob_name, elements):
+    text = ""
+
+    for key in elements.keys():
+        text += "\t" + blob_name + "." + key + " = " + str(elements[key]) + ";\n"
+
+    return text
+
+
+def extract_sizes(shape):
+    if len(shape) == 1:
+        w = shape[0]
+        h = 1
+        c = 1
+    elif len(shape) == 2:
+        c = 1
+        w, h = shape
+    else:
+        c, w, h = shape
+
+    return c * w * h, w, h, c
 
 
 def parameter_writer(component, data_marker):
@@ -227,17 +240,45 @@ def conv2d_writer(
     blob_connect = "\t// " + component_name.upper() + "\n"
 
     blob_connect += get_connect_text(
-        input_name, input_data_name, input_dim, input_c, input_w, input_h
+        input_name,
+        {
+            "data": input_data_name,
+            "dim": input_dim,
+            "C": input_c,
+            "W": input_w,
+            "H": input_h,
+        }
     )
     blob_connect += get_connect_text(
-        weight_name, weight_data_name, weight_dim, weight_c, weight_w, weight_h
+        weight_name,
+        {
+            "data": weight_data_name,
+            "dim": weight_dim,
+            "C": weight_c,
+            "W": weight_w,
+            "H": weight_h,
+        }
     )
     blob_connect += get_connect_text(
-        output_name, output_data_name, output_dim, output_c, output_w, output_h
+        output_name,
+        {
+            "data": output_data_name,
+            "dim": output_dim,
+            "C": output_c,
+            "W": output_w,
+            "H": output_h,
+        },
     )
     if "bias_shape" in component.keys():
         blob_connect += get_connect_text(
-            bias_name, bias_data_name, bias_dim, bias_c, bias_w, bias_h
+            bias_name,
+            {
+                "data": bias_data_name,
+                "dim": bias_dim,
+                "C": bias_c,
+                "W": bias_w,
+                "H": bias_h,
+            },
         )
 
     # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
@@ -302,16 +343,476 @@ def vector_sum_writer(component_name, component, **kwargs):
     return structures_and_blobs, "", blob_connect
 
 
-def layer_norm_writer(component, data_marker):
-    return None
+def layer_norm_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    total_dimension = 1
+    for el in list(component["shape"]):
+        total_dimension *= el
+
+    component_blob_name = component_name + "_args"
+
+    output_data_name = component_name + "_output_data"
+    eps_data_name = component_name + "_eps"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct LayerNorm_args_fp32 " + component_blob_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += "PI_L1 " + data_marker + " " + eps_data_name + "[1] = {" + str(component["eps"]) + "};\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + output_data_name + "[" + str(total_dimension) + "];\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initialization = "\t// " + component_name.upper() + "\n"
+
+    blob_initialization += get_initialization_text(total_dimension, component_name + "_output_data", "zero_init")
+
+    blob_initialization += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        component_blob_name,
+        {
+            "x": component["input"],
+            "weight": component_name.upper() + "_WEIGHT",
+            "bias": component_name.upper() + "_BIAS",
+            "output": output_data_name,
+            "eps": eps_data_name,
+            "size": total_dimension,
+        }
+    )
+
+    return structures_and_blobs, blob_initialization, blob_connect
 
 
-def mhsa_writer(component, data_marker):
-    return None
+def mhsa_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    n_heads = component["n_heads"]
+
+    struct_name = component_name + "_args"
+
+    in_blob_name = component_name + "_in"
+    wgt_in_q_blob_name = component_name + "_wgt_in_q"
+    wgt_in_k_blob_name = component_name + "_wgt_in_k"
+    wgt_in_v_blob_name = component_name + "_wgt_in_v"
+    bias_in_q_blob_name = component_name + "_bias_in_q"
+    bias_in_k_blob_name = component_name + "_bias_in_k"
+    bias_in_v_blob_name = component_name + "_bias_in_v"
+    wgt_out_blob_name = component_name + "_wgt_out"
+    q_blob_name = component_name + "_q"
+    k_blob_name = component_name + "_k"
+    v_blob_name = component_name + "_v"
+    att_map_blob_name = component_name + "_att_map"
+    softmax_buffer_blob_name = component_name + "_softmax_buffer"
+    out_blob_name = component_name + "_out"
+
+    q_data_name = component_name + "_q_data"
+    k_data_name = component_name + "_k_data"
+    v_data_name = component_name + "_v_data"
+
+    att_map_data_name = component_name + "_att_map_data"
+    softmax_buffer_data_name = component_name + "_softmax_buffer_data"
+    out_data_name = component_name + "_out_data"
+    temp_data_name = component_name + "_temp_data"
+
+    sums_data_name = component_name + "_sums_data"
+    maxes_data_name = component_name + "_maxes_data"
+
+    q_data_size, q_data_w, q_data_h, q_data_c = extract_sizes(component["q_shape"])
+    k_data_size, k_data_w, k_data_h, k_data_c = extract_sizes(component["k_shape"])
+    v_data_size, v_data_w, v_data_h, v_data_c = extract_sizes(component["v_shape"])
+
+    att_map_data_size, att_map_data_w, att_map_data_h, att_map_data_c = extract_sizes(component["att_map_shape"])
+    softmax_buffer_data_size, softmax_buffer_data_w, softmax_buffer_data_h, softmax_buffer_data_c = extract_sizes(component["softmax_buffer_shape"])
+    out_data_size, out_data_w, out_data_h, out_data_c = extract_sizes(component["output_shape"])
+
+    temp_data_size = max(q_data_h * q_data_h, q_data_h * (q_data_w / n_heads))
+
+    sums_data_size, sums_data_w, sums_data_h, sums_data_c = extract_sizes((1, 1, q_data_h))
+    maxes_data_size, maxes_data_w, maxes_data_h, maxes_data_c = extract_sizes((1, 1, q_data_h))
+
+    in_data_size, in_data_w, in_data_h, in_data_c = extract_sizes(component["input_shape"])
+
+    wgt_in_q_data_size, wgt_in_q_data_w, wgt_in_q_data_h, wgt_in_q_data_c = extract_sizes(component["wgt_in_q_shape"])
+    wgt_in_k_data_size, wgt_in_k_data_w, wgt_in_k_data_h, wgt_in_k_data_c = extract_sizes(component["wgt_in_k_shape"])
+    wgt_in_v_data_size, wgt_in_v_data_w, wgt_in_v_data_h, wgt_in_v_data_c = extract_sizes(component["wgt_in_v_shape"])
+
+    bias_in_q_data_size, bias_in_q_data_w, bias_in_q_data_h, bias_in_q_data_c = extract_sizes(component["bias_in_q_shape"])
+    bias_in_k_data_size, bias_in_k_data_w, bias_in_k_data_h, bias_in_k_data_c = extract_sizes(component["bias_in_k_shape"])
+    bias_in_v_data_size, bias_in_v_data_w, bias_in_v_data_h, bias_in_v_data_c = extract_sizes(component["bias_in_v_shape"])
+
+    wgt_out_data_size, wgt_out_data_w, wgt_out_data_h, wgt_out_data_c = extract_sizes(component["wgt_proj_out_shape"])
+
+    zero_filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct Mhsa_args " + struct_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define element blobs
+    structures_and_blobs += ("PI_L2 struct blob\n" +
+                             "\t" + in_blob_name + ",\n" +
+                             "\t" + wgt_in_q_blob_name + ",\n" +
+                             "\t" + wgt_in_k_blob_name + ",\n" +
+                             "\t" + wgt_in_v_blob_name + ",\n" +
+                             "\t" + bias_in_q_blob_name + ",\n" +
+                             "\t" + bias_in_k_blob_name + ",\n" +
+                             "\t" + bias_in_v_blob_name + ",\n" +
+                             "\t" + wgt_out_blob_name + ",\n" +
+                             "\t" + q_blob_name + ",\n" +
+                             "\t" + k_blob_name + ",\n" +
+                             "\t" + v_blob_name + ",\n" +
+                             "\t" + att_map_blob_name + ",\n" +
+                             "\t" + softmax_buffer_blob_name + ",\n" +
+                             "\t" + out_blob_name + ";\n"
+                             )
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += "PI_L2 " + data_marker + " " + q_data_name + "[" + str(q_data_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + k_data_name + "[" + str(k_data_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + v_data_name + "[" + str(v_data_size) + "];\n"
+
+    structures_and_blobs += "PI_L2 " + data_marker + " " + att_map_data_name + "[" + str(att_map_data_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + softmax_buffer_data_name + "[" + str(softmax_buffer_data_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + out_data_name + "[" + str(out_data_size) + "];\n"
+
+    structures_and_blobs += "PI_L2 " + data_marker + " " + temp_data_name + "[" + str(temp_data_size) + "];\n"
+
+    structures_and_blobs += "PI_L2 " + data_marker + " " + sums_data_name + "[" + str(sums_data_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + maxes_data_name + "[" + str(maxes_data_size) + "];\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(q_data_size, q_data_name, zero_filler)
+    blob_initializations += get_initialization_text(k_data_size, k_data_name, zero_filler)
+    blob_initializations += get_initialization_text(v_data_size, v_data_name, zero_filler)
+    blob_initializations += get_initialization_text(att_map_data_size, att_map_data_name, zero_filler)
+    blob_initializations += get_initialization_text(softmax_buffer_data_size, softmax_buffer_data_name, zero_filler)
+    blob_initializations += get_initialization_text(out_data_size, out_data_name, zero_filler)
+    blob_initializations += get_initialization_text(temp_data_size, temp_data_name, zero_filler)
+    blob_initializations += get_initialization_text(sums_data_size, sums_data_name, zero_filler)
+    blob_initializations += get_initialization_text(maxes_data_size, maxes_data_name, "min_float")
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        in_blob_name,
+        {
+            "data": component["input"],
+            "dim": in_data_size,
+            "W": in_data_w,
+            "H": in_data_h,
+            "C": in_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        wgt_in_q_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_Q_WEIGHT",
+            "dim": wgt_in_q_data_size,
+            "W": wgt_in_q_data_w,
+            "H": wgt_in_q_data_h,
+            "C": wgt_in_q_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        wgt_in_k_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_K_WEIGHT",
+            "dim": wgt_in_k_data_size,
+            "W": wgt_in_k_data_w,
+            "H": wgt_in_k_data_h,
+            "C": wgt_in_k_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        wgt_in_v_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_V_WEIGHT",
+            "dim": wgt_in_v_data_size,
+            "W": wgt_in_v_data_w,
+            "H": wgt_in_v_data_h,
+            "C": wgt_in_v_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        bias_in_q_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_Q_BIAS",
+            "dim": bias_in_q_data_size,
+            "W": bias_in_q_data_w,
+            "H": bias_in_q_data_h,
+            "C": bias_in_q_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        bias_in_k_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_K_BIAS",
+            "dim": bias_in_k_data_size,
+            "W": bias_in_k_data_w,
+            "H": bias_in_k_data_h,
+            "C": bias_in_k_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        bias_in_v_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_V_BIAS",
+            "dim": bias_in_v_data_size,
+            "W": bias_in_v_data_w,
+            "H": bias_in_v_data_h,
+            "C": bias_in_v_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        wgt_out_blob_name,
+        {
+            "data": component_name.upper() + "_PROJ_OUT_WEIGHT",
+            "dim": wgt_out_data_size,
+            "W": wgt_out_data_w,
+            "H": wgt_out_data_h,
+            "C": wgt_out_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        q_blob_name,
+        {
+            "data": q_data_name,
+            "dim": q_data_size,
+            "W": q_data_w,
+            "H": q_data_h,
+            "C": q_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        k_blob_name,
+        {
+            "data": k_data_name,
+            "dim": k_data_size,
+            "W": k_data_w,
+            "H": k_data_h,
+            "C": k_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        v_blob_name,
+        {
+            "data": v_data_name,
+            "dim": v_data_size,
+            "W": v_data_w,
+            "H": v_data_h,
+            "C": v_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        out_blob_name,
+        {
+            "data": out_data_name,
+            "dim": out_data_size,
+            "W": out_data_w,
+            "H": out_data_h,
+            "C": out_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        att_map_blob_name,
+        {
+            "data": att_map_data_name,
+            "dim": att_map_data_size,
+            "W": att_map_data_w,
+            "H": att_map_data_h,
+            "C": att_map_data_c,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        softmax_buffer_blob_name,
+        {
+            "data": softmax_buffer_data_name,
+            "dim": softmax_buffer_data_size,
+            "W": softmax_buffer_data_w,
+            "H": softmax_buffer_data_h,
+            "C": softmax_buffer_data_c,
+        },
+    )
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + struct_name + ".input = &" + in_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".n_heads = " + str(n_heads) + ";\n"
+
+    blob_connect += "\t" + struct_name + ".q = &" + q_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".k = &" + k_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".v = &" + v_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".output = &" + out_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".coeff_in_q = &" + wgt_in_q_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".coeff_in_k = &" + wgt_in_k_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".coeff_in_v = &" + wgt_in_v_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".bias_in_q = &" + bias_in_q_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".bias_in_k = &" + bias_in_k_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".bias_in_v = &" + bias_in_v_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".coeff_out = &" + wgt_out_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".attention_map = &" + att_map_blob_name + ";\n"
+
+    blob_connect += "\t" + struct_name + ".temp_buffer = " + temp_data_name + ";\n"
+    blob_connect += "\t" + struct_name + ".softmax_buffer = &" + softmax_buffer_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".sums = " + sums_data_name + ";\n"
+    blob_connect += "\t" + struct_name + ".maxes = " + maxes_data_name + ";\n"
+
+    blob_connect += "\tmhsa_args.opt_matmul_type_fw = MATMUL_TYPE;"
+    blob_connect += "\tmhsa_args.opt_matmul_type_wg = MATMUL_TYPE;"
+    blob_connect += "\tmhsa_args.opt_matmul_type_ig = MATMUL_TYPE;"
+
+    return structures_and_blobs, blob_initializations, blob_connect
 
 
-def linear_writer(component, data_marker):
-    return None
+def linear_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_linear_args"
+
+    input_blob_name = component_name + "_input"
+    weight_blob_name = component_name + "_weight"
+    bias_blob_name = component_name + "_bias"
+    output_blob_name = component_name + "_output"
+
+    input_data_name = component["input"]
+    weight_data_name = component_name.upper() + "_WEIGHT"
+    bias_data_name = component_name.upper() + "_BIAS"
+    output_data_name = component_name + "_output_data"
+
+    input_size = extract_sizes(component["input_shape"])[0]
+    weight_size = extract_sizes(component["weight_shape"])[0]
+    bias_size = extract_sizes(component["bias_shape"])[0]
+    output_size = extract_sizes(component["output_shape"])[0]
+
+    filler = "zero_init"
+    # TODO: Make this dynamic
+    use_bias = 1
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct Linear_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define blobs
+    structures_and_blobs += (
+            "PI_L2 struct blob\n" +
+            "\t" + input_blob_name + ",\n" +
+            "\t" + weight_blob_name + ",\n" +
+            "\t" + bias_blob_name + ",\n" +
+            "\t" + output_blob_name + ";\n"
+    )
+
+    # Define data variables
+    structures_and_blobs += "PI_L2 " + data_marker + " " + input_data_name + "[" + str(input_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + weight_data_name + "[" + str(weight_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + bias_data_name + "[" + str(bias_size) + "];\n"
+    structures_and_blobs += "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_size) + "];\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_size, output_data_name, filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        input_blob_name,
+        {
+            "data": input_data_name,
+            "dim": input_size,
+        }
+    )
+
+    blob_connect += get_connect_text(
+        weight_blob_name,
+        {
+            "data": weight_data_name,
+            "dim": weight_size,
+        }
+    )
+
+    blob_connect += get_connect_text(
+        bias_blob_name,
+        {
+            "data": bias_data_name,
+            "dim": bias_size,
+        }
+    )
+
+    blob_connect += get_connect_text(
+        output_blob_name,
+        {
+            "data": output_data_name,
+            "dim": output_size,
+        }
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = &" + input_blob_name + ";\n"
+    blob_connect += "\t" + args_name + ".input = &" + weight_blob_name + ";\n"
+    blob_connect += "\t" + args_name + ".input = &" + bias_blob_name + ";\n"
+    blob_connect += "\t" + args_name + ".input = &" + output_blob_name + ";\n"
+
+    blob_connect += "\t" + args_name + ".skip_wg_grad = 0;"
+    blob_connect += "\t" + args_name + ".skip_in_grad = 0;"
+    blob_connect += "\t" + args_name + ".opt_matmul_type_fw = MATMUL_TYPE;"
+    blob_connect += "\t" + args_name + ".opt_matmul_type_wg = MATMUL_TYPE;"
+    blob_connect += "\t" + args_name + ".opt_matmul_type_ig = MATMUL_TYPE;"
+    blob_connect += "\t" + args_name + ".use_biases = " + str(use_bias) + ";"
+
+    blob_connect += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect
 
 
 def tanh_writer(component, data_marker):
@@ -375,3 +876,8 @@ def transpose_writer(component_name, component, data_marker):
     blob_connect += "\n"
 
     return structures_and_blobs, blob_initializations, blob_connect
+
+
+def gelu_writer(component_name, component, data_marker):
+    # return structures_and_blobs, blob_initializations, blob_connect
+    return "", "", ""

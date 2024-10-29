@@ -93,9 +93,6 @@ class ViTLR(nn.Module):
             # b, nph * npw + 1, dim
             x = self.positional_embedding(x)
 
-            # FIXME
-            return x
-
         # b, nph * npw + 1, dim
         assert (
                 x.shape[1] == self.seq_len
@@ -108,6 +105,9 @@ class ViTLR(nn.Module):
             x, activation = self.transformer(x=(is_pattern, x), get_activation=True)
         else:
             x = self.transformer(x=(is_pattern, x), get_activation=False)
+
+        # FIXME
+        return x
 
         # b, nph * npw + 1, dim
         x = torch.tanh(x)
@@ -234,6 +234,7 @@ class ViTLR(nn.Module):
             }
             self.ordered_nodes.append("positional_embedding")
 
+        # ================== transformer ==================
         # b, nph * npw + 1, dim
         assert (
                 x.shape[1] == self.seq_len
@@ -243,9 +244,12 @@ class ViTLR(nn.Module):
             f", got {x.shape[2]}."
         )
         if get_activation and is_pattern:
-            x, activation = self.transformer(x=(is_pattern, x), get_activation=True)
+            x, activation, all_nodes_transformer, ordered_nodes_transformer = self.transformer.get_model_graph_information(x=(is_pattern, x), get_activation=True)
         else:
-            x = self.transformer(x=(is_pattern, x), get_activation=False)
+            x, all_nodes_transformer, ordered_nodes_transformer = self.transformer.get_model_graph_information(x=(is_pattern, x), get_activation=False)
+
+        self.all_nodes = self.all_nodes | all_nodes_transformer
+        self.ordered_nodes += ordered_nodes_transformer
 
         # b, nph * npw + 1, dim
         x = torch.tanh(x)

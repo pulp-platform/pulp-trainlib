@@ -27,6 +27,43 @@ void forward() {
     // vect_sum
     pi_cl_team_fork(NUM_CORES, vect_sum, &positional_embedding_vect_sum_args);
 
+    // TODO: Loop over transformer blocks
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_norm1
+    pulp_layerNorm_fp32_fw_cl(&transformer_blocks_0_norm1_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_attn
+    pulp_mhsa_fp32_fw_cl(&transformer_blocks_0_mhsa_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_proj
+    pulp_linear_fp32_fw_cl(&transformer_blocks_0_proj_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_add_1
+    pi_cl_team_fork(NUM_CORES, vect_sum, &transformer_blocks_0_add_1_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_norm2
+    pulp_layerNorm_fp32_fw_cl(&transformer_blocks_0_norm2_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_pwff_fc1
+    pulp_linear_fp32_fw_cl(&transformer_blocks_0_pwff_fc1_args);
+
+    // Shape: b, dim, nph * npw + 1
+    // transformer_blocks_0_pwff_gelu
+    // TODO: IMPLEMENT
+
+    // Shape: b, dim, nph * npw + 1
+    // transformer_blocks_0_pwff_fc2
+    pulp_linear_fp32_fw_cl(&transformer_blocks_0_pwff_fc2_args);
+
+    // Shape: b, nph * npw + 1, dim
+    // transformer_blocks_0_add_2
+    pi_cl_team_fork(NUM_CORES, vect_sum, &transformer_blocks_0_add_2_args);
+
     return;
 }
 

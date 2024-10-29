@@ -49,6 +49,7 @@ APP_CFLAGS += -DSTATS
 
 # =============== SOURCES ===============
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_layernorm_fp32.c
 
 # CONV2D REQUIRED SOURCES
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c

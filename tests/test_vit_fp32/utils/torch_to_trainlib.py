@@ -9,11 +9,31 @@ from utils.writers.component_writers import (
     tanh_writer,
     flatten_writer,
     transpose_writer,
+    gelu_writer,
 )
+
 
 VIT_COMPONENTS_WRITERS = {
     "patch_embedding": conv2d_writer,
     "flatten_and_transpose": transpose_writer,
     "concat": concat_writer,
     "positional_embedding": vector_sum_writer,
+    "transformer_blocks_0_norm1": layer_norm_writer,
+    "transformer_blocks_0_attn": mhsa_writer,
+    "transformer_blocks_0_proj": linear_writer,
+    "transformer_blocks_0_add_1": vector_sum_writer,
+    "transformer_blocks_0_norm2": layer_norm_writer,
+    "transformer_blocks_0_pwff_fc1": linear_writer,
+    "transformer_blocks_0_pwff_gelu": gelu_writer,
+    "transformer_blocks_0_pwff_fc2": linear_writer,
+    "transformer_blocks_0_add_2": vector_sum_writer,
+    "transformer_blocks_1_norm1": layer_norm_writer,
+    "transformer_blocks_1_attn": mhsa_writer,
+    "transformer_blocks_1_proj": linear_writer,
+    "transformer_blocks_1_add_1": vector_sum_writer,
+    "transformer_blocks_1_norm2": layer_norm_writer,
+    "transformer_blocks_1_pwff_fc1": linear_writer,
+    "transformer_blocks_1_pwff_gelu": gelu_writer,
+    "transformer_blocks_1_pwff_fc2": linear_writer,
+    "transformer_blocks_1_add_2": vector_sum_writer,
 }

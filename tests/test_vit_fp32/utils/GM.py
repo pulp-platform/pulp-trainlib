@@ -138,11 +138,15 @@ def load_model(weights_path, num_classes, device, input_size):
 
         # Find hidden dimension
         hidden_dimension = list(weights["patch_embedding.weight"].shape)[0]
+
+        # Find ff_dim
+        ff_dim = list(weights["transformer.blocks.0.pwff.fc1.weight"].shape)[0]
     else:
         # Generate demo values
-        n_blocks = 1
+        n_blocks = 2
         patch_size = (2, 2)
         hidden_dimension = 12
+        ff_dim = 4
 
     print("Creating model object...")
     model = ViTLR(
@@ -153,6 +157,7 @@ def load_model(weights_path, num_classes, device, input_size):
         dropout_rate=0.0,
         patch_size=patch_size,
         hidden_dimension=hidden_dimension,
+        ff_dim=ff_dim,
     )
 
     if weights_path is not None:
