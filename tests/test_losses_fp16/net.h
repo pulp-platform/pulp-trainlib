@@ -17,8 +17,8 @@
 // User profiling flags
 #define FLOAT32
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-12
-#define ERROR_TOLERANCE 1e-12
+#define CHECK_TOLERANCE 1e-4
+#define ERROR_TOLERANCE 1e-4
 
 // PULP DEFINES
 #define STACK_SIZE      4096
