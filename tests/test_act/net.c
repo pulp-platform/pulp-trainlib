@@ -48,6 +48,10 @@ PI_L1 float sigmoid_out[OUT_SIZE];
 PI_L1 float sigmoid_out_grad[OUT_SIZE];
 PI_L1 float sigmoid_in_grad[IN_SIZE];
 
+PI_L1 struct blob gelu_in_blob;
+PI_L1 struct blob gelu_out_blob;
+PI_L1 float gelu_out[OUT_SIZE];
+
 #elif DATA_TYPE == FP16
 // Inout data
 PI_L1 struct act_args_fp16 act_args;
@@ -141,6 +145,19 @@ void prepare_data () {
     sigmoid_out_blob.H = Tout_H;
     sigmoid_out_blob.W = Tout_W;
     sigmoid_out_blob.C = Tout_C;
+
+    // GELU args
+    gelu_in_blob.data = GELU_IN;
+    gelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
+    gelu_in_blob.H = Tin_H;
+    gelu_in_blob.W = Tin_W;
+    gelu_in_blob.C = Tin_C;
+
+    gelu_out_blob.data = gelu_out;
+    gelu_out_blob.dim = Tout_C * Tout_H * Tout_W;
+    gelu_out_blob.H = Tout_H;
+    gelu_out_blob.W = Tout_W;
+    gelu_out_blob.C = Tout_C;
 }
 
 
@@ -349,6 +366,35 @@ void net_step () {
     verify_tensor_fp16(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
     #else
     #endif
+
+    // ~~~~~~~~~~ Verify GELU with tanh approximation activation ~~~~~~~~~~
+    printf("\n----- GELU - TANH APPROX - RESULTS -----\n");
+
+    // Prepare GELU struct
+    act_args.input = &gelu_in_blob;
+    act_args.output = &gelu_out_blob;
+
+    // Print statistics for forward pass
+#ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+#endif
+
+    // Apply GELU activation
+#if DATA_TYPE == FP32
+    pulp_gelu_tanh_approx_fp32_fw_cl(&act_args);
+#endif
+
+    // Stop the statistics for the forward pass
+#ifdef PROF_NET
+    STOP_STATS();
+#endif
+
+    // Check output match
+    printf("\nChecking output..\n");
+#if DATA_TYPE == FP32
+    verify_tensor(gelu_out, GELU_OUTPUT, OUT_SIZE, GELU_TANH_APPROX_ERROR_TOLERANCE);
+#endif
 
     return;
 }
