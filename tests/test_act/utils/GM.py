@@ -66,6 +66,15 @@ class GELU_model(nn.Module):
         return self.gelu(x, approximate="tanh")
 
 
+class tanh_model(nn.Module):
+    def __init__(self):
+        super(tanh_model, self).__init__()
+        self.tanh = torch.tanh
+
+    def forward(self, x):
+        return self.tanh(x)
+
+
 def main():
     # Parse and store the arguments
     parser = argparse.ArgumentParser("Activations tests")
@@ -89,6 +98,7 @@ def main():
     softmax_input = torch.ones(in_h, in_w)
     sigmoid_input = torch.ones(in_c, in_h, in_w)
     gelu_input = torch.ones(in_c, in_h, in_w)
+    tanh_input = torch.ones(in_c, in_h, in_w)
 
     with torch.no_grad():
         for i in range(in_h):
@@ -99,6 +109,7 @@ def main():
                     relu_input[k, i, j] += (i + j + k) * value
                     sigmoid_input[k, i, j] += (i + j + k) * value
                     gelu_input[k, i, j] += (i + j + k) * value
+                    tanh_input[k, i, j] += (i + j + k) * value
 
     print("relu_input:")
     print(relu_input)
@@ -108,12 +119,15 @@ def main():
     print(sigmoid_input)
     print("gelu_input:")
     print(gelu_input)
+    print("tanh_input:")
+    print(tanh_input)
 
     # Generate fake labels
     relu_label = torch.ones(in_c, int(in_h), int(in_w))
     softmax_label = torch.ones(int(in_h), int(in_w))
     sigmoid_label = torch.ones(in_c, int(in_h), int(in_w))
     gelu_label = torch.ones(in_c, int(in_h), int(in_w))
+    tanh_label = torch.ones(in_c, int(in_h), int(in_w))
 
     print("relu_label:")
     print(relu_label.size())
@@ -123,11 +137,14 @@ def main():
     print(sigmoid_label.size())
     print("gelu_label:")
     print(gelu_label.size())
+    print("tanh_label:")
+    print(tanh_label.size())
 
     relu_input.requires_grad = True
     softmax_input.requires_grad = True
     sigmoid_input.requires_grad = True
     gelu_input.requires_grad = True
+    tanh_input.requires_grad = True
 
     # Define loss function
     loss_fn = nn.MSELoss()
@@ -137,17 +154,20 @@ def main():
     softmax = SoftmaxFastExp
     sigmoid = Sigmoid()
     gelu = GELU_model()
+    tanh = tanh_model()
 
     # Compute the output and the backward of both
     relu_out = relu(relu_input)
     softmax_out = softmax.apply(softmax_input[None, ...])
     sigmoid_out = sigmoid(sigmoid_input)
     gelu_out = gelu(gelu_input)
+    tanh_out = tanh(tanh_input)
 
     relu_out.retain_grad()
     softmax_out.retain_grad()
     sigmoid_out.retain_grad()
     gelu_out.retain_grad()
+    tanh_out.retain_grad()
 
     print("relu_out: ")
     print(relu_out.size())
@@ -157,16 +177,20 @@ def main():
     print(sigmoid_out.size())
     print("gelu_out: ")
     print(gelu_out.size())
+    print("tanh_out: ")
+    print(tanh_out.size())
 
     relu_loss = loss_fn(relu_out, relu_label)
     softmax_loss = loss_fn(softmax_out, softmax_label)
     sigmoid_loss = loss_fn(sigmoid_out, sigmoid_label)
     gelu_loss = loss_fn(gelu_out, gelu_label)
+    tanh_loss = loss_fn(tanh_out, tanh_label)
 
     relu_loss.backward()
     softmax_loss.backward()
     sigmoid_loss.backward()
     gelu_loss.backward()
+    tanh_loss.backward()
 
     print("\n*** RELU DATA ***")
     print("ReLU out is:")
@@ -199,6 +223,14 @@ def main():
     print(gelu_out.grad)
     print("GeLU in grad is:")
     print(gelu_input.grad)
+
+    print("\n*** TANH DATA ***")
+    print("tanh out is:")
+    print(tanh_out)
+    print("tanh out grad is:")
+    print(tanh_out.grad)
+    print("tanh in grad is:")
+    print(tanh_input.grad)
 
     # Write setup to file
     f = open("init_defines.h", "w")
@@ -250,6 +282,13 @@ def main():
         f.write("PI_L1 float GELU_IN[IN_SIZE] = {" + dump.tensor_to_string(gelu_input) + "};\n")
         f.write("PI_L2 float GELU_IN_GRAD[IN_SIZE] = {" + dump.tensor_to_string(gelu_input.grad) + "};\n")
         f.write("PI_L1 float GELU_LABEL[OUT_SIZE] = {" + dump.tensor_to_string(gelu_label) + "};\n")
+
+        f.write("PI_L2 float TANH_LOSS = {" + str(tanh_loss.data.item()) + "};\n")
+        f.write("PI_L2 float TANH_OUTPUT[OUT_SIZE] = {" + dump.tensor_to_string(tanh_out) + "};\n")
+        f.write("PI_L2 float TANH_OUTPUT_GRAD[OUT_SIZE] = {" + dump.tensor_to_string(tanh_out.grad) + "};\n")
+        f.write("PI_L1 float TANH_IN[IN_SIZE] = {" + dump.tensor_to_string(tanh_input) + "};\n")
+        f.write("PI_L2 float TANH_IN_GRAD[IN_SIZE] = {" + dump.tensor_to_string(tanh_input.grad) + "};\n")
+        f.write("PI_L1 float TANH_LABEL[OUT_SIZE] = {" + dump.tensor_to_string(tanh_label) + "};\n")
 
         f.close()
     elif data_type == 'FP16':

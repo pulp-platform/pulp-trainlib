@@ -27,6 +27,7 @@
 // Inout data
 PI_L1 struct act_args act_args;
 PI_L1 struct softmax_args softmax_args;
+PI_L1 struct tanh_args tanh_args;
 
 PI_L1 struct blob relu_in_blob;
 PI_L1 struct blob relu_out_blob;
@@ -51,6 +52,8 @@ PI_L1 float sigmoid_in_grad[IN_SIZE];
 PI_L1 struct blob gelu_in_blob;
 PI_L1 struct blob gelu_out_blob;
 PI_L1 float gelu_out[OUT_SIZE];
+
+PI_L1 float tanh_out[OUT_SIZE];
 
 #elif DATA_TYPE == FP16
 // Inout data
@@ -394,6 +397,36 @@ void net_step () {
     printf("\nChecking output..\n");
 #if DATA_TYPE == FP32
     verify_tensor(gelu_out, GELU_OUTPUT, OUT_SIZE, GELU_TANH_APPROX_ERROR_TOLERANCE);
+#endif
+
+    // ~~~~~~~~~~ Verify tanh activation ~~~~~~~~~~
+    printf("\n----- TANH RESULTS -----\n");
+
+    // Prepare TANH struct
+    tanh_args.input = TANH_IN;
+    tanh_args.output = tanh_out;
+    tanh_args.dim = OUT_SIZE;
+
+    // Print statistics for forward pass
+#ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+#endif
+
+    // Apply TANH activation
+#if DATA_TYPE == FP32
+    tanh_prll(&tanh_args);
+#endif
+
+    // Stop the statistics for the forward pass
+#ifdef PROF_NET
+    STOP_STATS();
+#endif
+
+    // Check output match
+    printf("\nChecking output..\n");
+#if DATA_TYPE == FP32
+    verify_tensor(tanh_out, TANH_OUTPUT, OUT_SIZE, TANH_ERROR_TOLERANCE);
 #endif
 
     return;
