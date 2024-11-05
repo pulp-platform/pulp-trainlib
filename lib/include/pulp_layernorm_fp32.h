@@ -21,6 +21,7 @@
  * @brief output: output tensor
  * @brief eps: epsilon value
  * @brief size: size of the tensors
+ * @brief step_size: step size over which the normalization is performed
  */
 struct LayerNorm_args_fp32 {
     float *x;
@@ -29,6 +30,7 @@ struct LayerNorm_args_fp32 {
     float *output;
     float *eps;
     int size;
+    int step_size;
 };
 
 /**

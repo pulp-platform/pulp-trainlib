@@ -4,8 +4,8 @@ APP = layernorm_fp32
 NUM_CORES?=8
 DATA_TYPE?=fp32
 
-INPUT_HEIGHT?=8
-INPUT_WIDTH?=12
+INPUT_WIDTH?=200
+INPUT_HEIGHT?=280
 # End of user code
 
 TASK_NAME=sst-2
@@ -35,7 +35,6 @@ APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
 APP_CFLAGS += -DSTATS
 
 # =============== SOURCES ===============
-APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_layernorm_fp32.c
 
 include $(RULES_DIR)/pmsis_rules.mk

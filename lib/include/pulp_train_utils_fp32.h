@@ -503,42 +503,6 @@ struct mm_bias_add_args {
 
 
 /**
- * @brief Arguments for the first operation of the LayerNorm forward pass.
- * @param input     *float: input tensor
- * @param sum       *float: sum of the elements of the input tensor
- * @param sum_sq    *float: sum of the squared elements of the input tensor
- * @param size      int: size of the input tensor
- */
-struct layer_norm_op_1 {
-    float *input;
-    float *sum_of_elements;
-    float *sum_of_squared_elements;
-    int size;
-};
-
-
-/**
- * @brief Arguments for the second operation of the LayerNorm forward pass.
- * @param input     *float: input tensor
- * @param weight    *float: weight (gamma) tensor
- * @param bias      *float: bias (beta) tensor
- * @param output    *float: output tensor (to be computed)
- * @param mean      *float: mean of the input tensor (pre-computed)
- * @param sqrt_var  *float: square root of the variance of the input tensor (pre-computed)
- * @param size      int: sizes of the tensors
- */
-struct layer_norm_op_2 {
-    float *input;
-    float *weight;
-    float *bias;
-    float *output;
-    float *mean;
-    float *sqrt_var;
-    int size;
-};
-
-
-/**
  * =====> FUNCTIONS <=====
  */
 
@@ -761,20 +725,3 @@ void pulp_sm_bw_op_2(void *void_args);
  * @param (void *) (struct mm_bias_add_args void_args)
  */
 void mm_bias_add_transposed(void *void_args);
-
-
-// LayerNorm-specific function
-/**
- * @brief The first operation of the LayerNorm forward pass. It receives an input tensor and computes the sum
- * of the elements and the sum of the squared elements of the input tensor.
- * @param (void *)  (struct layer_norm_op_1 void_args)
- */
-void pulp_layer_norm_op_1(void *ln_op1_args);
-
-
-/**
- * @brief The second operation of the LayerNorm forward pass. It receives an input tensor, a weight tensor, a bias tensor,
- * the mean and the square root of the variance of the input tensor, and computes the output tensor.
- * @param (void *)  (struct layer_norm_op_2 void_args)
- */
-void pulp_layer_norm_op_2(void *ln_op2_args);

@@ -35,12 +35,13 @@ void init_and_connect_blobs() {
     layer_norm_args.output = output_data;
     layer_norm_args.eps = eps;
     layer_norm_args.size = SHAPE;
+    layer_norm_args.step_size = STEP_SIZE;
 }
 
 // ~~~~~~~~~~ FORWARD AND MAIN FUNCS ~~~~~~~~~~
 // Define forward step function
 void forward() {
-    pulp_layerNorm_fp32_fw_cl(&layer_norm_args);
+    pi_cl_team_fork(NUM_CORES, pulp_layerNorm_fp32_fw_cl, &layer_norm_args);
     return;
 }
 

@@ -33,10 +33,11 @@ def create_arg_parser():
     return parser
 
 
-def write_initial_defines(x):
+def write_initial_defines(x, step_size):
     f = open("layer_norm_init_defines.h", "w")
 
     f.write("#define SHAPE " + str(x.numel()) + "\n")
+    f.write("#define STEP_SIZE " + str(step_size) + "\n")
 
     f.close()
 
@@ -87,7 +88,7 @@ def main():
     x = torch.rand(input_shape)
 
     # Define layer
-    layer = nn.LayerNorm(x.shape)
+    layer = nn.LayerNorm(normalized_shape=[input_shape[1]])
 
     # Randomize the weight and bias of the layer
     layer.weight = nn.Parameter(torch.rand(layer.weight.shape))
@@ -97,7 +98,7 @@ def main():
     output = layer(x)
 
     # Write to files
-    write_initial_defines(x)
+    write_initial_defines(x=x, step_size=input_shape[1])
     write_input(x=x, data_identifier=data_identifier)
     write_wb(layer=layer, data_identifier=data_identifier)
     write_output(output, data_identifier=data_identifier)

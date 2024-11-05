@@ -19,7 +19,9 @@ void pulp_layerNorm_fp32_fw_cl(void *layer_norm_args) {
      * ((x - mean) / (var + eps)) * weight + bias
      *
      * where:
-     *      - x -> input matrix
+     *      - x -> a step_size block of the input matrix,
+     *                  in order to support a normalized size parameter in the torch implementation that would be
+     *                  different from the entire size of the input matrix
      *      - mean -> single float value, computed as the sum of all elements over the number of elements
      *      - var -> single float value, representing the standard-deviation, computed as in the PyTorch implementation
      *                  of LayerNorm: equivalent to torch.var(input, unbiased=False), or torch.var(input, correction=0)
@@ -37,6 +39,8 @@ void pulp_layerNorm_fp32_fw_cl(void *layer_norm_args) {
      * where input_i is the i-th element of the input and n is the number of elements in the input,
      * will be computed as:
      *      (sum(i from 0 to n)(input_i ** 2) - 2 * sum(i from 0 to n)(input_i) * mean) / n + (mean ** 2).
+     *
+     * This is parallelized such that each worker computes an equal number of consecutive blocks of the input matrix.
      */
     struct LayerNorm_args_fp32 *ln_args = (struct LayerNorm_args_fp32 *) layer_norm_args;
 
@@ -46,42 +50,30 @@ void pulp_layerNorm_fp32_fw_cl(void *layer_norm_args) {
     float *output = ln_args->output;
     float *eps = ln_args->eps;
     int size = ln_args->size;
+    int step_size = ln_args->step_size;
 
-    float temp_sum_1[NUM_CORES] = {0.0f};
-    float temp_sum_2[NUM_CORES] = {0.0f};
+    int current_core = pi_core_id();
+    int blockSize = ((size / step_size) + NUM_CORES - 1) / NUM_CORES;
+    int start = current_core * blockSize;
+    int stop = start + blockSize > size ? size : start + blockSize;
 
-    // OP 1: Extract necessary sums for the final computation
-    struct layer_norm_op_1 ln_op1_args;
+    for (int i = start; i < stop; i++) {
+        float temp_sum_1 = 0.0f;
+        float temp_sum_2 = 0.0f;
 
-    ln_op1_args.input = input;
-    ln_op1_args.sum_of_elements = temp_sum_1;
-    ln_op1_args.sum_of_squared_elements = temp_sum_2;
-    ln_op1_args.size = size;
+        // OP 1: Extract necessary sums for the final computation
+        for (int j = 0; j < step_size; j++) {
+            temp_sum_1 += input[i * step_size + j];
+            temp_sum_2 += input[i * step_size + j] * input[i * step_size + j];
+        }
 
-    pi_cl_team_fork(NUM_CORES, pulp_layer_norm_op_1, &ln_op1_args);
+        // OP AUX: Compute mean and var
+        float mean = temp_sum_1 / step_size;
+        float sqrt_var = sqrt(((temp_sum_2 - 2 * temp_sum_1 * mean) / step_size) + (mean * mean) + eps[0]);
 
-    // OP AUX: Compute mean and var
-    float ts_1 = 0.0f;
-    float ts_2 = 0.0f;
-
-    for (int i = 0; i < NUM_CORES; i++) {
-        ts_1 += temp_sum_1[i];
-        ts_2 += temp_sum_2[i];
+        // OP 2: Perform operations on the intermediate values to obtain the final result
+        for (int j = 0; j < step_size; j++) {
+            output[i * step_size + j] = ((input[i * step_size + j] - mean) / sqrt_var) * weight[j] + bias[j];
+        }
     }
-
-    float mean[1] = {ts_1 / size};
-    float sqrt_var[1] = {sqrt(((ts_2 - 2 * ts_1 * mean[0]) / size) + (mean[0] * mean[0]) + eps[0])};
-
-    // OP 2: Perform operations on the intermediate values to obtain the final result
-    struct layer_norm_op_2 ln_op2_args;
-
-    ln_op2_args.input = input;
-    ln_op2_args.weight = weight;
-    ln_op2_args.bias = bias;
-    ln_op2_args.output = output;
-    ln_op2_args.mean = mean;
-    ln_op2_args.sqrt_var = sqrt_var;
-    ln_op2_args.size = size;
-
-    pi_cl_team_fork(NUM_CORES, pulp_layer_norm_op_2, &ln_op2_args);
 }
