@@ -22,6 +22,10 @@
 #include "init_defines.h"
 #include "act_data.h"
 
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
 
 #if DATA_TYPE == FP32
 // Inout data
@@ -99,6 +103,9 @@ void prepare_data () {
 
         sigmoid_out[i] = 0;
         sigmoid_in_grad[i] = 0;
+
+        leakyrelu_out[i] = 0;
+        leakyrelu_in_grad[i] = 0;
     }
 
     for (int i = 0; i < SOFTMAX_OUT_SIZE; i++) {
@@ -157,19 +164,19 @@ void prepare_data () {
     sigmoid_out_blob.C = Tout_C;
 
     // LeakyReLU args
-    relu_in_blob.data = LEAKYRELUIN;
-    relu_in_blob.diff = leakyrelu_in_grad;
-    relu_in_blob.dim = Tin_C * Tin_H * Tin_W;
-    relu_in_blob.H = Tin_H;
-    relu_in_blob.W = Tin_W;
-    relu_in_blob.C = Tin_C;
+    leakyrelu_in_blob.data = LEAKYRELUIN;
+    leakyrelu_in_blob.diff = leakyrelu_in_grad;
+    leakyrelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
+    leakyrelu_in_blob.H = Tin_H;
+    leakyrelu_in_blob.W = Tin_W;
+    leakyrelu_in_blob.C = Tin_C;
 
-    relu_out_blob.data = leakyrelu_out;
-    relu_out_blob.diff = LEAKYRELUOUTPUT_GRAD;
-    relu_out_blob.dim = Tout_C * Tout_H * Tout_W;
-    relu_out_blob.H = Tout_H;
-    relu_out_blob.W = Tout_W;
-    relu_out_blob.C = Tout_C;
+    leakyrelu_out_blob.data = leakyrelu_out;
+    leakyrelu_out_blob.diff = LEAKYRELUOUTPUT_GRAD;
+    leakyrelu_out_blob.dim = Tout_C * Tout_H * Tout_W;
+    leakyrelu_out_blob.H = Tout_H;
+    leakyrelu_out_blob.W = Tout_W;
+    leakyrelu_out_blob.C = Tout_C;
 }
 
 
@@ -193,7 +200,15 @@ void net_step () {
     // Print statistics for forward pass
     #ifdef PROF_NET
     printf("Forward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Apply ReLU activation
@@ -204,9 +219,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop the statistics for the forward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check output match
@@ -221,7 +244,15 @@ void net_step () {
     // Initialize profiler for backward pass
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Compute gradient for ReLU
@@ -232,9 +263,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop statistics for backward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check gradient match
@@ -262,7 +301,15 @@ void net_step () {
     // Print statistics for forward pass
     #ifdef PROF_NET
     printf("Forward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Apply softmax activation
@@ -273,9 +320,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop the statistics for the forward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check output match
@@ -290,7 +345,15 @@ void net_step () {
     // Initialize profiler for backward pass
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Compute gradient for softmax
@@ -301,9 +364,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop statistics for backward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check gradient match
@@ -326,7 +397,15 @@ void net_step () {
     // Print statistics for forward pass
     #ifdef PROF_NET
     printf("Forward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Apply sigmoid activation
@@ -337,9 +416,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop the statistics for the forward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check output match
@@ -354,7 +441,15 @@ void net_step () {
     // Initialize profiler for backward pass
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Compute gradient for softmax
@@ -365,9 +460,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop statistics for backward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check gradient match
@@ -391,7 +494,15 @@ void net_step () {
     // Print statistics for forward pass
     #ifdef PROF_NET
     printf("Forward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Apply ReLU activation
@@ -402,9 +513,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop the statistics for the forward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check output match
@@ -419,7 +538,15 @@ void net_step () {
     // Initialize profiler for backward pass
     #ifdef PROF_NET
     printf("\nBackward stats: \n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     // Compute gradient for ReLU
@@ -430,9 +557,17 @@ void net_step () {
     #else
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     // Stop statistics for backward pass
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     // Check gradient match

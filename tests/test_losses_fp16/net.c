@@ -21,6 +21,10 @@
 #include "stats.h"
 #include "loss_values.h"
 
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
 
 // DATA DEFINITION
 #ifndef FLOAT16
@@ -107,15 +111,31 @@ void net_step () {
     prepare_data();
 
     #ifdef PROF_NET
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     //print_tensors();
 
     compute_loss();
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     print_tensors();

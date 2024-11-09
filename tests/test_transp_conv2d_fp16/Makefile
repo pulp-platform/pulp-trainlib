@@ -23,6 +23,9 @@ NUM_SIZES?=3		# When profiling multiple sizes of the network
 IM2COL?=0			# Selects to use or not the im2col+matmul (0=don't, 1=use)
 HWC_LAYOUT?=0		# Choose if data layout is CHW (=0) or HWC (=1)
 USE_BIASES?=1		# Choose whether to include biases or not
+# Variables for power profiling
+PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -50,6 +53,7 @@ APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
 APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
 APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAYOUT)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
 APP_LDFLAGS += -lm
 
 

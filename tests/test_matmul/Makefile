@@ -6,10 +6,13 @@ IN_CH?=32			# Used also to define the number of channels of DW Conv
 MID_CH?=32
 OUT_CH?=32
 # General arguments
-DATA_TYPE?='float' 	# float, fp16 (=>float16), bf16 (=>float16alt)  to select the desired format
+DATA_TYPE?='fp16' 	# float, fp16 (=>float16), bf16 (=>float16alt)  to select the desired format
 DIVIDER?=100000000	# Scaling factor for data initialization in golden model
-TRANSP?=0		# Matrix B is transposed if = 1, not transposed if = 0.
+TRANSP?=1		# Matrix B is transposed if = 1, not transposed if = 0.
 NUM_CORES?=8
+# Variables for power profiling
+PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -25,6 +28,7 @@ APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
 APP_CFLAGS += -DCLUSTER -DFABRIC -O3 -g3
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DPROF_NET
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
 
 APP_LDFLAGS += -lm 
 

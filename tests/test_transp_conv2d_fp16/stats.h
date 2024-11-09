@@ -44,6 +44,7 @@
     pi_perf_reset(); \
     pi_perf_start();
 
+#if NUM_ITERATIONS == 1
 #define STOP_STATS() \
    pi_perf_stop(); \
       _cycles   = pi_perf_read (PI_PERF_CYCLES); \
@@ -62,6 +63,35 @@
     printf("[%d] TCDM cont = %lu\n", id, _tcdmcont); \
     printf("[%d] ld stall = %lu\n", id, _ldstall); \
     printf("[%d] imiss = %lu\n", id, _imiss); 
+
+#else
+#define STOP_STATS() \
+   pi_perf_stop(); \
+      _cycles   = pi_perf_read (PI_PERF_CYCLES); \
+      _instr    = pi_perf_read (PI_PERF_INSTR); \
+    	_active   = pi_perf_read (PI_PERF_ACTIVE_CYCLES); \
+      _ldext    = pi_perf_read (PI_PERF_LD_EXT); \
+    	_tcdmcont = pi_perf_read (PI_PERF_TCDM_CONT); \
+    	_ldstall  = pi_perf_read (PI_PERF_LD_STALL); \
+      _imiss    = pi_perf_read (PI_PERF_IMISS); \
+    id = pi_core_id(); \
+      _cycles   /= NUM_ITERATIONS; \
+      _instr    /= NUM_ITERATIONS; \
+      _active   /= NUM_ITERATIONS; \
+      _ldext    /= NUM_ITERATIONS; \
+      _tcdmcont /= NUM_ITERATIONS; \
+      _ldstall  /= NUM_ITERATIONS; \
+      _imiss    /= NUM_ITERATIONS; \
+    printf("\n"); \
+    printf("[%d] CODE ITERATIONS = %d\n", id, NUM_ITERATIONS); \
+    printf("[%d] cycles = %lu\n", id, _cycles); \
+    printf("[%d] instr = %lu\n", id, _instr); \
+    printf("[%d] active cycles = %lu\n", id, _active); \
+    printf("[%d] ext load = %lu\n", id, _ldext); \
+    printf("[%d] TCDM cont = %lu\n", id, _tcdmcont); \
+    printf("[%d] ld stall = %lu\n", id, _ldstall); \
+    printf("[%d] imiss = %lu\n", id, _imiss); 
+#endif
 
 #else // STATS
 

@@ -2,12 +2,15 @@ APP = test_loss_fp16
 
 # User settings
 # Standard matmul arguments
-OUT_SIZE?=2304
+OUT_SIZE?=64
 VALUE?=0.1
 LOSS_FN?=3		# Available options: 0='L1Loss', 1='MSE', 2='CrossEntropy', 3='berHuLoss'
 # General arguments
 NUM_CORES?=1
 FP16_FORMAT?=1 # Available formats: 0='FP16', 1='bfloat16'
+# Variables for power profiling
+PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -22,6 +25,7 @@ APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DWGT_SIZE=$(OUT_SIZE)
 APP_CFLAGS += -DLOSS_FN=$(LOSS_FN)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
 
 APP_LDFLAGS += -lm 
 

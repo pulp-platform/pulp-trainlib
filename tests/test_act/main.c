@@ -17,11 +17,31 @@
 #include "pmsis.h"
 #include "net.h"
 
+#define FREQ_FC 370
+#define FREQ_CL 370
+#define FREQ_PE 370
+
 /*
 *  DUMMY MAIN
 *  Configures cluster, then calls net_step()
 */
 int main (void) {
+
+    int cur_fc_freq = pi_freq_set(PI_FREQ_DOMAIN_FC, FREQ_FC*1000*1000);
+    int cur_cl_freq = pi_freq_set(PI_FREQ_DOMAIN_CL, FREQ_CL*1000*1000);
+    int cur_pe_freq = pi_freq_set(PI_FREQ_DOMAIN_PERIPH, FREQ_PE*1000*1000);
+
+    printf("\n\nFC Frequency = %d Hz CL Frequency = %d Hz PERIPH Frequency = %d Hz\n", 
+                pi_freq_get(PI_FREQ_DOMAIN_FC), pi_freq_get(PI_FREQ_DOMAIN_CL), pi_freq_get(PI_FREQ_DOMAIN_PERIPH));
+
+    unsigned int GPIOs = 89;
+
+    #if PROFILE_POWER == 1
+    pi_pad_function_set(GPIOs, 1);
+    pi_gpio_pin_configure(GPIOs, PI_GPIO_OUTPUT);
+    pi_gpio_pin_write(GPIOs, 0);
+    #endif
+
     printf("\nHello there.\nConfiguring cluster..\n");
 
     // Configure cluster

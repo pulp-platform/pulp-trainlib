@@ -11,6 +11,11 @@
 
 #include "variables.h"
 
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
+
 void PrintBlob(void * b, int step)
 {
     #ifdef FLOAT32
@@ -52,24 +57,68 @@ void forward()
 
     #ifdef FLOAT32 
     pulp_conv2d_fp32_fw_cl(&conv1_args);
+    #ifdef FORWARD
+    #ifdef PROF_NET 
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
+    START_STATS();  
+    #endif     
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
+    #endif     
     pulp_residualconn_fp32_fw(&residual_args);
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+    #ifdef FORWARD
+    #ifdef PROF_NET
+    STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
+    #endif
+    #endif
     pulp_relu_fp32_fw_cl(&relu_args);
     pulp_MSELoss(&loss_args);
     pulp_MSELoss_backward(&loss_args);
     
     #else //FLOAT16
     pulp_conv2d_fp16_fw_cl(&conv1_args);
+    #ifdef FORWARD
+    #ifdef PROF_NET 
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
+    START_STATS();  
+    #endif     
+    #endif     
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
     pulp_residualconn_fp16_fw(&residual_args);
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+    #ifdef FORWARD
+    #ifdef PROF_NET
+    STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
+    #endif
+    #endif
     pulp_relu_fp16_fw_cl(&relu_args);
     pulp_MSELoss_fp16(&loss_args);
     pulp_MSELoss_backward_fp16(&loss_args);
     #endif
 
-    #ifdef FORWARD
-    #ifdef PROF_NET
-    STOP_STATS();
-    #endif
-    #endif
+
 
     calculated_loss = *(loss_args.wr_loss); 
 
@@ -98,19 +147,63 @@ void backward()
  
     #ifdef FLOAT32
     pulp_relu_fp32_bw_cl(&relu_args);
+    #ifdef BACKWARD
+    #ifdef PROF_NET 
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
+    START_STATS();  
+    #endif     
+    #endif  
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
     pulp_residualconn_fp32_bw(&residual_args);
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+    #ifdef BACKWARD
+    #ifdef PROF_NET
+    STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
+    #endif
+    #endif
     pulp_conv2d_fp32_bw_input_grads_cl(&conv1_args);
     pulp_sumnode_fp32_bw(&residual_args);
 
     #else //FLOAT16
     pulp_relu_fp16_bw_cl(&relu_args);
-    pulp_residualconn_fp16_bw(&residual_args);
-    pulp_conv2d_fp16_bw_input_grads_cl(&conv1_args);
-    pulp_sumnode_fp16_bw(&residual_args);   
+    #ifdef BACKWARD
+    #ifdef PROF_NET 
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
+    START_STATS();  
+    #endif     
+    #endif  
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
-
+    pulp_residualconn_fp16_bw(&residual_args);
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+    #ifdef BACKWARD
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
+    #endif
+    #endif
+    pulp_conv2d_fp16_bw_input_grads_cl(&conv1_args);
+    pulp_sumnode_fp16_bw(&residual_args);   
     #endif
 
     #ifdef DEBUG
@@ -161,11 +254,7 @@ void net_step()
 
     #ifdef BACKWARD
     forward();
-    #endif
-
-    #ifdef PROF_NET
-    START_STATS();
-    #endif
+    #endif       
 
     #ifdef FORWARD
     forward();

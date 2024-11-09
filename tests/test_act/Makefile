@@ -11,6 +11,10 @@ VALUE?=0.05
 DATA_TYPE?='FP16'	# FP32 or FP16
 NUM_CORES?=8
 
+# Variables for power profiling
+PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
+
 # ~~~~~~~~~~ End of user settings ~~~~~~~~~~
 
 TRAIN_LIB=../../lib
@@ -31,6 +35,7 @@ APP_CFLAGS += -DIN_W=$(IN_W)
 APP_CFLAGS += -DIN_C=$(IN_C)
 APP_CFLAGS += -DVALUE=$(VALUE)
 APP_CFLAGS += -DDATA_TYPE=$(DATA_TYPE)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
 #APP_CFLAGS += -DDEBUG
 
 APP_LDFLAGS += -lm 

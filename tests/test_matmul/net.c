@@ -26,6 +26,11 @@
 
 // DATA DEFINITION
 
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
+
 #ifdef FLOAT32
 // General purpose matmuls
 #ifdef STANDARD
@@ -294,77 +299,92 @@ static inline void multiply ()
 
 
     #ifdef FLOAT16
-    printf("\n-----> Profiling mm_fp16:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_fp16, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
+    // printf("\n-----> Profiling mm_fp16:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_fp16, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_fp16_unroll_8x1:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_8x1, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
+    // printf("\n-----> Profiling mm_fp16_unroll_8x1:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_8x1, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_fp16_unroll_4x1:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_4x1, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
+    // printf("\n-----> Profiling mm_fp16_unroll_4x1:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_4x1, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_fp16_unroll_2x1:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_2x1, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
+    // printf("\n-----> Profiling mm_fp16_unroll_2x1:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_fp16_unroll_2x1, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_M_fp16:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_M_fp16, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);
+    // printf("\n-----> Profiling mm_M_fp16:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_M_fp16, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_fp16_SIMD_2x4:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_fp16_SIMD_2x4, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);    
+    // printf("\n-----> Profiling mm_fp16_SIMD_2x4:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_fp16_SIMD_2x4, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);    
 
     printf("\n-----> Profiling mm_fp16_SIMD_4x8:\n");
+    // POWER PROFILING
+    #if PROFILE_POWER == 1
+    WRITE_GPIO(1);
+    #endif
     START_STATS();
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
     pi_cl_team_fork(NUM_CORES, mm_fp16_SIMD_4x8, &mm_args);
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
     STOP_STATS();
+    // POWER PROFILING
+    #if PROFILE_POWER == 1
+    WRITE_GPIO(0);
+    #endif
     check_tensor(result, C, IN_CH*OUT_CH);
     compare_tensors(result, C, IN_CH*OUT_CH);
     null_tensor(result, IN_CH*OUT_CH);    
+    printf("TOTAL MAC = %d\n", IN_CH*MID_CH*OUT_CH);
 
-    printf("\n-----> Profiling mm_M_fp16_SIMD_2x4:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_M_fp16_SIMD_2x4, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH);    
+    // printf("\n-----> Profiling mm_M_fp16_SIMD_2x4:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_M_fp16_SIMD_2x4, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH);    
 
-    printf("\n-----> Profiling mm_M_fp16_SIMD_4x8:\n");
-    START_STATS();
-    pi_cl_team_fork(NUM_CORES, mm_M_fp16_SIMD_4x8, &mm_args);
-    STOP_STATS();
-    check_tensor(result, C, IN_CH*OUT_CH);
-    compare_tensors(result, C, IN_CH*OUT_CH);
-    null_tensor(result, IN_CH*OUT_CH); 
+    // printf("\n-----> Profiling mm_M_fp16_SIMD_4x8:\n");
+    // START_STATS();
+    // pi_cl_team_fork(NUM_CORES, mm_M_fp16_SIMD_4x8, &mm_args);
+    // STOP_STATS();
+    // check_tensor(result, C, IN_CH*OUT_CH);
+    // compare_tensors(result, C, IN_CH*OUT_CH);
+    // null_tensor(result, IN_CH*OUT_CH); 
     #endif
 
 

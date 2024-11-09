@@ -28,6 +28,11 @@
 
 // DATA DEFINITION
 
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
+
 // CONV2D
 PI_L1 float zero_init = 0.0f;
 PI_L1 struct Transp_Conv2D_args_fp16 C2D_args;
@@ -438,26 +443,49 @@ static inline void train(){
 
   #ifdef PROF_FWD
   printf("\nForward stats\n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
   START_STATS();
   #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
 
   #ifdef FORWARD
   pulp_transp_conv2d_fp16_fw_cl(&C2D_args);
   #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
   #ifdef PROF_FWD
   STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
   printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 
 
   #ifdef PROF_BKWD
   printf("\nBackward stats\n");
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
   START_STATS();
   #endif
 
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    #endif
+
   #ifdef BACKWARD_GRAD
-  printf("weight grad primitive!\n");
   pulp_transp_conv2d_fp16_bw_param_grads_cl(&C2D_args);
   #endif
 
@@ -465,8 +493,16 @@ static inline void train(){
   pulp_transp_conv2d_fp16_bw_input_grads_cl(&C2D_args);
   #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
   #ifdef PROF_BKWD
   STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
   printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 
