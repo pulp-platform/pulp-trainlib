@@ -27,6 +27,7 @@ USE_BIASES?=1		# Choose whether to include biases or not
 # Variables for power profiling
 PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
 NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
+DIVIDE_CYCLES_BY_ITERS?=0 # Set to 1 if you want to see directly the cycles averaged over NUM_ITERATIONS
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -53,7 +54,7 @@ APP_CFLAGS += -DSTRIDE_H=$(STRIDE_H)
 APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
 APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAYOUT)
-APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS) -DDIVIDE_CYCLES_BY_ITERS=$(DIVIDE_CYCLES_BY_ITERS)
 APP_LDFLAGS += -lm
 
 

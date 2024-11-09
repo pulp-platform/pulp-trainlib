@@ -44,7 +44,7 @@
     pi_perf_reset(); \
     pi_perf_start();
 
-#if NUM_ITERATIONS == 1
+#if (NUM_ITERATIONS == 1) || (DIVIDE_CYCLES_BY_ITERS == 0)
 #define STOP_STATS() \
    pi_perf_stop(); \
       _cycles   = pi_perf_read (PI_PERF_CYCLES); \

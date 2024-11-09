@@ -13,6 +13,7 @@ NUM_CORES?=8
 # Variables for power profiling
 PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
 NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
+DIVIDE_CYCLES_BY_ITERS?=0 # Set to 1 if you want to see directly the cycles averaged over NUM_ITERATIONS
 # End of user settings
 
 TRAIN_LIB=../../lib
@@ -28,7 +29,7 @@ APP_CFLAGS += -I. -I$(TRAIN_LIB)/include
 APP_CFLAGS += -DCLUSTER -DFABRIC -O3 -g3
 APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DPROF_NET
-APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS) -DDIVIDE_CYCLES_BY_ITERS=$(DIVIDE_CYCLES_BY_ITERS)
 
 APP_LDFLAGS += -lm 
 
