@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "pulp_train.h"
 
 #include "stats.h"
@@ -5,6 +21,11 @@
 
 #include "net_args.h"
 #include "intp_data.h"
+
+#if PROFILE_POWER == 1
+  unsigned int GPIOs = 89; //gpio da usare
+  #define WRITE_GPIO(x) pi_gpio_pin_write(GPIOs,x) //define macro che accende o spegne il gpio 
+#endif
 
 #ifdef FLOAT32
 PI_L1 float near_intp_data[IN_CH*OUT_H*OUT_W];
@@ -167,7 +188,15 @@ void net_step ()
 
     printf("Nearest Neigbour:\n");
     #ifdef PROF_NET
+          // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     #ifdef FLOAT32
@@ -176,8 +205,16 @@ void net_step ()
     pi_cl_team_fork(NUM_CORES, pulp_nearest_neighbour_interpolation_fp16_cl, &near_args);
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     printf("NEAREST NEIGHBOUR CHECK: \n");
@@ -203,7 +240,15 @@ void net_step ()
 
     printf("Bilinear Interpolation:\n");
     #ifdef PROF_NET
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(1);
+        #endif
     START_STATS();
+    #endif
+
+    #if NUM_ITERATIONS > 1
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
     #endif
 
     #ifdef FLOAT32
@@ -212,8 +257,16 @@ void net_step ()
     pi_cl_team_fork(NUM_CORES, pulp_bilinear_interpolation_fp16_cl, &bil_args);
     #endif
 
+    #if NUM_ITERATIONS > 1
+    }
+    #endif
+
     #ifdef PROF_NET
     STOP_STATS();
+        // POWER PROFILING
+        #if PROFILE_POWER == 1
+        WRITE_GPIO(0);
+        #endif
     #endif
 
     printf("BILINEAR CHECK: \n");

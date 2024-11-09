@@ -2,13 +2,16 @@ APP = interpolation_fp32
 
 # User code
 NUM_CORES?=8
-DATA_TYPE?='float'	# 'float' or 'bfloat16'
+DATA_TYPE?='bfloat16'	# 'float' or 'bfloat16'
 INTP_TYPE?=1 		# 0='NEAREST', 1='BILINEAR' 
 CH?=8
-IN_H?=4
-IN_W?=4
-OUT_H?=8
-OUT_W?=8
+IN_H?=8
+IN_W?=8
+OUT_H?=48
+OUT_W?=48
+# Variables for power profiling
+PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 # End of user code
 
 TRAIN_LIB=../../lib
@@ -28,6 +31,7 @@ APP_CFLAGS += -DIN_W=$(IN_W)
 APP_CFLAGS += -DOUT_H=$(OUT_H)
 APP_CFLAGS += -DOUT_W=$(OUT_W)
 APP_CFLAGS += -DINTP_TYPE=$(INTP_TYPE)
+APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS)
 APP_LDFLAGS += -lm
 
 # STATISTICS
