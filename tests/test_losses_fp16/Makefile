@@ -6,7 +6,7 @@ OUT_SIZE?=64
 VALUE?=0.1
 LOSS_FN?=3		# Available options: 0='L1Loss', 1='MSE', 2='CrossEntropy', 3='berHuLoss'
 # General arguments
-NUM_CORES?=1
+NUM_CORES?=8
 FP16_FORMAT?=1 # Available formats: 0='FP16', 1='bfloat16'
 # Variables for power profiling
 PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
@@ -27,6 +27,7 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DWGT_SIZE=$(OUT_SIZE)
 APP_CFLAGS += -DLOSS_FN=$(LOSS_FN)
 APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS) -DDIVIDE_CYCLES_BY_ITERS=$(DIVIDE_CYCLES_BY_ITERS)
+APP_CFLAGS += -DBOARD
 
 APP_LDFLAGS += -lm 
 

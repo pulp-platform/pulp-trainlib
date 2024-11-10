@@ -25,7 +25,7 @@ DMA?=0				# In case IM2COL+MM are used, select to manage IM2COL using DMA (input
 HWC_LAYOUT?=0		# Choose if data layout is CHW (=0) or HWC (=1)
 USE_BIASES?=1		# Choose whether to include biases or not
 # Variables for power profiling
-PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
+PROFILE_POWER?=0	# Set to 1 if you want to activate gpio for power measurements
 NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 DIVIDE_CYCLES_BY_ITERS?=0 # Set to 1 if you want to see directly the cycles averaged over NUM_ITERATIONS
 # End of user settings
@@ -55,7 +55,10 @@ APP_CFLAGS += -DSTRIDE_W=$(STRIDE_W)
 APP_CFLAGS += -DDMA=$(DMA)
 APP_CFLAGS += -DHWC_LAYOUT=$(HWC_LAYOUT)
 APP_CFLAGS += -DPROFILE_POWER=$(PROFILE_POWER) -DNUM_ITERATIONS=$(NUM_ITERATIONS) -DDIVIDE_CYCLES_BY_ITERS=$(DIVIDE_CYCLES_BY_ITERS)
+APP_CFLAGS += -DBOARD
+
 APP_LDFLAGS += -lm
+
 
 
 # STATISTICS
