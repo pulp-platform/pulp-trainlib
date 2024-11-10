@@ -80,6 +80,7 @@ void forward()
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
     #endif
     pulp_relu_fp32_fw_cl(&relu_args);
@@ -111,6 +112,7 @@ void forward()
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
     #endif
     pulp_relu_fp16_fw_cl(&relu_args);
@@ -170,6 +172,7 @@ void backward()
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
     #endif
     pulp_conv2d_fp32_bw_input_grads_cl(&conv1_args);
@@ -200,6 +203,7 @@ void backward()
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
     #endif
     pulp_conv2d_fp16_bw_input_grads_cl(&conv1_args);

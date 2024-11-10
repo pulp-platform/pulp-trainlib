@@ -45,11 +45,13 @@
    pi_perf_stop(); \
       _cycles   = pi_perf_read (PI_PERF_CYCLES); \
     id = pi_core_id(); \
-      _cycles   /= NUM_ITERATIONS; \
+      _cycles   /= NUM_ITERATIONS; 
+#endif
+
+#define PRINT_STATS() \
     printf("\n"); \
     printf("[%d] CODE ITERATIONS = %d\n", id, NUM_ITERATIONS); \
     printf("[%d] cycles = %lu\n", id, _cycles); 
-#endif
 
 #else
 

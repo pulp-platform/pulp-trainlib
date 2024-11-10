@@ -468,6 +468,7 @@ static inline void train(){
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+  PRINT_STATS();
   printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 
@@ -503,6 +504,7 @@ static inline void train(){
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+  PRINT_STATS();
   printf("\nNum MACs = %d\n\n", num_mac);
   #endif
 

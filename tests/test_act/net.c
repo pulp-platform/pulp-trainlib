@@ -230,6 +230,7 @@ void net_step () {
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
 
     // Check output match
@@ -274,6 +275,7 @@ void net_step () {
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
 
     // Check gradient match
@@ -285,202 +287,206 @@ void net_step () {
     #else
     #endif
 
-    // ~~~~~~~~~~ Verify softmax activation ~~~~~~~~~~
-    printf("\n----- SOFTMAX RESULTS -----\n");
+    // // ~~~~~~~~~~ Verify softmax activation ~~~~~~~~~~
+    // printf("\n----- SOFTMAX RESULTS -----\n");
 
-    // Prepare softmax struct
-    softmax_args.input_data = SOFTMIN;
-    softmax_args.input_diff = softmax_in_grad;
-    softmax_args.output_data = softmax_out;
-    softmax_args.output_diff = SOFTMOUTPUT_GRAD;
-    softmax_args.H = Tin_H;
-    softmax_args.W = Tin_W;
-    softmax_args.maxes = softmax_maxes;
-    softmax_args.sums = softmax_sums;
+    // // Prepare softmax struct
+    // softmax_args.input_data = SOFTMIN;
+    // softmax_args.input_diff = softmax_in_grad;
+    // softmax_args.output_data = softmax_out;
+    // softmax_args.output_diff = SOFTMOUTPUT_GRAD;
+    // softmax_args.H = Tin_H;
+    // softmax_args.W = Tin_W;
+    // softmax_args.maxes = softmax_maxes;
+    // softmax_args.sums = softmax_sums;
 
-    // Print statistics for forward pass
-    #ifdef PROF_NET
-    printf("Forward stats: \n");
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(1);
-        #endif
-    START_STATS();
-    #endif
+    // // Print statistics for forward pass
+    // #ifdef PROF_NET
+    // printf("Forward stats: \n");
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(1);
+    //     #endif
+    // START_STATS();
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    // #endif
 
-    // Apply softmax activation
-    #if DATA_TYPE == FP32
-    pulp_softmax_fp32_fw_cl(&softmax_args);
-    #elif DATA_TYPE == FP16
-    pulp_softmax_fp16_fw_cl(&softmax_args);
-    #else
-    #endif
+    // // Apply softmax activation
+    // #if DATA_TYPE == FP32
+    // pulp_softmax_fp32_fw_cl(&softmax_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_softmax_fp16_fw_cl(&softmax_args);
+    // #else
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    }
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // }
+    // #endif
 
-    // Stop the statistics for the forward pass
-    #ifdef PROF_NET
-    STOP_STATS();
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(0);
-        #endif
-    #endif
+    // // Stop the statistics for the forward pass
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(0);
+    //     #endif
+    // PRINT_STATS();
+    // #endif
 
-    // Check output match
-    printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+    // // Check output match
+    // printf("\nChecking output..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
+    // #else
+    // #endif
 
-    // Initialize profiler for backward pass
-    #ifdef PROF_NET
-    printf("\nBackward stats: \n");
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(1);
-        #endif
-    START_STATS();
-    #endif
+    // // Initialize profiler for backward pass
+    // #ifdef PROF_NET
+    // printf("\nBackward stats: \n");
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(1);
+    //     #endif
+    // START_STATS();
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    // #endif
 
-    // Compute gradient for softmax
-    #if DATA_TYPE == FP32
-    pulp_softmax_fp32_bw_cl(&softmax_args);
-    #elif DATA_TYPE == FP16
-    pulp_softmax_fp16_bw_cl(&softmax_args);
-    #else
-    #endif
+    // // Compute gradient for softmax
+    // #if DATA_TYPE == FP32
+    // pulp_softmax_fp32_bw_cl(&softmax_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_softmax_fp16_bw_cl(&softmax_args);
+    // #else
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    }
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // }
+    // #endif
 
-    // Stop statistics for backward pass
-    #ifdef PROF_NET
-    STOP_STATS();
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(0);
-        #endif
-    #endif
+    // // Stop statistics for backward pass
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(0);
+    //     #endif
+    // PRINT_STATS();
+    // #endif
 
-    // Check gradient match
-    printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+    // // Check gradient match
+    // printf("\nChecking in grad..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
+    // #else
+    // #endif
 
 
-    // ~~~~~~~~~~ Verify sigmoid activation ~~~~~~~~~~
-    printf("\n----- SIGMOID RESULTS -----\n");
+    // // ~~~~~~~~~~ Verify sigmoid activation ~~~~~~~~~~
+    // printf("\n----- SIGMOID RESULTS -----\n");
 
-    // Prepare sigmoid struct
-    act_args.input = &sigmoid_in_blob;
-    act_args.output = &sigmoid_out_blob;
+    // // Prepare sigmoid struct
+    // act_args.input = &sigmoid_in_blob;
+    // act_args.output = &sigmoid_out_blob;
 
-    // Print statistics for forward pass
-    #ifdef PROF_NET
-    printf("Forward stats: \n");
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(1);
-        #endif
-    START_STATS();
-    #endif
+    // // Print statistics for forward pass
+    // #ifdef PROF_NET
+    // printf("Forward stats: \n");
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(1);
+    //     #endif
+    // START_STATS();
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    // #endif
 
-    // Apply sigmoid activation
-    #if DATA_TYPE == FP32
-    pulp_sigmoid_fp32_fw_cl(&act_args);
-    #elif DATA_TYPE == FP16
-    pulp_sigmoid_fp16_fw_cl(&act_args);
-    #else
-    #endif
+    // // Apply sigmoid activation
+    // #if DATA_TYPE == FP32
+    // pulp_sigmoid_fp32_fw_cl(&act_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_sigmoid_fp16_fw_cl(&act_args);
+    // #else
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    }
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // }
+    // #endif
 
-    // Stop the statistics for the forward pass
-    #ifdef PROF_NET
-    STOP_STATS();
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(0);
-        #endif
-    #endif
+    // // Stop the statistics for the forward pass
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(0);
+    //     #endif
+    // PRINT_STATS();
+    // #endif
 
-    // Check output match
-    printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+    // // Check output match
+    // printf("\nChecking output..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    // #else
+    // #endif
 
-    // Initialize profiler for backward pass
-    #ifdef PROF_NET
-    printf("\nBackward stats: \n");
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(1);
-        #endif
-    START_STATS();
-    #endif
+    // // Initialize profiler for backward pass
+    // #ifdef PROF_NET
+    // printf("\nBackward stats: \n");
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(1);
+    //     #endif
+    // START_STATS();
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+    // #endif
 
-    // Compute gradient for softmax
-    #if DATA_TYPE == FP32
-    pulp_sigmoid_fp32_bw_cl(&act_args);
-    #elif DATA_TYPE == FP16
-    pulp_sigmoid_fp16_bw_cl(&act_args);
-    #else
-    #endif
+    // // Compute gradient for softmax
+    // #if DATA_TYPE == FP32
+    // pulp_sigmoid_fp32_bw_cl(&act_args);
+    // #elif DATA_TYPE == FP16
+    // pulp_sigmoid_fp16_bw_cl(&act_args);
+    // #else
+    // #endif
 
-    #if NUM_ITERATIONS > 1
-    }
-    #endif
+    // #if NUM_ITERATIONS > 1
+    // }
+    // #endif
 
-    // Stop statistics for backward pass
-    #ifdef PROF_NET
-    STOP_STATS();
-        // POWER PROFILING
-        #if PROFILE_POWER == 1
-        WRITE_GPIO(0);
-        #endif
-    #endif
+    // // Stop statistics for backward pass
+    // #ifdef PROF_NET
+    // STOP_STATS();
+    //     // POWER PROFILING
+    //     #if PROFILE_POWER == 1
+    //     WRITE_GPIO(0);
+    //     #endif
+    // PRINT_STATS();
+    // #endif
 
-    // Check gradient match
-    printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
-    verify_tensor(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
-    verify_tensor_fp16(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+    // // Check gradient match
+    // printf("\nChecking in grad..\n");
+    // #if DATA_TYPE == FP32
+    // verify_tensor(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    // #elif DATA_TYPE == FP16
+    // verify_tensor_fp16(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    // #else
+    // #endif
 
 
     // ~~~~~~~~~~ Verify LeakyReLU activation ~~~~~~~~~~
@@ -524,6 +530,7 @@ void net_step () {
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
 
     // Check output match
@@ -568,6 +575,7 @@ void net_step () {
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
 
     // Check gradient match

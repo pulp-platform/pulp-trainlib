@@ -136,6 +136,7 @@ void net_step () {
         #if PROFILE_POWER == 1
         WRITE_GPIO(0);
         #endif
+    PRINT_STATS();
     #endif
 
     print_tensors();

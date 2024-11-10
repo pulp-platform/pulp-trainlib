@@ -453,6 +453,7 @@ static inline void train(){
     #if PROFILE_POWER == 1
     WRITE_GPIO(0);
     #endif
+  PRINT_STATS();
   #endif
 
 
@@ -487,6 +488,7 @@ static inline void train(){
     #if PROFILE_POWER == 1
     WRITE_GPIO(0);
     #endif
+  PRINT_STATS();
   #endif
 
 

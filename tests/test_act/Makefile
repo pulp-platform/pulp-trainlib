@@ -13,7 +13,7 @@ NUM_CORES?=8
 
 # Variables for power profiling
 PROFILE_POWER?=1	# Set to 1 if you want to activate gpio for power measurements
-NUM_ITERATIONS?=100 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
+NUM_ITERATIONS?=100000 # Set it to > 1 if you want to measure the average number of cycles to execute the code to be profiles
 DIVIDE_CYCLES_BY_ITERS?=0 # Set to 1 if you want to see directly the cycles averaged over NUM_ITERATIONS
 
 # ~~~~~~~~~~ End of user settings ~~~~~~~~~~
