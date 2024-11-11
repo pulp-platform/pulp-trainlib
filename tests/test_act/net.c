@@ -415,7 +415,7 @@ void net_step () {
 
     // Apply TANH activation
 #if DATA_TYPE == FP32
-    tanh_prll(&tanh_args);
+    pi_cl_team_fork(NUM_CORES, tanh_prll, &tanh_args);
 #endif
 
     // Stop the statistics for the forward pass

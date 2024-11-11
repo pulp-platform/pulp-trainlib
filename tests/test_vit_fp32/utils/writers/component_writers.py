@@ -13,6 +13,8 @@ def get_connect_text(blob_name, elements):
     for key in elements.keys():
         text += "\t" + blob_name + "." + key + " = " + str(elements[key]) + ";\n"
 
+    text += "\n"
+
     return text
 
 
@@ -28,10 +30,6 @@ def extract_sizes(shape):
         c, w, h = shape
 
     return c * w * h, w, h, c
-
-
-def parameter_writer(component, data_marker):
-    return None
 
 
 def copy_writer(component_name, component, data_marker):
@@ -73,12 +71,19 @@ def copy_writer(component_name, component, data_marker):
 
     blob_connect += "\n"
 
-    return structures_and_blobs, "", blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, copy, &" + args_name + ");\n\n"
+
+    return structures_and_blobs, "", blob_connect, forward_function
 
 
 def concat_writer(component_name, component, data_marker):
     # Initialize
-    structures_and_blobs, blob_initializations, blob_connect = "", "", ""
+    structures_and_blobs, blob_initializations, blob_connect, forward_function = "", "", "", ""
 
     # Prepare output target
     output_data_name = component_name + "_output_data"
@@ -113,7 +118,7 @@ def concat_writer(component_name, component, data_marker):
             "output_offset": output_offset,
         }
 
-        r1, r2, r3 = copy_writer(copy_name, copy_component, data_marker)
+        r1, r2, r3, r4 = copy_writer(copy_name, copy_component, data_marker)
 
         # Compute new offset
         current_size = 1
@@ -125,8 +130,9 @@ def concat_writer(component_name, component, data_marker):
         structures_and_blobs += r1
         blob_initializations += r2
         blob_connect += r3
+        forward_function += r4
 
-    return structures_and_blobs, blob_initializations, blob_connect
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def conv2d_writer(
@@ -297,7 +303,14 @@ def conv2d_writer(
 
     blob_connect += "\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpulp_conv2d_fp32_fw_cl(&" + args_name + ");\n\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def vector_sum_writer(component_name, component, **kwargs):
@@ -306,11 +319,15 @@ def vector_sum_writer(component_name, component, **kwargs):
 
     if component["available_input"][0]:
         input_0_data_name = component["input_from"][0].upper()
+    elif component["input_from"][0].endswith("output_data"):
+        input_0_data_name = component["input_from"][0]
     else:
         input_0_data_name = component["input_from"][0] + "_output_data"
 
     if component["available_input"][1]:
         input_1_data_name = component["input_from"][1].upper()
+    elif component["input_from"][1].endswith("output_data"):
+        input_1_data_name = component["input_from"][1]
     else:
         input_1_data_name = component["input_from"][1] + "_output_data"
 
@@ -340,7 +357,14 @@ def vector_sum_writer(component_name, component, **kwargs):
 
     blob_connect += "\n"
 
-    return structures_and_blobs, "", blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, vect_sum, &" + args_name + ");\n\n"
+
+    return structures_and_blobs, "", blob_connect, forward_function
 
 
 def layer_norm_writer(component_name, component, data_marker):
@@ -348,6 +372,9 @@ def layer_norm_writer(component_name, component, data_marker):
     total_dimension = 1
     for el in list(component["shape"]):
         total_dimension *= el
+
+    # TODO: This only works for 2-dimensional matrices, where the normalized shape is the second dimension!
+    step_size = list(component["shape"])[-1]
 
     component_blob_name = component_name + "_args"
 
@@ -387,10 +414,18 @@ def layer_norm_writer(component_name, component, data_marker):
             "output": output_data_name,
             "eps": eps_data_name,
             "size": total_dimension,
+            "step_size": step_size,
         }
     )
 
-    return structures_and_blobs, blob_initialization, blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, pulp_layerNorm_fp32_fw_cl, &" + component_blob_name + ");\n\n"
+
+    return structures_and_blobs, blob_initialization, blob_connect, forward_function
 
 
 def mhsa_writer(component_name, component, data_marker):
@@ -420,7 +455,7 @@ def mhsa_writer(component_name, component, data_marker):
 
     att_map_data_name = component_name + "_att_map_data"
     softmax_buffer_data_name = component_name + "_softmax_buffer_data"
-    out_data_name = component_name + "_out_data"
+    out_data_name = component_name + "_output_data"
     temp_data_name = component_name + "_temp_data"
 
     sums_data_name = component_name + "_sums_data"
@@ -434,10 +469,10 @@ def mhsa_writer(component_name, component, data_marker):
     softmax_buffer_data_size, softmax_buffer_data_w, softmax_buffer_data_h, softmax_buffer_data_c = extract_sizes(component["softmax_buffer_shape"])
     out_data_size, out_data_w, out_data_h, out_data_c = extract_sizes(component["output_shape"])
 
-    temp_data_size = max(q_data_h * q_data_h, q_data_h * (q_data_w / n_heads))
+    temp_data_size = extract_sizes(component["temp_shape"])[0]
 
-    sums_data_size, sums_data_w, sums_data_h, sums_data_c = extract_sizes((1, 1, q_data_h))
-    maxes_data_size, maxes_data_w, maxes_data_h, maxes_data_c = extract_sizes((1, 1, q_data_h))
+    sums_data_size, sums_data_w, sums_data_h, sums_data_c = extract_sizes(component["sm_shape"])
+    maxes_data_size, maxes_data_w, maxes_data_h, maxes_data_c = extract_sizes(component["sm_shape"])
 
     in_data_size, in_data_w, in_data_h, in_data_c = extract_sizes(component["input_shape"])
 
@@ -669,87 +704,81 @@ def mhsa_writer(component_name, component, data_marker):
         },
     )
 
-    blob_connect += "\n"
-
     # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
     blob_connect += "\t" + struct_name + ".input = &" + in_blob_name + ";\n"
 
-    blob_connect += "\t" + struct_name + ".n_heads = " + str(n_heads) + ";\n"
+    blob_connect += "\t" + struct_name + ".n_heads = " + str(n_heads) + ";\n\n"
 
     blob_connect += "\t" + struct_name + ".q = &" + q_blob_name + ";\n"
     blob_connect += "\t" + struct_name + ".k = &" + k_blob_name + ";\n"
-    blob_connect += "\t" + struct_name + ".v = &" + v_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".v = &" + v_blob_name + ";\n\n"
 
-    blob_connect += "\t" + struct_name + ".output = &" + out_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".output = &" + out_blob_name + ";\n\n"
 
     blob_connect += "\t" + struct_name + ".coeff_in_q = &" + wgt_in_q_blob_name + ";\n"
     blob_connect += "\t" + struct_name + ".coeff_in_k = &" + wgt_in_k_blob_name + ";\n"
-    blob_connect += "\t" + struct_name + ".coeff_in_v = &" + wgt_in_v_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".coeff_in_v = &" + wgt_in_v_blob_name + ";\n\n"
 
     blob_connect += "\t" + struct_name + ".bias_in_q = &" + bias_in_q_blob_name + ";\n"
     blob_connect += "\t" + struct_name + ".bias_in_k = &" + bias_in_k_blob_name + ";\n"
-    blob_connect += "\t" + struct_name + ".bias_in_v = &" + bias_in_v_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".bias_in_v = &" + bias_in_v_blob_name + ";\n\n"
 
     blob_connect += "\t" + struct_name + ".coeff_out = &" + wgt_out_blob_name + ";\n"
-    blob_connect += "\t" + struct_name + ".attention_map = &" + att_map_blob_name + ";\n"
+    blob_connect += "\t" + struct_name + ".attention_map = &" + att_map_blob_name + ";\n\n"
 
     blob_connect += "\t" + struct_name + ".temp_buffer = " + temp_data_name + ";\n"
     blob_connect += "\t" + struct_name + ".softmax_buffer = &" + softmax_buffer_blob_name + ";\n"
     blob_connect += "\t" + struct_name + ".sums = " + sums_data_name + ";\n"
-    blob_connect += "\t" + struct_name + ".maxes = " + maxes_data_name + ";\n"
+    blob_connect += "\t" + struct_name + ".maxes = " + maxes_data_name + ";\n\n"
 
-    blob_connect += "\tmhsa_args.opt_matmul_type_fw = MATMUL_TYPE;"
-    blob_connect += "\tmhsa_args.opt_matmul_type_wg = MATMUL_TYPE;"
-    blob_connect += "\tmhsa_args.opt_matmul_type_ig = MATMUL_TYPE;"
+    blob_connect += "\t" + struct_name + ".opt_matmul_type_fw = MATMUL_TYPE;\n"
+    blob_connect += "\t" + struct_name + ".opt_matmul_type_wg = MATMUL_TYPE;\n"
+    blob_connect += "\t" + struct_name + ".opt_matmul_type_ig = MATMUL_TYPE;\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpulp_mhsa_fp32_fw_cl(&" + struct_name + ");\n\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def linear_writer(component_name, component, data_marker):
     # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
-    args_name = component_name + "_linear_args"
+    input_data_a_name = component["input_a"]
+    input_data_b_name = component_name.upper() + "_WEIGHT"
 
-    input_blob_name = component_name + "_input"
-    weight_blob_name = component_name + "_weight"
-    bias_blob_name = component_name + "_bias"
-    output_blob_name = component_name + "_output"
+    _, n_size, k_size, __ = extract_sizes(component["input_a_shape"])
+    output_dim, _, m_size, __ = extract_sizes(component["output_shape"])
+    bias_size, _, __, ___ = extract_sizes(component["bias_shape"])
 
-    input_data_name = component["input"]
-    weight_data_name = component_name.upper() + "_WEIGHT"
+    man_args_name = component_name + "_man_args"
+    args_name = component_name + "_args"
+
     bias_data_name = component_name.upper() + "_BIAS"
+
     output_data_name = component_name + "_output_data"
-
-    input_size = extract_sizes(component["input_shape"])[0]
-    weight_size = extract_sizes(component["weight_shape"])[0]
-    bias_size = extract_sizes(component["bias_shape"])[0]
-    output_size = extract_sizes(component["output_shape"])[0]
-
-    filler = "zero_init"
-    # TODO: Make this dynamic
-    use_bias = 1
+    output_filler = "zero_init"
 
     # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
     # Define structures
     structures_and_blobs = "// " + component_name.upper() + "\n"
 
-    structures_and_blobs += "PI_L2 struct Linear_args " + args_name + ";\n"
+    structures_and_blobs += "PI_L2 struct matMul_args " + args_name + ";\n"
+    structures_and_blobs += "PI_L2 struct mm_manager_args " + man_args_name + ";\n"
 
     structures_and_blobs += "\n"
 
     # Define blobs
-    structures_and_blobs += (
-            "PI_L2 struct blob\n" +
-            "\t" + input_blob_name + ",\n" +
-            "\t" + weight_blob_name + ",\n" +
-            "\t" + bias_blob_name + ",\n" +
-            "\t" + output_blob_name + ";\n"
-    )
 
     # Define data variables
-    structures_and_blobs += "PI_L2 " + data_marker + " " + input_data_name + "[" + str(input_size) + "];\n"
-    structures_and_blobs += "PI_L2 " + data_marker + " " + weight_data_name + "[" + str(weight_size) + "];\n"
-    structures_and_blobs += "PI_L2 " + data_marker + " " + bias_data_name + "[" + str(bias_size) + "];\n"
-    structures_and_blobs += "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_size) + "];\n"
+    structures_and_blobs += (
+            "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_dim) + "];\n"
+    )
 
     structures_and_blobs += "\n"
 
@@ -757,7 +786,7 @@ def linear_writer(component_name, component, data_marker):
     blob_initializations = "\t// " + component_name.upper() + "\n"
 
     blob_initializations += get_initialization_text(
-        output_size, output_data_name, filler
+        output_dim, output_data_name, output_filler
     )
 
     blob_initializations += "\n"
@@ -765,62 +794,96 @@ def linear_writer(component_name, component, data_marker):
     # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
     blob_connect = "\t// " + component_name.upper() + "\n"
 
-    blob_connect += get_connect_text(
-        input_blob_name,
-        {
-            "data": input_data_name,
-            "dim": input_size,
-        }
-    )
-
-    blob_connect += get_connect_text(
-        weight_blob_name,
-        {
-            "data": weight_data_name,
-            "dim": weight_size,
-        }
-    )
-
-    blob_connect += get_connect_text(
-        bias_blob_name,
-        {
-            "data": bias_data_name,
-            "dim": bias_size,
-        }
-    )
-
-    blob_connect += get_connect_text(
-        output_blob_name,
-        {
-            "data": output_data_name,
-            "dim": output_size,
-        }
-    )
-
     # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
-    blob_connect += "\t" + args_name + ".input = &" + input_blob_name + ";\n"
-    blob_connect += "\t" + args_name + ".input = &" + weight_blob_name + ";\n"
-    blob_connect += "\t" + args_name + ".input = &" + bias_blob_name + ";\n"
-    blob_connect += "\t" + args_name + ".input = &" + output_blob_name + ";\n"
+    blob_connect += get_connect_text(
+        args_name,
+        {
+            "A": input_data_a_name,
+            "B": input_data_b_name,
+            "C": output_data_name,
+            "bias": bias_data_name,
+            "N": n_size,
+            "K": k_size,
+            "M": m_size,
+            "trans_B": 1,
+            "USE_BIASES": 1,
+            "bias_dim": bias_size,
+        }
+    )
 
-    blob_connect += "\t" + args_name + ".skip_wg_grad = 0;"
-    blob_connect += "\t" + args_name + ".skip_in_grad = 0;"
-    blob_connect += "\t" + args_name + ".opt_matmul_type_fw = MATMUL_TYPE;"
-    blob_connect += "\t" + args_name + ".opt_matmul_type_wg = MATMUL_TYPE;"
-    blob_connect += "\t" + args_name + ".opt_matmul_type_ig = MATMUL_TYPE;"
-    blob_connect += "\t" + args_name + ".use_biases = " + str(use_bias) + ";"
+    blob_connect += "\t" + man_args_name + ".mm_args = &" + args_name + ";\n"
+    blob_connect += "\t" + man_args_name + ".layer_type = LAYER_LINEAR;\n"
+    blob_connect += "\t" + man_args_name + ".step_type = STEP_FW;\n"
+    blob_connect += "\t" + man_args_name + ".matmul_type = MATMUL_TYPE;\n"
 
     blob_connect += "\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, pulp_linear_fp32_fw_cl_kernel, &" + man_args_name + ");\n"
+
+    forward_function += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
-def tanh_writer(component, data_marker):
-    return None
+def tanh_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
 
+    input_data_name = component["input"]
 
-def flatten_writer(component, data_marker):
-    return None
+    output_data_name = component_name + "_output_data"
+    output_filler = "zero_init"
+
+    dim = extract_sizes(component["shape"])[0]
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct tanh_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+            "PI_L2 " + data_marker + " " + output_data_name + "[" + str(dim) + "];\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        dim, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".output = " + output_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".dim = " + str(dim) + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, tanh_prll, &" + args_name + ");\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def transpose_writer(component_name, component, data_marker):
@@ -875,9 +938,179 @@ def transpose_writer(component_name, component, data_marker):
 
     blob_connect += "\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, transpose, &" + args_name + ");\n\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def gelu_writer(component_name, component, data_marker):
-    # return structures_and_blobs, blob_initializations, blob_connect
-    return "", "", ""
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    input_blob_name = component_name + "_input_blob"
+    output_blob_name = component_name + "_output_blob"
+
+    output_data_name = component_name + "_output_data"
+
+    dim, w, h, c = extract_sizes(component["shape"])
+
+    output_filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct act_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define element blobs
+    structures_and_blobs += (
+            "PI_L2 struct blob "
+            + input_blob_name
+            + ", "
+            + output_blob_name
+            + ";\n"
+    )
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+            "PI_L2 " + data_marker + " " + output_data_name + "[" + str(dim) + "];\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        dim, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        input_blob_name,
+        {
+            "data": component["input"],
+            "dim": dim,
+            "C": c,
+            "W": w,
+            "H": h,
+        }
+    )
+
+    blob_connect += get_connect_text(
+        output_blob_name,
+        {
+            "data": output_data_name,
+            "dim": dim,
+            "C": c,
+            "W": w,
+            "H": h,
+        }
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = &" + input_blob_name + ";\n"
+    blob_connect += "\t" + args_name + ".output = &" + output_blob_name + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, pulp_gelu_tanh_approx_fp32_fw_cl, &" + args_name + ");\n\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def matmul_writer(component_name, component, data_marker):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_mm_args"
+    man_args_name = "man_" + args_name
+
+    input_data_a_name = component["input_a"]
+    input_data_b_name = component["input_b"]
+
+    output_data_name = component_name + "_output_data"
+
+    _, n_size, k_size, __ = extract_sizes(component["input_a_shape"])
+    output_size, _, m_size, __ = extract_sizes(component["output_shape"])
+
+    filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct matMul_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define blobs
+
+    # Define data variables
+    structures_and_blobs += "PI_L2 " + data_marker + " " + output_data_name + "[" + str(output_size) + "];\n"
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_size, output_data_name, filler
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += get_connect_text(
+        args_name,
+        {
+            "A": input_data_a_name,
+            "B": input_data_b_name,
+            "C": output_data_name,
+            "N": n_size,
+            "K": k_size,
+            "M": m_size,
+            # TODO: Make these dynamic
+            "trans_B": 0,
+        }
+    )
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
+    forward_function += "\t#endif\n\n"
+
+    forward_function += "\t#ifndef OPTIMIZE\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, mm, &" + args_name + ");\n"
+    forward_function += "\t#else\n"
+    forward_function += "\tstruct mm_manager_args " + man_args_name + ";\n"
+    forward_function += "\t" + man_args_name + ".mm_args = &" + args_name + ";\n"
+    forward_function += "\t" + man_args_name + ".layer_type = LAYER_LINEAR;\n"
+    forward_function += "\t" + man_args_name + ".step_type = STEP_FW;\n"
+    forward_function += "\t" + man_args_name + ".matmul_type = MATMUL_TYPE;\n"
+    forward_function += "\tpi_cl_team_fork(NUM_CORES, mm_manager, &" + man_args_name + ");\n"
+    forward_function += "\t#endif\n"
+
+    forward_function += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function

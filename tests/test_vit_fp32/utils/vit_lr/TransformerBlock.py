@@ -52,17 +52,41 @@ class TransformerBlock(nn.Module):
         }
         ordered_nodes.append(name + "_norm1")
 
+        # ================== pre_attn_transpose ==================
+        # Necessary pre-attention transpose (due to TrainLib mhsa layer implementation)
+        pre_transpose_shape = tuple(h.shape[1:])[::-1]
+        all_nodes[name + "_pre_attn_transpose"] = {
+            "input_from": name + "_norm1",
+            "available_input": False,
+            "input_shape": tuple(h.shape[1:]),
+            "output_shape": pre_transpose_shape,
+        }
+        ordered_nodes.append(name + "_pre_attn_transpose")
+
         # ================== attn ==================
+        in_h, in_w = h.shape[-2:]
+        att_dim = self.attn.att_dim
+        n_heads = self.attn.n_heads
+
+        shape_a = (att_dim, in_h)
+        shape_b = (in_h, in_h, n_heads)
+        shape_c = (in_w, in_h)
+
+        shape_temp = (1, 1, max(in_h * in_h, in_h * (att_dim // n_heads)))
+        shape_sm = (n_heads, in_h, in_h)
+
         h = self.attn(h, self.tgt_len)
         all_nodes[name + "_attn"] = {
-            "q_shape": tuple(h.shape[-2:]),
-            "k_shape": tuple(h.shape[-2:]),
-            "v_shape": tuple(h.shape[-2:]),
-            "att_map_shape": tuple(h.shape[-2:]),
-            "softmax_buffer_shape": tuple(h.shape[-2:]),
-            "output_shape": tuple(h.shape[-2:]),
-            "n_heads": self.attn.n_heads,
-            "input_shape": tuple(h.shape[-2:]),
+            "q_shape": shape_a,
+            "k_shape": shape_a,
+            "v_shape": shape_a,
+            "att_map_shape": shape_a,
+            "softmax_buffer_shape": shape_b,
+            "output_shape": shape_c,
+            "n_heads": n_heads,
+            "input_shape": shape_c,
+            "temp_shape": shape_temp,
+            "sm_shape": shape_sm,
             "wgt_in_q_shape": tuple(self.attn.proj_q.weight.shape),
             "wgt_in_k_shape": tuple(self.attn.proj_k.weight.shape),
             "wgt_in_v_shape": tuple(self.attn.proj_v.weight.shape),
@@ -70,18 +94,30 @@ class TransformerBlock(nn.Module):
             "bias_in_k_shape": tuple(self.attn.proj_k.bias.shape),
             "bias_in_v_shape": tuple(self.attn.proj_v.bias.shape),
             "wgt_proj_out_shape": tuple(self.attn.proj_out.weight.shape),
-            "input": name + "_norm1_output_data",
+            "input": name + "_pre_attn_transpose_output_data",
         }
         ordered_nodes.append(name + "_attn")
 
+        # ================== post_attn_transpose ==================
+        # Necessary post-attention transpose (due to TrainLib mhsa layer implementation)
+        post_transpose_shape = tuple(h.shape)[::-1]
+        all_nodes[name + "_post_attn_transpose"] = {
+            "input_from": name + "_attn",
+            "available_input": False,
+            "input_shape": post_transpose_shape,
+            "output_shape": tuple(h.shape),
+        }
+        ordered_nodes.append(name + "_post_attn_transpose")
+
         # ================== proj ==================
+        previous_shape = tuple(h.shape)
         h = self.proj(h)
         all_nodes[name + "_proj"] = {
-            "input": name + "_attn_out_data",
-            "input_shape": tuple(h.shape[-2:]),
-            "weight_shape": tuple(self.proj.weight.shape),
+            "input_a": name + "_post_attn_transpose_output_data",
+            "input_b": (name + "_proj_weight").upper(),
+            "input_a_shape": tuple(previous_shape),
             "bias_shape": tuple(self.proj.bias.shape),
-            "output_shape": tuple(h.shape[-2:]),
+            "output_shape": tuple(h.shape),
         }
         ordered_nodes.append(name + "_proj")
 

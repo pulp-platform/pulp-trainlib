@@ -19,27 +19,29 @@ class PositionWiseFeedForward(nn.Module):
         all_nodes = dict()
         ordered_nodes = []
 
+        previous_shape = x.shape[-2:]
         h = self.fc1(x)
         all_nodes[name + "_fc1"] = {
-            "input": name[:-5] + "_norm2_output_data",
-            "input_shape": tuple(x.shape[-2:]),
-            "weight_shape": tuple(self.fc1.weight.shape),
+            "input_a": name[:-5] + "_norm2_output_data",
+            "input_b": (name + "_fc1_weight").upper(),
+            "input_a_shape": tuple(previous_shape),
             "bias_shape": tuple(self.fc1.bias.shape),
             "output_shape": tuple(h.shape[-2:]),
         }
         ordered_nodes.append(name + "_fc1")
 
-        h = F.gelu(h)
+        h = F.gelu(h, approximate="tanh")
         all_nodes[name + "_gelu"] = {
-            "output_shape": tuple(h.shape[1:]),
+            "shape": tuple(h.shape[1:]),
+            "input": name + "_fc1_output_data",
         }
         ordered_nodes.append(name + "_gelu")
 
         x = self.fc2(h)
         all_nodes[name + "_fc2"] = {
-            "input": name + "_gelu_output_data",
-            "input_shape": tuple(h.shape[-2:]),
-            "weight_shape": tuple(self.fc2.weight.shape),
+            "input_a": name + "_gelu_output_data",
+            "input_b": (name + "_fc2_weight").upper(),
+            "input_a_shape": tuple(h.shape[-2:]),
             "bias_shape": tuple(self.fc2.bias.shape),
             "output_shape": tuple(x.shape[-2:]),
         }

@@ -141,11 +141,15 @@ def load_model(weights_path, num_classes, device, input_size):
 
         # Find ff_dim
         ff_dim = list(weights["transformer.blocks.0.pwff.fc1.weight"].shape)[0]
+
+        # Find num_heads
+        num_heads = list(weights["transformer.blocks.0.attn.proj_q.weight"].shape)[0]
     else:
         # Generate demo values
-        n_blocks = 2
+        n_blocks = 3
         patch_size = (2, 2)
         hidden_dimension = 12
+        num_heads = 12
         ff_dim = 4
 
     print("Creating model object...")
@@ -154,10 +158,12 @@ def load_model(weights_path, num_classes, device, input_size):
         num_blocks=n_blocks,
         input_size=input_size,
         num_classes=num_classes,
+        # TODO: Adapt to > 0 for training
         dropout_rate=0.0,
         patch_size=patch_size,
         hidden_dimension=hidden_dimension,
         ff_dim=ff_dim,
+        num_heads=num_heads,
     )
 
     if weights_path is not None:
@@ -205,6 +211,14 @@ def get_input(path, original_image_size, input_image_size, in_channels, device):
 
 
 def main():
+    # Set seed
+    print("Setting seed...")
+    np.random.seed(seed=42)
+    torch.manual_seed(42)
+
+    # Set higher printing precision
+    torch.set_printoptions(precision=10, sci_mode=False)
+
     # Parse and preprocess arguments
     print("Parsing arguments...")
     parser = create_arg_parser()
@@ -229,7 +243,7 @@ def main():
     else:
         # Demo data
         weights_path = None
-        num_classes = 1
+        num_classes = 4
         input_image_size = (8, 8)
 
     if (input_path is not None) and (input_path != "None"):
@@ -240,13 +254,6 @@ def main():
     else:
         input_path = None
         original_image_size = (6, 6)
-
-    # Set seed
-    print("Setting seed...")
-    torch.manual_seed(42)
-
-    # Set higher printing precision
-    torch.set_printoptions(precision=10, sci_mode=False)
 
     # Get cuda device
     print("Setting device...")

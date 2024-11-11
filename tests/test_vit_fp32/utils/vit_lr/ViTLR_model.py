@@ -106,9 +106,6 @@ class ViTLR(nn.Module):
         else:
             x = self.transformer(x=(is_pattern, x), get_activation=False)
 
-        # FIXME
-        return x
-
         # b, nph * npw + 1, dim
         x = torch.tanh(x)
 
@@ -253,12 +250,32 @@ class ViTLR(nn.Module):
 
         # b, nph * npw + 1, dim
         x = torch.tanh(x)
+        self.all_nodes["tanh"] = {
+            "input": self.all_nodes[self.ordered_nodes[-1]]["input_from"][0],
+            "shape": tuple(x.shape),
+        }
+        self.ordered_nodes.append("tanh")
 
         # b, nph * npw + 1, dim
         x = self.norm(x)[:, 0]
+        self.all_nodes["norm"] = {
+            "shape": tuple(x.shape),
+            "eps": self.norm.eps,
+            "input": self.ordered_nodes[-1] + "_output_data",
+        }
+        self.ordered_nodes.append("norm")
+        previous_shape = tuple(x.shape)
 
         # b, dim
         x = self.fc(x)
+        self.all_nodes["fc"] = {
+            "input_a": self.ordered_nodes[-1] + "_output_data",
+            "input_b": "FC_WEIGHT",
+            "input_a_shape": tuple(previous_shape),
+            "bias_shape": tuple(self.fc.bias.shape),
+            "output_shape": tuple(x.shape),
+        }
+        self.ordered_nodes.append("fc")
 
         # b, num_classes
         # if not get_activation:

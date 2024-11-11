@@ -80,15 +80,27 @@ def model_writer(model, data_type):
     for i, (name, el) in enumerate(model.named_parameters()):
         print("[" + str(i) + "] Working on: " + name)
 
+        # Get the variable name
+        var_name = name.replace(".", "_").upper()
+
+        # Flag to transpose input q, k, v weights, in the mhsa layer
+        to_transpose = False
+        to_be_transposed = ["ATTN_PROJ_Q_WEIGHT", "ATTN_PROJ_K_WEIGHT", "ATTN_PROJ_V_WEIGHT"]
+        for tbt in to_be_transposed:
+            if tbt in var_name:
+                to_transpose = True
+                break
+
+        # Write to file
         f.write(
             "PI_L2 "
             + data_marker
             + " "
-            + name.replace(".", "_").upper()
+            + var_name
             + "["
             + str(el.numel())
             + "] = {"
-            + tensor_to_string(el)
+            + tensor_to_string(el if not to_transpose else el.t())
             + "};\n\n"
         )
 
@@ -142,6 +154,7 @@ def model_components_writer(ordered_nodes, all_nodes, data_type):
     structures_and_blobs = ""
     blob_initializations = ""
     blob_connect = ""
+    forward_function = ""
 
     # Write actual data
     for node in ordered_nodes:
@@ -156,6 +169,7 @@ def model_components_writer(ordered_nodes, all_nodes, data_type):
                 structures_and_blobs += text_content[0]
                 blob_initializations += text_content[1]
                 blob_connect += text_content[2]
+                forward_function += text_content[3]
 
     # Write to header
     f = open("model_components.h", "w")
@@ -189,17 +203,24 @@ def model_components_writer(ordered_nodes, all_nodes, data_type):
     # f.write("\n")
 
     f.write("void init_and_connect_blobs() {\n")
-    f.write("\t")
-    f.write("// =============== Initializations ===============\n")
+    f.write("\t// =============== Initializations ===============\n")
     f.write(blob_initializations)
 
-    f.write("\t")
     f.write(
-        "// =============== Populating and connecting blobs to structures ===============\n"
+        "\t// =============== Populating and connecting blobs to structures ===============\n"
     )
     f.write(blob_connect)
 
     f.write("}\n")
+
+    # Write forward function
+    f.write(
+        "\n\n// =============== The forward function ===============\n"
+    )
+    f.write("void forward() {\n")
+    f.write(forward_function)
+    f.write("}\n")
+
     # FIXME: Remove if splitting back into header-source
     f.write("\n#endif\n")
     f.close()
