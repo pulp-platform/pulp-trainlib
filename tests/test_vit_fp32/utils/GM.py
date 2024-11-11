@@ -243,7 +243,7 @@ def main():
     else:
         # Demo data
         weights_path = None
-        num_classes = 4
+        num_classes = 50
         input_image_size = (8, 8)
 
     if (input_path is not None) and (input_path != "None"):

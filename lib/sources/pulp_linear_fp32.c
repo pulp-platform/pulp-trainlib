@@ -217,6 +217,8 @@ void pulp_linear_fp32_fw_cl_kernel( void * man_args ) {
     mm_manager(manager_args);
     #endif
 
+    pi_cl_team_barrier();
+
     if (USE_BIASES == 1) {
         const uint32_t outputSize = N * M;
         const uint32_t blockSize = (outputSize + NUM_CORES - 1) / NUM_CORES;
@@ -224,11 +226,6 @@ void pulp_linear_fp32_fw_cl_kernel( void * man_args ) {
         const uint32_t stop = start + blockSize > outputSize ? outputSize : start + blockSize;
 
         for (uint32_t i = start; i < stop; i++) {
-            // FIXME: Temporary solution
-            if (i > 9)
-                printf("%d\b\b", i);
-            else
-                printf("%d\b", i);
             outData[i] += biasData[i % M];
         }
     }

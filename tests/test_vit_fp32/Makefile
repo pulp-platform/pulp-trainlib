@@ -18,7 +18,7 @@ ORIGINAL_IMAGE_HEIGHT?=350
 INPUT_IMAGE_WIDTH?=384
 INPUT_IMAGE_HEIGHT?=384
 
-MATMUL_TYPE?=10
+MATMUL_TYPE?=9
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user code
