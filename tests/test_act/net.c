@@ -157,19 +157,19 @@ void prepare_data () {
     sigmoid_out_blob.C = Tout_C;
 
     // LeakyReLU args
-    relu_in_blob.data = LEAKYRELUIN;
-    relu_in_blob.diff = leakyrelu_in_grad;
-    relu_in_blob.dim = Tin_C * Tin_H * Tin_W;
-    relu_in_blob.H = Tin_H;
-    relu_in_blob.W = Tin_W;
-    relu_in_blob.C = Tin_C;
+    leakyrelu_in_blob.data = LEAKYRELUIN;
+    leakyrelu_in_blob.diff = leakyrelu_in_grad;
+    leakyrelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
+    leakyrelu_in_blob.H = Tin_H;
+    leakyrelu_in_blob.W = Tin_W;
+    leakyrelu_in_blob.C = Tin_C;
 
-    relu_out_blob.data = leakyrelu_out;
-    relu_out_blob.diff = LEAKYRELUOUTPUT_GRAD;
-    relu_out_blob.dim = Tout_C * Tout_H * Tout_W;
-    relu_out_blob.H = Tout_H;
-    relu_out_blob.W = Tout_W;
-    relu_out_blob.C = Tout_C;
+    leakyrelu_out_blob.data = leakyrelu_out;
+    leakyrelu_out_blob.diff = LEAKYRELUOUTPUT_GRAD;
+    leakyrelu_out_blob.dim = Tout_C * Tout_H * Tout_W;
+    leakyrelu_out_blob.H = Tout_H;
+    leakyrelu_out_blob.W = Tout_W;
+    leakyrelu_out_blob.C = Tout_C;
 }
 
 
