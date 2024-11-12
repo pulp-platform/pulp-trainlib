@@ -2275,7 +2275,6 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args4.USE_BIASES = 1;
     matMul_args4.bias_transposed = 1;
     matMul_args4.bias_dim = F;
-    unsigned long _cycles = 0;
 
     tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args);
 
