@@ -6,6 +6,10 @@
 #include "math.h"
 
 #include "net_args.h"
+#include "pmsis.h"
+#include <bsp/bsp.h>
+#include <bsp/fs/readfs.h>
+/*
 #include "attention-defines.h"
 #include "bottleneck-defines.h"
 #include "ffn-defines.h"
@@ -17,6 +21,10 @@
 #include "position_embeds.h"
 #include "token_type_embeds.h"
 #include "embeddings.h"
+*/
+
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
 
 // ~~~~~~~~~~ VARIABLE DEFINITION ~~~~~~~~~~
 
@@ -42,14 +50,26 @@ PI_L1 struct Tiled_Matmul_Mhsa_args_fp16 tiled_matmul_mhsa_args;
 PI_L1 pi_cl_dma_cmd_t * cmd_store;
 PI_L1 pi_cl_dma_cmd_t * cmd_load;
 
+// Flash reading
+PI_L1 struct pi_hyperflash_conf flash_conf;
+PI_L1 struct pi_device fs;
+PI_L1 struct pi_device flash;
+PI_L1 pi_fs_file_t file;
+PI_L1 pi_fs_file_t * file_p;
+PI_L1 uint32_t _L3_Flash;
+PI_L1 uint32_t input_address; 
+
+
 // ~~~~~~~~~~ L2 DATA ~~~~~~~~~~
 
 // Define DNN blobs
-
+/*
 // Input embeddings
 PI_L2 struct blob_fp16 embedding_norm_in, embedding_norm_out, embedding_norm_wgt, embedding_norm_bias;
 PI_L2 struct blob_fp16 pos_embed_add_skip, pos_embed_add_lout, pos_embed_add_output;
 PI_L2 struct blob_fp16 token_type_embed_add_skip, token_type_embed_add_lout, token_type_embed_add_output;
+*/
+
 // Bottleneck for attention values
 PI_L2 struct blob_fp16 bneck_norm_att_in, bneck_norm_att_out, bneck_norm_att_wgt, bneck_norm_att_bias;
 // Bottleneck for input values
@@ -78,7 +98,7 @@ PI_L2 struct blob_fp16 output_bottleneck_residual_skip, output_bottleneck_residu
 PI_L2 struct blob_fp16 output_bottleneck_norm_in, output_bottleneck_norm_wgt, output_bottleneck_norm_bias, output_bottleneck_norm_out;
 
 // Define DNN layer structures
-
+/*
 PI_L2 struct matMul_args_fp16 embedding_dense_args;                  // Input embeddings
 PI_L2 struct Nonorm_args_fp16 embedding_norm_args;
 PI_L2 struct SkipConn_args_fp16 pos_embed_add_args;
@@ -86,6 +106,7 @@ PI_L2 struct SkipConn_args_fp16 token_type_embed_add_args;
 PI_L2 struct Embedding_args_fp16 input_embedding_args;
 PI_L2 struct Embedding_args_fp16 position_embedding_args;
 PI_L2 struct Embedding_args_fp16 token_type_embedding_args;
+*/
 PI_L2 struct matMul_args_fp16 bneck_dense_att_args;                  // Bottleneck for attention values
 PI_L2 struct Nonorm_args_fp16 bneck_norm_att_args;       
 PI_L2 struct matMul_args_fp16 bneck_dense_inp_args;                  // Bottleneck for input values
@@ -117,10 +138,11 @@ PI_L2 struct matMul_args_fp16 output_bottleneck_dense_args;          // Output B
 PI_L2 struct SkipConn_args_fp16 output_bottleneck_residual_args;     
 PI_L2 struct Nonorm_args_fp16 output_bottleneck_norm_args;
 
+/*
 // Positional and token type IDs
 PI_L2 int POSITION_IDS[SEQ_LEN];
 PI_L2 int TOKEN_TYPE_IDS[SEQ_LEN];
-
+*/
 // Define L2 I/O tensors
 
 PI_L2 fp16 buff_a[SEQ_LEN * EMBED_SIZE];
@@ -128,8 +150,12 @@ PI_L2 fp16 buff_b[SEQ_LEN * EMBED_SIZE];
 PI_L2 fp16 buff_c[SEQ_LEN * EMBED_SIZE];
 PI_L2 fp16 buff_d[SEQ_LEN * HIDDEN_SIZE];
 
-// Other Data for MHSA
+// Define L2 input, weight & bias buffer
+PI_L2 fp16 * IN_DATA_L2, * W_DATA_L2, * OUT_DATA_L2, * BIAS_DATA_L2;
+// PI_L2 fp16 * BUFF_L2;
+PI_L2 fp16 BUFF_L2[MAX_SIZE_L2];
 
+// Other Data for MHSA
 PI_L1 fp16 mhsa_maxes[SEQ_LEN];
 PI_L1 fp16 mhsa_sums[SEQ_LEN];
 PI_L2 fp16 mhsa_softmax_buffer_v[SEQ_LEN * SEQ_LEN * N_HEADS];
@@ -150,6 +176,8 @@ void DNN_init()
     update_blob();
     reset_arguments();
 
+    _L3_Flash = 0;
+
 
     // ~~~~~~~~~~ INITIALIZING L2 BUFFER DATA TO ZERO ~~~~~~~~~~
 
@@ -160,12 +188,14 @@ void DNN_init()
     for(int i=0; i<SEQ_LEN; i++)		                mhsa_maxes[i] = zero_init;
     for(int i=0; i<SEQ_LEN; i++)		                mhsa_sums[i] = zero_init;
     for(int i=0; i<SEQ_LEN * SEQ_LEN * N_HEADS; i++)	mhsa_softmax_buffer_v[i] = zero_init;
-    for(int i = 0; i < MAX_SIZE; i++)                   BUFF[i] = zero_init;
-    for(int i = 0; i < SEQ_LEN; i++)                    POSITION_IDS[i] = i;
-    for(int i = 0; i < SEQ_LEN; i++)                    TOKEN_TYPE_IDS[i] = (int) zero_init;
+    for(int i=0; i<MAX_SIZE; i++)                       BUFF[i] = zero_init;
+    //for(int i=0; i<MAX_SIZE_L2; i++)                    BUFF_L2[i] = zero_init;
+    //for(int i = 0; i < SEQ_LEN; i++)                    POSITION_IDS[i] = i;
+    //for(int i = 0; i < SEQ_LEN; i++)                    TOKEN_TYPE_IDS[i] = (int) zero_init;
 
     // ~~~~~~~~~~ CONNECT TENSOR TO BLOBS ~~~~~~~~~~
 
+    /*
     // Connecting Input embeddings
 
     embedding_norm_in.data = INPUT;
@@ -227,6 +257,7 @@ void DNN_init()
     token_type_embed_add_output.H = SEQ_LEN;
     token_type_embed_add_output.W = HIDDEN_SIZE;
     token_type_embed_add_output.C = 1;
+    */
 
     // Connecting Bottleneck for attention values
     bneck_norm_att_in.data = buff_a;
@@ -241,17 +272,19 @@ void DNN_init()
     bneck_norm_att_out.W = EMBED_SIZE;
     bneck_norm_att_out.C = 1;
 
-    bneck_norm_att_wgt.data = BOTTLENECK_ATTENTION_NORM_WEIGHTS;
+    bneck_norm_att_wgt.data = (fp16*) _L3_Flash;//BOTTLENECK_ATTENTION_NORM_WEIGHTS;
     bneck_norm_att_wgt.dim = EMBED_SIZE;
     bneck_norm_att_wgt.H = 1;
     bneck_norm_att_wgt.W = EMBED_SIZE;
     bneck_norm_att_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    bneck_norm_att_bias.data = BOTTLENECK_ATTENTION_NORM_BIASES;
+    bneck_norm_att_bias.data = (fp16*) _L3_Flash;//BOTTLENECK_ATTENTION_NORM_BIASES;
     bneck_norm_att_bias.dim = EMBED_SIZE;
     bneck_norm_att_bias.H = 1;
     bneck_norm_att_bias.W = EMBED_SIZE;
     bneck_norm_att_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     // Connecting Bottleneck for input values
     bneck_norm_inp_in.data = buff_b;
@@ -266,24 +299,28 @@ void DNN_init()
     bneck_norm_inp_out.W = EMBED_SIZE;
     bneck_norm_inp_out.C = 1;
 
-    bneck_norm_inp_wgt.data = BOTTLENECK_INPUT_NORM_WEIGHTS;
+    bneck_norm_inp_wgt.data = (fp16*)_L3_Flash;//BOTTLENECK_INPUT_NORM_WEIGHTS;
     bneck_norm_inp_wgt.dim = EMBED_SIZE;
     bneck_norm_inp_wgt.H = 1;
     bneck_norm_inp_wgt.W = EMBED_SIZE;
     bneck_norm_inp_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    bneck_norm_inp_bias.data = BOTTLENECK_INPUT_NORM_BIASES;
+    bneck_norm_inp_bias.data = (fp16*) _L3_Flash;//BOTTLENECK_INPUT_NORM_BIASES;
     bneck_norm_inp_bias.dim = EMBED_SIZE;
     bneck_norm_inp_bias.H = 1;
     bneck_norm_inp_bias.W = EMBED_SIZE;
     bneck_norm_inp_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    // Connecting MHSA 
-    mhsa_input.data = INPUT;
+    // Connecting MHSA
+    input_address = _L3_Flash;
+    mhsa_input.data = (fp16*) input_address; //INPUT
     mhsa_input.dim = INPUT_SIZE;
     mhsa_input.H = SEQ_LEN; 
     mhsa_input.W = HIDDEN_SIZE;
     mhsa_input.C = 1;
+    _L3_Flash += (uint32_t) (INPUT_SIZE * 2);
 
     mhsa_input_bn.data = buff_a;
     mhsa_input_bn.dim = SEQ_LEN*EMBED_SIZE;
@@ -297,17 +334,20 @@ void DNN_init()
     mhsa_output.W = EMBED_SIZE;
     mhsa_output.C = 1;
 
-    mhsa_output_wgt.data = ATTENTION_OUTPUT_WEIGHTS;
+    mhsa_output_wgt.data = (fp16*) _L3_Flash;//ATTENTION_OUTPUT_WEIGHTS;
     mhsa_output_wgt.dim = EMBED_SIZE*EMBED_SIZE;
     mhsa_output_wgt.H = EMBED_SIZE;
     mhsa_output_wgt.W = EMBED_SIZE;
     mhsa_output_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * EMBED_SIZE * 2);
 
-    mhsa_output_bias.data = ATTENTION_OUTPUT_BIASES;
+
+    mhsa_output_bias.data = (fp16*) _L3_Flash;//ATTENTION_OUTPUT_BIASES;
     mhsa_output_bias.dim = EMBED_SIZE;
     mhsa_output_bias.H = 1;
     mhsa_output_bias.W = EMBED_SIZE;
     mhsa_output_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     mhsa_q.data = buff_b; 
     mhsa_q.dim = EMBED_SIZE*SEQ_LEN;
@@ -315,17 +355,19 @@ void DNN_init()
     mhsa_q.W = SEQ_LEN;
     mhsa_q.C = 1;
 
-    mhsa_q_wgt.data = INPUT_WEIGHTS_Q;
+    mhsa_q_wgt.data = (fp16*)  _L3_Flash;//INPUT_WEIGHTS_Q;
     mhsa_q_wgt.dim = EMBED_SIZE * EMBED_SIZE;
     mhsa_q_wgt.H = EMBED_SIZE;
     mhsa_q_wgt.W = EMBED_SIZE;
     mhsa_q_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * EMBED_SIZE * 2);
 
-    mhsa_q_bias.data = INPUT_BIASES_Q;
+    mhsa_q_bias.data = (fp16*) _L3_Flash;//INPUT_BIASES_Q;
     mhsa_q_bias.dim = EMBED_SIZE;
     mhsa_q_bias.H = 1;
     mhsa_q_bias.W = EMBED_SIZE;
-    mhsa_q_bias.C = 1; 
+    mhsa_q_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2); 
 
     mhsa_k.data = buff_c; 
     mhsa_k.dim = EMBED_SIZE*SEQ_LEN;
@@ -333,17 +375,19 @@ void DNN_init()
     mhsa_k.W = SEQ_LEN;
     mhsa_k.C = 1;
 
-    mhsa_k_wgt.data = INPUT_WEIGHTS_K;
+    mhsa_k_wgt.data = (fp16*) _L3_Flash;//INPUT_WEIGHTS_K;
     mhsa_k_wgt.dim = EMBED_SIZE * EMBED_SIZE;
     mhsa_k_wgt.H = EMBED_SIZE;
     mhsa_k_wgt.W = EMBED_SIZE;
     mhsa_k_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * EMBED_SIZE * 2); 
 
-    mhsa_k_bias.data = INPUT_BIASES_K;
+    mhsa_k_bias.data = (fp16*) _L3_Flash;//INPUT_BIASES_K;
     mhsa_k_bias.dim = EMBED_SIZE;
     mhsa_k_bias.H = 1;
     mhsa_k_bias.W = EMBED_SIZE;
     mhsa_k_bias.C = 1; 
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2); 
 
     mhsa_v.data = buff_a;
     mhsa_v.dim = EMBED_SIZE*SEQ_LEN;
@@ -351,17 +395,20 @@ void DNN_init()
     mhsa_v.W = SEQ_LEN;
     mhsa_v.C = 1;
 
-    mhsa_v_wgt.data = INPUT_WEIGHTS_V;
+    mhsa_v_wgt.data = (fp16*) _L3_Flash;//INPUT_WEIGHTS_V;
     mhsa_v_wgt.dim = HIDDEN_SIZE * EMBED_SIZE;
     mhsa_v_wgt.H = EMBED_SIZE;
     mhsa_v_wgt.W = HIDDEN_SIZE; 
     mhsa_v_wgt.C = 1;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2); 
 
-    mhsa_v_bias.data = INPUT_BIASES_V;
+
+    mhsa_v_bias.data = (fp16*)  _L3_Flash;//INPUT_BIASES_V;
     mhsa_v_bias.dim = EMBED_SIZE;
     mhsa_v_bias.H = 1;
     mhsa_v_bias.W = EMBED_SIZE;
     mhsa_v_bias.C = 1; 
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2); 
 
     mhsa_softmax_buffer.data = mhsa_softmax_buffer_v;
     mhsa_softmax_buffer.dim = SEQ_LEN * SEQ_LEN * N_HEADS;
@@ -400,17 +447,20 @@ void DNN_init()
     attention_output_norm_in.W = EMBED_SIZE;
     attention_output_norm_in.C = 1;
 
-    attention_output_norm_wgt.data = ATTENTION_OUTPUT_NORM_WEIGHTS;
+    attention_output_norm_wgt.data = (fp16*) _L3_Flash;//ATTENTION_OUTPUT_NORM_WEIGHTS;
     attention_output_norm_wgt.dim = EMBED_SIZE;
     attention_output_norm_wgt.H = 1;
     attention_output_norm_wgt.W = EMBED_SIZE;
     attention_output_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2); 
 
-    attention_output_norm_bias.data = ATTENTION_OUTPUT_NORM_BIASES;
+
+    attention_output_norm_bias.data = (fp16*) _L3_Flash;//ATTENTION_OUTPUT_NORM_BIASES;
     attention_output_norm_bias.dim = EMBED_SIZE;
     attention_output_norm_bias.H = 1;
     attention_output_norm_bias.W = EMBED_SIZE;
     attention_output_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     attention_output_norm_out.data = buff_c;
     attention_output_norm_out.dim = SEQ_LEN*EMBED_SIZE;
@@ -455,17 +505,19 @@ void DNN_init()
     ffn_0_norm_in.W = EMBED_SIZE;
     ffn_0_norm_in.C = 1;
 
-    ffn_0_norm_wgt.data = FFN0_OUTPUT_NORM_WEIGHTS;
+    ffn_0_norm_wgt.data = (fp16*) _L3_Flash;//FFN0_OUTPUT_NORM_WEIGHTS;
     ffn_0_norm_wgt.dim = EMBED_SIZE;
     ffn_0_norm_wgt.H = 1;
     ffn_0_norm_wgt.W = EMBED_SIZE;
     ffn_0_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    ffn_0_norm_bias.data = FFN0_OUTPUT_NORM_BIASES;
+    ffn_0_norm_bias.data = (fp16*) _L3_Flash;//FFN0_OUTPUT_NORM_BIASES;
     ffn_0_norm_bias.dim = EMBED_SIZE;
     ffn_0_norm_bias.H = 1;
     ffn_0_norm_bias.W = EMBED_SIZE;
     ffn_0_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     ffn_0_norm_out.data = buff_a;
     ffn_0_norm_out.dim = SEQ_LEN*EMBED_SIZE;
@@ -510,17 +562,20 @@ void DNN_init()
     ffn_1_norm_in.W = EMBED_SIZE;
     ffn_1_norm_in.C = 1;
 
-    ffn_1_norm_wgt.data = FFN1_OUTPUT_NORM_WEIGHTS;
+    ffn_1_norm_wgt.data = (fp16*) _L3_Flash;//FFN1_OUTPUT_NORM_WEIGHTS;
     ffn_1_norm_wgt.dim = EMBED_SIZE;
     ffn_1_norm_wgt.H = 1;
     ffn_1_norm_wgt.W = EMBED_SIZE;
     ffn_1_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    ffn_1_norm_bias.data = FFN1_OUTPUT_NORM_BIASES;
+
+    ffn_1_norm_bias.data = (fp16*) _L3_Flash;//FFN1_OUTPUT_NORM_BIASES;
     ffn_1_norm_bias.dim = EMBED_SIZE;
     ffn_1_norm_bias.H = 1;
     ffn_1_norm_bias.W = EMBED_SIZE;
     ffn_1_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     ffn_1_norm_out.data = buff_c;
     ffn_1_norm_out.dim = SEQ_LEN*EMBED_SIZE;
@@ -565,17 +620,19 @@ void DNN_init()
     ffn_2_norm_in.W = EMBED_SIZE;
     ffn_2_norm_in.C = 1;
 
-    ffn_2_norm_wgt.data = FFN2_OUTPUT_NORM_WEIGHTS;
+    ffn_2_norm_wgt.data = (fp16*) _L3_Flash;//FFN2_OUTPUT_NORM_WEIGHTS;
     ffn_2_norm_wgt.dim = EMBED_SIZE;
     ffn_2_norm_wgt.H = 1;
     ffn_2_norm_wgt.W = EMBED_SIZE;
     ffn_2_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    ffn_2_norm_bias.data = FFN2_OUTPUT_NORM_BIASES;
+    ffn_2_norm_bias.data = (fp16*) _L3_Flash;//FFN2_OUTPUT_NORM_BIASES;
     ffn_2_norm_bias.dim = EMBED_SIZE;
     ffn_2_norm_bias.H = 1;
     ffn_2_norm_bias.W = EMBED_SIZE;
     ffn_2_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     ffn_2_norm_out.data = buff_a;
     ffn_2_norm_out.dim = SEQ_LEN*EMBED_SIZE;
@@ -621,17 +678,19 @@ void DNN_init()
     output_norm_in.W = EMBED_SIZE;
     output_norm_in.C = 1;
 
-    output_norm_wgt.data = OUTPUT_NORM_WEIGHTS;
+    output_norm_wgt.data = (fp16*)  _L3_Flash;//OUTPUT_NORM_WEIGHTS;
     output_norm_wgt.dim = EMBED_SIZE;
     output_norm_wgt.H = 1;
     output_norm_wgt.W = EMBED_SIZE;
     output_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
-    output_norm_bias.data = OUTPUT_NORM_BIASES;
+    output_norm_bias.data = (fp16*) _L3_Flash;//OUTPUT_NORM_BIASES;
     output_norm_bias.dim = EMBED_SIZE;
     output_norm_bias.H = 1;
     output_norm_bias.W = EMBED_SIZE;
     output_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
 
     output_norm_out.data = buff_c;
     output_norm_out.dim = SEQ_LEN*EMBED_SIZE;
@@ -646,7 +705,7 @@ void DNN_init()
     output_bottleneck_residual_skip.W = HIDDEN_SIZE;
     output_bottleneck_residual_skip.C = 1;
 
-    output_bottleneck_residual_lout.data = INPUT;
+    output_bottleneck_residual_lout.data = (fp16*) input_address;//INPUT;
     output_bottleneck_residual_lout.dim = SEQ_LEN*HIDDEN_SIZE;
     output_bottleneck_residual_lout.H = SEQ_LEN;
     output_bottleneck_residual_lout.W = HIDDEN_SIZE;
@@ -664,17 +723,19 @@ void DNN_init()
     output_bottleneck_norm_in.W = HIDDEN_SIZE;
     output_bottleneck_norm_in.C = 1;
 
-    output_bottleneck_norm_wgt.data = OUTPUT_BOTTLENECK_NORM_WEIGHTS;
+    output_bottleneck_norm_wgt.data = (fp16*) _L3_Flash;//OUTPUT_BOTTLENECK_NORM_WEIGHTS;
     output_bottleneck_norm_wgt.dim = HIDDEN_SIZE;
     output_bottleneck_norm_wgt.H = 1;
     output_bottleneck_norm_wgt.W = HIDDEN_SIZE;
     output_bottleneck_norm_wgt.C = 1;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
 
-    output_bottleneck_norm_bias.data = OUTPUT_BOTTLENECK_NORM_BIASES;
+    output_bottleneck_norm_bias.data = (fp16*)  _L3_Flash;//OUTPUT_BOTTLENECK_NORM_BIASES;
     output_bottleneck_norm_bias.dim = HIDDEN_SIZE;
     output_bottleneck_norm_bias.H = 1;
     output_bottleneck_norm_bias.W = HIDDEN_SIZE;
     output_bottleneck_norm_bias.C = 1;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
 
     output_bottleneck_norm_out.data = buff_d;
     output_bottleneck_norm_out.dim = SEQ_LEN*HIDDEN_SIZE;
@@ -685,6 +746,7 @@ void DNN_init()
 
     // ~~~~~~~~~~ CONFIGURE LAYER STRUCTURES ~~~~~~~~~~
 
+    /*
     // Input embeddings
     embedding_dense_args.A = buff_d;
     embedding_dense_args.B = EMBEDDING_WEIGHTS;
@@ -731,17 +793,19 @@ void DNN_init()
     token_type_embedding_args.ids = TOKEN_TYPE_IDS;
     token_type_embedding_args.embeds = TOKEN_TYPE_EMBED;
     token_type_embedding_args.out = buff_d;
-
+    */
 
     // Bottleneck for attention values
-    bneck_dense_att_args.A = INPUT;
-    bneck_dense_att_args.B = BOTTLENECK_ATTENTION_WEIGHTS;
+    bneck_dense_att_args.A = (fp16*) input_address;//INPUT;
+    bneck_dense_att_args.B = (fp16*) _L3_Flash;//BOTTLENECK_ATTENTION_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     bneck_dense_att_args.C = buff_a;
     bneck_dense_att_args.N = SEQ_LEN;
     bneck_dense_att_args.K = HIDDEN_SIZE;
     bneck_dense_att_args.M = EMBED_SIZE;
     bneck_dense_att_args.trans_B = 0;
-    bneck_dense_att_args.bias = BOTTLENECK_ATTENTION_BIASES;
+    bneck_dense_att_args.bias = (fp16*) _L3_Flash;//BOTTLENECK_ATTENTION_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     bneck_dense_att_args.bias_dim = EMBED_SIZE;
     bneck_dense_att_args.USE_BIASES = 1;
     bneck_dense_att_args.bias_transposed = 0;
@@ -752,14 +816,16 @@ void DNN_init()
     bneck_norm_att_args.output = &bneck_norm_att_out;
 
     // Bottleneck for input values
-    bneck_dense_inp_args.A = INPUT;
-    bneck_dense_inp_args.B = BOTTLENECK_INPUT_WEIGHTS;
+    bneck_dense_inp_args.A = (fp16*) input_address;//INPUT;
+    bneck_dense_inp_args.B = (fp16*) _L3_Flash;//BOTTLENECK_INPUT_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     bneck_dense_inp_args.C = buff_b;
     bneck_dense_inp_args.N = SEQ_LEN;
     bneck_dense_inp_args.K = HIDDEN_SIZE;
     bneck_dense_inp_args.M = EMBED_SIZE;
     bneck_dense_inp_args.trans_B = 0;
-    bneck_dense_inp_args.bias = BOTTLENECK_INPUT_BIASES;
+    bneck_dense_inp_args.bias = (fp16*) _L3_Flash;//BOTTLENECK_INPUT_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     bneck_dense_inp_args.bias_dim = EMBED_SIZE;
     bneck_dense_inp_args.USE_BIASES = 1;
     bneck_dense_inp_args.bias_transposed = 0;
@@ -809,13 +875,15 @@ void DNN_init()
 
     // FFN 0
     ffn_0_intermediate_args.A = buff_c;
-    ffn_0_intermediate_args.B = FFN0_INTERMEDIATE_WEIGHTS;
+    ffn_0_intermediate_args.B = (fp16*) _L3_Flash;//FFN0_INTERMEDIATE_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_0_intermediate_args.C = buff_d;
     ffn_0_intermediate_args.N = SEQ_LEN;
     ffn_0_intermediate_args.K = EMBED_SIZE;
     ffn_0_intermediate_args.M = HIDDEN_SIZE;
     ffn_0_intermediate_args.trans_B = 0;
-    ffn_0_intermediate_args.bias = FFN0_INTERMEDIATE_BIASES;
+    ffn_0_intermediate_args.bias = (fp16*) _L3_Flash;//FFN0_INTERMEDIATE_BIASES;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
     ffn_0_intermediate_args.bias_dim = HIDDEN_SIZE;
     ffn_0_intermediate_args.USE_BIASES = 1;
     ffn_0_intermediate_args.bias_transposed = 0;
@@ -826,13 +894,15 @@ void DNN_init()
     ffn_0_relu_args.W = HIDDEN_SIZE;
 
     ffn_0_output_args.A = buff_d;
-    ffn_0_output_args.B = FFN0_OUTPUT_WEIGHTS;
+    ffn_0_output_args.B = (fp16*) _L3_Flash;//FFN0_OUTPUT_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_0_output_args.C = buff_b;
     ffn_0_output_args.N = SEQ_LEN;
     ffn_0_output_args.K = HIDDEN_SIZE;
     ffn_0_output_args.M = EMBED_SIZE;
     ffn_0_output_args.trans_B = 0;
-    ffn_0_output_args.bias = FFN0_OUTPUT_BIASES;
+    ffn_0_output_args.bias = (fp16*) _L3_Flash;//FFN0_OUTPUT_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     ffn_0_output_args.bias_dim = EMBED_SIZE;
     ffn_0_output_args.USE_BIASES = 1;
     ffn_0_output_args.bias_transposed = 0;
@@ -848,13 +918,15 @@ void DNN_init()
 
     // FFN 1
     ffn_1_intermediate_args.A = buff_a;
-    ffn_1_intermediate_args.B = FFN1_INTERMEDIATE_WEIGHTS;
+    ffn_1_intermediate_args.B = (fp16*) _L3_Flash;//FFN1_INTERMEDIATE_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_1_intermediate_args.C = buff_d;
     ffn_1_intermediate_args.N = SEQ_LEN;
     ffn_1_intermediate_args.K = EMBED_SIZE;
     ffn_1_intermediate_args.M = HIDDEN_SIZE;
     ffn_1_intermediate_args.trans_B = 0;
-    ffn_1_intermediate_args.bias = FFN1_INTERMEDIATE_BIASES;
+    ffn_1_intermediate_args.bias = (fp16*) _L3_Flash;//FFN1_INTERMEDIATE_BIASES;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
     ffn_1_intermediate_args.bias_dim = HIDDEN_SIZE;
     ffn_1_intermediate_args.USE_BIASES = 1;
     ffn_1_intermediate_args.bias_transposed = 0;
@@ -865,13 +937,15 @@ void DNN_init()
     ffn_1_relu_args.W = HIDDEN_SIZE;
 
     ffn_1_output_args.A = buff_d;
-    ffn_1_output_args.B = FFN1_OUTPUT_WEIGHTS;
+    ffn_1_output_args.B = (fp16*) _L3_Flash;//FFN1_OUTPUT_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_1_output_args.C = buff_b;
     ffn_1_output_args.N = SEQ_LEN;
     ffn_1_output_args.K = HIDDEN_SIZE;
     ffn_1_output_args.M = EMBED_SIZE;
     ffn_1_output_args.trans_B = 0;
-    ffn_1_output_args.bias = FFN1_OUTPUT_BIASES;
+    ffn_1_output_args.bias = (fp16*) _L3_Flash;//FFN1_OUTPUT_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     ffn_1_output_args.bias_dim = EMBED_SIZE;
     ffn_1_output_args.USE_BIASES = 1;
     ffn_1_output_args.bias_transposed = 0;
@@ -887,13 +961,15 @@ void DNN_init()
 
     // FFN 2
     ffn_2_intermediate_args.A = buff_c;
-    ffn_2_intermediate_args.B = FFN2_INTERMEDIATE_WEIGHTS;
+    ffn_2_intermediate_args.B = (fp16*) _L3_Flash;//FFN2_INTERMEDIATE_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_2_intermediate_args.C = buff_d;
     ffn_2_intermediate_args.N = SEQ_LEN;
     ffn_2_intermediate_args.K = EMBED_SIZE;
     ffn_2_intermediate_args.M = HIDDEN_SIZE;
     ffn_2_intermediate_args.trans_B = 0;
-    ffn_2_intermediate_args.bias = FFN2_INTERMEDIATE_BIASES;
+    ffn_2_intermediate_args.bias = (fp16*) _L3_Flash;//FFN2_INTERMEDIATE_BIASES;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
     ffn_2_intermediate_args.bias_dim = HIDDEN_SIZE;
     ffn_2_intermediate_args.USE_BIASES = 1;
     ffn_2_intermediate_args.bias_transposed = 0;
@@ -904,13 +980,15 @@ void DNN_init()
     ffn_2_relu_args.W = HIDDEN_SIZE;
 
     ffn_2_output_args.A = buff_d;
-    ffn_2_output_args.B = FFN2_OUTPUT_WEIGHTS;
+    ffn_2_output_args.B = (fp16*) _L3_Flash;//FFN2_OUTPUT_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     ffn_2_output_args.C = buff_b;
     ffn_2_output_args.N = SEQ_LEN;
     ffn_2_output_args.K = HIDDEN_SIZE;
     ffn_2_output_args.M = EMBED_SIZE;
     ffn_2_output_args.trans_B = 0;
-    ffn_2_output_args.bias = FFN2_OUTPUT_BIASES;
+    ffn_2_output_args.bias = (fp16*)  _L3_Flash;//FFN2_OUTPUT_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     ffn_2_output_args.bias_dim = EMBED_SIZE;
     ffn_2_output_args.USE_BIASES = 1;
     ffn_2_output_args.bias_transposed = 0;
@@ -926,13 +1004,15 @@ void DNN_init()
 
     // Intermediate
     intermediate_args.A = buff_a;
-    intermediate_args.B = INTERMEDIATE_WEIGHTS;
+    intermediate_args.B = (fp16*) _L3_Flash;//INTERMEDIATE_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     intermediate_args.C = buff_d;
     intermediate_args.N = SEQ_LEN;
     intermediate_args.K = EMBED_SIZE;
     intermediate_args.M = HIDDEN_SIZE;
     intermediate_args.trans_B = 0;
-    intermediate_args.bias = INTERMEDIATE_BIASES;
+    intermediate_args.bias = (fp16*) _L3_Flash;//INTERMEDIATE_BIASES;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
     intermediate_args.bias_dim = HIDDEN_SIZE;
     intermediate_args.USE_BIASES = 1;
     intermediate_args.bias_transposed = 0;
@@ -944,13 +1024,15 @@ void DNN_init()
 
     // Output
     output_dense_args.A = buff_d;
-    output_dense_args.B = OUTPUT_WEIGHTS;
+    output_dense_args.B = (fp16*) _L3_Flash;//OUTPUT_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     output_dense_args.C = buff_b;
     output_dense_args.N = SEQ_LEN;
     output_dense_args.K = HIDDEN_SIZE;
     output_dense_args.M = EMBED_SIZE;
     output_dense_args.trans_B = 0;
-    output_dense_args.bias = OUTPUT_BIASES;
+    output_dense_args.bias = (fp16*) _L3_Flash;//OUTPUT_BIASES;
+    _L3_Flash += (uint32_t) (EMBED_SIZE * 2);
     output_dense_args.bias_dim = EMBED_SIZE;
     output_dense_args.USE_BIASES = 1;
     output_dense_args.bias_transposed = 0;
@@ -966,13 +1048,15 @@ void DNN_init()
 
     // Output Bottleneck
     output_bottleneck_dense_args.A = buff_c;
-    output_bottleneck_dense_args.B = OUTPUT_BOTTLENECK_WEIGHTS;
+    output_bottleneck_dense_args.B = (fp16*) _L3_Flash;//OUTPUT_BOTTLENECK_WEIGHTS;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * EMBED_SIZE * 2);
     output_bottleneck_dense_args.C = buff_d;
     output_bottleneck_dense_args.N = SEQ_LEN;
     output_bottleneck_dense_args.K = EMBED_SIZE;
     output_bottleneck_dense_args.M = HIDDEN_SIZE;
     output_bottleneck_dense_args.trans_B = 0;
-    output_bottleneck_dense_args.bias = OUTPUT_BOTTLENECK_BIASES;
+    output_bottleneck_dense_args.bias = (fp16*) _L3_Flash;//OUTPUT_BOTTLENECK_BIASES;
+    _L3_Flash += (uint32_t) (HIDDEN_SIZE * 2);
     output_bottleneck_dense_args.bias_dim = HIDDEN_SIZE;
     output_bottleneck_dense_args.USE_BIASES = 1;
     output_bottleneck_dense_args.bias_transposed = 0;
@@ -990,17 +1074,51 @@ void DNN_init()
 
 }
 
-void tiled_matmul(void* matmul_args){
+void tiled_matmul(void* matmul_args, int flash_input){
+    // BUFF_L2 = (fp16*) pi_l2_malloc(MAX_SIZE_L2 * 2);
     struct matMul_args_fp16 * args = (struct matMul_args_fp16 *)matmul_args;
     
     int n_tiles_i = (args->N) / TILE_H;
     int n_tiles_j = (args->M) / TILE_W;
     int K = args->K;
+    int N = args->N;
+    int M = args->M;
     
     IN_DATA = BUFF;
     W_DATA = BUFF + K * TILE_H;
     OUT_DATA = W_DATA + K * TILE_W;
     BIAS_DATA = OUT_DATA + TILE_DIM;
+
+    IN_DATA_L2 = BUFF_L2;
+    W_DATA_L2 = BUFF_L2 + K * N;
+    BIAS_DATA_L2 = W_DATA_L2 + K * M;
+
+    pi_cl_fs_req_t req1, req2, req3;
+
+    printf("Reached the flash stuff...\n");
+
+    printf("flash input...\n");
+    if(flash_input){
+        printf("copy...\n");
+        pi_cl_fs_copy(file_p, (uint32_t) args->A, (void*) (IN_DATA_L2), (N * K * 2),  1, &req1);
+        // pi_cl_fs_read(file_p, (void*) (IN_DATA_L2), (args->N * args->K * 2), &req1);
+        pi_cl_fs_wait(&req1);
+        args->A = IN_DATA_L2;  
+    }
+
+    printf("flash weight...\n");
+    pi_cl_fs_copy(file_p, (uint32_t) args->B, (void*) (W_DATA_L2), (M * K * 2), 1, &req2);
+    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+    pi_cl_fs_wait(&req2);
+    args->B = W_DATA_L2;
+    
+
+    printf("flash bias...\n");
+    pi_cl_fs_copy(file_p, (uint32_t) args->bias, (void*) (BIAS_DATA_L2), (M * 2), 1, &req3);
+    // pi_cl_fs_read(file_p, (void*) (BIAS_DATA_L2), (args->M * 2), &req3);
+    pi_cl_fs_wait(&req3);
+    args->bias = BIAS_DATA_L2;
+    
     
     mm_args.A = IN_DATA;
     mm_args.B = W_DATA;
@@ -1028,14 +1146,36 @@ void tiled_matmul(void* matmul_args){
             pi_cl_dma_cmd_wait(cmd_store);
         }
     }
+    // pi_l2_free((void*) BUFF_L2, MAX_SIZE_L2 * 2);
 }
 
 void tiled_norm(void *nonorm_args){
+    // BUFF_L2 = (fp16*) pi_l2_malloc(MAX_SIZE_L2 * 2);
     struct Nonorm_args_fp16 * args = (struct Nonorm_args_fp16*) nonorm_args;
 
     int W = args->input->W;
-    int n_tiles_i = args->input->H / TILE_H;
+    int H = args->input->H;
+    int n_tiles_i = H / TILE_H;
     int n_tiles_j = W / TILE_W;
+
+    W_DATA_L2 = BUFF_L2;
+    BIAS_DATA_L2 = W_DATA_L2 + W;
+
+    pi_cl_fs_req_t req1, req2;
+
+    printf("flash weight...\n");
+    pi_cl_fs_copy(file_p, (uint32_t) args->coeff->data, (void*) (W_DATA_L2), (W * 2), 1, &req1);
+    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+    pi_cl_fs_wait(&req1);
+    args->coeff->data = W_DATA_L2;
+    
+
+    printf("flash bias...\n");
+    pi_cl_fs_copy(file_p, (uint32_t) args->bias->data, (void*) (BIAS_DATA_L2), (W * 2), 1, &req2);
+    // pi_cl_fs_read(file_p, (void*) (BIAS_DATA_L2), (args->M * 2), &req3);
+    pi_cl_fs_wait(&req2);
+    args->bias->data = BIAS_DATA_L2;
+    
 
     input_blob.data = BUFF;
     input_blob.dim = TILE_DIM;
@@ -1075,14 +1215,27 @@ void tiled_norm(void *nonorm_args){
             pi_cl_dma_cmd_wait(cmd_store);
        } 
     }
+    // pi_l2_free((void*) BUFF_L2, MAX_SIZE_L2 * 2);
 }
 
-void tiled_skip(void *residual_args){
+void tiled_skip(void *residual_args, int flash_lout){
+    // BUFF_L2 = (fp16*) pi_l2_malloc(MAX_SIZE_L2 * 2);
     struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16*) residual_args;
 
     int W = args->skip->W;
-    int n_tiles_i = args->skip->H / TILE_H;
-    int n_tiles_j = W / TILE_W; 
+    int H = args->skip->H;
+    int n_tiles_i = H / TILE_H;
+    int n_tiles_j = W / TILE_W;
+
+    W_DATA_L2 = BUFF_L2;
+    if(flash_lout){
+        pi_cl_fs_req_t req1;
+        printf("flash lout...\n");
+        pi_cl_fs_copy(file_p, (uint32_t) args->lout->data, (void*) (W_DATA_L2), (W * H * 2), 1, &req1);
+        // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+        pi_cl_fs_wait(&req1);
+        args->lout->data = W_DATA_L2;
+    }
 
     input_blob.data = BUFF;
     input_blob.dim = TILE_DIM;
@@ -1114,6 +1267,7 @@ void tiled_skip(void *residual_args){
             pi_cl_dma_cmd_wait(cmd_store);
         }
     }
+    // pi_l2_free((void*) BUFF_L2, MAX_SIZE_L2 * 2);
 }
 
 void tiled_relu(void* Relu_args){
@@ -1151,22 +1305,25 @@ void tiled_relu(void* Relu_args){
 }
 
 void trigram_padding(fp16* in, fp16* out){
+    // Sadly, it's not like this. At all. FIX
     pi_cl_dma_cmd_2d((uint32_t) (in + EMBED_SIZE), (uint32_t) (BUFF), 2 * (SEQ_LEN - 1) * EMBED_SIZE, 2 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
     pi_cl_dma_cmd_wait(cmd_load);
     int current_index = (SEQ_LEN - 1) * EMBED_SIZE;
     for(int i = 0; i < EMBED_SIZE; i++){
-        BUFF[current_index + i] = zero_init;
+        BUFF[current_index + i] = 0;
     }
     pi_cl_dma_cmd_2d((uint32_t) (out), (uint32_t) (BUFF), 2 * SEQ_LEN * EMBED_SIZE, 2 * 3 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
     pi_cl_dma_cmd_wait(cmd_store);
+    
     pi_cl_dma_cmd_2d((uint32_t) (in), (uint32_t) (BUFF), 2 * SEQ_LEN * EMBED_SIZE, 2 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
     pi_cl_dma_cmd_wait(cmd_load);
     pi_cl_dma_cmd_2d((uint32_t) (out + EMBED_SIZE), (uint32_t) (BUFF), 2 * SEQ_LEN * EMBED_SIZE, 2 * 3 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
     pi_cl_dma_cmd_wait(cmd_store);
+    
     pi_cl_dma_cmd_2d((uint32_t) (in), (uint32_t) (BUFF + EMBED_SIZE), 2 * (SEQ_LEN - 1) * EMBED_SIZE, 2 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
     pi_cl_dma_cmd_wait(cmd_load);
     for(int i = 0; i < EMBED_SIZE; i++){
-        BUFF[i] = zero_init;
+        BUFF[i] = 0;
     }
     pi_cl_dma_cmd_2d((uint32_t) (out + 2 * EMBED_SIZE), (uint32_t) (BUFF), 2 * SEQ_LEN * EMBED_SIZE, 2 * 3 * EMBED_SIZE, 2 * EMBED_SIZE, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
     pi_cl_dma_cmd_wait(cmd_store);
@@ -1191,6 +1348,7 @@ void print_stuff(){
 }
 
 void forward(){
+    /*
     // EMBEDDER
     // Embedding input sequence ids
     pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &input_embedding_args);
@@ -1202,71 +1360,65 @@ void forward(){
     tiled_skip((void*) &token_type_embed_add_args);
     tiled_norm(&embedding_norm_args);
     
-    
-    
     // RISULTATI COMBACIANO UN PO' DI PIU'
     // Embedding input combaciano
     // Trigram anche
+    */
+    
     
     // ENCODER
-    
-    // Bottleneck for attention values
-    tiled_matmul(&bneck_dense_att_args);
-    tiled_norm(&bneck_norm_att_args);
 
+    // Bottleneck for attention values
+    printf("ENTERing the matmul...\n");
+    tiled_matmul(&bneck_dense_att_args, 1);
+    printf("\n YO I ACTUALLY DID A MATUMUL!\n");
+    tiled_norm(&bneck_norm_att_args);
     
     // MHSA HERE
-    tiled_mhsa_fp16((void*) &mhsa_args, (void*) &tiled_matmul_mhsa_args);
+    tiled_mhsa_fp16_flash((void*) &mhsa_args, (void*) &tiled_matmul_mhsa_args, BUFF_L2, file_p, MAX_SIZE_L2);
     
     // Bottleneck for input values
-    tiled_matmul(&bneck_dense_inp_args);
+    tiled_matmul(&bneck_dense_inp_args, 1);
     tiled_norm(&bneck_norm_inp_args);
-    
 
     // Residual connection MHSA output + input bottleneck
-    tiled_skip((void*) &residual_1_args);
+    tiled_skip((void*) &residual_1_args, 0);
     tiled_norm(&attention_output_norm_args);
     
     // FFN 0
-    tiled_matmul(&ffn_0_intermediate_args);
+    tiled_matmul(&ffn_0_intermediate_args, 0);
     tiled_relu(&ffn_0_relu_args);
-    tiled_matmul(&ffn_0_output_args);
-    tiled_skip((void*) &ffn_0_residual_args);
+    tiled_matmul(&ffn_0_output_args, 0);
+    tiled_skip((void*) &ffn_0_residual_args, 0);
     tiled_norm(&ffn_0_norm_args);
-    
 
     // FFN 1
-    tiled_matmul(&ffn_1_intermediate_args);
+    tiled_matmul(&ffn_1_intermediate_args, 0);
     tiled_relu(&ffn_1_relu_args);
-    tiled_matmul(&ffn_1_output_args);
-    tiled_skip((void*) &ffn_1_residual_args);
+    tiled_matmul(&ffn_1_output_args, 0);
+    tiled_skip((void*) &ffn_1_residual_args, 0);
     tiled_norm(&ffn_1_norm_args);
-    
 
     // FFN 2
-    tiled_matmul(&ffn_2_intermediate_args);
+    tiled_matmul(&ffn_2_intermediate_args, 0);
     tiled_relu(&ffn_2_relu_args);
-    tiled_matmul(&ffn_2_output_args);
-    tiled_skip((void*) &ffn_2_residual_args);
+    tiled_matmul(&ffn_2_output_args, 0);
+    tiled_skip((void*) &ffn_2_residual_args, 0);
     tiled_norm(&ffn_2_norm_args);
-    
 
     // Intermediate
-    tiled_matmul(&intermediate_args);
+    tiled_matmul(&intermediate_args, 0);
     tiled_relu(&intermediate_relu_args);
-    
 
     // Output
-    tiled_matmul(&output_dense_args);
-    tiled_skip((void*) &output_residual_args);
+    tiled_matmul(&output_dense_args, 0);
+    tiled_skip((void*) &output_residual_args, 0);
     tiled_norm(&output_norm_args);
-    
 
     // Output Bottleneck
-    tiled_matmul(&output_bottleneck_dense_args);
-    tiled_skip((void*) &output_bottleneck_residual_args);
+    tiled_matmul(&output_bottleneck_dense_args, 0);
+    tiled_skip((void*) &output_bottleneck_residual_args, 1);
     tiled_norm(&output_bottleneck_norm_args);
-    
 
     return;
 }
@@ -1338,8 +1490,6 @@ int check_tensor(fp16 *tensor_out, fp16 *tensor_ref, int size) {
 
 
 
-
-
 // ~~~~~~~~~~~~~~~~~~~~ MAIN FUNCTION ~~~~~~~~~~~~~~~~~~~~
 void net_step () 
 {
@@ -1349,21 +1499,24 @@ void net_step ()
     #endif
 
     printf("Mobilebert test:\n");
+
+    printf("Initializing DNN...");
     DNN_init();
+    printf("done.\nStarting the forward...\n");
     #ifdef PROF_NET
     START_STATS();
     #endif
     forward();
     #ifdef PROF_NET
     STOP_STATS();
-    
     #endif
     //print_stuff();
 
     printf("\nFORWARD CHECK: \n");
-    compare_tensors(buff_d, OUTPUT, OUTPUT_SIZE);
+    compare_tensors(buff_d, (fp16*) _L3_Flash, OUTPUT_SIZE);
     //check_tensor(buff_d, OUTPUT, OUTPUT_SIZE);
 
+    pi_fs_unmount(&fs);
     return;
 }
 
@@ -1407,5 +1560,62 @@ void reset_arguments(){
     tiled_matmul_mhsa_args.cmd_store = cmd_store;
 }
 
+/*
+*  DUMMY MAIN
+*  Configures cluster, then calls a simple net_step()
+*/
+int test_kickoff (void) {
+    printf("Opening weights.bin file...\n");
+
+    struct pi_readfs_conf conf;
+    pi_readfs_conf_init(&conf);
+
+    pi_hyperflash_conf_init(&flash_conf);
+
+    pi_open_from_conf(&flash, &flash_conf);
 
 
+    if (pi_flash_open(&flash))
+        exit(-1);
+
+    conf.fs.flash = &flash;
+
+    pi_open_from_conf(&fs, &conf);
+
+    if (pi_fs_mount(&fs))
+        exit(-2);
+
+    file_p = &file;
+printf("1\n");
+    file_p = pi_fs_open(&fs, STR(FILE0), 0);
+    if (file_p == NULL) exit(-3);
+printf("2\n");
+    printf("\nHello there.\nConfiguring cluster..\n");
+    // Configure cluster
+    struct pi_device cluster_dev;
+    struct pi_cluster_conf cl_conf;
+    struct pi_cluster_task cl_task;
+
+    cl_conf.id = 0;
+
+    pi_cluster_conf_init(&cl_conf);
+    pi_open_from_conf(&cluster_dev, &cl_conf);
+    if (pi_cluster_open(&cluster_dev))
+    {
+        return -1;
+    }
+
+    printf("\nMobilebert procedure...\n");
+    pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, net_step, NULL));
+
+    printf("Done, successful!\n");
+    pi_cluster_close(&cluster_dev);
+
+    pi_fs_unmount(&fs);
+
+    pmsis_exit(0);
+}
+
+int main(){
+    return pmsis_kickoff((void *) test_kickoff);
+}

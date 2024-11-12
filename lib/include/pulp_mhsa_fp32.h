@@ -131,6 +131,8 @@ void pulp_mhsa_fp32_bw_cl(void * Mhsa_args);
  */
 void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void* Mhsa_args);
 
+void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void* Mhsa_args);
+
 
 void tiled_mhsa_fp32(void* Mhsa_args, void* tiled_matmul_mhsa_args);
 

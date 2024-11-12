@@ -23,6 +23,8 @@
 
 #include "pulp_train_defines.h"
 #include "pmsis.h"
+#include <bsp/bsp.h>
+#include <bsp/fs/readfs.h>
 
 /**
  * Multi-Head Self Attention layer configuration structure
@@ -169,3 +171,7 @@ void tiled_mhsa_fp16(void* Mhsa_args_fp16, void* tiled_matmul_mhsa_args_fp16);
 void tiled_matmul_mhsa_fp16(void* matmul_args_fp16, void* tiled_matmul_mhsa_args_fp16);
 
 void tiled_transpose_mhsa_fp16(void* transpose_args_fp16, void* Tiled_matmul_mhsa_args_fp16);
+
+void tiled_mhsa_fp16_flash(void *Mhsa_args, void* Tiled_mhsa_matmul_args, fp16* BUFF_L2, pi_fs_file_t *file_p, int size);
+
+void pulp_mhsa_mobilebert_inference_fp16_fw_cl(void *Mhsa_args);

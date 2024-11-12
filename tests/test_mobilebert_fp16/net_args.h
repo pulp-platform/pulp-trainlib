@@ -23,5 +23,9 @@
 
 #define TYPE_VOCAB_SIZE 2
 
-#define SEQ_LEN 32
+#define SEQ_LEN 128
+
+#define INPUT_SIZE 65536
+
+#define OUTPUT_SIZE 65536
 

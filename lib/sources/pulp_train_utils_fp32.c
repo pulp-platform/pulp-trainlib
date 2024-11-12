@@ -361,7 +361,7 @@ void pulp_exp_sum_fp32_cl(void *void_args) {
         // Iterate through each element and update the sum accordingly
         for (int j = 0; j < WIDTH; j++) {
             float o = fastexp_gist(input[i * WIDTH + j] - maxes[i]);
-            // float o = expf(*input - maxes[i]);
+            //float o = expf(input[i * WIDTH + j] - maxes[i]);
 
             output[i * WIDTH + j] = o;
             sums[i] += o;

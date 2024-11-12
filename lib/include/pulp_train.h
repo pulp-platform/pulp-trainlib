@@ -72,5 +72,6 @@
 #include "pulp_dropout_fp16.h"
 #include "pulp_nonorm_fp16.h"
 #include "pulp_transp_conv2d_fp16.h"
+#include "pulp_embedding_fp16.h"
 
 

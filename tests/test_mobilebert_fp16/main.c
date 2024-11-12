@@ -5,9 +5,7 @@
 *  DUMMY MAIN
 *  Configures cluster, then calls a simple net_step()
 */
-int main (void) {
-
-
+int test_kickoff (void) {
   printf("\nHello there.\nConfiguring cluster..\n");
   // Configure cluster
   struct pi_device cluster_dev;
@@ -28,4 +26,8 @@ int main (void) {
   pi_cluster_close(&cluster_dev);
 
   pmsis_exit(0);
+}
+
+int main(){
+  return pmsis_kickoff((void *) test_kickoff);
 }

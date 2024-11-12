@@ -30,7 +30,10 @@ def tensor_to_string(tensor):
 		sz0 = tensor.size()[0]
 		for i in range(sz0):
 			tensor_string += str(tensor[i].item())
-			tensor_string += 'f, ';# if i < sz0-1 else 'f'
+			if(tensor.dtype == torch.int16):
+				tensor_string += ', '
+			else:
+				tensor_string += 'f, ';# if i < sz0-1 else 'f'
 
 	elif ndim == 2:
 		sz0 = tensor.size()[0]
@@ -39,7 +42,10 @@ def tensor_to_string(tensor):
 		for i in range(sz0):
 			for j in range(sz1):
 				tensor_string += str(tensor[i][j].item())
-				tensor_string += 'f, ';# if (i*j) < (sz0-1)*(sz1-1) else 'f'
+				if (tensor.dtype == torch.int16):
+					tensor_string += ', '
+				else:
+					tensor_string += 'f, ';# if (i*j) < (sz0-1)*(sz1-1) else 'f'
 
 	elif ndim == 3:
 		sz0 = tensor.size()[0]
@@ -50,7 +56,10 @@ def tensor_to_string(tensor):
 			for j in range(sz1):
 				for k in range(sz2):
 					tensor_string += str(tensor[i][j][k].item())
-					tensor_string += 'f, '; # if (i*j*k) < (sz0-1)*(sz1-1)*(sz2-1) else 'f'
+					if (tensor.dtype == torch.int16):
+						tensor_string += ', '
+					else:
+						tensor_string += 'f, '; # if (i*j*k) < (sz0-1)*(sz1-1)*(sz2-1) else 'f'
 
 	elif ndim == 4:
 		sz0 = tensor.size()[0]
@@ -63,7 +72,10 @@ def tensor_to_string(tensor):
 				for k in range(sz2):
 					for t in range(sz3):
 						tensor_string += str(tensor[i][j][k][t].item())
-						tensor_string += 'f, '; # if (i*j*k*t) < (sz0-1)*(sz1-1)*(sz2-1)*(sz3-1) else 'f'
+						if (tensor.dtype == torch.int16):
+							tensor_string += ', '
+						else:
+							tensor_string += 'f, '; # if (i*j*k*t) < (sz0-1)*(sz1-1)*(sz2-1)*(sz3-1) else 'f'
 
 	else:
 

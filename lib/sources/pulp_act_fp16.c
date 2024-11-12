@@ -236,6 +236,11 @@ void pulp_softmax_fp16_fw_cl(void *act_args_fp16) {
     fp16 *maxes = args->maxes;
     fp16 *sums = args->sums;
 
+    for(int i = 0; i < HEIGHT; i++){
+      maxes[i]=-65504.0f;
+      sums[i]=0.0f;
+    }
+
     // OP A: Compute the maximum value on each row
     struct max_args_fp16 m_args;
     m_args.input = inData;
@@ -339,7 +344,7 @@ void pulp_softmax_fp16_fw_cl_tiled(void *act_args, void* Tiled_matmul_mhsa_args)
   r_d_args.W = tile_w;
 
   for(int i=0; i < n_tiles_i; i++){
-    e_s_args.sums = sums + i * tile_h;
+    r_d_args.sums = sums + i * tile_h;
     for(int j=0; j < n_tiles_j; j++){
       pi_cl_dma_cmd_2d((uint32_t) (args->output_data + i * W * tile_h + j * tile_w), (uint32_t) (OUT_DATA), 2 * tile_dim, 2 * W, 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
       pi_cl_dma_cmd_wait(cmd_load);

@@ -125,6 +125,10 @@ f.write('#define TYPE_VOCAB_SIZE ' + str(config.type_vocab_size) + '\n')
 f.write('\n')
 f.write('#define SEQ_LEN ' + str(args.seq_len) + '\n')
 f.write('\n')
+f.write("#define INPUT_SIZE " + str(args.seq_len * config.hidden_size) + "\n")
+f.write('\n')
+f.write("#define OUTPUT_SIZE "+ str(args.seq_len * config.hidden_size) + "\n")
+f.write('\n')
 f.close()
 
 
@@ -260,7 +264,7 @@ if not skipembed:
                 "PI_L2 fp16 EMBEDDING_WEIGHTS["
                 + str(config.true_hidden_size * 3 * config.hidden_size)
                 + "] = {"
-                + dump.tensor_to_string(param)
+                + dump.tensor_to_string(param.transpose(0, 1))
                 + "};\n\n"
             )
         if("embeddings.embedding_transformation.bias" in name):
@@ -294,7 +298,32 @@ if not skipembed:
 if not skipgenio:
     # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
     
-    # Generate random input data
+    # Gnereate random input id sequence
+    inp = torch.from_numpy(np.short(np.random.uniform(low=0, high=config.vocab_size, size=(1, args.seq_len))))
+
+    # Print input data to terminal
+    print("------------Input IDs sequence------------")
+    print(inp)
+
+    f = open("input-sequence.h", "w")
+
+    f.write("#define INPUT_SIZE " + str(args.seq_len * config.hidden_size) + "\n")
+    f.write(
+        "PI_L2 int INPUT_IDS["
+        + str(args.seq_len)
+        + "] = {"
+        + dump.tensor_to_string(inp)
+        + "};\n\n"
+    )
+    f.write(
+        "PI_L2 fp16 INPUT["
+        + str(args.seq_len * config.hidden_size)
+        + "];\n\n"
+    )
+
+    f.close()
+    '''
+    # Generate random input data for encoder
     inp = torch.mul(torch.randn(1, args.seq_len, config.hidden_size), 0.001).bfloat16()
     inp.requires_grad = False
 
@@ -307,13 +336,12 @@ if not skipgenio:
 
     f = open("input-sequence.h", "w")
 
-    f.write("#define INPUT_SIZE " + str(inp.numel()) + "\n")
     f.write(
         "PI_L2 fp16 INPUT[INPUT_SIZE] = {" + dump.tensor_to_string(inp) + "};\n"
     )
 
     f.close()
-    '''
+
     # Take a real data sequence
     eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, data_type='dev')
     args.eval_batch_size = 1
@@ -337,13 +365,22 @@ if not skipgenio:
     
     f = open("output-sequence.h", "w")
 
-    output = model.bert.encoder(inp.to(args.device), head_mask=[None])[0]
-    output = output.bfloat16()
-    f.write("#define OUTPUT_SIZE "+ str(output.numel()) + "\n")
+    # COMMENT THE FOLLOWING LINE IF YOU AREN'T WORKING WITH INPUT IDs
+    embed = model.bert.embeddings(inp.int().to(args.device))
+    word_embed = model.bert.embeddings.word_embeddings(inp.int().to(args.device))
+
+    output = model.bert.encoder(embed.to(args.device), head_mask=[None])[0]
+    
     f.write(
         "PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {" + dump.tensor_to_string(output) + "};\n"
     )
-
+    '''
+    f.write(
+        "PI_L2 fp16 EMBEDDINGS["
+        + str(args.seq_len * config.true_hidden_size)
+        + "] = {" + dump.tensor_to_string(word_embed) + "};\n"
+    )
+    '''
     f.close()
 
 
