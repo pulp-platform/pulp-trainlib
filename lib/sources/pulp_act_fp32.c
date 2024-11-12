@@ -655,3 +655,38 @@ void pulp_swiglu_fp32_cl(void *swiglu_args){
     out[i] = val;
   }
 }
+
+
+void pulp_gelu_tanh_approx_fp32_fw_cl(void *void_args) {
+    struct act_args *args = (struct act_args *) void_args;
+
+    int dim = args->input->dim;
+    float *inData = args->input->data;
+    float *outData = args->output->data;
+
+    const int blockSize = (dim + NUM_CORES - 1) / NUM_CORES;
+    const int start = pi_core_id() * blockSize;
+    const int stop = start + blockSize > dim ? dim : start + blockSize;
+
+    for (int i = start; i < stop; i++) {
+        float x = inData[i];
+        float half_x = 0.5f * x;
+
+        float val = (((x * x * x * 0.044715f) + x) * 0.7978f);
+
+        float val_2 = val * val;
+
+        float a = (((val_2 + 378.0f) * val_2 + 17325.0f) * val_2 + 135135.0f) * val;
+        float b = ((28.0f * val_2 + 3150.0f) * val_2 + 62370.0f) * val_2 + 135135.0f;
+        val = a / b;
+
+        if (val > 1)
+            val = 1;
+        else if (val < -1)
+            val = -1;
+
+        val = val * half_x + half_x;
+
+        outData[i] = val;
+    }
+}

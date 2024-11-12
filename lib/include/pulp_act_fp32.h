@@ -279,3 +279,11 @@ void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsi
  * @param (void*) (struct swiglu_args void_args) 
  */
 void pulp_swiglu_fp32_cl(void *swiglu_args);
+
+
+/**
+ * @brief GELU activation layer, using the tanh approximation. Approximation of the gelu(approximate="tanh") function
+ * from torch.nn.functional.
+ * @param (void*) (struct act_args void_args)
+ */
+void pulp_gelu_tanh_approx_fp32_fw_cl(void* void_args);
