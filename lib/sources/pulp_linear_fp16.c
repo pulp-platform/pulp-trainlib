@@ -233,9 +233,6 @@ void pulp_linear_fp16_fw_cl_kernel( void * man_args )
   const uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   if (USE_BIASES == 1) {
-    #ifdef DEBUG 
-    printf("\n---------USE BIASES!!!--------\n");
-    #endif
     //for (int i=0; i<N; i++){
     for (uint32_t i=start; i < stop; i++) {
       outData[i] += biasData[i];
@@ -271,9 +268,6 @@ void pulp_linear_fp16_bw_param_grads_cl_kernel( void * man_args )
   const uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
   if (USE_BIASES == 1) {
-    #ifdef DEBUG 
-    printf("\n---------USE BIASES!!!--------\n");
-    #endif
     for (uint32_t i=start; i < stop; i++) {
       biasData[i] = outDiff[i];
     }
