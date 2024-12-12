@@ -50,6 +50,8 @@ W_out = args.out_width
 filename = args.file_name
 data_type = args.type
 
+torch.set_printoptions(threshold=10000)
+
 """
 Generate input & mask for Dropout
 """

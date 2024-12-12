@@ -1,14 +1,14 @@
 APP = interpolation_fp32
 
 # User code
-NUM_CORES?=8
+NUM_CORES?=1
 DATA_TYPE?='float'	# 'float' or 'bfloat16'
 INTP_TYPE?=1 		# 0='NEAREST', 1='BILINEAR' 
-CH?=8
-IN_H?=4
-IN_W?=4
-OUT_H?=8
-OUT_W?=8
+CH?=1
+IN_H?=8
+IN_W?=8
+OUT_H?=48
+OUT_W?=48
 # End of user code
 
 TRAIN_LIB=../../lib

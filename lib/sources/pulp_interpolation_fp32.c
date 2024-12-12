@@ -134,9 +134,9 @@ void pulp_bilinear_core_fp32 (void * interpolation_args)
     if (intp_data == 1) {
         // Calculate the scale factors for height and width
         float scale_y = 1;
-        if (H_in > 1) {scale_y = (float)(H_in) / (H_out);}
+        if (H_in > 1) {scale_y = (float)(H_in) / (float)(H_out);}
         float scale_x = 1;
-        if (W_in > 1) {scale_x = (float)(W_in) / (W_out);}
+        if (W_in > 1) {scale_x = (float)(W_in) / (float)(W_out);}
 
         for (int c = start; c < stop; c++) {
             for (int y = 0; y < H_out; y++) {

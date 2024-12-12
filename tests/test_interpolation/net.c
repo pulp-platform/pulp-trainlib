@@ -171,9 +171,9 @@ void net_step ()
     #endif
 
     #ifdef FLOAT32
-    pi_cl_team_fork(NUM_CORES, pulp_nearest_neighbour_interpolation_fp32_cl, &near_args);
+    pulp_nearest_neighbour_interpolation_fp32_cl(&near_args);
     #elif defined(BFLOAT16)
-    pi_cl_team_fork(NUM_CORES, pulp_nearest_neighbour_interpolation_fp16_cl, &near_args);
+    pulp_nearest_neighbour_interpolation_fp16_cl(&near_args);
     #endif
 
     #ifdef PROF_NET
@@ -183,21 +183,23 @@ void net_step ()
     printf("NEAREST NEIGHBOUR CHECK: \n");
     compare_tensors(near_intp_data, OUTDATA_NEAR, IN_CH*OUT_H*OUT_W);
     check_tensor(near_intp_data, OUTDATA_NEAR, IN_CH*OUT_H*OUT_W);
-    // TEST
-    printf("\nIN SIZES: [%d, %d, %d]\n", IN_CH, IN_H, IN_W);
-    printf("IN_ELEMENTS: %d\n", IN_CH*IN_H*IN_W);
-    for (int index=0; index<IN_CH*IN_H*IN_W; index++) {
-      if (!(index%IN_W)) printf("\n");
-      printf("%f ", INDATA[index]);
-    }
-    printf("\n");
-    printf("\nOUT SIZES: [%d, %d, %d]\n", IN_CH, OUT_H, OUT_W);
-    printf("OUT_ELEMENTS: %d\n", IN_CH*OUT_H*OUT_W);
-    for (int index=0; index<IN_CH*OUT_H*OUT_W; index++) {
-      if (!(index%OUT_W)) printf("\n");
-      printf("%f ", near_intp_data[index]);
-    }
-    printf("\n");
+
+    printf("\n\nTotal operations: %d\n", IN_CH*OUT_H*OUT_W);
+    // // TEST
+    // printf("\nIN SIZES: [%d, %d, %d]\n", IN_CH, IN_H, IN_W);
+    // printf("IN_ELEMENTS: %d\n", IN_CH*IN_H*IN_W);
+    // for (int index=0; index<IN_CH*IN_H*IN_W; index++) {
+    //   if (!(index%IN_W)) printf("\n");
+    //   printf("%f ", INDATA[index]);
+    // }
+    // printf("\n");
+    // printf("\nOUT SIZES: [%d, %d, %d]\n", IN_CH, OUT_H, OUT_W);
+    // printf("OUT_ELEMENTS: %d\n", IN_CH*OUT_H*OUT_W);
+    // for (int index=0; index<IN_CH*OUT_H*OUT_W; index++) {
+    //   if (!(index%OUT_W)) printf("\n");
+    //   printf("%f ", near_intp_data[index]);
+    // }
+    // printf("\n");
 
     #elif INTP_TYPE == 1    // Bilinear
 
@@ -219,21 +221,21 @@ void net_step ()
     printf("BILINEAR CHECK: \n");
     compare_tensors(bil_intp_data, OUTDATA_BIL, IN_CH*OUT_H*OUT_W);
     check_tensor(bil_intp_data, OUTDATA_BIL, IN_CH*OUT_H*OUT_W);
-    // TEST
-    printf("\nIN SIZES: [%d, %d, %d]\n", IN_CH, IN_H, IN_W);
-    printf("IN_ELEMENTS: %d\n", IN_CH*IN_H*IN_W);
-    for (int index=0; index<IN_CH*IN_H*IN_W; index++) {
-      if (!(index%IN_W)) printf("\n");
-      printf("%f ", INDATA[index]);
-    }
-    printf("\n");
-    printf("\nOUT SIZES: [%d, %d, %d]\n", IN_CH, OUT_H, OUT_W);
-    printf("OUT_ELEMENTS: %d\n", IN_CH*OUT_H*OUT_W);
-    for (int index=0; index<IN_CH*OUT_H*OUT_W; index++) {
-      if (!(index%OUT_W)) printf("\n");
-      printf("%f ", bil_intp_data[index]);
-    }
-    printf("\n");
+    // // TEST
+    // printf("\nIN SIZES: [%d, %d, %d]\n", IN_CH, IN_H, IN_W);
+    // printf("IN_ELEMENTS: %d\n", IN_CH*IN_H*IN_W);
+    // for (int index=0; index<IN_CH*IN_H*IN_W; index++) {
+    //   if (!(index%IN_W)) printf("\n");
+    //   printf("%f ", INDATA[index]);
+    // }
+    // printf("\n");
+    // printf("\nOUT SIZES: [%d, %d, %d]\n", IN_CH, OUT_H, OUT_W);
+    // printf("OUT_ELEMENTS: %d\n", IN_CH*OUT_H*OUT_W);
+    // for (int index=0; index<IN_CH*OUT_H*OUT_W; index++) {
+    //   if (!(index%OUT_W)) printf("\n");
+    //   printf("%f ", bil_intp_data[index]);
+    // }
+    // printf("\n");
 
     #endif
 
