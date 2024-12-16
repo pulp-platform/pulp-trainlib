@@ -932,8 +932,9 @@ void mm_manager(void *void_args) {
         printf("\nWrong layer_type selection!!\n");
     }
 
-    if(use_bias){
+    if(use_bias==1){
         // Bias_addition
+        pi_cl_team_barrier();
         struct mm_bias_add_args mm_bias_add_args_q;
         mm_bias_add_args_q.mat = args->mm_args->C;
         mm_bias_add_args_q.bias = args->mm_args->bias;

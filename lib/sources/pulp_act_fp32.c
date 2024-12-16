@@ -203,9 +203,9 @@ void pulp_softmax_fp32_fw_cl_tiled(void *act_args, void* Tiled_matmul_mhsa_args)
   float *inData = args->input_data;
   float *outData = args->output_data;
 
-  int tile_h = tiled_args->tile_h;
-  int tile_w = tiled_args->tile_w;
-  int tile_dim = tiled_args->tile_dim;
+  int tile_h = tiled_args->tile_h_sm;
+  int tile_w = tiled_args->tile_w_sm;
+  int tile_dim = tiled_args->tile_dim_sm;
   float* BUFF = tiled_args->BUFF;
   pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
   pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;

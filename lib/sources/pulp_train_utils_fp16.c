@@ -281,6 +281,26 @@ void pad_tensor_fp16(void *pad_args_fp16) {
 }
 
 
+void pulp_max_fp16_cl(void * void_args){
+    struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
+
+    fp16* input = args->input;
+    fp16 max; //  = args->maxes[pi_core_id()];
+    int dim = args->dim;
+
+    const int blockSize=(args->dim+NUM_CORES-1)/NUM_CORES;
+    const int start = pi_core_id()*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+    
+    max = input[start];
+
+    for(int i=start+1; i<stop; i++)
+        if(max < input[i])
+            max = input[i];
+
+    args->maxes[pi_core_id()] = max;
+}
+
 // ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
 // ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~
 // Find the maximum value from each row of the passed matrix
@@ -337,6 +357,7 @@ void pulp_exp_sum_fp16_cl(void *void_args) {
     for (int i = start; i < stop; i++) {
         // Iterate through each element and update the sum accordingly
         for (int j = 0; j < WIDTH; j++) {
+            // fp16 o = (fastexp_gist_fp16((input[i * WIDTH + j] - maxes[i])));
             fp16 o = (fp16)(fastexp_gist_fp16((float) (input[i * WIDTH + j] - maxes[i])));
             //float o = (fp16) (expf((float) (input[i * WIDTH + j] - maxes[i])));
 
@@ -382,6 +403,16 @@ float fastexp_gist_fp16(float x) {
     uint32_t n = (uint32_t)(x);
     return *(float *) &n;
 }
+
+// fp16 fastexp_gist_fp16(fp16 x) {
+//     x = GIST_A_fp16 * x + GIST_B_fp16;
+
+//     if (x < GIST_C_fp16 || x > GIST_D_fp16)
+//         x = (x < GIST_C_fp16) ? 0.0f : GIST_D_fp16;
+
+//     uint16_t n = (uint16_t)(x);
+//     return *(fp16 *) &n;
+// }
 
 
 // ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~
@@ -708,7 +739,7 @@ void mm_manager_fp16(void *void_args) {
         printf("\nWrong layer_type selection!!\n");
     }
 
-    if(use_bias){
+    if(use_bias==1){
         // Bias_addition
         struct mm_bias_add_args_fp16 mm_bias_add_args_q;
         mm_bias_add_args_q.mat = args->mm_args->C;
@@ -887,4 +918,39 @@ void mm_bias_add_transposed_fp16(void *void_args) {
        } 
     }
     
+}
+
+
+/* ----------------------------------------------------------------------------------------------
+
+  Funzioni aggiunte per llama2
+
+------------------------------------------------------------------------------------------------*/
+
+void vector_exp_sum_fp16_cl(void * vector_exp_sum_args){
+    struct vector_exp_sum_args_fp16* args = (struct vector_exp_sum_args_fp16*) vector_exp_sum_args;
+
+    fp16* input = args->input;
+    fp16* output = args->output;
+    fp16* sums = args->sums;
+    fp16 max = args->max;
+    int dim = args->dim;
+
+    int id = pi_core_id();
+
+    const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+    const int start = id*blockSize;
+    const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+    sums[id] = 0;
+
+    for(int i=start; i<stop; i++){        
+        #ifdef FASTEXPF
+        float o = fastexp_gist_fp16((float)(input[i] - max));
+        #else
+        float o = expf((float)(input[i] - max));
+        #endif
+        output[i] = (fp16) o;
+        sums[id] += (fp16) o;   
+    }
 }

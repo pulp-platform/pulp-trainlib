@@ -90,6 +90,21 @@ struct Tiled_Matmul_Mhsa_args{
     int tile_h;
     int tile_w;
     int tile_dim;
+    int tile_h_p;
+    int tile_w_p;
+    int tile_dim_p;
+    int tile_h_sm;
+    int tile_w_sm;
+    int tile_dim_sm;
+    int tile_h_tr;
+    int tile_w_tr;
+    int tile_dim_tr;
+    int tile_h_attv;
+    int tile_w_attv;
+    int tile_dim_attv;
+    int tile_h_out_tr;
+    int tile_w_out_tr;
+    int tile_dim_out_tr;
     pi_cl_dma_cmd_t * cmd_store;
     pi_cl_dma_cmd_t * cmd_load;
 };
@@ -136,6 +151,6 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void* Mhsa_args);
 
 void tiled_mhsa_fp32(void* Mhsa_args, void* tiled_matmul_mhsa_args);
 
-void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args);
+void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args, int projection);
 
-void tiled_transpose_mhsa(void* transpose_args, void* Tiled_matmul_mhsa_args);
+void tiled_transpose_mhsa(void* transpose_args, void* Tiled_matmul_mhsa_args, int projection);

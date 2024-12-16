@@ -85,7 +85,13 @@ typedef fp16 v2f16 __attribute__((vector_size (4)));        // Vectorized fp16 f
 #define GIST_A  12102203.17133801f
 #define GIST_B  1064986823.010288f
 #define GIST_C  8388608
-#define GIST_D  2139095040  
+#define GIST_D  2139095040
+
+#define GIST_A_fp16  184.665f
+#define GIST_B_fp16  16.256f
+#define GIST_C_fp16  128
+#define GIST_D_fp16  32640
+
 
 
 /**

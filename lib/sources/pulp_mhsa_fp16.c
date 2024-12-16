@@ -1948,12 +1948,27 @@ void pulp_mhsa_mobilebert_inference_fp16_fw_cl(void *Mhsa_args) {
 }
 
 
-void tiled_matmul_mhsa_fp16(void* matmul_args, void* tiled_matmul_mhsa_args){
+void tiled_matmul_mhsa_fp16(void* matmul_args, void* tiled_matmul_mhsa_args, int projection){
     struct matMul_args_fp16 * args = (struct matMul_args_fp16 *)matmul_args;
     struct Tiled_Matmul_Mhsa_args_fp16 * tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16*) tiled_matmul_mhsa_args;
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 1){
+        tile_h = tiled_args->tile_h_p;
+        tile_w = tiled_args->tile_w_p;
+        tile_dim = tiled_args->tile_dim_p;
+    }
+    else if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_attv;
+        tile_w = tiled_args->tile_w_attv;
+        tile_dim = tiled_args->tile_dim_attv;
+    }
     fp16* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2007,14 +2022,29 @@ void tiled_matmul_mhsa_fp16(void* matmul_args, void* tiled_matmul_mhsa_args){
     }
 }
 
-void tiled_transpose_mhsa_fp16(void *transpose_args, void* Tiled_matmul_mhsa_args){
+void tiled_transpose_mhsa_fp16(void *transpose_args, void* Tiled_matmul_mhsa_args, int projection){
     struct transp_args_fp16 *args = (struct transp_args_fp16 *) transpose_args;
     struct Tiled_Matmul_Mhsa_args_fp16 * tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16*) Tiled_matmul_mhsa_args;
     struct transp_args_fp16 args_l1;
 
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 1){
+        tile_h = tiled_args->tile_h_out_tr;
+        tile_w = tiled_args->tile_w_out_tr;
+        tile_dim = tiled_args->tile_dim_out_tr;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_tr;
+        tile_w = tiled_args->tile_w_tr;
+        tile_dim = tiled_args->tile_dim_tr;
+    }
     fp16* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2048,9 +2078,9 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
     struct Tiled_Matmul_Mhsa_args_fp16 *tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16 *) Tiled_mhsa_matmul_args; 
 
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h = tiled_args->tile_h_sm;
+    int tile_w = tiled_args->tile_w_sm;
+    int tile_dim = tiled_args->tile_dim_sm;
     fp16* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2105,8 +2135,8 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_q.USE_BIASES = 1;
     matMul_args1_q.bias_transposed = 1;
     matMul_args1_q.bias_dim = F;
-
-    tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args);
+    
+    tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args, 1);
 
     // M1_k
     // (Wk)t * input_bn
@@ -2123,8 +2153,7 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_k.bias_transposed = 1;
     matMul_args1_k.bias_dim = F;
 
-    tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args);
-
+    tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args, 1);
     
     //  Cycle on the different heads
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2135,8 +2164,9 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args1.transp_matrix = temp;
         transp_args1.N = H;
         transp_args1.M = L;
+        
+        tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args, 2);
 
-        tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args);
 
         // M2
         // Multiply it with the i-th head's transposed Q chunk
@@ -2150,7 +2180,7 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         matMul_args2.trans_B = 0;
         matMul_args2.USE_BIASES = 0;
         
-        tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args);
+        tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args, 0);
 
 
         // ================================================== OP 4 ==================================================
@@ -2189,7 +2219,7 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args2.N = L;
         transp_args2.M = L;
 
-        tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args);
+        tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args, 0);
 
         //  Softmax algorithm
         struct softmax_args_fp16 softmax_arg;
@@ -2199,11 +2229,11 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         softmax_arg.sums = sums;
         softmax_arg.H = L;
         softmax_arg.W = L;
-
+        
         pulp_softmax_fp16_fw_cl_tiled(&softmax_arg, Tiled_mhsa_matmul_args);
     }
 
-
+    
     // M1_v
     // (Wv)t * input
     struct matMul_args_fp16 matMul_args1_v;
@@ -2218,10 +2248,10 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_v.USE_BIASES = 1;
     matMul_args1_v.bias_transposed = 1;
     matMul_args1_v.bias_dim = F;
-
-    tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args);
     
+    tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args, 1);
 
+    
     for (int i = 0; i < n_heads; i++) {
         // ================================================== OP 6 ==================================================
         // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
@@ -2239,7 +2269,7 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args3.N = L;
         transp_args3.M = L;
 
-        tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args);
+        tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args, 0);
 
         // M3
         struct matMul_args_fp16 matMul_args3;
@@ -2250,8 +2280,8 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
-
-        tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args);
+        
+        tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args, 2);
     }
     
 
@@ -2275,8 +2305,8 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args4.USE_BIASES = 1;
     matMul_args4.bias_transposed = 1;
     matMul_args4.bias_dim = F;
-
-    tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args);
+    
+    tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args, 1);
 
     // T4
     // The last transpose to original shape
@@ -2286,298 +2316,298 @@ void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     transp_args4.N = mhsa_args->input_bn->W;
     transp_args4.M = L;
 
-    tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args);
+    tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args, 1);
 }
 
-void tiled_mhsa_fp16_flash(void *Mhsa_args, void* Tiled_mhsa_matmul_args, fp16* BUFF_L2, pi_fs_file_t *file_p, int size){
-    // ======================================== DECLARATIONS ========================================
-    // BUFF_L2 = (fp16*) pi_l2_malloc(size * 2);
-    struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
-    struct Tiled_Matmul_Mhsa_args_fp16 *tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16 *) Tiled_mhsa_matmul_args;
+// void tiled_mhsa_fp16_flash(void *Mhsa_args, void* Tiled_mhsa_matmul_args, fp16* BUFF_L2, pi_fs_file_t *file_p, int size){
+//     // ======================================== DECLARATIONS ========================================
+//     // BUFF_L2 = (fp16*) pi_l2_malloc(size * 2);
+//     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+//     struct Tiled_Matmul_Mhsa_args_fp16 *tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16 *) Tiled_mhsa_matmul_args;
 
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
-    fp16* BUFF = tiled_args->BUFF;
-    pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
-    pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+//     int tile_h = tiled_args->tile_h;
+//     int tile_w = tiled_args->tile_w;
+//     int tile_dim = tiled_args->tile_dim;
+//     fp16* BUFF = tiled_args->BUFF;
+//     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+//     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
 
-    int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
-    int E = mhsa_args->input->W;                                //  Input Sequence element size
-    int F = mhsa_args->input_bn->W;                             //  Hidden dimension of attention (N. Heads * Head dimension)
+//     int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
+//     int E = mhsa_args->input->W;                                //  Input Sequence element size
+//     int F = mhsa_args->input_bn->W;                             //  Hidden dimension of attention (N. Heads * Head dimension)
 
-    pi_cl_fs_req_t req1;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_q->data, (void*) (BUFF_L2), (F * F * 2), 1, &req1);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req1);
-    fp16 *coeffDataWinQ = BUFF_L2; 
+//     pi_cl_fs_req_t req1;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_q->data, (void*) (BUFF_L2), (F * F * 2), 1, &req1);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req1);
+//     fp16 *coeffDataWinQ = BUFF_L2; 
 
-    pi_cl_fs_req_t req2;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_k->data, (void*) (BUFF_L2 + F * F), (F * F * 2), 1, &req2);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req2);
-    fp16 *coeffDataWinK = BUFF_L2 + F * F; 
+//     pi_cl_fs_req_t req2;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_k->data, (void*) (BUFF_L2 + F * F), (F * F * 2), 1, &req2);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req2);
+//     fp16 *coeffDataWinK = BUFF_L2 + F * F; 
 
-    pi_cl_fs_req_t req3;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_v->data, (void*) (BUFF_L2 + F * F * 2), (F * E * 2), 1, &req3);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req3);
-    fp16 *coeffDataWinV = BUFF_L2 + F * F * 2; 
+//     pi_cl_fs_req_t req3;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_v->data, (void*) (BUFF_L2 + F * F * 2), (F * E * 2), 1, &req3);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req3);
+//     fp16 *coeffDataWinV = BUFF_L2 + F * F * 2; 
 
-    pi_cl_fs_req_t req4;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_q->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E)), (F * 2), 1, &req4);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req4);
-    fp16 *coeffBiasWinQ = BUFF_L2 + F * F * 2 + (F * E); 
+//     pi_cl_fs_req_t req4;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_q->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E)), (F * 2), 1, &req4);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req4);
+//     fp16 *coeffBiasWinQ = BUFF_L2 + F * F * 2 + (F * E); 
 
-    pi_cl_fs_req_t req5;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_k->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + F), (F * 2), 1, &req5);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req5);
-    fp16 *coeffBiasWinK = BUFF_L2 + (F * F * 2) + (F * E) + F; 
+//     pi_cl_fs_req_t req5;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_k->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + F), (F * 2), 1, &req5);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req5);
+//     fp16 *coeffBiasWinK = BUFF_L2 + (F * F * 2) + (F * E) + F; 
 
-    pi_cl_fs_req_t req6;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_v->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 2)), (F * 2), 1, &req6);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req6);
-    fp16 *coeffBiasWinV = BUFF_L2 + (F * F * 2) + (F * E) + (F * 2); 
+//     pi_cl_fs_req_t req6;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_v->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 2)), (F * 2), 1, &req6);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req6);
+//     fp16 *coeffBiasWinV = BUFF_L2 + (F * F * 2) + (F * E) + (F * 2); 
 
-    pi_cl_fs_req_t req7;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_out->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 3)), (F * F * 2), 1, &req7);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req7);
-    fp16 *coeffDataWout = BUFF_L2 + (F * F * 2) + (F * E) + (F * 3);
+//     pi_cl_fs_req_t req7;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_out->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 3)), (F * F * 2), 1, &req7);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req7);
+//     fp16 *coeffDataWout = BUFF_L2 + (F * F * 2) + (F * E) + (F * 3);
 
-    pi_cl_fs_req_t req8;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_out->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 3)), (F * 2), 1, &req8);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req8);
-    fp16 *coeffBiasWout = BUFF_L2 + (F * F * 3) + (F * E) + (F * 3);
+//     pi_cl_fs_req_t req8;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_out->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 3)), (F * 2), 1, &req8);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req8);
+//     fp16 *coeffBiasWout = BUFF_L2 + (F * F * 3) + (F * E) + (F * 3);
 
-    pi_cl_fs_req_t req9;
-    pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->input->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 4)), (L * E * 2), 1, &req9);
-    // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
-    pi_cl_fs_wait(&req9);
-    fp16 *inputData = BUFF_L2 + (F * F * 3) + (F * E) + (F * 4);
+//     pi_cl_fs_req_t req9;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->input->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 4)), (L * E * 2), 1, &req9);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req9);
+//     fp16 *inputData = BUFF_L2 + (F * F * 3) + (F * E) + (F * 4);
 
     
-    fp16 *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
-    fp16 *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
-    fp16 *inputDataBn = mhsa_args->input_bn->data;             //  Input vector bottlenecked (L x F)
-    fp16 *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
-    fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
-    fp16 *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
-    fp16 *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
-    fp16 *qt = mhsa_args->q->data;                             //  Pointer to the first element of Q transposed
-    fp16 *kt = mhsa_args->k->data;                             //  Pointer to the first element of K transposed
-    fp16 *vt = mhsa_args->v->data;                             //  Pointer to the first element of V transposed
-    int n_heads = mhsa_args->n_heads;                          //  Number of heads used for MHSA
+//     fp16 *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
+//     fp16 *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
+//     fp16 *inputDataBn = mhsa_args->input_bn->data;             //  Input vector bottlenecked (L x F)
+//     fp16 *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
+//     fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
+//     fp16 *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
+//     fp16 *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
+//     fp16 *qt = mhsa_args->q->data;                             //  Pointer to the first element of Q transposed
+//     fp16 *kt = mhsa_args->k->data;                             //  Pointer to the first element of K transposed
+//     fp16 *vt = mhsa_args->v->data;                             //  Pointer to the first element of V transposed
+//     int n_heads = mhsa_args->n_heads;                          //  Number of heads used for MHSA
 
-    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
+//     int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
 
-    //printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d\n", L, E, F);
+//     //printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d\n", L, E, F);
 
-    int H = F / n_heads;                                        //  Head dimension
-    float scaling = q_rsqrt_fp16((float) H);                    //  Scaling factor to avoid vanishing gradients
-    //float scaling = 1/sqrt(H);
+//     int H = F / n_heads;                                        //  Head dimension
+//     float scaling = q_rsqrt_fp16((float) H);                    //  Scaling factor to avoid vanishing gradients
+//     //float scaling = 1/sqrt(H);
 
-    // M1_q
-    // (Wq)t * input_bn
-    struct matMul_args_fp16 matMul_args1_q;
-    matMul_args1_q.A = coeffDataWinQ;                              //  F x F
-    matMul_args1_q.B = inputDataBn;                                //  L x F
-    matMul_args1_q.C = qt;                                         //  F x L
-    matMul_args1_q.N = F;
-    matMul_args1_q.K = F;
-    matMul_args1_q.M = L;
-    matMul_args1_q.trans_B = 1;
-    matMul_args1_q.bias = coeffBiasWinQ;
-    matMul_args1_q.USE_BIASES = 1;
-    matMul_args1_q.bias_transposed = 1;
-    matMul_args1_q.bias_dim = F;
+//     // M1_q
+//     // (Wq)t * input_bn
+//     struct matMul_args_fp16 matMul_args1_q;
+//     matMul_args1_q.A = coeffDataWinQ;                              //  F x F
+//     matMul_args1_q.B = inputDataBn;                                //  L x F
+//     matMul_args1_q.C = qt;                                         //  F x L
+//     matMul_args1_q.N = F;
+//     matMul_args1_q.K = F;
+//     matMul_args1_q.M = L;
+//     matMul_args1_q.trans_B = 1;
+//     matMul_args1_q.bias = coeffBiasWinQ;
+//     matMul_args1_q.USE_BIASES = 1;
+//     matMul_args1_q.bias_transposed = 1;
+//     matMul_args1_q.bias_dim = F;
 
-    tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args);
+//     tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args);
 
-    // M1_k
-    // (Wk)t * input_bn
-    struct matMul_args_fp16 matMul_args1_k;
-    matMul_args1_k.A = coeffDataWinK;                              //  F x F
-    matMul_args1_k.B = inputDataBn;                                //  L x F
-    matMul_args1_k.C = kt;                                         //  F x L
-    matMul_args1_k.N = F;
-    matMul_args1_k.K = F;
-    matMul_args1_k.M = L;
-    matMul_args1_k.trans_B = 1;
-    matMul_args1_k.bias = coeffBiasWinK;
-    matMul_args1_k.USE_BIASES = 1;
-    matMul_args1_k.bias_transposed = 1;
-    matMul_args1_k.bias_dim = F;
+//     // M1_k
+//     // (Wk)t * input_bn
+//     struct matMul_args_fp16 matMul_args1_k;
+//     matMul_args1_k.A = coeffDataWinK;                              //  F x F
+//     matMul_args1_k.B = inputDataBn;                                //  L x F
+//     matMul_args1_k.C = kt;                                         //  F x L
+//     matMul_args1_k.N = F;
+//     matMul_args1_k.K = F;
+//     matMul_args1_k.M = L;
+//     matMul_args1_k.trans_B = 1;
+//     matMul_args1_k.bias = coeffBiasWinK;
+//     matMul_args1_k.USE_BIASES = 1;
+//     matMul_args1_k.bias_transposed = 1;
+//     matMul_args1_k.bias_dim = F;
 
-    tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args);
-
-
-    //  Cycle on the different heads
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    for (int i = 0; i < n_heads; i++) {
-        //  T1
-        struct transp_args_fp16 transp_args1;
-        transp_args1.matrix = kt + L * i * H;
-        transp_args1.transp_matrix = temp;
-        transp_args1.N = H;
-        transp_args1.M = L;
-
-        tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args);
-
-        // M2
-        // Multiply it with the i-th head's transposed Q chunk
-        struct matMul_args_fp16 matMul_args2;
-        matMul_args2.A = temp;
-        matMul_args2.B = qt + L * i * H;
-        matMul_args2.C = softmax_buffer + i * L * L;
-        matMul_args2.N = L;
-        matMul_args2.K = H;
-        matMul_args2.M = L;
-        matMul_args2.trans_B = 0;
-        matMul_args2.USE_BIASES = 0;
-
-        tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args);
+//     tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args);
 
 
-        // ================================================== OP 4 ==================================================
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//     //  Cycle on the different heads
+//     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//     for (int i = 0; i < n_heads; i++) {
+//         //  T1
+//         struct transp_args_fp16 transp_args1;
+//         transp_args1.matrix = kt + L * i * H;
+//         transp_args1.transp_matrix = temp;
+//         transp_args1.N = H;
+//         transp_args1.M = L;
 
-        struct scalar_mul_args_fp16 s_m_args;
-        s_m_args.input = BUFF;
-        s_m_args.scalar = scaling;
-        s_m_args.dim = tile_dim;
+//         tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args);
 
-        for(int k = 0; k < L / tile_h; k++){
-            for(int j = 0; j < L / tile_w; j++){
-                pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
-                pi_cl_dma_cmd_wait(cmd_load);
-                pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
-                pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
-                pi_cl_dma_cmd_wait(cmd_store);
-            }
-        }
+//         // M2
+//         // Multiply it with the i-th head's transposed Q chunk
+//         struct matMul_args_fp16 matMul_args2;
+//         matMul_args2.A = temp;
+//         matMul_args2.B = qt + L * i * H;
+//         matMul_args2.C = softmax_buffer + i * L * L;
+//         matMul_args2.N = L;
+//         matMul_args2.K = H;
+//         matMul_args2.M = L;
+//         matMul_args2.trans_B = 0;
+//         matMul_args2.USE_BIASES = 0;
 
-        // ================================================== OP 5 ==================================================
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   (T2)
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //
-        // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
-        // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
-
-        //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
-        //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
-        //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
-        // T2
-        struct transp_args_fp16 transp_args2;
-        transp_args2.matrix = softmax_buffer + i * L * L;
-        transp_args2.transp_matrix = temp;
-        transp_args2.N = L;
-        transp_args2.M = L;
-
-        tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args);
-
-        //  Softmax algorithm
-        struct softmax_args_fp16 softmax_arg;
-        softmax_arg.input_data = temp;
-        softmax_arg.output_data = softmax_buffer + i * L * L;
-        softmax_arg.maxes = maxes;
-        softmax_arg.sums = sums;
-        softmax_arg.H = L;
-        softmax_arg.W = L;
-
-        pulp_softmax_fp16_fw_cl_tiled(&softmax_arg, Tiled_mhsa_matmul_args);
-    }
+//         tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args);
 
 
-    // M1_v
-    // (Wv)t * input
-    struct matMul_args_fp16 matMul_args1_v;
-    matMul_args1_v.A = coeffDataWinV;                              //  F x E
-    matMul_args1_v.B = inputData;                                  //  L x E
-    matMul_args1_v.C = vt;                                         //  F x L
-    matMul_args1_v.N = F;
-    matMul_args1_v.K = E;
-    matMul_args1_v.M = L;
-    matMul_args1_v.trans_B = 1;
-    matMul_args1_v.bias = coeffBiasWinV;
-    matMul_args1_v.USE_BIASES = 1;
-    matMul_args1_v.bias_transposed = 1;
-    matMul_args1_v.bias_dim = F;
+//         // ================================================== OP 4 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args);
+//         struct scalar_mul_args_fp16 s_m_args;
+//         s_m_args.input = BUFF;
+//         s_m_args.scalar = scaling;
+//         s_m_args.dim = tile_dim;
+
+//         for(int k = 0; k < L / tile_h; k++){
+//             for(int j = 0; j < L / tile_w; j++){
+//                 pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+//                 pi_cl_dma_cmd_wait(cmd_load);
+//                 pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
+//                 pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+//                 pi_cl_dma_cmd_wait(cmd_store);
+//             }
+//         }
+
+//         // ================================================== OP 5 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   (T2)
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//         //
+//         // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
+//         // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
+
+//         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+//         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+//         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+//         // T2
+//         struct transp_args_fp16 transp_args2;
+//         transp_args2.matrix = softmax_buffer + i * L * L;
+//         transp_args2.transp_matrix = temp;
+//         transp_args2.N = L;
+//         transp_args2.M = L;
+
+//         tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args);
+
+//         //  Softmax algorithm
+//         struct softmax_args_fp16 softmax_arg;
+//         softmax_arg.input_data = temp;
+//         softmax_arg.output_data = softmax_buffer + i * L * L;
+//         softmax_arg.maxes = maxes;
+//         softmax_arg.sums = sums;
+//         softmax_arg.H = L;
+//         softmax_arg.W = L;
+
+//         pulp_softmax_fp16_fw_cl_tiled(&softmax_arg, Tiled_mhsa_matmul_args);
+//     }
 
 
-    for (int i = 0; i < n_heads; i++) {
-        // ================================================== OP 6 ==================================================
-        // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
-        // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+//     // M1_v
+//     // (Wv)t * input
+//     struct matMul_args_fp16 matMul_args1_v;
+//     matMul_args1_v.A = coeffDataWinV;                              //  F x E
+//     matMul_args1_v.B = inputData;                                  //  L x E
+//     matMul_args1_v.C = vt;                                         //  F x L
+//     matMul_args1_v.N = F;
+//     matMul_args1_v.K = E;
+//     matMul_args1_v.M = L;
+//     matMul_args1_v.trans_B = 1;
+//     matMul_args1_v.bias = coeffBiasWinV;
+//     matMul_args1_v.USE_BIASES = 1;
+//     matMul_args1_v.bias_transposed = 1;
+//     matMul_args1_v.bias_dim = F;
 
-        // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
-        // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
+//     tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args);
 
-        // T3
-        //  Each head result has to be appended to the full attention map, to do so we require to store the current
-        //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
-        struct transp_args_fp16 transp_args3;
-        transp_args3.matrix = softmax_buffer + i * L * L;
-        transp_args3.transp_matrix = temp;
-        transp_args3.N = L;
-        transp_args3.M = L;
 
-        tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args);
+//     for (int i = 0; i < n_heads; i++) {
+//         // ================================================== OP 6 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
+//         // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
 
-        // M3
-        struct matMul_args_fp16 matMul_args3;
-        matMul_args3.A = vt + L * i * H;
-        matMul_args3.B = temp;
-        matMul_args3.C = attention_map + L * i * H;
-        matMul_args3.N = H;
-        matMul_args3.K = L;
-        matMul_args3.M = L;
-        matMul_args3.trans_B = 0;
+//         // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
+//         // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
 
-        tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args);
-    }
+//         // T3
+//         //  Each head result has to be appended to the full attention map, to do so we require to store the current
+//         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+//         struct transp_args_fp16 transp_args3;
+//         transp_args3.matrix = softmax_buffer + i * L * L;
+//         transp_args3.transp_matrix = temp;
+//         transp_args3.N = L;
+//         transp_args3.M = L;
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//         tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args);
 
-    // ================================================== OP 7 ==================================================
-    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> temp ~~~~~~~~~~~~~~~~~~~~~~       (M4)
-    // ~~~~~~~~~~~~~~~~~~~~~~     F x F     @     F x L     ->  F x L  ~~~~~~~~~~~~~~~~~~~~~~
+//         // M3
+//         struct matMul_args_fp16 matMul_args3;
+//         matMul_args3.A = vt + L * i * H;
+//         matMul_args3.B = temp;
+//         matMul_args3.C = attention_map + L * i * H;
+//         matMul_args3.N = H;
+//         matMul_args3.K = L;
+//         matMul_args3.M = L;
+//         matMul_args3.trans_B = 0;
 
-    // M4
-    //  Final attention map projection
-    struct matMul_args_fp16 matMul_args4;
-    matMul_args4.A = coeffDataWout;
-    matMul_args4.B = attention_map;
-    matMul_args4.C = temp;
-    matMul_args4.N = F;
-    matMul_args4.K = F;
-    matMul_args4.M = L;
-    matMul_args4.trans_B = 0;
-    matMul_args4.bias = coeffBiasWout;
-    matMul_args4.USE_BIASES = 1;
-    matMul_args4.bias_transposed = 1;
-    matMul_args4.bias_dim = F;
+//         tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args);
+//     }
 
-    tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args);
+//     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    // T4
-    // The last transpose to original shape
-    struct transp_args_fp16 transp_args4;
-    transp_args4.matrix = temp;
-    transp_args4.transp_matrix = outData;
-    transp_args4.N = F;
-    transp_args4.M = L;
+//     // ================================================== OP 7 ==================================================
+//     // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> temp ~~~~~~~~~~~~~~~~~~~~~~       (M4)
+//     // ~~~~~~~~~~~~~~~~~~~~~~     F x F     @     F x L     ->  F x L  ~~~~~~~~~~~~~~~~~~~~~~
 
-    tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args);
-    // pi_l2_free(BUFF_L2, size * 2);
-}
+//     // M4
+//     //  Final attention map projection
+//     struct matMul_args_fp16 matMul_args4;
+//     matMul_args4.A = coeffDataWout;
+//     matMul_args4.B = attention_map;
+//     matMul_args4.C = temp;
+//     matMul_args4.N = F;
+//     matMul_args4.K = F;
+//     matMul_args4.M = L;
+//     matMul_args4.trans_B = 0;
+//     matMul_args4.bias = coeffBiasWout;
+//     matMul_args4.USE_BIASES = 1;
+//     matMul_args4.bias_transposed = 1;
+//     matMul_args4.bias_dim = F;
+
+//     tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args);
+
+//     // T4
+//     // The last transpose to original shape
+//     struct transp_args_fp16 transp_args4;
+//     transp_args4.matrix = temp;
+//     transp_args4.transp_matrix = outData;
+//     transp_args4.N = F;
+//     transp_args4.M = L;
+
+//     tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args);
+//     // pi_l2_free(BUFF_L2, size * 2);
+// }
 
 
 

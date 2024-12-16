@@ -281,9 +281,9 @@ void pulp_softmax_fp16_fw_cl_tiled(void *act_args, void* Tiled_matmul_mhsa_args)
   fp16 *maxes = args->maxes;
   fp16 *sums = args->sums;
 
-  int tile_h = tiled_args->tile_h;
-  int tile_w = tiled_args->tile_w;
-  int tile_dim = tiled_args->tile_dim;
+  int tile_h = tiled_args->tile_h_sm;
+  int tile_w = tiled_args->tile_w_sm;
+  int tile_dim = tiled_args->tile_dim_sm;
   fp16* BUFF = tiled_args->BUFF;
   pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
   pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -413,4 +413,67 @@ void pulp_softmax_fp16_bw_cl(void *act_args_fp16) {
     op_2_args.W = WIDTH;
 
     pi_cl_team_fork(NUM_CORES, pulp_sm_bw_op_2_fp16, &op_2_args);
+}
+
+
+void pulp_vector_softmax_fp16(fp16* out, fp16* in, fp16* buffer_n_cores, unsigned int size){ 
+  struct max_args_fp16 ma;
+  ma.input = in;
+  ma.maxes = buffer_n_cores;
+  ma.dim = size;
+
+  pi_cl_team_fork(NUM_CORES, pulp_max_fp16_cl, &ma);
+
+  fp16 max = ma.maxes[0];
+
+  for(int i=1;i<NUM_CORES; i++)
+    if(ma.maxes[i] > max)
+      max = ma.maxes[i];
+  
+  struct vector_exp_sum_args_fp16 vesa;
+  vesa.input = in;
+  vesa.output = out;
+  vesa.max = max;
+  vesa.sums = buffer_n_cores;
+  vesa.dim = size;
+  
+  pi_cl_team_fork(NUM_CORES, vector_exp_sum_fp16_cl, &vesa);
+
+  fp16 sum = 0;
+
+  for(int i=0; i<NUM_CORES; i++)
+    sum += vesa.sums[i];
+
+  struct div_args_fp16 da;
+  da.input = out;
+  da.n = sum;
+  da.dim = size;
+
+  pi_cl_team_fork(NUM_CORES, pulp_div_fp16_cl, &da); 
+}
+
+
+void pulp_swiglu_fp16_cl(void *swiglu_args){
+  struct swiglu_args_fp16* args = (struct swiglu_args_fp16*) swiglu_args;
+  fp16* in1 = args->in1;
+  fp16* in2 = args->in2;
+  fp16* out = args->out;
+  int size = args->dim;
+
+  const uint32_t blockSize = (size+NUM_CORES-1) / NUM_CORES;
+  const uint32_t start = pi_core_id()*blockSize;
+  const uint32_t stop = start+blockSize > size ? size : start+blockSize;
+
+  for(int i=start; i<stop; i++){
+    float val = (float)in1[i];
+
+    #ifdef FASTEXPF
+    val *= (1.0f / (1.0f + fastexp_gist_fp16(-val)));
+    #else
+    val *= (1.0f / (1.0f + expf(-val)));
+    #endif
+
+    val *= in2[i];
+    out[i] = (fp16)val;
+  }
 }

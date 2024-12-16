@@ -300,7 +300,7 @@ if not skipgenio:
     
     # Gnereate random input id sequence
     inp = torch.from_numpy(np.short(np.random.uniform(low=0, high=config.vocab_size, size=(1, args.seq_len))))
-
+    '''
     # Print input data to terminal
     print("------------Input IDs sequence------------")
     print(inp)
@@ -341,7 +341,7 @@ if not skipgenio:
     )
 
     f.close()
-
+    '''
     # Take a real data sequence
     eval_dataset = load_and_cache_examples(args, args.task_name, tokenizer, data_type='dev')
     args.eval_batch_size = 1
@@ -366,10 +366,10 @@ if not skipgenio:
     f = open("output-sequence.h", "w")
 
     # COMMENT THE FOLLOWING LINE IF YOU AREN'T WORKING WITH INPUT IDs
-    embed = model.bert.embeddings(inp.int().to(args.device))
-    word_embed = model.bert.embeddings.word_embeddings(inp.int().to(args.device))
+    #embed = model.bert.embeddings(inp.int().to(args.device))
+    #word_embed = model.bert.embeddings.word_embeddings(inp.int().to(args.device))
 
-    output = model.bert.encoder(embed.to(args.device), head_mask=[None])[0]
+    output = model.bert.encoder(inp.to(args.device), head_mask=[None])[0]
     
     f.write(
         "PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {" + dump.tensor_to_string(output) + "};\n"

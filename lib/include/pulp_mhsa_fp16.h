@@ -94,6 +94,21 @@ struct Tiled_Matmul_Mhsa_args_fp16{
     int tile_h;
     int tile_w;
     int tile_dim;
+    int tile_h_p;
+    int tile_w_p;
+    int tile_dim_p;
+    int tile_h_sm;
+    int tile_w_sm;
+    int tile_dim_sm;
+    int tile_h_tr;
+    int tile_w_tr;
+    int tile_dim_tr;
+    int tile_h_attv;
+    int tile_w_attv;
+    int tile_dim_attv;
+    int tile_h_out_tr;
+    int tile_w_out_tr;
+    int tile_dim_out_tr;
     pi_cl_dma_cmd_t * cmd_store;
     pi_cl_dma_cmd_t * cmd_load;
 };
@@ -168,9 +183,9 @@ void pulp_mhsa_fp16_bw_cl(void * Mhsa_args_fp16);
 
 void tiled_mhsa_fp16(void* Mhsa_args_fp16, void* tiled_matmul_mhsa_args_fp16);
 
-void tiled_matmul_mhsa_fp16(void* matmul_args_fp16, void* tiled_matmul_mhsa_args_fp16);
+void tiled_matmul_mhsa_fp16(void* matmul_args_fp16, void* tiled_matmul_mhsa_args_fp16, int projection);
 
-void tiled_transpose_mhsa_fp16(void* transpose_args_fp16, void* Tiled_matmul_mhsa_args_fp16);
+void tiled_transpose_mhsa_fp16(void* transpose_args_fp16, void* Tiled_matmul_mhsa_args_fp16, int projection);
 
 void tiled_mhsa_fp16_flash(void *Mhsa_args, void* Tiled_mhsa_matmul_args, fp16* BUFF_L2, pi_fs_file_t *file_p, int size);
 

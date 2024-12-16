@@ -108,6 +108,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     matMul_args1_q.K = E;
     matMul_args1_q.M = L;
     matMul_args1_q.trans_B = 0;
+    matMul_args1_q.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_q);
@@ -187,6 +188,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     matMul_args1_k.K = E;
     matMul_args1_k.M = L;
     matMul_args1_k.trans_B = 0;
+    matMul_args1_k.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_k);
@@ -266,6 +268,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     matMul_args1_v.K = E;
     matMul_args1_v.M = L;
     matMul_args1_v.trans_B = 0;
+    matMul_args1_v.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1_v);
@@ -355,6 +358,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         matMul_args2.K = H;
         matMul_args2.M = L;
         matMul_args2.trans_B = 0;
+        matMul_args2.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args2);
@@ -527,6 +531,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
+        matMul_args3.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args3);
@@ -578,6 +583,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     matMul_args4.K = F;
     matMul_args4.M = L;
     matMul_args4.trans_B = 0;
+    matMul_args4.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args4);
@@ -714,6 +720,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args1.K = L;
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
+    matMul_args1.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1);
@@ -783,6 +790,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args2.K = E;
     matMul_args2.M = L;
     matMul_args2.trans_B = 0;
+    matMul_args2.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args2);
@@ -850,6 +858,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
+        matMul_args3.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args3);
@@ -919,6 +928,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         matMul_args4.K = H;
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
+        matMul_args4.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args4);
@@ -1192,6 +1202,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         matMul_args5.K = L;
         matMul_args5.M = H;
         matMul_args5.trans_B = 0;
+        matMul_args5.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args5);
@@ -1285,6 +1296,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         matMul_args6.K = L;
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
+        matMul_args6.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args6);
@@ -1392,6 +1404,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args7_q.K = L;
     matMul_args7_q.M = E;
     matMul_args7_q.trans_B = 0;
+    matMul_args7_q.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_q);
@@ -1436,6 +1449,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args7_k.K = L;
     matMul_args7_k.M = E;
     matMul_args7_k.trans_B = 0;
+    matMul_args7_k.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_k);
@@ -1480,6 +1494,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args7_v.K = L;
     matMul_args7_v.M = E;
     matMul_args7_v.trans_B = 0;
+    matMul_args7_v.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_v);
@@ -1524,6 +1539,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args8_q.K = F;
     matMul_args8_q.M = L;
     matMul_args8_q.trans_B = 0;
+    matMul_args8_q.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_q);
@@ -1577,6 +1593,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args8_k.K = F;
     matMul_args8_k.M = L;
     matMul_args8_k.trans_B = 0;
+    matMul_args8_k.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_k);
@@ -1624,6 +1641,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     matMul_args8_v.K = F;
     matMul_args8_v.M = L;
     matMul_args8_v.trans_B = 0;
+    matMul_args8_v.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_v);
@@ -1952,12 +1970,27 @@ void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
 
 //FORWARD INFERENCE, TILED
 
-void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args){
+void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args, int projection){
     struct matMul_args * args = (struct matMul_args *)matmul_args;
     struct Tiled_Matmul_Mhsa_args * tiled_args = (struct Tiled_Matmul_Mhsa_args*) tiled_matmul_mhsa_args;
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 1){
+        tile_h = tiled_args->tile_h_p;
+        tile_w = tiled_args->tile_w_p;
+        tile_dim = tiled_args->tile_dim_p;
+    }
+    else if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_attv;
+        tile_w = tiled_args->tile_w_attv;
+        tile_dim = tiled_args->tile_dim_attv;
+    }
     float* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2011,14 +2044,29 @@ void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args){
     }
 }
 
-void tiled_transpose_mhsa(void *transpose_args, void* Tiled_matmul_mhsa_args){
+void tiled_transpose_mhsa(void *transpose_args, void* Tiled_matmul_mhsa_args, int projection){
     struct transp_args *args = (struct transp_args *) transpose_args;
     struct Tiled_Matmul_Mhsa_args * tiled_args = (struct Tiled_Matmul_Mhsa_args*) Tiled_matmul_mhsa_args;
     struct transp_args args_l1;
 
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 1){
+        tile_h = tiled_args->tile_h_out_tr;
+        tile_w = tiled_args->tile_w_out_tr;
+        tile_dim = tiled_args->tile_dim_out_tr;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_tr;
+        tile_w = tiled_args->tile_w_tr;
+        tile_dim = tiled_args->tile_dim_tr;
+    }
     float* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2052,9 +2100,9 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     struct Mhsa_args *mhsa_args = (struct Mhsa_args *) Mhsa_args;
     struct Tiled_Matmul_Mhsa_args *tiled_args = (struct Tiled_Matmul_Mhsa_args *) Tiled_mhsa_matmul_args; 
 
-    int tile_h = tiled_args->tile_h;
-    int tile_w = tiled_args->tile_w;
-    int tile_dim = tiled_args->tile_dim;
+    int tile_h = tiled_args->tile_h_sm;
+    int tile_w = tiled_args->tile_w_sm;
+    int tile_dim = tiled_args->tile_dim_sm;
     float* BUFF = tiled_args->BUFF;
     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
@@ -2110,7 +2158,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_q.bias_transposed = 1;
     matMul_args1_q.bias_dim = F;
 
-    tiled_matmul_mhsa(&matMul_args1_q, Tiled_mhsa_matmul_args);
+    tiled_matmul_mhsa(&matMul_args1_q, Tiled_mhsa_matmul_args, 1);
     
 
     // M1_k
@@ -2128,7 +2176,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_k.bias_transposed = 1;
     matMul_args1_k.bias_dim = F;
 
-    tiled_matmul_mhsa(&matMul_args1_k, Tiled_mhsa_matmul_args);
+    tiled_matmul_mhsa(&matMul_args1_k, Tiled_mhsa_matmul_args, 1);
 
 
     //  Cycle on the different heads
@@ -2141,7 +2189,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args1.N = H;
         transp_args1.M = L;
 
-        tiled_transpose_mhsa(&transp_args1, Tiled_mhsa_matmul_args);
+        tiled_transpose_mhsa(&transp_args1, Tiled_mhsa_matmul_args, 2);
 
         //pi_cl_team_fork(NUM_CORES, transpose, &transp_args1);
 
@@ -2157,7 +2205,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         matMul_args2.trans_B = 0;
         matMul_args2.USE_BIASES = 0;
 
-        tiled_matmul_mhsa(&matMul_args2, Tiled_mhsa_matmul_args);
+        tiled_matmul_mhsa(&matMul_args2, Tiled_mhsa_matmul_args, 0);
 
 
         // ================================================== OP 4 ==================================================
@@ -2196,7 +2244,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args2.N = L;
         transp_args2.M = L;
 
-        tiled_transpose_mhsa(&transp_args2, Tiled_mhsa_matmul_args);
+        tiled_transpose_mhsa(&transp_args2, Tiled_mhsa_matmul_args, 0);
 
         //  Softmax algorithm
         struct softmax_args softmax_arg;
@@ -2227,7 +2275,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args1_v.bias_transposed = 1;
     matMul_args1_v.bias_dim = F;
 
-    tiled_matmul_mhsa(&matMul_args1_v, Tiled_mhsa_matmul_args);
+    tiled_matmul_mhsa(&matMul_args1_v, Tiled_mhsa_matmul_args, 1);
 
 
     for (int i = 0; i < n_heads; i++) {
@@ -2247,7 +2295,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         transp_args3.N = L;
         transp_args3.M = L;
 
-        tiled_transpose_mhsa(&transp_args3, Tiled_mhsa_matmul_args);
+        tiled_transpose_mhsa(&transp_args3, Tiled_mhsa_matmul_args, 0);
 
         // M3
         struct matMul_args matMul_args3;
@@ -2259,7 +2307,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
-        tiled_matmul_mhsa(&matMul_args3, Tiled_mhsa_matmul_args);
+        tiled_matmul_mhsa(&matMul_args3, Tiled_mhsa_matmul_args, 2);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2279,11 +2327,11 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args4.M = L;
     matMul_args4.trans_B = 0;
     matMul_args4.bias = coeffBiasWout;
-    matMul_args4.USE_BIASES = 0;
+    matMul_args4.USE_BIASES = 1;
     matMul_args4.bias_transposed = 1;
     matMul_args4.bias_dim = F;
 
-    tiled_matmul_mhsa(&matMul_args4, Tiled_mhsa_matmul_args);
+    tiled_matmul_mhsa(&matMul_args4, Tiled_mhsa_matmul_args, 1);
 
     
     // T4
@@ -2294,7 +2342,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     transp_args4.N = mhsa_args->input_bn->W;
     transp_args4.M = L;
 
-    tiled_transpose_mhsa(&transp_args4, Tiled_mhsa_matmul_args);
+    tiled_transpose_mhsa(&transp_args4, Tiled_mhsa_matmul_args, 1);
 }
 
 // BACKWARD INFERENCE
@@ -2364,6 +2412,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args1.K = L;
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
+    matMul_args1.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args1);
@@ -2394,6 +2443,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args2.K = E;
     matMul_args2.M = L;
     matMul_args2.trans_B = 0;
+    matMul_args2.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args2);
@@ -2417,6 +2467,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
+        matMul_args1.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args3);
@@ -2447,6 +2498,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
         matMul_args4.K = H;
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
+        matMul_args4.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args4);
@@ -2469,6 +2521,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args7_v.K = L;
     matMul_args7_v.M = E;
     matMul_args7_v.trans_B = 0;
+    matMul_args7_v.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_v);
@@ -2544,6 +2597,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
         matMul_args5.K = L;
         matMul_args5.M = H;
         matMul_args5.trans_B = 0;
+        matMul_args5.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args5);
@@ -2582,6 +2636,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
         matMul_args6.K = L;
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
+        matMul_args6.USE_BIASES = 0;
 
         #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args6);
@@ -2604,6 +2659,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args7_q.K = L;
     matMul_args7_q.M = E;
     matMul_args7_q.trans_B = 0;
+    matMul_args7_q.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_q);
@@ -2625,6 +2681,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args7_k.K = L;
     matMul_args7_k.M = E;
     matMul_args7_k.trans_B = 0;
+    matMul_args7_k.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args7_k);
@@ -2646,6 +2703,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args8_q.K = F;
     matMul_args8_q.M = L;
     matMul_args8_q.trans_B = 0;
+    matMul_args8_q.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_q);
@@ -2676,6 +2734,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args8_k.K = F;
     matMul_args8_k.M = L;
     matMul_args8_k.trans_B = 0;
+    matMul_args8_k.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_k);
@@ -2700,6 +2759,7 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     matMul_args8_v.K = F;
     matMul_args8_v.M = L;
     matMul_args8_v.trans_B = 0;
+    matMul_args8_v.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm, &matMul_args8_v);

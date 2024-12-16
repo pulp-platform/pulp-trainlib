@@ -714,7 +714,7 @@ void DNN_init()
     input_embedding_args.BUFF = BUFF;
     input_embedding_args.dim = SEQ_LEN;
     input_embedding_args.embed_dim = EMBED_SIZE;
-    input_embedding_args.ids = INPUT_IDS;
+    // input_embedding_args.ids = INPUT_IDS;
     input_embedding_args.embeds = VOCABULARY;
     input_embedding_args.out = buff_a;
 
@@ -1193,14 +1193,14 @@ void print_stuff(){
 void forward(){
     // EMBEDDER
     // Embedding input sequence ids
-    pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &input_embedding_args);
-    trigram_padding(buff_a, buff_d);
-    tiled_matmul(&embedding_dense_args);
-    pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &position_embedding_args);
-    tiled_skip((void*) &pos_embed_add_args);
-    pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &token_type_embedding_args);
-    tiled_skip((void*) &token_type_embed_add_args);
-    tiled_norm(&embedding_norm_args);
+    // pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &input_embedding_args);
+    // trigram_padding(buff_a, buff_d);
+    // tiled_matmul(&embedding_dense_args);
+    // pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &position_embedding_args);
+    // tiled_skip((void*) &pos_embed_add_args);
+    // pi_cl_team_fork(NUM_CORES, embedding_fw_tiled_fp16, &token_type_embedding_args);
+    // tiled_skip((void*) &token_type_embed_add_args);
+    // tiled_norm(&embedding_norm_args);
     
     
     
@@ -1405,6 +1405,21 @@ void reset_arguments(){
     tiled_matmul_mhsa_args.man_args = &man_args;
     tiled_matmul_mhsa_args.cmd_load = cmd_load;
     tiled_matmul_mhsa_args.cmd_store = cmd_store;
+    tiled_matmul_mhsa_args.tile_h_p = TILE_H_P;
+    tiled_matmul_mhsa_args.tile_w_p = TILE_W_P;
+    tiled_matmul_mhsa_args.tile_dim_p = TILE_DIM_P;
+    tiled_matmul_mhsa_args.tile_h_sm = TILE_H_SM;
+    tiled_matmul_mhsa_args.tile_w_sm = TILE_W_SM;
+    tiled_matmul_mhsa_args.tile_dim_sm = TILE_DIM_SM;
+    tiled_matmul_mhsa_args.tile_h_tr = TILE_H_TR;
+    tiled_matmul_mhsa_args.tile_w_tr = TILE_W_TR;
+    tiled_matmul_mhsa_args.tile_dim_tr = TILE_DIM_TR;
+    tiled_matmul_mhsa_args.tile_h_attv = TILE_H_ATTV;
+    tiled_matmul_mhsa_args.tile_w_attv = TILE_W_ATTV;
+    tiled_matmul_mhsa_args.tile_dim_attv = TILE_DIM_ATTV;
+    tiled_matmul_mhsa_args.tile_h_out_tr = TILE_H_OUT_TR;
+    tiled_matmul_mhsa_args.tile_w_out_tr = TILE_W_OUT_TR;
+    tiled_matmul_mhsa_args.tile_dim_out_tr = TILE_DIM_OUT_TR;
 }
 
 

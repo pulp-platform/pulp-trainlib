@@ -336,7 +336,14 @@ struct max_args_fp16 {
     int H;
     int W;
     fp16 *maxes;
+    int dim;
 };
+
+/**
+ * @brief Calculate the maxes of a vector in parallelized fashion
+ * @param (void *)  (struct max_args_fp16 void_args)
+ */
+void pulp_max_fp16_cl(void * void_args);
 
 
 /**
@@ -578,6 +585,7 @@ void pulp_row_max_fp16_cl(void * void_args);
  * @param x floating-point number to be exponentiated
  */
 float fastexp_gist_fp16(float x);
+// fp16 fastexp_gist_fp16(fp16 x);
 
 
 /**
@@ -681,3 +689,14 @@ void cordic_cos_sin_fp16(fp16 angle, fp16* cos, fp16* sin);
  * @param (void *) (struct mm_bias_add_args_fp16 void_args)
  */
 void mm_bias_add_transposed_fp16(void *void_args);
+
+
+struct vector_exp_sum_args_fp16{
+  fp16* input;
+  fp16* sums;
+  fp16* output;
+  int dim;
+  fp16 max;
+};
+
+void vector_exp_sum_fp16_cl(void * vector_exp_sum_args);
