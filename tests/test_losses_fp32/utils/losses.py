@@ -49,7 +49,7 @@ class berHuLoss(nn.Module):
         # Compute the berHu loss on the normalized and masked values
         absdiff   = torch.abs(output - target)
         C         = 0.2 * torch.max(absdiff).item()
-        berhu_map = torch.where(absdiff < C, absdiff, (absdiff*absdiff + C*C) / (2*C))
+        berhu_map = torch.where(absdiff < C, absdiff, (absdiff*absdiff - C*C) / (2*C))
         valid_map = torch.zeros_like(output).to(self.device)
         valid_map[valid_mask] = berhu_map[valid_mask]
         loss      = torch.sum(valid_map) / N_valid

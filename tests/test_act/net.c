@@ -26,6 +26,7 @@
 #if DATA_TYPE == FP32
 // Inout data
 PI_L1 struct act_args act_args;
+PI_L1 struct leakyrelu_args leakyrelu_args;
 PI_L1 struct softmax_args softmax_args;
 PI_L1 struct tanh_args tanh_args;
 
@@ -49,15 +50,23 @@ PI_L1 float sigmoid_out[OUT_SIZE];
 PI_L1 float sigmoid_out_grad[OUT_SIZE];
 PI_L1 float sigmoid_in_grad[IN_SIZE];
 
+
 PI_L1 struct blob gelu_in_blob;
 PI_L1 struct blob gelu_out_blob;
 PI_L1 float gelu_out[OUT_SIZE];
 
 PI_L1 float tanh_out[OUT_SIZE];
 
+PI_L1 struct blob leakyrelu_in_blob;
+PI_L1 struct blob leakyrelu_out_blob;
+PI_L1 float leakyrelu_out[OUT_SIZE];
+PI_L1 float leakyrelu_out_grad[OUT_SIZE];
+PI_L1 float leakyrelu_in_grad[IN_SIZE];
+
 #elif DATA_TYPE == FP16
 // Inout data
 PI_L1 struct act_args_fp16 act_args;
+PI_L1 struct leakyrelu_args_fp16 leakyrelu_args;
 PI_L1 struct softmax_args_fp16 softmax_args;
 
 PI_L1 struct blob_fp16 relu_in_blob;
@@ -79,6 +88,12 @@ PI_L1 struct blob_fp16 sigmoid_out_blob;
 PI_L1 fp16 sigmoid_out[OUT_SIZE];
 PI_L1 fp16 sigmoid_out_grad[OUT_SIZE];
 PI_L1 fp16 sigmoid_in_grad[IN_SIZE];
+
+PI_L1 struct blob_fp16 leakyrelu_in_blob;
+PI_L1 struct blob_fp16 leakyrelu_out_blob;
+PI_L1 fp16 leakyrelu_out[OUT_SIZE];
+PI_L1 fp16 leakyrelu_out_grad[OUT_SIZE];
+PI_L1 fp16 leakyrelu_in_grad[IN_SIZE];
 
 #else
 #endif
@@ -149,6 +164,7 @@ void prepare_data () {
     sigmoid_out_blob.W = Tout_W;
     sigmoid_out_blob.C = Tout_C;
 
+
     // GELU args
     gelu_in_blob.data = GELU_IN;
     gelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
@@ -161,6 +177,21 @@ void prepare_data () {
     gelu_out_blob.H = Tout_H;
     gelu_out_blob.W = Tout_W;
     gelu_out_blob.C = Tout_C;
+
+    // LeakyReLU args
+    leakyrelu_in_blob.data = LEAKYRELUIN;
+    leakyrelu_in_blob.diff = leakyrelu_in_grad;
+    leakyrelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
+    leakyrelu_in_blob.H = Tin_H;
+    leakyrelu_in_blob.W = Tin_W;
+    leakyrelu_in_blob.C = Tin_C;
+
+    leakyrelu_out_blob.data = leakyrelu_out;
+    leakyrelu_out_blob.diff = LEAKYRELUOUTPUT_GRAD;
+    leakyrelu_out_blob.dim = Tout_C * Tout_H * Tout_W;
+    leakyrelu_out_blob.H = Tout_H;
+    leakyrelu_out_blob.W = Tout_W;
+    leakyrelu_out_blob.C = Tout_C;
 }
 
 
@@ -370,6 +401,7 @@ void net_step () {
     #else
     #endif
 
+
     // ~~~~~~~~~~ Verify GELU with tanh approximation activation ~~~~~~~~~~
     printf("\n----- GELU - TANH APPROX - RESULTS -----\n");
 
@@ -428,6 +460,70 @@ void net_step () {
 #if DATA_TYPE == FP32
     verify_tensor(tanh_out, TANH_OUTPUT, OUT_SIZE, TANH_ERROR_TOLERANCE);
 #endif
+
+    // ~~~~~~~~~~ Verify LeakyReLU activation ~~~~~~~~~~
+    printf("\n----- LEAKYRELU RESULTS -----\n");
+
+    // Prepare ReLU struct
+    leakyrelu_args.input = &leakyrelu_in_blob;
+    leakyrelu_args.output = &leakyrelu_out_blob;
+    leakyrelu_args.negative_slope = 0.01;
+
+    // Print statistics for forward pass
+    #ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+    #endif
+
+    // Apply ReLU activation
+    #if DATA_TYPE == FP32
+    pulp_leakyrelu_fp32_fw_cl(&leakyrelu_args);
+    #elif DATA_TYPE == FP16
+    pulp_leakyrelu_fp16_fw_cl(&leakyrelu_args);
+    #else
+    #endif
+
+    // Stop the statistics for the forward pass
+    #ifdef PROF_NET
+    STOP_STATS();
+    #endif
+
+    // Check output match
+    printf("\nChecking output..\n");
+    #if DATA_TYPE == FP32
+    verify_tensor(leakyrelu_out, LEAKYRELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(leakyrelu_out, LEAKYRELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
+    #else
+    #endif
+
+    // Initialize profiler for backward pass
+    #ifdef PROF_NET
+    printf("\nBackward stats: \n");
+    START_STATS();
+    #endif
+
+    // Compute gradient for ReLU
+    #if DATA_TYPE == FP32
+    pulp_leakyrelu_fp32_bw_cl(&leakyrelu_args);
+    #elif DATA_TYPE == FP16
+    pulp_leakyrelu_fp16_bw_cl(&leakyrelu_args);
+    #else
+    #endif
+
+    // Stop statistics for backward pass
+    #ifdef PROF_NET
+    STOP_STATS();
+    #endif
+
+    // Check gradient match
+    printf("\nChecking in grad..\n");
+    #if DATA_TYPE == FP32
+    verify_tensor(leakyrelu_in_grad, LEAKYRELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #elif DATA_TYPE == FP16
+    verify_tensor_fp16(leakyrelu_in_grad, LEAKYRELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
+    #else
+    #endif
 
     return;
 }

@@ -38,6 +38,7 @@ parser.add_argument( '--ch_in', type=int, default=8 )
 parser.add_argument( '--weight', type=float, default=0.01)
 parser.add_argument( '--ch_out', type=int, default=8 )
 parser.add_argument( '--step', default='FORWARD') # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
+parser.add_argument( '--bf16_format', type=int, default=1) # if == 1, data format if bfloat16, if 0 is float16
 parser.add_argument( '--h_pad', type=int, default=0)
 parser.add_argument( '--w_pad', type=int, default=0)
 parser.add_argument( '--h_str', type=int, default=1)
@@ -57,6 +58,7 @@ out_ch = args.ch_out
 image_width = args.image_width
 image_height = args.image_height
 step = args.step
+bf16_format = args.bf16_format
 hpad = args.h_pad
 wpad = args.w_pad
 hstr = args.h_str
@@ -109,7 +111,10 @@ class myNet(nn.Module):
   def forward(self, x):
     return self.conv(x)
 
-net = myNet()
+if bf16_format == 1:
+  net = myNet().bfloat16()
+elif bf16_format == 0: 
+  net = myNet().half()
 net.zero_grad()
 
 
@@ -142,11 +147,11 @@ def hook_fn1(m, i, o):
         print("\n>>>>> INPUT GRAD: <<<<<")
         print(input_grad)
         if HWC_layout == 0:
-          f.write("PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
+          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
         elif HWC_layout == 1:
           ingrad = deepcopy(input_grad)
           ingrad = ingrad.permute(0,2,3,1)
-          f.write("PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(ingrad)+ "};\n")
+          f.write("PI_L2 fp16 INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(ingrad)+ "};\n")
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -156,11 +161,11 @@ def hook_fn1(m, i, o):
         f.write('#define G_WGT_SIZE '+str(weight_grad.numel())+'\n')
         print(weight_grad)
         if HWC_layout == 0:
-          f.write('PI_L2 float WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(weight_grad)+'};\n')       
         elif HWC_layout == 1:
           wgt_grad = deepcopy(weight_grad)
           wgt_grad = weight_grad.permute(0,2,3,1)
-          f.write('PI_L2 float WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(wgt_grad)+'};\n')
+          f.write('PI_L2 fp16 WEIGHT_GRAD[G_WGT_SIZE] = {'+dump.tensor_to_string(wgt_grad)+'};\n')
         else:
           print("[utils/GM.py] Invalid data layout!!")
           exit()
@@ -173,7 +178,7 @@ def hook_fn1(m, i, o):
           exit()
 
         f.write('#define G_BIAS_SIZE '+str(bias_grad.numel())+'\n')
-        f.write('PI_L2 float BIAS_GRAD[G_BIAS_SIZE] = {'+dump.tensor_to_string(bias_grad)+'};\n')
+        f.write('PI_L2 fp16 BIAS_GRAD[G_BIAS_SIZE] = {'+dump.tensor_to_string(bias_grad)+'};\n')
         print(bias_grad)
 
     except AttributeError:
@@ -189,21 +194,21 @@ def hook_fn1(m, i, o):
       print(output_grad)
       if step=='BACKWARD_GRAD' or step=='BACKWARD_ERROR':
           if HWC_layout == 0:
-            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
           elif HWC_layout == 1:
             outgrad = deepcopy(output_grad)
             outgrad = outgrad.permute(0,2,3,1)
-            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
       else:
           if HWC_layout == 0:
-            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
           elif HWC_layout == 1:
             outgrad = deepcopy(output_grad)
             outgrad = outgrad.permute(0,2,3,1)
-            f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(outgrad)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
@@ -230,11 +235,11 @@ def hook_fn2(m, i, o):
           print("\n>>>>> OUTPUT DATA: <<<<<")
           print(output_data)
           if HWC_layout == 0:
-            f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_data)+'};\n')
           elif HWC_layout == 1:
             outdata = output_data
             outdata = outdata.permute(1,2,0)
-            f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(outdata)+'};\n')
+            f.write('PI_L2 fp16 OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(outdata)+'};\n')
           else:
             print("[utils/GM.py] Invalid data layout!!")
             exit()
@@ -247,21 +252,30 @@ def hook_fn2(m, i, o):
 gradsConv = net.conv.register_backward_hook(hook_fn1)
 outConv = net.conv.register_forward_hook(hook_fn2)
 
-
-inp = torch.div(torch.ones(1, in_ch, image_height, image_width), 1000)
-for cin in range(in_ch):
-  for hi in range(image_height):
-    for wi in range(image_width):
-      inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
-
-inp.requires_grad = True
-
-
-label = torch.ones(1, out_ch, out_size_h, out_size_w)
-for c in range(out_ch):
-  for h in range(out_size_h):
-    for w in range(out_size_w):
-      label[0, c, h, w] += w*0.001
+if bf16_format == 1:
+  inp = torch.div(torch.ones(1, in_ch, image_height, image_width), 1000).bfloat16()
+  for cin in range(in_ch):
+    for hi in range(image_height):
+      for wi in range(image_width):
+        inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
+  inp.requires_grad = True
+  label = torch.ones(1, out_ch, out_size_h, out_size_w).bfloat16()
+  for c in range(out_ch):
+    for h in range(out_size_h):
+      for w in range(out_size_w):
+        label[0, c, h, w] += w*0.001
+else:
+  inp = torch.div(torch.ones(1, in_ch, image_height, image_width), 1000).half()
+  for cin in range(in_ch):
+    for hi in range(image_height):
+      for wi in range(image_width):
+        inp[0, cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
+  inp.requires_grad = True
+  label = torch.ones(1, out_ch, out_size_h, out_size_w).half()
+  for c in range(out_ch):
+    for h in range(out_size_h):
+      for w in range(out_size_w):
+        label[0, c, h, w] += w*0.001
 
 
 # Write input image
@@ -271,21 +285,21 @@ print("\n>>>>>> INPUT DATA: <<<<<")
 print(inp)
 if step=='FORWARD':
   if HWC_layout == 0:
-    f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
   elif HWC_layout == 1:
     indata = deepcopy(inp)
     indata = indata.permute(0,2,3,1)
-    f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
   else:
     print("[utils/GM.py] Invalid data layout!!")
     exit()
 else:
   if HWC_layout == 0:
-    f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp)+'};\n')
   elif HWC_layout == 1:
     indata = deepcopy(inp)
     indata = indata.permute(0,2,3,1)
-    f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
+    f.write('PI_L2 fp16 INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(indata)+'};\n')
   else:
     print("[utils/GM.py] Invalid data layout!!")
     exit()
@@ -304,14 +318,20 @@ if use_biases == 1:
   print(net.conv.bias.data)
   print("\n")
 
-wgt_init_tensor = torch.zeros(out_ch, in_ch, ker_h, ker_w)
+if bf16_format == 1:
+  wgt_init_tensor = torch.zeros(out_ch, in_ch, ker_h, ker_w).bfloat16()
+else:
+  wgt_init_tensor = torch.zeros(out_ch, in_ch, ker_h, ker_w).half()
 for o in range(out_ch):
   for i in range(in_ch):
     for hk in range(ker_h):
       for wk in range(ker_w):
         wgt_init_tensor[o, i, hk, wk] = (o+i+hk+wk)*weight_init
 
-bias_init_tensor = torch.zeros(out_ch)
+if bf16_format == 1:
+  bias_init_tensor = torch.zeros(out_ch).bfloat16()
+else:
+  bias_init_tensor = torch.zeros(out_ch).half()
 if use_biases == 1:
   for co in range(out_ch):
     bias_init_tensor[co] = co * bias_init
@@ -346,21 +366,21 @@ f.write("#define WGT_SIZE (Tout_C_l1*Tin_C_l1*Tker_H_l1*Tker_W_l1)\n")
 if use_biases == 1:
   f.write("#define BIAS_SIZE (Tout_C_l1)\n")
 if HWC_layout == 0:
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
+  f.write('PI_L2 fp16 WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(net.conv.weight.data)+'};\n')
 elif HWC_layout == 1:
   weightdata = deepcopy(net.conv.weight.data)
   weightdata = net.conv.weight.data.permute(0,2,3,1)
-  f.write('PI_L2 float WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(weightdata)+'};\n')
+  f.write('PI_L2 fp16 WEIGHTS[WGT_SIZE] = {'+dump.tensor_to_string(weightdata)+'};\n')
 else:
   print("[utils/GM.py] Invaid data layout!!")
   exit()
 if use_biases == 1:
-  f.write('PI_L2 float BIASES[BIAS_SIZE] = {'+dump.tensor_to_string(net.conv.bias.data)+'};\n')
+  f.write('PI_L2 fp16 BIASES[BIAS_SIZE] = {'+dump.tensor_to_string(net.conv.bias.data)+'};\n')
 f.close()
 
 criterion = nn.MSELoss()
 out = net(inp)
-loss = criterion(out, label)
+loss = criterion(out.float(), label.float())
 net.zero_grad()
 
 loss.backward()

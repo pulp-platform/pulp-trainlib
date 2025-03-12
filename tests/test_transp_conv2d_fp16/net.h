@@ -14,11 +14,28 @@
  * limitations under the License.
  */
 
+#include "pulp_train_defines.h"
+#include "step-check.h"
+
 // User profiling flags
-#define FLOAT32
+
+#if defined(FORWARD) && !defined(DEBUG) 
+#define PROF_FWD
+#endif
+
+#if (defined(BACKWARD_ERROR) || defined(BACKWARD_GRAD)) && !defined(DEBUG)
+#define PROF_BKWD
+#endif
+
+// Net sizes
+
+// TRANSPOSED CONV2D
+#define Tout_H_l1   ((Tin_H_l1-1)*STRIDE_H-(PAD_U+PAD_D)+(Tker_H_l1-1)+1)
+#define Tout_W_l1   ((Tin_W_l1-1)*STRIDE_W-(PAD_L+PAD_R)+(Tker_W_l1-1)+1)
+
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-4
-#define ERROR_TOLERANCE 1e-4
+#define CHECK_TOLERANCE 1e-3
+#define ERROR_TOLERANCE 1e-3
 
 // PULP DEFINES
 #define STACK_SIZE      4096
@@ -26,10 +43,11 @@
 #define UNMOUNT         0
 #define CID             0
 
-// Loss defines
-#define L1Loss 0
-#define MSE 1
-#define CrossEntropy 2
-#define berHuLoss 3
+// Support functions
+static inline void forward();
+static inline void compare_tensors(fp16 *A, fp16 *B, int length);
+int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size);
+static inline void train();
+// Main function
+void net_step ();
 
-void net_step();

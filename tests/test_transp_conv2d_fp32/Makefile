@@ -1,22 +1,22 @@
 APP = transp_conv2d_fp32
 
 # User settings
-IMAGE_H?=4
-IMAGE_W?=4
-KER_H?=2
-KER_W?=2
-IN_CH?=1
-OUT_CH?=1
-PAD_L?=0
-PAD_R?=0
-PAD_U?=0
-PAD_D?=0
-STRIDE_H?=1
-STRIDE_W?=1
+IMAGE_H?=3
+IMAGE_W?=3
+KER_H?=3
+KER_W?=3
+IN_CH?=8
+OUT_CH?=8
+PAD_L?=1
+PAD_R?=1
+PAD_U?=1
+PAD_D?=1
+STRIDE_H?=2
+STRIDE_W?=2
 NUM_CORES?=8
 STEP?='FORWARD' # options: // FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
 #APP_CFLAGS += -DDEBUG
-APP_CFLAGS += -DOPTIMIZE
+#APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
 NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network

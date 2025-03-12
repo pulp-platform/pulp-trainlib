@@ -281,6 +281,7 @@ void pad_tensor_fp16(void *pad_args_fp16) {
 }
 
 
+
 void pulp_max_fp16_cl(void * void_args){
     struct max_args_fp16* args = (struct max_args_fp16 *) void_args;
 
@@ -300,6 +301,14 @@ void pulp_max_fp16_cl(void * void_args){
 
     args->maxes[pi_core_id()] = max;
 }
+
+
+fp16 clamp_fp16(fp16 value, fp16 min, fp16 max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
 
 // ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
 // ~~~~~~~~~~~~~~~~~~      FORWARD      ~~~~~~~~~~~~~~~~~~

@@ -30,8 +30,8 @@
 
 // CONV2D
 PI_L1 float zero_init = 0.0f;
-PI_L1 struct Transp_Conv2D_args C2D_args;
-PI_L1 struct blob layer1_in, layer1_wgt, layer1_bias, layer1_out;
+PI_L1 struct Transp_Conv2D_args_fp16 C2D_args;
+PI_L1 struct blob_fp16 layer1_in, layer1_wgt, layer1_bias, layer1_out;
 
 // Performances
 PI_L1 int num_mac = 0;
@@ -43,18 +43,18 @@ PI_L2 int L2_memocc_bytes = 0;
 #ifdef FORWARD
 #if (IM2COL == 1)
 #define IM2COL_SIZE (Tker_H_l1*Tker_W_l1*Tin_C_l1*((Tin_H_l1-Tker_H_l1+PAD_U+PAD_D+STRIDE_H)/STRIDE_H)*((Tin_W_l1-Tker_W_l1+PAD_L+PAD_R+STRIDE_W)/STRIDE_W))
-PI_L1 float im2col_buffer[IM2COL_SIZE];
+PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
 #else 
 #define IM2COL_SIZE 1
-PI_L1 float im2col_buffer[IM2COL_SIZE];
+PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
 #endif
-PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+PI_L1 fp16 l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 #if (USE_BIAS == 1)
-PI_L1 float l1_bias[Tout_C_l1];
+PI_L1 fp16 l1_bias[Tout_C_l1];
 #endif
-PI_L1 float l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 float bt_buffer[1];
+PI_L1 fp16 l1_out[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 fp16 bt_buffer[1];
 #endif
 
 #ifdef BACKWARD_ERROR   
@@ -63,11 +63,11 @@ PI_L1 float bt_buffer[1];
 #else
 #define IM2COL_SIZE 1
 #endif
-PI_L1 float l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float im2col_buffer[IM2COL_SIZE];
-PI_L1 float bt_buffer[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
-PI_L1 float l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
-PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 fp16 l1_in_diff[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
+PI_L1 fp16 bt_buffer[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+PI_L1 fp16 l1_ker[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+PI_L1 fp16 l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #endif
 
 #ifdef BACKWARD_GRAD
@@ -77,14 +77,14 @@ PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
 #else
 #define IM2COL_SIZE 1
 #endif
-PI_L1 float l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
-PI_L1 float im2col_buffer[IM2COL_SIZE];
-PI_L1 float l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
+PI_L1 fp16 l1_in[Tin_H_l1*Tin_W_l1*Tin_C_l1];
+PI_L1 fp16 im2col_buffer[IM2COL_SIZE];
+PI_L1 fp16 l1_ker_diff[Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1];
 #if (USE_BIAS == 1)
-PI_L1 float l1_bias_diff[Tout_C_l1];
+PI_L1 fp16 l1_bias_diff[Tout_C_l1];
 #endif
-PI_L1 float l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
-PI_L1 float bt_buffer[1];
+PI_L1 fp16 l1_out_diff[Tout_H_l1*Tout_W_l1*Tout_C_l1];
+PI_L1 fp16 bt_buffer[1];
 #endif
 
 
@@ -159,29 +159,29 @@ static inline void connect_blobs(){
 
 static inline void compute_memory_occupation(){
   //printf("\n----------L1----------\n");
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(fp16);
   //printf("Input_tensor: %d bytes\n", Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float));
-  L1_memocc_bytes += IM2COL_SIZE*sizeof(float);
+  L1_memocc_bytes += IM2COL_SIZE*sizeof(fp16);
   //printf("Im2Col: %d bytes\n", IM2COL_SIZE*sizeof(float));
-  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
+  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(fp16);
   //printf("Weights: %d bytes\n", Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float));
   #if (USE_BIAS == 1)
-  L1_memocc_bytes += Tout_C_l1 * sizeof(float);
+  L1_memocc_bytes += Tout_C_l1 * sizeof(fp16);
   //printf("Biases: %d bytes\n", Tout_C_l1*sizeof(float));
   #endif
-  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
+  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(fp16);
   //printf("Output: %d bytes\n", Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float));
-  L1_memocc_bytes += INPUT_SIZE*sizeof(float);
+  L1_memocc_bytes += INPUT_SIZE*sizeof(fp16);
   //printf("Input_image: %d bytes\n", INPUT_SIZE*sizeof(float));
   //printf("----------------------");
 
-  L2_memocc_bytes += G_IN_SIZE*sizeof(float);
-  L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
+  L2_memocc_bytes += G_IN_SIZE*sizeof(fp16);
+  L2_memocc_bytes += G_WGT_SIZE*sizeof(fp16);
   #if (USE_BIAS == 1)
-  L2_memocc_bytes += G_BIAS_SIZE * sizeof(float);
+  L2_memocc_bytes += G_BIAS_SIZE * sizeof(fp16);
   #endif
-  L2_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
-  L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
+  L2_memocc_bytes += G_OUTPUT_SIZE*sizeof(fp16);
+  L2_memocc_bytes += OUTPUT_SIZE*sizeof(fp16);
 }
 
 #ifdef DEBUG
@@ -278,29 +278,29 @@ static inline void connect_blobs(){
 
 static inline void compute_memory_occupation(){
   //printf("\n----------L1----------\n");
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
+  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(fp16);
   //printf("Input: %d bytes\n", Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float));
-  L1_memocc_bytes += IM2COL_SIZE*sizeof(float);
+  L1_memocc_bytes += IM2COL_SIZE*sizeof(fp16);
   //printf("Im2Col: %d bytes\n", IM2COL_SIZE*sizeof(float));
-  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
+  L1_memocc_bytes += Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(fp16);
   //printf("Weights: %d bytes\n", Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float));
   #if (USE_BIAS == 1)
-  L1_memocc_bytes += Tout_C_l1 * sizeof(float);
+  L1_memocc_bytes += Tout_C_l1 * sizeof(fp16);
   //printf("Biases: %d bytes\n", Tout_C_l1 * sizeof(float));
   #endif
-  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
+  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(fp16);
   //printf("Output: %d bytes\n", Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float));
-  L1_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
+  L1_memocc_bytes += G_OUTPUT_SIZE*sizeof(fp16);
   //printf("Out_gradient: %d bytes\n", G_OUTPUT_SIZE*sizeof(float));
   //printf("----------------------\n");
 
-  L2_memocc_bytes += G_IN_SIZE*sizeof(float);
-  L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
+  L2_memocc_bytes += G_IN_SIZE*sizeof(fp16);
+  L2_memocc_bytes += G_WGT_SIZE*sizeof(fp16);
   #if (USE_BIAS == 1)
-  L2_memocc_bytes += G_BIAS_SIZE * sizeof(float);
+  L2_memocc_bytes += G_BIAS_SIZE * sizeof(fp16);
   #endif
-  L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
-  L2_memocc_bytes += INPUT_SIZE*sizeof(float);
+  L2_memocc_bytes += OUTPUT_SIZE*sizeof(fp16);
+  L2_memocc_bytes += INPUT_SIZE*sizeof(fp16);
 }
 
 #endif
@@ -366,16 +366,16 @@ static inline void connect_blobs(){
 }
 
 static inline void compute_memory_occupation(){
-  L1_memocc_bytes += IM2COL_SIZE*sizeof(float);
-  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(float);
-  L1_memocc_bytes += 2*Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(float);
-  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(float);
-  L1_memocc_bytes += G_OUTPUT_SIZE*sizeof(float);
+  L1_memocc_bytes += IM2COL_SIZE*sizeof(fp16);
+  L1_memocc_bytes += Tin_H_l1*Tin_W_l1*Tin_C_l1*sizeof(fp16);
+  L1_memocc_bytes += 2*Tker_H_l1*Tker_W_l1*Tin_C_l1*Tout_C_l1*sizeof(fp16);
+  L1_memocc_bytes += Tout_H_l1*Tout_W_l1*Tout_C_l1*sizeof(fp16);
+  L1_memocc_bytes += G_OUTPUT_SIZE*sizeof(fp16);
 
-  L2_memocc_bytes += G_IN_SIZE*sizeof(float);
-  L2_memocc_bytes += G_WGT_SIZE*sizeof(float);
-  L2_memocc_bytes += OUTPUT_SIZE*sizeof(float);
-  L2_memocc_bytes += INPUT_SIZE*sizeof(float);
+  L2_memocc_bytes += G_IN_SIZE*sizeof(fp16);
+  L2_memocc_bytes += G_WGT_SIZE*sizeof(fp16);
+  L2_memocc_bytes += OUTPUT_SIZE*sizeof(fp16);
+  L2_memocc_bytes += INPUT_SIZE*sizeof(fp16);
 }
 #endif
 
@@ -384,11 +384,11 @@ static inline void forward(){
 
   /**  FORWARD convPW #1   **/
   #ifdef FORWARD
-  pulp_conv2d_fp32_fw_cl(&C2D_args);
+  pulp_transp_conv2d_fp16_fw_cl(&C2D_args);
   #endif
 }
 
-static inline void compare_tensors(float *A, float *B, int length){
+static inline void compare_tensors(fp16 *A, fp16 *B, int length){
 
   float mean_err_rel = 0.0f;
   float diff = 0.0f;
@@ -419,7 +419,7 @@ static inline void compare_tensors(float *A, float *B, int length){
 
 
 // Elementwise checker
-int check_tensor(float * tensor_out, float * tensor_ref, int size){
+int check_tensor(fp16 * tensor_out, fp16 * tensor_ref, int size){
 
     int error_flag = 0;
     for (int i=0; i<size; i++) {
@@ -442,7 +442,7 @@ static inline void train(){
   #endif
 
   #ifdef FORWARD
-  pulp_transp_conv2d_fp32_fw_cl(&C2D_args);
+  pulp_transp_conv2d_fp16_fw_cl(&C2D_args);
   #endif
 
   #ifdef PROF_FWD
@@ -458,11 +458,11 @@ static inline void train(){
 
   #ifdef BACKWARD_GRAD
   printf("weight grad primitive!\n");
-  pulp_transp_conv2d_fp32_bw_param_grads_cl(&C2D_args);
+  pulp_transp_conv2d_fp16_bw_param_grads_cl(&C2D_args);
   #endif
 
   #ifdef BACKWARD_ERROR
-  pulp_transp_conv2d_fp32_bw_input_grads_cl(&C2D_args);
+  pulp_transp_conv2d_fp16_bw_input_grads_cl(&C2D_args);
   #endif
 
   #ifdef PROF_BKWD
