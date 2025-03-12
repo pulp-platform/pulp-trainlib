@@ -217,18 +217,18 @@ void pulp_linear_fp32_fw_cl_kernel( void * man_args ) {
     mm_manager(manager_args);
     #endif
 
-    pi_cl_team_barrier();
+    // pi_cl_team_barrier();
 
-    if (USE_BIASES == 1) {
-        const uint32_t outputSize = N * M;
-        const uint32_t blockSize = (outputSize + NUM_CORES - 1) / NUM_CORES;
-        const uint32_t start = pi_core_id() * blockSize;
-        const uint32_t stop = start + blockSize > outputSize ? outputSize : start + blockSize;
+    // if (USE_BIASES == 1) {
+    //     const uint32_t outputSize = N * M;
+    //     const uint32_t blockSize = (outputSize + NUM_CORES - 1) / NUM_CORES;
+    //     const uint32_t start = pi_core_id() * blockSize;
+    //     const uint32_t stop = start + blockSize > outputSize ? outputSize : start + blockSize;
 
-        for (uint32_t i = start; i < stop; i++) {
-            outData[i] += biasData[i % M];
-        }
-    }
+    //     for (uint32_t i = start; i < stop; i++) {
+    //         outData[i] += biasData[i % M];
+    //     }
+    // }
 }
 
 void pulp_linear_fp32_bw_param_grads_cl_kernel( void * man_args )

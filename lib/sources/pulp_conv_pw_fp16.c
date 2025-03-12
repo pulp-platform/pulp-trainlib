@@ -55,6 +55,7 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
     matMul_args.M = H_in*W_in;
     matMul_args.K = pW*pH*Cin;
     matMul_args.trans_B = 0;
+    matMul_args.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
@@ -77,6 +78,7 @@ void pulp_conv_pw_fp16_fw_cl( void * PointWise_Conv_args_fp16 )
     matMul_args.M = Cout;
     matMul_args.K = Cin;
     matMul_args.trans_B = 1;
+    matMul_args.USE_BIASES = 0;
 
     #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);

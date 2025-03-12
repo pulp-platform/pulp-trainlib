@@ -2329,7 +2329,7 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     matMul_args4.bias = coeffBiasWout;
     matMul_args4.USE_BIASES = 1;
     matMul_args4.bias_transposed = 1;
-    matMul_args4.bias_dim = F;
+    matMul_args4.bias_dim = E;
 
     tiled_matmul_mhsa(&matMul_args4, Tiled_mhsa_matmul_args, 1);
 
