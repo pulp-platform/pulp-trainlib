@@ -49,12 +49,12 @@ struct BatchNorm_args_fp32 {
     int skip_wg_grad;
     int skip_in_grad;
 
-    float *input;
-    float *output;
+    float *input_data;
+    float *output_data;
 
     // Equivalent to gamma and beta
-    float *weight;
-    float *bias;
+    float *weight_data;
+    float *bias_data;
 
     float *eps;
 
@@ -69,7 +69,7 @@ struct BatchNorm_args_fp32 {
  * @brief Forward function that calls the parallelized version
  * @param (void *)  (struct InstNorm_args void_args)
  */
-void pulp_batchnorm_fp32_fw_cl(void *BatchNorm_args_fp32);
+void pulp_batch_norm_fp32_fw_cl(void *BatchNorm_args_fp32);
 
 
 /**

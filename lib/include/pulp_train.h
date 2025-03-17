@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ * Copyright (C) 2021-2025 ETH Zurich and University of Bologna
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,4 +66,3 @@
 #include "pulp_residual_fp16.h"
 #include "pulp_mhsa_fp16.h"
 #include "pulp_instnorm_fp16.h"
-

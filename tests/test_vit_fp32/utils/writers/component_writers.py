@@ -931,10 +931,14 @@ def transpose_writer(component_name, component, data_marker):
     blob_connect = "\t// " + component_name.upper() + "\n"
 
     # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
-    blob_connect += "\t" + args_name + ".matrix = " + input_data_name + ";\n"
-    blob_connect += "\t" + args_name + ".transp_matrix = " + output_data_name + ";\n"
-    blob_connect += "\t" + args_name + ".M = " + str(output_w) + ";\n"
-    blob_connect += "\t" + args_name + ".N = " + str(output_h) + ";\n"
+    blob_connect += "\t" + args_name + "_dims = {" + str(output_w) + ", " + str(output_h) + "};\n"
+    blob_connect += "\t" + args_name + "_tr_axes = {1, 0};\n"
+
+    blob_connect += "\t" + args_name + ".in_matrix = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".out_matrix = " + output_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".dim = " + args_name + "_dims;\n"
+    blob_connect += "\t" + args_name + ".transposed_axes = " + args_name + "_tr_axes;\n"
+    blob_connect += "\t" + args_name + ".n_dim = 2;\n"
 
     blob_connect += "\n"
 

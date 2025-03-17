@@ -25,7 +25,7 @@
 #include <math.h>
 
 
-void pulp_batchnorm_fp32_fw_cl(void *batch_norm_args) {
+void pulp_batch_norm_fp32_fw_cl(void *batch_norm_args) {
     pi_cl_team_fork(NUM_CORES, pulp_batch_norm_parallelized_fp32_fw_cl, batch_norm_args);
 }
 
@@ -63,11 +63,11 @@ void pulp_batch_norm_parallelized_fp32_fw_cl(void *batch_norm_args) {
      */
     struct BatchNorm_args_fp32 *bn_args = (struct BatchNorm_args_fp32 *) batch_norm_args;
 
-    float *input = bn_args->input;
-    float *output = bn_args->output;
+    float *input = bn_args->input_data;
+    float *output = bn_args->output_data;
 
-    float *weight = bn_args->weight;
-    float *bias = bn_args->bias;
+    float *weight = bn_args->weight_data;
+    float *bias = bn_args->bias_data;
 
     float *eps = bn_args->eps;
 

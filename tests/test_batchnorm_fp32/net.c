@@ -105,7 +105,7 @@ void DNN_init() {
 
 // Forward pass function
 void forward() {
-    pulp_batchnorm_fp32_fw_cl(&l1_args);
+    pulp_batch_norm_fp32_fw_cl(&l1_args);
 }
 
 void forward_print() {
@@ -114,7 +114,7 @@ void forward_print() {
     START_STATS();
 #endif
 
-    pulp_batchnorm_fp32_fw_cl(&l1_args);
+    pulp_batch_norm_fp32_fw_cl(&l1_args);
 
 #ifdef PROF_NET
     STOP_STATS();

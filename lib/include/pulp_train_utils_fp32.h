@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ * Copyright (C) 2021-2025 ETH Zurich and University of Bologna
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
  * @param W width of data
  * @param H height of data
  * @param C number of channels of data
- */ 
+ */
 struct blob {
     float *data;
     float *diff;
@@ -78,17 +78,21 @@ struct im2col_args {
 
 
 /**
- * @brief Transposes an array containing a matrix (of sizes N and M) into another target array
- * @param matrix Matrix to be transposed
- * @param transp_matrix Output transposed matrix
- * @param N Number of rows of the matrix
- * @param M Number of columns of the matrix
+ * @brief Transposes an n-dimensional array, according to the required axis reordering,
+ * outputting to another target array, similar to the NumPy procedure.
+ *
+ * @param in_array Input array of floats to be transposed
+ * @param out_array Output transposed array of floats
+ * @param dim Array of integers representing the dimensions of the input array
+ * @param transposed_axes Array of integers representing the permutation of the axes
+ * @param n_dim Integer representing the number of dimensions of the input array
  */
 struct transp_args {
-    float *matrix;
-    float *transp_matrix;
-    int N;
-    int M;
+    float *in_matrix;
+    float *out_matrix;
+    int *dim;
+    int *transposed_axes;
+    int n_dim;
 };
 
 
@@ -516,112 +520,112 @@ struct mm_bias_add_args {
  * @param tolerance tolerance on the difference between the tensors
  * @return int 0, 1: flag that notifies if the checked tensor contains errors
  */
-int verify_tensor(float * tensor_out, float * tensor_ref, int size, float tolerance);
+int verify_tensor(float *tensor_out, float *tensor_ref, int size, float tolerance);
 
 
 /**
  * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose, &args) to parallelize.
  * @param void_args (void *) (struct transp_args void_args)
  */
-void transpose(void * void_args);
+void transpose(void *void_args);
 
 
 /**
  * @brief Copies an array of size "size" into another destination array. Set up the arguments by using a "struct copy_args" structure. Use pi_cl_team_fork(NUM_CORES, copy, &args) to parallelize.
  * @param (void * ) (struct copy_args void_args)
  */
-void copy (void * void_args);
+void copy(void *void_args);
 
 
 /**
  * @brief Sets an array of size "size" to a value "value". Set up the arguments by using a "struct set_to_value_args" structure. Use pi_cl_team_fork(NUM_CORES, set_to_value, &args) to parallelize.
  * @param (void * ) (struct set_to_value_args void_args)
  */
-void set_to_value (void * void_args);
+void set_to_value(void *void_args);
 
 
 /**
  * @brief Sums two arrays of size "size" into a third one. Set up the arguments by using a "struct vect_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vect_sum, &args) to parallelize.
  * @param vect_sum_args (void *) (struct vect_sum_args vect_sum_args)
  */
-void vect_sum (void * vect_sum_args);
+void vect_sum(void *vect_sum_args);
 
 
 /**
  * @brief Cast a FP16 tensor to FP32. Set up the arguments by using a "struct cast_16t32_args" structure. Use pi_cl_team_fork(NUM_CORES, cast_fp16_tensor_to_fp32, &args) to parallelize.
  * @param (void *) (struct cast_16t32_args cast_args)
  */
-void cast_fp16_tensor_to_fp32 (void * cast_16t32_args);
+void cast_fp16_tensor_to_fp32(void *cast_16t32_args);
 
 
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to CHW from HWC
  * @param layout_args (void *) (struct layout_args layout_args) 
  */
-void HWC_to_CHW (void * layout_args);
+void HWC_to_CHW(void *layout_args);
 
 
 /**
  * @brief Transforms the data layout of data/grad of a given tensor to HWC from CHW
  * @param layout_args (void *) (struct layout_args layout_args) 
  */
-void CHW_to_HWC (void * layout_args);
+void CHW_to_HWC(void *layout_args);
 
 
 /**
  * @brief Pad a tensor into a destination buffer specifying its size and the spatial sizes of the padding. Parallelize with pi_cl_team_fork(NUM_CORES, pad_tensor, &args).
  * @param pad_args (void *) (struct pad_args pad_args)
 */
-void pad_tensor (void * pad_args);
+void pad_tensor(void *pad_args);
 
 
 /**
  * @brief Selects the matmul to be executed in the selected layer. Use pi_cl_team_fork(NUM_CORES, mm_manager, &args) to parallelize.
  * @param (void *) (struct mm_manager_args void_args)
  */
-void mm_manager (void * void_args);
+void mm_manager(void *void_args);
 
 
 /**
  * @brief Calculates the exponential value of each element in the input vector/matrix.
  * @param (void *) (struct softmax_args void_args)
  */
-void exponential (void * void_args);
+void exponential(void *void_args);
 
 
 /**
  * @brief Divides each output vector element by their sum.
  * @param (void *) (struct softmax_args void_args)
  */
-void softmax (void * void_args);
+void softmax(void *void_args);
 
 
 /**
  * @brief Calculate the maxes of a vector in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_max_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct max_args void_args)
  */
-void pulp_max_fp32_cl(void * void_args);
+void pulp_max_fp32_cl(void *void_args);
 
 
 /**
  * @brief Calculate the 1/2^diff of each element and sum them. Set up the arguments by using a "struct shift_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_shift_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct shift_sum_args void_args)
  */
-void pulp_shift_sum_fp32_cl(void* void_args);
+void pulp_shift_sum_fp32_cl(void *void_args);
 
 
 /**
  * @brief Element-wise division of vector with a single constant. Set up the arguments by using a "struct div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_div_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct div_args void_args)
  */
-void pulp_div_fp32_cl(void* void_args);
+void pulp_div_fp32_cl(void *void_args);
 
 
 /**
  * @brief Element-wise multiplication of vector with a single constant. Set up the arguments by using a "struct scalar_mul_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct scalar_mul_args void_args)
  */
-void pulp_scalar_mul_fp32_cl(void* void_args);
+void pulp_scalar_mul_fp32_cl(void *void_args);
 
 
 /**
@@ -632,18 +636,18 @@ float threshold(float x);
 
 
 static inline float
-fasterexp (float p);
+fasterexp(float p);
 
 
 static inline float
-fasterpow2 (float p);
+fasterpow2(float p);
 
 
 /**
  * @brief Mean, Variance and standard deviation calculation of a vector
  * @param (void *)  (struct mean_std_args void_args)
  */
-void pulp_mean_std_fp32_cl(void * mean_std_args);
+void pulp_mean_std_fp32_cl(void *mean_std_args);
 
 
 /**
@@ -664,7 +668,7 @@ float q_rsqrt(float number);
  * @brief sum(exp(input - max(input))). Set up the arguments by using a "struct vector_exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, vector_exp_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct mean_std_args void_args)
  */
-void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
+void vector_exp_sum_fp32_cl(void *vector_exp_sum_args);
 
 
 /**
@@ -673,7 +677,7 @@ void vector_exp_sum_fp32_cl(void * vector_exp_sum_args);
  * @param cos pointer to the value to save the angle's cosine
  * @param sin pointer to the value to save the angle's sin
  */
-void cordic_cos_sin_fp32(float angle, float* cos, float* sin);
+void cordic_cos_sin_fp32(float angle, float *cos, float *sin);
 
 
 // ~~~~~~~~~~~~~~~~~~ SOFTMAX FUNCTIONS ~~~~~~~~~~~~~~~~~~
@@ -682,21 +686,21 @@ void cordic_cos_sin_fp32(float angle, float* cos, float* sin);
  * @brief Calculate the maxes for each row of a square matrix in parallelized fashion. Set up the arguments by using a "struct max_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_max_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct max_args void_args)
  */
-void pulp_row_max_fp32_cl(void * void_args);
+void pulp_row_max_fp32_cl(void *void_args);
 
 
 /**
  * @brief Calculate the exponential of each element and sum them. Set up the arguments by using a "struct exp_sum_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_exp_sum_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct exp_sum_args void_args)
  */
-void pulp_exp_sum_fp32_cl(void* void_args);
+void pulp_exp_sum_fp32_cl(void *void_args);
 
 
 /**
  * @brief Element-wise division of vector with values obtained by shit_sum. Set up the arguments by using a "struct row_div_args" structure. Use pi_cl_team_fork(NUM_CORES, pulp_row_div_fp32_cl, &args) to parallelize.
  * @param (void *)  (struct div_args void_args)
  */
-void pulp_row_div_fp32_cl(void* void_args);
+void pulp_row_div_fp32_cl(void *void_args);
 
 
 // ~~~~~~~~~~~~~~~~~~      BACKWARD     ~~~~~~~~~~~~~~~~~~

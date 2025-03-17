@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ * Copyright (C) 2021-2025 ETH Zurich and University of Bologna
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,33 +38,62 @@ int verify_tensor_fp16(fp16 *tensor_out, fp16 *tensor_ref, int size, fp16 tolera
 
 
 void transpose_fp16(void *void_args) {
+    // Extract passed arguments
     struct transp_args_fp16 args = *((struct transp_args_fp16 *) void_args);
-    fp16 *matrix = args.matrix;
-    fp16 *transp_matrix = args.transp_matrix;
-    int N = args.N;
-    int M = args.M;
 
-    // Parallelize on N or M depending on the wides available dimension
-    if (N > M) {
-        int blockSize = (N + NUM_CORES - 1) / NUM_CORES;
-        int start = pi_core_id() * blockSize;
-        int stop = start + blockSize > N ? N : start + blockSize;
+    fp16 *in_matrix = args.in_matrix;
+    fp16 *out_matrix = args.out_matrix;
 
-        for (int i = start; i < stop; i++) {
-            for (int j = 0; j < M; j++) {
-                transp_matrix[j * N + i] = matrix[i * M + j];
-            }
+    int *dim = args.dim;
+    int *transposed_axes = args.transposed_axes;
+
+    int n_dim = args.n_dim;
+
+    // Get total number of elements
+    int n_elements = 1;
+    for (int i = 0; i < n_dim; i++) {
+        n_elements *= dim[i];
+    }
+
+    // Compute new shape
+    int new_shape[n_dim];
+    for (int i = 0; i < n_dim; i++) {
+        new_shape[i] = dim[transposed_axes[i]];
+    }
+
+    // Share work among cores
+    int blockSize = (n_elements + NUM_CORES - 1) / NUM_CORES;
+    int start = pi_core_id() * blockSize;
+    int stop = start + blockSize > n_elements ? n_elements : start + blockSize;
+
+    // Prepare axis representation array
+    int axis_representation[n_dim];
+
+    // Iterate through elements
+    for (int i = start; i < stop; i++) {
+        // Store original index
+        int idx = i;
+
+        // Iterate through axes
+        for (int j = (n_dim - 1); j >= 0; j--) {
+            // Compute axis representation
+            axis_representation[j] = idx % dim[j];
+
+            // Update product
+            idx /= dim[j];
         }
-    } else {
-        int blockSize = (M + NUM_CORES - 1) / NUM_CORES;
-        int start = pi_core_id() * blockSize;
-        int stop = start + blockSize > M ? M : start + blockSize;
 
-        for (int j = start; j < stop; j++) {
-            for (int i = 0; i < N; i++) {
-                transp_matrix[j * N + i] = matrix[i * M + j];
-            }
+        // Compute new index
+        int new_index = 0;
+        int prod = 1;
+
+        for (int j = (n_dim - 1); j >= 0; j--) {
+            new_index += (axis_representation[transposed_axes[j]] * prod);
+            prod *= dim[transposed_axes[j]];
         }
+
+        // Store element in new position
+        out_matrix[new_index] = in_matrix[i];
     }
 }
 
@@ -155,10 +184,15 @@ void HWC_to_CHW_fp16(void *layout_args) {
 
     if (transpose_data == 1) {
         // Transpose data
-        tr_args.matrix = data;
-        tr_args.transp_matrix = buff;
-        tr_args.N = H * W;
-        tr_args.M = C;
+        int dims[] = {H * W, C};
+        int axes[] = {1, 0};
+
+        tr_args.in_matrix = data;
+        tr_args.out_matrix = buff;
+        tr_args.dim = dims;
+        tr_args.transposed_axes = axes;
+        tr_args.n_dim = 2;
+
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
         cpy_args.from = buff;
         cpy_args.to = data;
@@ -168,11 +202,17 @@ void HWC_to_CHW_fp16(void *layout_args) {
 
     if (transpose_grad == 1) {
         // Transpose grad
-        tr_args.matrix = grad;
-        tr_args.transp_matrix = buff;
-        tr_args.N = H * W;
-        tr_args.M = C;
+        int dims[] = {H * W, C};
+        int axes[] = {1, 0};
+
+        tr_args.in_matrix = grad;
+        tr_args.out_matrix = buff;
+        tr_args.dim = dims;
+        tr_args.transposed_axes = axes;
+        tr_args.n_dim = 2;
+
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+
         cpy_args.from = buff;
         cpy_args.to = grad;
         cpy_args.size = C * H * W;
@@ -197,11 +237,17 @@ void CHW_to_HWC_fp16(void *layout_args) {
 
     if (transpose_data == 1) {
         // Transpose data
-        tr_args.matrix = data;
-        tr_args.transp_matrix = buff;
-        tr_args.N = C;
-        tr_args.M = H * W;
+        int dims[] = {C, H * W};
+        int tr_a[] = {1, 0};
+
+        tr_args.in_matrix = data;
+        tr_args.out_matrix = buff;
+        tr_args.dim = dims;
+        tr_args.transposed_axes = tr_a;
+        tr_args.n_dim = 2;
+
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+
         cpy_args.from = buff;
         cpy_args.to = data;
         cpy_args.size = C * H * W;
@@ -210,11 +256,17 @@ void CHW_to_HWC_fp16(void *layout_args) {
 
     if (transpose_grad == 1) {
         // Transpose grad
-        tr_args.matrix = grad;
-        tr_args.transp_matrix = buff;
-        tr_args.N = C;
-        tr_args.M = H * W;
+        int dims[] = {C, H * W};
+        int tr_a[] = {1, 0};
+
+        tr_args.in_matrix = grad;
+        tr_args.out_matrix = buff;
+        tr_args.dim = dims;
+        tr_args.transposed_axes = tr_a;
+        tr_args.n_dim = 2;
+
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+
         cpy_args.from = buff;
         cpy_args.to = grad;
         cpy_args.size = C * H * W;
