@@ -54,11 +54,11 @@ void transpose(void *void_args) {
         n_elements *= dim[i];
     }
 
-    // Store last dimension for step size
-    int step_size = dim[n_dim - 1];
-
-    // Compute first n - 1 dimensions
-    int dim_n_1 = n_elements / step_size;
+    // Find indexes transposed dimensions
+    int tr_indexes[n_dim];
+    for (int i = 0; i < n_dim; i++) {
+        tr_indexes[transposed_axes[i]] = i;
+    }
 
     // Prepare look-up table for new index computation
     int prod[n_dim];
@@ -67,9 +67,15 @@ void transpose(void *void_args) {
         prod[i] = prod[i + 1] * dim[transposed_axes[i + 1]];
     }
 
+    // Store last dimension for step size
+    int step_size = dim[n_dim - 1];
+
+    // Compute first n - 1 dimensions
+    int dim_n_1 = n_elements / dim[n_dim - 1];
+
     // Prepare new index variables
     int new_index = 0;
-    int new_index_increment = prod[transposed_axes[n_dim - 1]];
+    int new_index_increment = prod[tr_indexes[n_dim - 1]];
 
     // Share work among cores "column"-wise, where column represents the first n - 1 dimensions
     int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
@@ -85,7 +91,7 @@ void transpose(void *void_args) {
         // Iterate through axes to compute first new index
         for (int j = (n_dim - 1); j >= 0; j--) {
             // Update new index
-            new_index += idx % dim[j] * prod[transposed_axes[j]];
+            new_index += idx % dim[j] * prod[tr_indexes[j]];
 
             // Get remainder of original index
             idx /= dim[j];
