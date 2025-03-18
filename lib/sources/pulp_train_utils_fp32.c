@@ -54,10 +54,11 @@ void transpose(void *void_args) {
         n_elements *= dim[i];
     }
 
-    // Share work among cores
-    int blockSize = (n_elements + NUM_CORES - 1) / NUM_CORES;
-    int start = pi_core_id() * blockSize;
-    int stop = start + blockSize > n_elements ? n_elements : start + blockSize;
+    // Store last dimension for step size
+    int step_size = dim[n_dim - 1];
+
+    // Compute first n - 1 dimensions
+    int dim_n_1 = n_elements / step_size;
 
     // Prepare look-up table for new index computation
     int prod[n_dim];
@@ -66,32 +67,38 @@ void transpose(void *void_args) {
         prod[i] = prod[i + 1] * dim[transposed_axes[i + 1]];
     }
 
-    // Prepare new index variable
-    int new_index = -1;
+    // Prepare new index variables
+    int new_index = 0;
+    int new_index_increment = prod[transposed_axes[n_dim - 1]];
+
+    // Share work among cores "column"-wise, where column represents the first n - 1 dimensions
+    int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
+    int start = pi_core_id() * blockSize * step_size;
+    int stop = start + (blockSize * step_size) > n_elements ? n_elements : start + (blockSize * step_size);
 
     // Iterate through elements
-    for (int i = start; i < stop; i++) {
-        // Compute new index if needed
-        if ((new_index == -1) || (new_index >= n_elements)) {
-            // Store original index and prepare new index
-            int idx = i;
-            new_index = 0;
+    for (int i = start; i < stop; i += step_size) {
+        // Store original index and prepare new index
+        int idx = i;
+        new_index = 0;
 
-            // Iterate through axes
-            for (int j = (n_dim - 1); j >= 0; j--) {
-                // Update new index
-                new_index += idx % dim[j] * prod[transposed_axes[j]];
+        // Iterate through axes to compute first new index
+        for (int j = (n_dim - 1); j >= 0; j--) {
+            // Update new index
+            new_index += idx % dim[j] * prod[transposed_axes[j]];
 
-                // Get remainder of original index
-                idx /= dim[j];
-            }
+            // Get remainder of original index
+            idx /= dim[j];
         }
 
-        // Store element in new position
-        out_matrix[new_index] = in_matrix[i];
+        // Iterate through elements in line
+        for (int j = i; j < i + step_size; j++) {
+            // Store element in new position
+            out_matrix[new_index] = in_matrix[j];
 
-        // Update new index
-        new_index += prod[transposed_axes[n_dim - 1]];
+            // Increment new index
+            new_index += new_index_increment;
+        }
     }
 }
 
