@@ -62,13 +62,29 @@ def main():
         f.write("#define TOTAL_SIZE " + str(total_dim) + "\n\n")
 
         f.write("PI_L2 int DIMS[] = {" + ", ".join(map(str, args.dims)) + "};\n")
-        f.write("PI_L2 int TRANSPOSED_AXES[] = {" + ", ".join(map(str, args.transposed_axes)) + "};\n\n")
+        f.write(
+            "PI_L2 int TRANSPOSED_AXES[] = {"
+            + ", ".join(map(str, args.transposed_axes))
+            + "};\n\n"
+        )
 
         f.write("PI_L2 " + data_marker + " OUT_M[TOTAL_SIZE];\n\n")
 
-        f.write("PI_L2 " + data_marker + " IN_M[] = {" + "f, ".join(map(str, in_matrix.flatten())) + "};\n\n")
+        f.write(
+            "PI_L2 "
+            + data_marker
+            + " IN_M[] = {"
+            + "f, ".join(map(str, in_matrix.flatten()))
+            + "};\n\n"
+        )
 
-        f.write("PI_L2 " + data_marker + " TEST_OUT[] = {" + "f, ".join(map(str, out_matrix.flatten())) + "};\n")
+        f.write(
+            "PI_L2 "
+            + data_marker
+            + " TEST_OUT[] = {"
+            + "f, ".join(map(str, out_matrix.flatten()))
+            + "};\n"
+        )
 
     return None
 

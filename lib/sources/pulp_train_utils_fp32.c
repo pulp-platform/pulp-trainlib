@@ -54,45 +54,44 @@ void transpose(void *void_args) {
         n_elements *= dim[i];
     }
 
-    // Compute new shape
-    int new_shape[n_dim];
-    for (int i = 0; i < n_dim; i++) {
-        new_shape[i] = dim[transposed_axes[i]];
-    }
-
     // Share work among cores
     int blockSize = (n_elements + NUM_CORES - 1) / NUM_CORES;
     int start = pi_core_id() * blockSize;
     int stop = start + blockSize > n_elements ? n_elements : start + blockSize;
 
-    // Prepare axis representation array
-    int axis_representation[n_dim];
+    // Prepare look-up table for new index computation
+    int prod[n_dim];
+    prod[n_dim - 1] = 1;
+    for (int i = n_dim - 2; i >= 0; i--) {
+        prod[i] = prod[i + 1] * dim[transposed_axes[i + 1]];
+    }
+
+    // Prepare new index variable
+    int new_index = -1;
 
     // Iterate through elements
     for (int i = start; i < stop; i++) {
-        // Store original index
-        int idx = i;
+        // Compute new index if needed
+        if ((new_index == -1) || (new_index >= n_elements)) {
+            // Store original index and prepare new index
+            int idx = i;
+            new_index = 0;
 
-        // Iterate through axes
-        for (int j = (n_dim - 1); j >= 0; j--) {
-            // Compute axis representation
-            axis_representation[j] = idx % dim[j];
+            // Iterate through axes
+            for (int j = (n_dim - 1); j >= 0; j--) {
+                // Update new index
+                new_index += idx % dim[j] * prod[transposed_axes[j]];
 
-            // Update product
-            idx /= dim[j];
-        }
-
-        // Compute new index
-        int new_index = 0;
-        int prod = 1;
-
-        for (int j = (n_dim - 1); j >= 0; j--) {
-            new_index += (axis_representation[transposed_axes[j]] * prod);
-            prod *= dim[transposed_axes[j]];
+                // Get remainder of original index
+                idx /= dim[j];
+            }
         }
 
         // Store element in new position
         out_matrix[new_index] = in_matrix[i];
+
+        // Update new index
+        new_index += prod[transposed_axes[n_dim - 1]];
     }
 }
 
