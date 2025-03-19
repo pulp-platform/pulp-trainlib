@@ -148,6 +148,104 @@ void vect_sum(void *vect_sum_args) {
 }
 
 
+void array_broadcast_sum(void *arr_bc_args) {
+    // Extract passed arguments
+    struct array_broadcast_sum_fp32 *args = (struct array_broadcast_sum_fp32 *) arr_bc_args;
+
+    float *op_1 = args->op_1;
+    float *op_2 = args->op_2;
+    float *dest = args->dest;
+
+    int *op_1_dims = args->op_1_dims;
+    int *op_2_dims = args->op_2_dims;
+
+    int op_1_dims_len = args->op_1_dims_len;
+    int op_2_dims_len = args->op_2_dims_len;
+
+    // Compute output dimensions size
+    int out_dims_len, min_dims_len;
+    int output_size = 1;
+    if (op_1_dims_len > op_2_dims_len) {
+        out_dims_len = op_1_dims_len;
+        min_dims_len = op_2_dims_len;
+    } else {
+        min_dims_len = op_1_dims_len;
+        out_dims_len = op_2_dims_len;
+    }
+
+    // Compute output dimensions
+    int out_dims[out_dims_len];
+    for (int i = 0; i < min_dims_len; i++) {
+        int out_dims_idx = out_dims_len - i - 1;
+
+        if (op_1_dims[i] > op_2_dims[i])
+            out_dims[out_dims_idx] = op_1_dims[op_1_dims_len - i - 1];
+        else
+            out_dims[out_dims_idx] = op_2_dims[op_2_dims_len - i - 1];
+
+        output_size *= out_dims[out_dims_idx];
+    }
+
+    for (int i = 0; i < (out_dims_len - min_dims_len); i++) {
+        if (op_1_dims_len > op_2_dims_len)
+            out_dims[i] = op_1_dims[i];
+        else
+            out_dims[i] = op_2_dims[i];
+    }
+
+    // Compute core split
+    int last_dim = out_dims[out_dims_len - 1];
+    int first_n_1_dims = 1;
+    for (int i = 0; i < out_dims_len - 1; i++) {
+        first_n_1_dims *= out_dims[i];
+    }
+
+    int blockSize = (first_n_1_dims + NUM_CORES - 1) / NUM_CORES;
+    int start = pi_core_id() * blockSize * last_dim;
+    int stop = start + blockSize > output_size ? output_size : start + blockSize;
+
+    // Compute output
+    for (int i = start; i < stop; i += last_dim) {
+        // Compute starting ids
+        int idx_1 = 0;
+        int idx_2 = 0;
+        int idx = i;
+
+        for (int j = 0; j < min_dims_len; j++) {
+            idx_1 += (idx % out_dims[out_dims_len - j - 1]) * op_1_dims[op_1_dims_len - j - 1];
+            idx_2 += (idx % out_dims[out_dims_len - j - 1]) * op_2_dims[op_2_dims_len - j - 1];
+
+            idx /= out_dims[out_dims_len - j - 1];
+        }
+
+        if (op_1_dims_len > op_2_dims_len) {
+            for (int j = min_dims_len; j < out_dims_len; j++) {
+                idx_1 += (idx % out_dims[out_dims_len - j - 1]) * op_1_dims[op_1_dims_len - j - 1];
+                idx /= out_dims[out_dims_len - j - 1];
+            }
+        } else {
+            for (int j = min_dims_len; j < out_dims_len; j++) {
+                idx_2 += (idx % out_dims[out_dims_len - j - 1]) * op_2_dims[op_2_dims_len - j - 1];
+                idx /= out_dims[out_dims_len - j - 1];
+            }
+        }
+
+        // Update output
+        for (int j = 0; j < last_dim; j++) {
+            if (op_1_dims[op_1_dims_len - 1] > 1)
+                dest[i + j] = op_1[idx_1 + j];
+            else
+                dest[i + j] = op_1[idx_1];
+
+            if (op_2_dims[op_2_dims_len - 1] > 1)
+                dest[i + j] += op_2[idx_2 + j];
+            else
+                dest[i + j] += op_2[idx_2];
+        }
+    }
+}
+
+
 void cast_fp16_tensor_to_fp32(void *cast_16t32_args) {
     struct cast_16t32_args args = *((struct cast_16t32_args *) cast_16t32_args);
     int blockSize = (args.size + NUM_CORES - 1) / NUM_CORES;
