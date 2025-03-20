@@ -32,13 +32,13 @@ void transpose_matrices_fp() {
 
     // Print if required for debugging
 #ifdef PRINT_MATS
-    printf("\nStarting transposition in FP32...\n");
+    printf("\nStarting transposition...\n");
     printf("\nINPUT MATRIX:\n");
     for (int i = 0; i < TOTAL_SIZE; i++) {
         printf("%f ", IN_M[i]);
     }
 #endif
-    
+
 #ifdef PROF_NET
     START_STATS();
 #endif

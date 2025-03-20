@@ -1,12 +1,14 @@
 APP = transposer
 
 # User code
-N_DIMS = 3
-DIMS = 10 20 30
-TRANSPOSED_AXES = 2 0 1
+#DIMS_1 = 10 1 30
+#DIMS_2 = 20 1
 
-NUM_CORES = 6
-DATA_TYPE = 16
+DIMS_1 = 2 1 5
+DIMS_2 = 3 1
+
+NUM_CORES = 1
+DATA_TYPE = 32
 
 #APP_CFLAGS += -DPRINT_MATS
 # End of user code
@@ -38,4 +40,4 @@ include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:
 	rm -rf BUILD/
-	python3 utils/GM.py --dims $(DIMS) --transposed_axes $(TRANSPOSED_AXES) --dtype $(DATA_TYPE)
+	python3 utils/GM.py --dims_1 $(DIMS_1) --dims_2 $(DIMS_2) --dtype $(DATA_TYPE)

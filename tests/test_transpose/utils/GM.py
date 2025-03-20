@@ -7,9 +7,6 @@ def get_args():
     # Create arguments
     parser = argparse.ArgumentParser()
 
-    # Get number of dimensions
-    parser.add_argument("--n_dims", type=int, default=2)
-
     # Get dimensions
     parser.add_argument("--dims", type=int, nargs="+", default=[3, 4])
 
@@ -22,8 +19,7 @@ def get_args():
     args = parser.parse_args()
 
     # Check arguments
-    assert len(args.dims) == args.n_dims
-    assert len(args.transposed_axes) == args.n_dims
+    assert len(args.dims) == len(args.transposed_axes)
 
     return args
 
@@ -42,6 +38,9 @@ def main():
     else:
         raise ValueError("Invalid data type")
 
+    # Get number of dimensions
+    n_dims = len(args.dims)
+
     # Create test matrices
     in_matrix = np.random.rand(*args.dims)
     out_matrix = np.transpose(in_matrix, args.transposed_axes)
@@ -58,7 +57,7 @@ def main():
 
     # Write info to files
     with open("test_data.h", "w") as f:
-        f.write("#define N_DIMS " + str(args.n_dims) + "\n")
+        f.write("#define N_DIMS " + str(n_dims) + "\n")
         f.write("#define TOTAL_SIZE " + str(total_dim) + "\n\n")
 
         f.write("PI_L2 int DIMS[] = {" + ", ".join(map(str, args.dims)) + "};\n")
