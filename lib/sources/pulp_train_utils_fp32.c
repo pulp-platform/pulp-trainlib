@@ -202,15 +202,27 @@ void array_broadcast_sum_fp32(void *arr_bc_args) {
 
     // Prepare look-up tables for new indexes computation
     int prod_1[op_1_dims_len];
+    int prod_so_far = 1;
     prod_1[op_1_dims_len - 1] = 1;
     for (int i = op_1_dims_len - 2; i >= 0; i--) {
-        prod_1[i] = prod_1[i + 1] * op_1_dims[i + 1];
+        prod_so_far *= op_1_dims[i + 1];
+
+        if (op_1_dims[i] == 1)
+            prod_1[i] = 0;
+        else
+            prod_1[i] = prod_so_far;
     }
 
     int prod_2[op_2_dims_len];
+    prod_so_far = 1;
     prod_2[op_2_dims_len - 1] = 1;
     for (int i = op_2_dims_len - 2; i >= 0; i--) {
-        prod_2[i] = prod_2[i + 1] * op_2_dims[i + 1];
+        prod_so_far *= op_2_dims[i + 1];
+
+        if (op_2_dims[i] == 1)
+            prod_2[i] = 0;
+        else
+            prod_2[i] = prod_so_far;
     }
 
     // Compute core split
