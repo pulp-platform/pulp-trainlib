@@ -313,7 +313,7 @@ def conv2d_writer(
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
-def vector_sum_writer(component_name, component, **kwargs):
+def vector_sum_writer(component_name, component, data_marker):
     # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
     args_name = component_name + "_vect_sum_args"
 
@@ -338,13 +338,38 @@ def vector_sum_writer(component_name, component, **kwargs):
         c, w, h = component["shape"]
     dim = c * w * h
 
+    output_data_name = component_name + "_output_data"
+    output_filler = "zero_init"
+
     # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
     # Define structures
     structures_and_blobs = "// " + component_name.upper() + "\n"
 
-    structures_and_blobs += "PI_L2 struct vect_sum_args " + args_name + ";\n"
+    structures_and_blobs += "PI_L2 struct array_broadcast_sum_fp32_args " + args_name + ";\n"
 
     structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+            "PI_L2 "
+            + data_marker
+            + " "
+            + output_data_name
+            + "["
+            + str(dim)
+            + "];\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        dim, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
 
     # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
     blob_connect = "\t// " + component_name.upper() + "\n"
@@ -352,8 +377,26 @@ def vector_sum_writer(component_name, component, **kwargs):
     # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
     blob_connect += "\t" + args_name + ".op_1 = " + input_0_data_name + ";\n"
     blob_connect += "\t" + args_name + ".op_2 = " + input_1_data_name + ";\n"
-    blob_connect += "\t" + args_name + ".dest = " + input_0_data_name + ";\n"
-    blob_connect += "\t" + args_name + ".size = " + str(dim) + ";\n"
+    blob_connect += "\t" + args_name + ".dest = " + output_data_name + ";\n\n"
+
+    blob_connect += (
+            "\t"
+            + args_name
+            + ".op_1_dims = {"
+            + ", ".join(map(str, [dim,]))
+            + "};\n"
+    )
+
+    blob_connect += (
+            "\t"
+            + args_name
+            + ".op_2_dims = {"
+            + ", ".join(map(str, [dim,]))
+            + "};\n\n"
+    )
+
+    blob_connect += "\t" + args_name + ".op_1_dims_len = 1;\n"
+    blob_connect += "\t" + args_name + ".op_2_dims_len = 1;\n"
 
     blob_connect += "\n"
 
@@ -362,9 +405,13 @@ def vector_sum_writer(component_name, component, **kwargs):
     forward_function += "\t#ifdef DEBUG\n"
     forward_function += "\tprintf(\"Working on " + component_name + "...\\n\");\n"
     forward_function += "\t#endif\n\n"
-    forward_function += "\tpi_cl_team_fork(NUM_CORES, vect_sum, &" + args_name + ");\n\n"
+    forward_function += (
+            "\tpi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &"
+            + args_name
+            + ");\n\n"
+    )
 
-    return structures_and_blobs, "", blob_connect, forward_function
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
 
 
 def layer_norm_writer(component_name, component, data_marker):
