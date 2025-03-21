@@ -75,36 +75,70 @@ void transpose_fp16(void *void_args) {
     int dim_n_1 = n_elements / dim[n_dim - 1];
 
     // Prepare new index variables
+    int idx;
     int new_index = 0;
     int new_index_increment = prod[tr_indexes[n_dim - 1]];
 
-    // Share work among cores "column"-wise, where column represents the first n - 1 dimensions
-    int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
-    int start = pi_core_id() * blockSize * step_size;
-    int stop = start + (blockSize * step_size) > n_elements ? n_elements : start + (blockSize * step_size);
+    // Share work among cores "line"-wise, where a line comprises the first n - 1 dimensions
+    if (step_size < (1.15 * dim_n_1)) {
+        int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
+        int start = pi_core_id() * blockSize * step_size;
+        int stop = start + (blockSize * step_size) > n_elements ? n_elements : start + (blockSize * step_size);
 
-    // Iterate through elements
-    for (int i = start; i < stop; i += step_size) {
-        // Store original index and prepare new index
-        int idx = i;
-        new_index = 0;
+        // Iterate through elements
+        for (int i = start; i < stop; i += step_size) {
+            // Store original index and prepare new index
+            idx = i;
+            new_index = 0;
 
-        // Iterate through axes to compute first new index
-        for (int j = (n_dim - 1); j >= 0; j--) {
-            // Update new index
-            new_index += idx % dim[j] * prod[tr_indexes[j]];
+            // Iterate through axes to compute first new index
+            for (int j = (n_dim - 1); j >= 0; j--) {
+                // Update new index
+                new_index += idx % dim[j] * prod[tr_indexes[j]];
 
-            // Get remainder of original index
-            idx /= dim[j];
+                // Get remainder of original index
+                idx /= dim[j];
+            }
+
+            // Iterate through elements in line
+            for (int j = i; j < i + step_size; j++) {
+                // Store element in new position
+                out_matrix[new_index] = in_matrix[j];
+
+                // Increment new index
+                new_index += new_index_increment;
+            }
         }
+    }
+        // Share work among cores "column"-wise
+    else {
+        int blockSize = (step_size + NUM_CORES - 1) / NUM_CORES;
+        int start = pi_core_id() * blockSize;
+        int stop = start + blockSize > step_size ? step_size : start + blockSize;
 
-        // Iterate through elements in line
-        for (int j = i; j < i + step_size; j++) {
-            // Store element in new position
-            out_matrix[new_index] = in_matrix[j];
+        // Iterate through elements
+        for (int i = 0; i < n_elements; i += step_size) {
+            // Store original index and prepare new index
+            idx = i + start;
+            new_index = 0;
 
-            // Increment new index
-            new_index += new_index_increment;
+            // Iterate through axes to compute first new index
+            for (int j = (n_dim - 1); j >= 0; j--) {
+                // Update new index
+                new_index += idx % dim[j] * prod[tr_indexes[j]];
+
+                // Get remainder of original index
+                idx /= dim[j];
+            }
+
+            // Iterate through elements in line
+            for (int j = i + start; j < i + stop; j++) {
+                // Store element in new position
+                out_matrix[new_index] = in_matrix[j];
+
+                // Increment new index
+                new_index += new_index_increment;
+            }
         }
     }
 }
@@ -165,6 +199,579 @@ void vect_sum_fp16(void *vect_sum_args) {
             int idx = size - 1;
             dest[idx] = op_1[idx] + op_2[idx];
         }
+}
+
+
+void array_broadcast_sum_fp16(void *arr_bc_args) {
+    // Extract passed arguments
+    struct array_broadcast_sum_fp16_args *args = (struct array_broadcast_sum_fp16_args *) arr_bc_args;
+
+    fp16 *op_1 = args->op_1;
+    fp16 *op_2 = args->op_2;
+    fp16 *dest = args->dest;
+
+    int *op_1_dims = args->op_1_dims;
+    int *op_2_dims = args->op_2_dims;
+
+    int op_1_dims_len = args->op_1_dims_len;
+    int op_2_dims_len = args->op_2_dims_len;
+
+    // Compute output dimensions size
+    int out_dims_len, min_dims_len;
+    int output_size = 1;
+    if (op_1_dims_len > op_2_dims_len) {
+        out_dims_len = op_1_dims_len;
+        min_dims_len = op_2_dims_len;
+    } else {
+        min_dims_len = op_1_dims_len;
+        out_dims_len = op_2_dims_len;
+    }
+
+    // Compute output dimensions
+    int out_dims[out_dims_len];
+    for (int i = 0; i < min_dims_len; i++) {
+        int out_dims_idx = out_dims_len - i - 1;
+        int op_1_dims_idx = op_1_dims_len - i - 1;
+        int op_2_dims_idx = op_2_dims_len - i - 1;
+
+        if (op_1_dims[op_1_dims_idx] > op_2_dims[op_2_dims_idx])
+            out_dims[out_dims_idx] = op_1_dims[op_1_dims_idx];
+        else
+            out_dims[out_dims_idx] = op_2_dims[op_2_dims_idx];
+
+        output_size *= out_dims[out_dims_idx];
+    }
+
+    if (op_1_dims_len > op_2_dims_len) {
+        for (int i = 0; i < (out_dims_len - min_dims_len); i++) {
+            out_dims[i] = op_1_dims[i];
+            output_size *= out_dims[i];
+        }
+    } else {
+        for (int i = 0; i < (out_dims_len - min_dims_len); i++) {
+            out_dims[i] = op_2_dims[i];
+            output_size *= out_dims[i];
+        }
+    }
+
+    // Prepare look-up tables for new indexes computation
+    int prod_1[op_1_dims_len];
+    int prod_so_far = 1;
+    prod_1[op_1_dims_len - 1] = 1;
+    for (int i = op_1_dims_len - 2; i >= 0; i--) {
+        prod_so_far *= op_1_dims[i + 1];
+
+        if (op_1_dims[i] == 1)
+            prod_1[i] = 0;
+        else
+            prod_1[i] = prod_so_far;
+    }
+
+    int prod_2[op_2_dims_len];
+    prod_so_far = 1;
+    prod_2[op_2_dims_len - 1] = 1;
+    for (int i = op_2_dims_len - 2; i >= 0; i--) {
+        prod_so_far *= op_2_dims[i + 1];
+
+        if (op_2_dims[i] == 1)
+            prod_2[i] = 0;
+        else
+            prod_2[i] = prod_so_far;
+    }
+
+    int last_dim = out_dims[out_dims_len - 1];
+    int first_n_1_dims = output_size / last_dim;
+
+    // Split "lines" among cores
+    if (1.1 * first_n_1_dims > last_dim) {
+        // Compute core split
+        int blockSize = ((first_n_1_dims + NUM_CORES - 1) / NUM_CORES) * last_dim;
+        int start = pi_core_id() * blockSize;
+        int stop = start + blockSize > output_size ? output_size : start + blockSize;
+
+        // Compute output
+        if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2 + j];
+                }
+            }
+
+        } else {
+
+            for (int i = start; i < stop; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = 0; j < last_dim; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2];
+                }
+            }
+        }
+    }
+        // Split "columns" among cores
+    else {
+        // Compute core split
+        int blockSize = (last_dim + NUM_CORES - 1) / NUM_CORES;
+        int start = pi_core_id() * blockSize;
+        int stop = start + blockSize > last_dim ? last_dim : start + blockSize;
+
+        // Compute output
+        if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len > op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2 + j];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] > 1) &&
+                (op_2_dims[op_2_dims_len - 1] == 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1 + j] + op_2[idx_2];
+                }
+            }
+
+        } else if (
+                (op_1_dims_len <= op_2_dims_len) &&
+                (op_1_dims[op_1_dims_len - 1] == 1) &&
+                (op_2_dims[op_2_dims_len - 1] > 1)
+                ) {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2 + j];
+                }
+            }
+
+        } else {
+
+            for (int i = 0; i < output_size; i += last_dim) {
+                // Compute inputs ids
+                int idx_1 = 0;
+                int idx_2 = 0;
+                int idx = i;
+
+                for (int j = 0; j < min_dims_len; j++) {
+                    idx_1 += (idx % out_dims[out_dims_len - j - 1]) * prod_1[op_1_dims_len - j - 1];
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                for (int j = min_dims_len; j < out_dims_len; j++) {
+                    idx_2 += (idx % out_dims[out_dims_len - j - 1]) * prod_2[op_2_dims_len - j - 1];
+                    idx /= out_dims[out_dims_len - j - 1];
+                }
+
+                // Update output
+                for (int j = start; j < stop; j++) {
+                    dest[i + j] = op_1[idx_1] + op_2[idx_2];
+                }
+            }
+        }
+    }
 }
 
 

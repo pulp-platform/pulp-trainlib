@@ -98,6 +98,28 @@ struct transp_args_fp16 {
 
 
 /**
+ * @brief Multi-dimensional array sum with NumPy-style broadcasting.
+ *
+ * @param op_1 First array to be summed
+ * @param op_2 Second array to be summed
+ * @param dest Destination array of the sum result
+ * @param op_1_dims Dimensions of the first operand
+ * @param op_2_dims Dimensions of the second operand
+ * @param op_1_dims_len Number of dimensions of the first operand
+ * @param op_2_dims_len Number of dimensions of the second operand
+ */
+struct array_broadcast_sum_fp16_args {
+    fp16 *op_1;
+    fp16 *op_2;
+    fp16 *dest;
+    int *op_1_dims;
+    int *op_2_dims;
+    int op_1_dims_len;
+    int op_2_dims_len;
+};
+
+
+/**
  * @brief Args used to change the data layout of a tensor (CHW to HWC or vice versa)
  * @param tensor tensor whose layout needs to be changed
  * @param transp_buffer buffer of the size of the tensor's data/gradient to be used to change the format
@@ -513,6 +535,13 @@ void set_to_value_fp16(void *void_args);
  * @param vect_sum_args (void *) (struct vect_sum_args_fp16 vect_sum_args)
  */
 void vect_sum_fp16(void *vect_sum_args);
+
+
+/**
+ * @brief Sums two arrays of different but compatible sizes, with NumPy-style broadcasting.
+ * @param arr_bc_args
+ */
+void array_broadcast_sum_fp16(void *arr_bc_args);
 
 
 /**

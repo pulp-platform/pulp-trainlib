@@ -2,8 +2,13 @@
 #define TENSOR_CHECKERS_H
 
 // Constants definition
+#if DATA_TYPE == 32
 #define CHECK_TOLERANCE 0.001
 #define ERROR_TOLERANCE 0.001
+#elif DATA_TYPE == 16
+#define CHECK_TOLERANCE 0x00000001
+#define ERROR_TOLERANCE 0x00000001
+#endif
 
 // Includes
 #include "math.h"

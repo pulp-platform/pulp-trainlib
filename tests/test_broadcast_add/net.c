@@ -19,8 +19,8 @@ void broadcast_add_test() {
     struct array_broadcast_sum_fp32_args args;
     printf("WORKING ON FP32\n");
 #elif DATA_TYPE == 16
-    //    struct transp_args_fp16 args;
-        printf("WORKING ON FP16\n");
+    struct array_broadcast_sum_fp16_args args;
+    printf("WORKING ON FP16\n");
 #endif
 
     // Get arguments
@@ -40,7 +40,7 @@ void broadcast_add_test() {
 #if DATA_TYPE == 32
     pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &args);
 #elif DATA_TYPE == 16
-    //    pi_cl_team_fork(NUM_CORES, transpose_fp16, &args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &args);
 #endif
 
     // Stop stats

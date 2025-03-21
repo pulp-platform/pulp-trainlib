@@ -1,11 +1,8 @@
 APP = transposer
 
 # User code
-#DIMS_1 = 17 1 31
-#DIMS_2 = 23 1
-
-DIMS_1 = 500 499
-DIMS_2 = 500 499
+DIMS_1 = 17 1 31
+DIMS_2 = 23 1
 
 NUM_CORES = 8
 DATA_TYPE = 32
