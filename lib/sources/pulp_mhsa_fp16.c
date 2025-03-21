@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 University of Bologna
+ * Copyright (C) 2023-2025 University of Bologna
  * All rights reserved.
  *
  * This software may be modified and distributed under the terms
@@ -1616,13 +1616,21 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_q
-    struct vect_sum_args_fp16 vect_sum_args;
+    int dims[1] = {E * L};
+
+    struct array_broadcast_sum_fp16_args vect_sum_args;
+
     vect_sum_args.op_1 = inputDiff;
     vect_sum_args.op_2 = temp;
     vect_sum_args.dest = inputDiff;
-    vect_sum_args.size = E * L;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    vect_sum_args.op_1_dims = dims;
+    vect_sum_args.op_2_dims = dims;
+
+    vect_sum_args.op_1_dims_len = 1;
+    vect_sum_args.op_2_dims_len = 1;
+
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 
     // M8_k
     struct matMul_args_fp16 matMul_args8_k;
@@ -1669,7 +1677,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_k
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 
     // M8_v
     struct matMul_args_fp16 matMul_args8_v;
@@ -1716,7 +1724,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_v
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 }
 
 

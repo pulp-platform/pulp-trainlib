@@ -1616,13 +1616,21 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_q
+    int dims[] = {E * L};
+
     struct vect_sum_args vect_sum_args;
+
     vect_sum_args.op_1 = inputDiff;
     vect_sum_args.op_2 = temp;
     vect_sum_args.dest = inputDiff;
-    vect_sum_args.size = E * L;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
+    vect_sum_args.op_1_dims = dims;
+    vect_sum_args.op_2_dims = dims;
+
+    vect_sum_args.op_1_dims_len = 1;
+    vect_sum_args.op_2_dims_len = 1;
+
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &vect_sum_args);
 
     // M8_k
     struct matMul_args matMul_args8_k;
@@ -1669,7 +1677,7 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_k
-    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &vect_sum_args);
 
     // M8_v
     struct matMul_args matMul_args8_v;
@@ -1716,5 +1724,5 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_v
-    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &vect_sum_args);
 }
