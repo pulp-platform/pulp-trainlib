@@ -8,7 +8,7 @@
 #include "tensor_checkers.h"
 
 
-void transpose_matrices_fp() {
+void transpose_matrices_fp32() {
 #ifdef PROF_NET
     INIT_STATS();
     PRE_START_STATS();
@@ -30,15 +30,6 @@ void transpose_matrices_fp() {
     args.transposed_axes = TRANSPOSED_AXES;
     args.n_dim = N_DIMS;
 
-    // Print if required for debugging
-#ifdef PRINT_MATS
-    printf("\nStarting transposition...\n");
-    printf("\nINPUT MATRIX:\n");
-    for (int i = 0; i < TOTAL_SIZE; i++) {
-        printf("%f ", IN_M[i]);
-    }
-#endif
-
 #ifdef PROF_NET
     START_STATS();
 #endif
@@ -55,17 +46,8 @@ void transpose_matrices_fp() {
     STOP_STATS();
 #endif
 
-    // Print if required for debugging
-#ifdef PRINT_MATS
-    printf("\nTRANSPOSED MATRIX:\n");
-    for (int i = 0; i < Tin_N * Tin_M; i++) {
-        printf("%f ", OUT_M[i]);
-    }
-    printf("\n\n");
-#endif
-
-    mean_error_checker(args.out_matrix, TEST_OUT, TOTAL_SIZE);
-    elementwise_checker(args.out_matrix, TEST_OUT, TOTAL_SIZE);
+    mean_error_checker(OUT_M, TEST_TRANSPOSE_OUT, TOTAL_SIZE);
+    elementwise_checker(OUT_M, TEST_TRANSPOSE_OUT, TOTAL_SIZE);
 
     return;
 }

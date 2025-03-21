@@ -21,7 +21,7 @@ int main(void) {
     }
 
     printf("\nLaunching transposition procedure...\n");
-    pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, transpose_matrices_fp, NULL));
+    pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, transpose_matrices_fp32, NULL));
 
     printf("Transposition successful!\n");
     pi_cluster_close(&cluster_dev);

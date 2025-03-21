@@ -60,19 +60,19 @@ def main():
         f.write("#define N_DIMS " + str(n_dims) + "\n")
         f.write("#define TOTAL_SIZE " + str(total_dim) + "\n\n")
 
-        f.write("PI_L2 int DIMS[] = {" + ", ".join(map(str, args.dims)) + "};\n")
+        f.write("PI_L2 int DIMS[" + str(n_dims) + "] = {" + ", ".join(map(str, args.dims)) + "};\n")
         f.write(
-            "PI_L2 int TRANSPOSED_AXES[] = {"
+            "PI_L2 int TRANSPOSED_AXES[" + str(n_dims) + "] = {"
             + ", ".join(map(str, args.transposed_axes))
             + "};\n\n"
         )
 
-        f.write("PI_L2 " + data_marker + " OUT_M[TOTAL_SIZE];\n\n")
+        f.write("PI_L2 " + data_marker + " OUT_M[" + str(total_dim) + "];\n\n")
 
         f.write(
             "PI_L2 "
             + data_marker
-            + " IN_M[] = {"
+            + " IN_M[" + str(total_dim) + "] = {"
             + "f, ".join(map(str, in_matrix.flatten()))
             + "};\n\n"
         )
@@ -80,7 +80,7 @@ def main():
         f.write(
             "PI_L2 "
             + data_marker
-            + " TEST_OUT[] = {"
+            + " TEST_TRANSPOSE_OUT[" + str(total_dim) + "] = {"
             + "f, ".join(map(str, out_matrix.flatten()))
             + "};\n"
         )

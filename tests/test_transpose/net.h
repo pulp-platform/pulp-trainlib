@@ -4,4 +4,4 @@
 #define UNMOUNT         0
 #define CID             0
 
-void transpose_matrices_fp();
+void transpose_matrices_fp32();

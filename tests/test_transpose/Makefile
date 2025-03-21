@@ -1,14 +1,11 @@
 APP = transposer
 
 # User code
-N_DIMS = 3
-DIMS = 10 20 30
+DIMS = 13 15 17
 TRANSPOSED_AXES = 2 0 1
 
-NUM_CORES = 6
-DATA_TYPE = 16
-
-#APP_CFLAGS += -DPRINT_MATS
+NUM_CORES = 8
+DATA_TYPE = 32
 # End of user code
 
 
@@ -24,8 +21,6 @@ APP_CFLAGS += -DNUM_CORES=$(NUM_CORES)
 APP_CFLAGS += -DDATA_TYPE=$(DATA_TYPE)
 APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -mhwloopalign
-APP_CFLAGS += -DTin_N=$(IN_N)
-APP_CFLAGS += -DTin_M=$(IN_M)
 APP_LDFLAGS += -lm
 
 # STATISTICS

@@ -74,36 +74,70 @@ void transpose(void *void_args) {
     int dim_n_1 = n_elements / dim[n_dim - 1];
 
     // Prepare new index variables
+    int idx;
     int new_index = 0;
     int new_index_increment = prod[tr_indexes[n_dim - 1]];
 
-    // Share work among cores "column"-wise, where column represents the first n - 1 dimensions
-    int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
-    int start = pi_core_id() * blockSize * step_size;
-    int stop = start + (blockSize * step_size) > n_elements ? n_elements : start + (blockSize * step_size);
+    // Share work among cores "line"-wise, where a line comprises the first n - 1 dimensions
+    if (step_size < (1.15 * dim_n_1)) {
+        int blockSize = (dim_n_1 + NUM_CORES - 1) / NUM_CORES;
+        int start = pi_core_id() * blockSize * step_size;
+        int stop = start + (blockSize * step_size) > n_elements ? n_elements : start + (blockSize * step_size);
 
-    // Iterate through elements
-    for (int i = start; i < stop; i += step_size) {
-        // Store original index and prepare new index
-        int idx = i;
-        new_index = 0;
+        // Iterate through elements
+        for (int i = start; i < stop; i += step_size) {
+            // Store original index and prepare new index
+            idx = i;
+            new_index = 0;
 
-        // Iterate through axes to compute first new index
-        for (int j = (n_dim - 1); j >= 0; j--) {
-            // Update new index
-            new_index += idx % dim[j] * prod[tr_indexes[j]];
+            // Iterate through axes to compute first new index
+            for (int j = (n_dim - 1); j >= 0; j--) {
+                // Update new index
+                new_index += idx % dim[j] * prod[tr_indexes[j]];
 
-            // Get remainder of original index
-            idx /= dim[j];
+                // Get remainder of original index
+                idx /= dim[j];
+            }
+
+            // Iterate through elements in line
+            for (int j = i; j < i + step_size; j++) {
+                // Store element in new position
+                out_matrix[new_index] = in_matrix[j];
+
+                // Increment new index
+                new_index += new_index_increment;
+            }
         }
+    }
+        // Share work among cores "column"-wise
+    else {
+        int blockSize = (step_size + NUM_CORES - 1) / NUM_CORES;
+        int start = pi_core_id() * blockSize;
+        int stop = start + blockSize > step_size ? step_size : start + blockSize;
 
-        // Iterate through elements in line
-        for (int j = i; j < i + step_size; j++) {
-            // Store element in new position
-            out_matrix[new_index] = in_matrix[j];
+        // Iterate through elements
+        for (int i = 0; i < n_elements; i += step_size) {
+            // Store original index and prepare new index
+            idx = i + start;
+            new_index = 0;
 
-            // Increment new index
-            new_index += new_index_increment;
+            // Iterate through axes to compute first new index
+            for (int j = (n_dim - 1); j >= 0; j--) {
+                // Update new index
+                new_index += idx % dim[j] * prod[tr_indexes[j]];
+
+                // Get remainder of original index
+                idx /= dim[j];
+            }
+
+            // Iterate through elements in line
+            for (int j = i + start; j < i + stop; j++) {
+                // Store element in new position
+                out_matrix[new_index] = in_matrix[j];
+
+                // Increment new index
+                new_index += new_index_increment;
+            }
         }
     }
 }
@@ -229,7 +263,7 @@ void array_broadcast_sum_fp32(void *arr_bc_args) {
     int first_n_1_dims = output_size / last_dim;
 
     // Split "lines" among cores
-    if (first_n_1_dims > last_dim) {
+    if (1.1 * first_n_1_dims > last_dim) {
         // Compute core split
         int blockSize = ((first_n_1_dims + NUM_CORES - 1) / NUM_CORES) * last_dim;
         int start = pi_core_id() * blockSize;
