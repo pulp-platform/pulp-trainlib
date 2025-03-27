@@ -27,8 +27,10 @@ void broadcast_add_test() {
     args.op_1 = IN_MATRIX_1;
     args.op_2 = IN_MATRIX_2;
     args.dest = OUT_MATRIX;
+
     args.op_1_dims = DIMS_1;
     args.op_2_dims = DIMS_2;
+    
     args.op_1_dims_len = N_DIMS_1;
     args.op_2_dims_len = N_DIMS_2;
 

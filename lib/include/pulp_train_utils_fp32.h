@@ -292,6 +292,29 @@ struct matMul_args {
 
 
 /**
+ * @brief Arguments for the matrix multiplication with NumPy-style broadcast support.
+ * @param A pointer to the input matrix A
+ * @param B pointer to the input matrix B
+ * @param C pointer to the output matrix C
+ * @param A_dims dimensions of the input matrix A
+ * @param B_dims dimensions of the input matrix B
+ * @param A_dims_len number of dimensions of the input matrix A
+ * @param B_dims_len number of dimensions of the input matrix B
+ */
+struct broadcastMatMul_args_fp32 {
+    float *__restrict__ A;
+    float *__restrict__ B;
+    float *__restrict__ C;
+
+    int *__restrict__ A_dims;
+    int *__restrict__ B_dims;
+
+    int A_dims_len;
+    int B_dims_len;
+};
+
+
+/**
  * @brief Arguments for the naive core kernel of DepthWise Convolution (forward and backward)
  * @param input pointer to the input blob
  * @param weight pointer to the weight blob
