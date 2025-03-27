@@ -182,7 +182,7 @@ void mm_broadcast_fp32(void *broadcastMatMul_args) {
         man_current_matMul_args.step_type = STEP_FW;
         man_current_matMul_args.matmul_type = opt_matmul_type; //MATMUL_TYPE
 
-        pi_cl_team_fork(NUM_CORES, mm_manager, &man_args8_v);
+        pi_cl_team_fork(NUM_CORES, mm_manager, &man_current_matMul_args);
 #endif
     }
 }
