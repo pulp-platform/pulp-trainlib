@@ -1,3 +1,4 @@
 BUILD
 
 model_components.h
+*.onnx
