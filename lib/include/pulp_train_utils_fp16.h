@@ -516,9 +516,25 @@ struct mm_bias_add_args_fp16 {
 
 
 /**
+ * @brief Arguments for the reduce mean operation in fp16
+ * @param input         *fp16: input array
+ * @param output        *fp16: output array
+ * @param dims          *int: array containing the dimensions sizes of the input array
+ * @param dims_len      int: number of dimensions of the input array
+ * @param reduce_axis   int: axis along which to reduce the mean
+ */
+struct reduce_mean_args_fp16 {
+    fp16 *input;
+    fp16 *output;
+    int *dims;
+    int dims_len;
+    int reduce_axis;
+};
+
+
+/**
  * =====> FUNCTIONS <=====
  */
-
 
 /**
  * @brief Checks if a tensor is equal to a reference one and notifies the index and the value of the incorrect values. If tensor_out contains errors, a flag is also raised as return value.
@@ -733,3 +749,13 @@ void cordic_cos_sin_fp16(fp16 angle, fp16 *cos, fp16 *sin);
  * @param (void *) (struct mm_bias_add_args_fp16 void_args)
  */
 void mm_bias_add_transposed_fp16(void *void_args);
+
+
+/**
+ * @brief Reduce mean operation in fp16, similar to NumPy's np.mean() function.
+ * Set up the arguments by using a "struct reduce_mean_args_fp16" structure.
+ * Use pi_cl_team_fork(NUM_CORES, reduce_mean, &args) to parallelize.
+ *
+ * @param (void *) (struct reduce_mean_args_fp16 void_args)
+ */
+void reduce_mean_fp16(void *void_args);

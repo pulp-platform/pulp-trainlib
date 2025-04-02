@@ -1545,3 +1545,78 @@ void mm_bias_add_transposed_fp16(void *void_args) {
         }
     }
 }
+
+
+void reduce_mean_fp16(void *void_args) {
+    // Extract args
+    struct reduce_mean_args_fp16 *args = (struct reduce_mean_args_fp16 *) void_args;
+
+    fp16 *input = args->input;
+    fp16 *output = args->output;
+
+    int *dims = args->dims;
+    int dims_len = args->dims_len;
+
+    int reduce_axis = args->reduce_axis;
+
+    // Compute necessary variables
+    int dim_to_reduce = dims[reduce_axis];
+
+    int axis_to_keep = 1;
+    for (int i = 0; i < dims_len; i++) {
+        if (i != reduce_axis) {
+            axis_to_keep *= dims[i];
+        }
+    }
+
+    int step = 1;
+    for (int i = reduce_axis + 1; i < dims_len; i++) {
+        step *= dims[i];
+    }
+
+    // Prepare work split variables
+    int id = pi_core_id();
+    int blockSize, start, stop;
+
+    if (dim_to_reduce > axis_to_keep) {
+        // Split summing work
+        blockSize = (dim_to_reduce + NUM_CORES - 1) / NUM_CORES;
+        start = id * blockSize;
+        stop = start + blockSize > dim_to_reduce ? dim_to_reduce : start + blockSize;
+
+        // Compute output sum
+        for (int i = 0; i < axis_to_keep; i++) {
+            int start_idx = (i / step) * step * dim_to_reduce + i % step;
+
+            for (int j = 0; j < dim_to_reduce; j++) {
+                output[i] += input[start_idx + j * step];
+            }
+        }
+
+        // Split division work
+        blockSize = (axis_to_keep + NUM_CORES - 1) / NUM_CORES;
+        start = id * blockSize;
+        stop = start + blockSize > axis_to_keep ? axis_to_keep : start + blockSize;
+
+        // Compute output
+        for (int i = start; i < stop; i++) {
+            output[i] /= dim_to_reduce;
+        }
+    } else {
+        // Split work output-wise
+        blockSize = (axis_to_keep + NUM_CORES - 1) / NUM_CORES;
+        start = id * blockSize;
+        stop = start + blockSize > axis_to_keep ? axis_to_keep : start + blockSize;
+
+        // Compute output
+        for (int i = start; i < stop; i++) {
+            int start_idx = (i / step) * step * dim_to_reduce + i % step;
+
+            for (int j = 0; j < dim_to_reduce; j++) {
+                output[i] += input[start_idx + j * step];
+            }
+
+            output[i] /= dim_to_reduce;
+        }
+    }
+}

@@ -19,7 +19,7 @@ void reduce_mean_test() {
     struct reduce_mean_args_fp32 args;
     printf("WORKING ON FP32\n");
 #elif DATA_TYPE == 16
-    struct reduce_mean_args_fp32 args;
+    struct reduce_mean_args_fp16 args;
     printf("WORKING ON FP16\n");
 #endif
 

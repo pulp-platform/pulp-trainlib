@@ -552,7 +552,7 @@ struct mm_bias_add_args {
 
 
 /**
- * @brief Arguments for the reduce mean operation
+ * @brief Arguments for the reduce mean operation in fp32
  * @param input         *float: input array
  * @param output        *float: output array
  * @param dims          *int: array containing the dimensions sizes of the input array
@@ -802,10 +802,10 @@ void mm_bias_add_transposed(void *void_args);
 
 
 /**
- * @brief Reduce mean operation, similar to NumPy's np.mean() function.
+ * @brief Reduce mean operation in fp32, similar to NumPy's np.mean() function.
  * Set up the arguments by using a "struct reduce_mean_args_fp32" structure.
  * Use pi_cl_team_fork(NUM_CORES, reduce_mean, &args) to parallelize.
  *
- * @param (void *) (struct matMul_args void_args)
+ * @param (void *) (struct reduce_mean_args_fp32 void_args)
  */
 void reduce_mean_fp32(void *void_args);
