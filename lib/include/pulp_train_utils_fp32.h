@@ -552,6 +552,23 @@ struct mm_bias_add_args {
 
 
 /**
+ * @brief Arguments for the reduce mean operation
+ * @param input         *float: input array
+ * @param output        *float: output array
+ * @param dims          *int: array containing the dimensions sizes of the input array
+ * @param dims_len      int: number of dimensions of the input array
+ * @param reduce_axis   int: axis along which to reduce the mean
+ */
+struct reduce_mean_args_fp32 {
+    float *input;
+    float *output;
+    int *dims;
+    int dims_len;
+    int reduce_axis;
+};
+
+
+/**
  * =====> FUNCTIONS <=====
  */
 
@@ -776,8 +793,19 @@ void pulp_sm_bw_op_1(void *void_args);
 void pulp_sm_bw_op_2(void *void_args);
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
 /**
  * @brief Bias addition for matrix multiplication. Element-wise addition between bias and each column of the given matrix.
  * @param (void *) (struct mm_bias_add_args void_args)
  */
 void mm_bias_add_transposed(void *void_args);
+
+
+/**
+ * @brief Reduce mean operation, similar to NumPy's np.mean() function.
+ * Set up the arguments by using a "struct reduce_mean_args_fp32" structure.
+ * Use pi_cl_team_fork(NUM_CORES, reduce_mean, &args) to parallelize.
+ *
+ * @param (void *) (struct matMul_args void_args)
+ */
+void reduce_mean_fp32(void *void_args);
