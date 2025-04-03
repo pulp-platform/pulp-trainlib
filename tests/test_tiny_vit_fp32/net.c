@@ -2,7 +2,6 @@
 #include "pulp_train.h"
 
 #include "model_components.h"
-#include "tensor_checkers.h"
 
 #include "stats.h"
 #include "net.h"
@@ -19,14 +18,14 @@ void net_step() {
     // Initialize model components
     printf("Tiny ViT test:\n");
     printf("Initializing components...\n");
-    // init_and_connect_blobs();
+    init_and_connect_blobs();
 
     // Forward pass
     printf("Forward pass...\n");
 #ifdef PROF_NET
     START_STATS();
 #endif
-    // forward();
+    forward();
 #ifdef PROF_NET
     STOP_STATS();
 #endif
@@ -34,8 +33,8 @@ void net_step() {
     // Perform forward check
     printf("\nChecking forward step results: \n");
 
-    // mean_error_checker(fc_output_data, OUTPUT, OUTPUT_SIZE);
-    // elementwise_checker(fc_output_data, OUTPUT, OUTPUT_SIZE);
+    // Check the output
+    check_output();
 
     return;
 }

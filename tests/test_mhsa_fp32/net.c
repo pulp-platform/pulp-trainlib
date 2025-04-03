@@ -121,28 +121,29 @@ PI_L1 float l0_maxes[Tin_H_l1];
 
 // ~~~~~~~~~~~~~~~~~~~~ INITIALIZATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~
 #ifdef FORWARD
+
 static inline void tensor_init() {
     printf("Initializing the things\n");
-    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_in[i] = INPUT[i];
+    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_in[i] = INPUT[i];
 
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_q[i] = INPUT_WEIGHTS_Q[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_k[i] = INPUT_WEIGHTS_K[i];
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_in_v[i] = INPUT_WEIGHTS_V[i];
 
-    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_q[i] = INPUT_BIASES_Q[i];
-    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_k[i] = INPUT_BIASES_K[i];
-    for (int i = 0; i < Tatt_dim_l1; i++)                           l0_bias_in_v[i] = INPUT_BIASES_V[i];
+    for (int i = 0; i < Tatt_dim_l1; i++) l0_bias_in_q[i] = INPUT_BIASES_Q[i];
+    for (int i = 0; i < Tatt_dim_l1; i++) l0_bias_in_k[i] = INPUT_BIASES_K[i];
+    for (int i = 0; i < Tatt_dim_l1; i++) l0_bias_in_v[i] = INPUT_BIASES_V[i];
 
-    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++)                l0_ker_out[i] = OUTPUT_WEIGHTS[i];
-    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++)                   l0_out[i] = zero_init;
-    for (int i = 0; i < Ttemp_max; i++)                             l0_temp[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_q[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_k[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_v[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++)                l0_att_map[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++)     l0_softmax_buffer[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1; i++)                              l0_sums[i] = zero_init;
-    for (int i = 0; i < Tin_H_l1; i++)                              l0_maxes[i] = min_float;
+    for (int i = 0; i < Tin_W_l1 * Tatt_dim_l1; i++) l0_ker_out[i] = OUTPUT_WEIGHTS[i];
+    for (int i = 0; i < Tin_H_l1 * Tin_W_l1; i++) l0_out[i] = zero_init;
+    for (int i = 0; i < Ttemp_max; i++) l0_temp[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_q[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_k[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_v[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tatt_dim_l1; i++) l0_att_map[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1 * Tin_H_l1 * Tn_heads_l1; i++) l0_softmax_buffer[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1; i++) l0_sums[i] = zero_init;
+    for (int i = 0; i < Tin_H_l1; i++) l0_maxes[i] = min_float;
     printf("Finished initializing the things\n");
 }
 
@@ -306,6 +307,7 @@ static inline void compute_memory_occupation() {
     // maxes buffer
     L2_memocc_bytes += Tin_H_l1 * sizeof(float);
 }
+
 #endif
 
 
@@ -533,7 +535,7 @@ static inline void compute_memory_occupation() {
 // ~~~~~~~~~~~~~~~~~~~~ UTILITY FUNCTIONS ~~~~~~~~~~~~~~~~~~~~
 // Mean error checker
 static inline void compare_tensors(float *A, float *B, int length) {
-    float mean_err_rel = zero_init;
+    float mean_err_rel = 0.0f;
     float diff;
 
     for (int i = 0; i < length; i++) {
@@ -575,22 +577,22 @@ static inline void train() {
     pi_perf_start();
 
     // Start forward statistics watcher
-    #ifdef PROF_FWD
+#ifdef PROF_FWD
     printf("\nForward stats\n");
     START_STATS();
-    #endif
+#endif
 
     // Perform actual forward step
-    #ifdef FORWARD
+#ifdef FORWARD
     pulp_mhsa_fp32_fw_cl(&mhsa_args);
-    #endif
+#endif
 
     // Stop forward statistics watcher
-    #ifdef PROF_FWD
+#ifdef PROF_FWD
     STOP_STATS();
-    #endif
+#endif
 
-    #ifdef BACKWARD
+#ifdef BACKWARD
     // Perform forward pass
     pulp_mhsa_fp32_fw_cl(&mhsa_args);
 
@@ -604,19 +606,19 @@ static inline void train() {
     check_tensor(l0_att_map, ATTENTION_SCORES, ATTENTION_S_LENGTH);
 
     // Start backward statistics watcher
-    #ifdef PROF_BCKWD
+#ifdef PROF_BCKWD
     printf("\nBackward stats\n");
     START_STATS();
-    #endif
+#endif
 
     // Perform backward pass
     pulp_mhsa_fp32_bw_cl(&mhsa_args);
 
     // Stop backward statistics watcher
-    #ifdef PROF_BCKWD
+#ifdef PROF_BCKWD
     STOP_STATS();
-    #endif
-    #endif
+#endif
+#endif
 
     // Stop profiling and print performance results
     pi_perf_stop();
@@ -634,14 +636,14 @@ static inline void train() {
     printf("Cycles/Instruction %f\n", (float) cycles_count / instr_count);
 
     // Perform check of forward results
-    #ifdef FORWARD
+#ifdef FORWARD
     printf("\nFORWARD CHECK: \n");
     compare_tensors(l0_out, OUTPUT, OUTPUT_SIZE);
     check_tensor(l0_out, OUTPUT, OUTPUT_SIZE);
-    #endif
+#endif
 
     // Perform check of backward results
-    #ifdef BACKWARD
+#ifdef BACKWARD
     printf("\nFINAL WEIGHTS GRADIENT CHECK: \n");
     printf("\nINPUT WEIGHTS GRADIENT CHECK: \n");
     compare_tensors(l0_ker_in_q_diff, INPUT_WGT_GRAD_Q, G_INPUT_WGT_SIZE);
@@ -659,24 +661,24 @@ static inline void train() {
     printf("\nINPUT GRADIENT CHECK: \n");
     compare_tensors(l0_in_diff, INPUT_GRAD, G_IN_SIZE);
     check_tensor(l0_in_diff, INPUT_GRAD, G_IN_SIZE);
-    #endif
+#endif
 }
 
 
 // This function connects each passage to step the net and perform training
 void net_step() {
     // Initialize statistics watchers
-    #ifdef PROF_NET
+#ifdef PROF_NET
     INIT_STATS();
     PRE_START_STATS();
-    #endif
+#endif
 
     // Call memory occupation computation functions
-    #ifdef MEMOCC_COMP
+#ifdef MEMOCC_COMP
     compute_memory_occupation();
     printf("\nL1 memory occupation: %d bytes.", L1_memocc_bytes);
     printf("\nL2 memory occupation: %d bytes.\n", L2_memocc_bytes);
-    #endif
+#endif
 
     // Call initialization functions
     tensor_init();

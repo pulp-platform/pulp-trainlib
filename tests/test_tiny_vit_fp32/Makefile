@@ -35,6 +35,13 @@ APP_CFLAGS += -DSTATS
 # =============== SOURCES ===============
 APP_SRCS = main.c net.c
 
+# For Conv2D
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
+
 include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:

@@ -1,9 +1,17 @@
 import argparse
+import random
 
+import numpy as np
 import onnx
 import torch
 
-from file_writers import model_components_writer
+from component_writers import adapt_onnx_name, conv_writer
+from file_writers import (
+    model_components_writer,
+    input_writer,
+    output_writer,
+    parameters_writer,
+)
 from model.TinyViT import TinyViT
 from model_configs import MODEL_CONFIGS
 
@@ -22,10 +30,78 @@ def arg_parse():
 
 
 def onnx_parser(onnx_model):
-    return None
+    # Prepare nodes of interest
+    op_types_of_interest = {
+        "Conv": conv_writer,
+    }
+
+    # Prepare output strings and element storage dict
+    structures_and_blobs = ""
+    blob_initializations = ""
+    blob_connect = ""
+    forward_function = ""
+
+    all_elements = {}
+
+    # Iterate through inputs of the ONNX model
+    for _input in onnx_model.graph.input:
+        all_elements[_input.name] = _input
+
+    # Iterate through given values in the ONNX model
+    for el in onnx_model.graph.initializer:
+        element_array = onnx.numpy_helper.to_array(el)
+
+        all_elements[el.name] = {
+            "val": element_array,
+            "shape": tuple(element_array.shape),
+            "data": el.name,
+        }
+
+    # Iterate through onnx model nodes and perform necessary operations
+    for node in onnx_model.graph.node:
+        if node.op_type in op_types_of_interest.keys():
+            s1, s2, s3, s4 = op_types_of_interest[node.op_type](
+                node=node,
+                all_elements=all_elements,
+                data_marker="float",
+            )
+
+            structures_and_blobs += s1
+            blob_initializations += s2
+            blob_connect += s3
+            forward_function += s4
+
+    # Extract output name
+    output_array_name = adapt_onnx_name(onnx_model.graph.output[0].name)
+
+    # Extract parameter arrays
+    parameter_arrays = dict()
+    for el in all_elements.keys():
+        if isinstance(all_elements[el], dict) and "val" in all_elements[el].keys():
+            parameter_arrays[adapt_onnx_name(all_elements[el]["data"])] = all_elements[
+                el
+            ]["val"]
+
+    # Extract input name
+    input_name = adapt_onnx_name(onnx_model.graph.input[0].name)
+
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        output_array_name,
+        parameter_arrays,
+        input_name,
+    )
 
 
 def main():
+    # Fix seeds
+    torch.manual_seed(42)
+    np.random.seed(42)
+    random.seed(42)
+
     # Set root directory
     root_dir = "."
 
@@ -51,7 +127,9 @@ def main():
     )
 
     # Model to ONNX
-    sample_input = torch.randn(1, cfg["IN_CHANS"], cfg["IN_IMG_SIZE"], cfg["IN_IMG_SIZE"])
+    sample_input = torch.randn(
+        1, cfg["IN_CHANS"], cfg["IN_IMG_SIZE"], cfg["IN_IMG_SIZE"]
+    )
     torch.onnx.export(
         model,
         sample_input,
@@ -63,10 +141,36 @@ def main():
     onnx_model = onnx.load("TinyViT.onnx")
 
     # Parse onnx
-    onnx_parser(onnx_model)
+    (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        output_array_name,
+        parameter_arrays,
+        input_name,
+    ) = onnx_parser(onnx_model)
+
+    # Write input sequence
+    input_writer(
+        file_root_dir=root_dir, input_name=input_name, input_array=sample_input
+    )
+
+    # Write output sequence
+    output_writer(file_root_dir=root_dir, output_array=model(sample_input).detach())
 
     # Write model components
-    model_components_writer(file_root_dir=root_dir)
+    model_components_writer(
+        file_root_dir=root_dir,
+        structures_and_blobs=structures_and_blobs,
+        blob_initializations=blob_initializations,
+        blob_connect=blob_connect,
+        forward_function=forward_function,
+        output_array_name=output_array_name,
+    )
+
+    # Write parameter arrays
+    parameters_writer(file_root_dir=root_dir, parameter_arrays=parameter_arrays)
 
 
 if __name__ == "__main__":
