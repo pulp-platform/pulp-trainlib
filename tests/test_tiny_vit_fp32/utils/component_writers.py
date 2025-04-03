@@ -29,11 +29,12 @@ def conv_writer(node, all_elements, data_marker="float"):
     # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
     # TODO: Implement bias
     # TODO: Implement dilations
-    # TODO: Implement group
+    # TODO: Extend group implementation
 
     # Initial values
     strides = None
     pads = None
+    groups = 1
 
     # Clean up component name
     component_name = adapt_onnx_name(node.name)
@@ -74,6 +75,8 @@ def conv_writer(node, all_elements, data_marker="float"):
             pads = tuple(attr.ints)
         elif attr.name == "strides":
             strides = tuple(attr.ints)
+        elif attr.name == "group":
+            groups = attr.i
 
     # Compute output shape
     output_shape = (
@@ -102,7 +105,7 @@ def conv_writer(node, all_elements, data_marker="float"):
     output_c, output_w, output_h = output_shape
     output_dim = output_c * output_w * output_h
 
-    weight_c = input_c
+    weight_c = input_c // groups
     weight_w, weight_h = weights_shape[-2:]
     weight_dim = weight_c * weight_w * weight_h * output_c
 
@@ -116,7 +119,12 @@ def conv_writer(node, all_elements, data_marker="float"):
     # Define structures
     structures_and_blobs = "// " + component_name.upper() + "\n"
 
-    structures_and_blobs += "PI_L2 struct Conv2D_args " + args_name + ";\n"
+    if groups == 1:
+        structures_and_blobs += "PI_L2 struct Conv2D_args " + args_name + ";\n"
+    elif groups == output_c:
+        structures_and_blobs += "PI_L2 struct DepthWise_Conv_args " + args_name + ";\n"
+    else:
+        raise NotImplementedError("Group convolutions not implemented!")
 
     structures_and_blobs += "\n"
 
@@ -184,15 +192,16 @@ def conv_writer(node, all_elements, data_marker="float"):
     blob_connect += "\t" + args_name + ".coeff = &" + weight_name + ";\n"
     blob_connect += "\t" + args_name + ".output = &" + output_name + ";\n"
 
-    blob_connect += "\t" + args_name + ".stride_h = " + str(strides[0]) + ";\n"
-    blob_connect += "\t" + args_name + ".stride_w = " + str(strides[1]) + ";\n"
-
     blob_connect += "\t" + args_name + ".Lpad = " + str(pads[0]) + ";\n"
     blob_connect += "\t" + args_name + ".Rpad = " + str(pads[1]) + ";\n"
     blob_connect += "\t" + args_name + ".Upad = " + str(pads[2]) + ";\n"
     blob_connect += "\t" + args_name + ".Dpad = " + str(pads[3]) + ";\n"
 
-    blob_connect += "\t" + args_name + ".USE_BIASES = 0;\n"
+    if groups == 1:
+        blob_connect += "\t" + args_name + ".stride_h = " + str(strides[0]) + ";\n"
+        blob_connect += "\t" + args_name + ".stride_w = " + str(strides[1]) + ";\n"
+
+        blob_connect += "\t" + args_name + ".USE_BIASES = 0;\n"
 
     blob_connect += "\n"
 
@@ -201,7 +210,11 @@ def conv_writer(node, all_elements, data_marker="float"):
     forward_function += "\t#ifdef DEBUG\n"
     forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
     forward_function += "\t#endif\n\n"
-    forward_function += "\tpulp_conv2d_fp32_fw_cl(&" + args_name + ");\n\n"
+
+    if groups == 1:
+        forward_function += "\tpulp_conv2d_fp32_fw_cl(&" + args_name + ");\n\n"
+    elif groups == output_c:
+        forward_function += "\tpulp_conv_dw_fp32_fw_cl(&" + args_name + ");\n\n"
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
 

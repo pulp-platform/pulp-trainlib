@@ -71,6 +71,14 @@ def onnx_parser(onnx_model):
             blob_initializations += s2
             blob_connect += s3
             forward_function += s4
+        elif node.op_type == "Identity":
+            the_data = all_elements[node.input[0]]["val"]
+
+            all_elements[node.output[0]] = {
+                "shape": tuple(the_data.shape),
+                "data": node.output[0],
+                "val": the_data,
+            }
         else:
             raise NotImplementedError(
                 f"Operation {node.op_type} is not implemented in the parser."

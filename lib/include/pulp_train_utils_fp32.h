@@ -319,11 +319,27 @@ struct broadcastMatMul_args_fp32 {
  * @param input pointer to the input blob
  * @param weight pointer to the weight blob
  * @param output pointer to the output blob
+ *
+ * @param stride_h horizontal stride
+ * @param stride_w vertical stride
+ *
+ * @param Lpad left padding
+ * @param Rpad right padding
+ * @param Upad upper padding
+ * @param Dpad lower padding
 */
 struct kernel_DW_args {
     struct blob *input;
     struct blob *weights;
     struct blob *output;
+
+    int stride_h;
+    int stride_w;
+
+    int Lpad;
+    int Rpad;
+    int Upad;
+    int Dpad;
 };
 
 

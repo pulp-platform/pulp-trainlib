@@ -3,15 +3,15 @@ MODEL_CONFIGS = {
         "IN_IMG_SIZE": 6,
         "IN_CHANS": 3,
         "NUM_CLASSES": 1000,
-        "EMBED_DIMS": [5, 128, 160, 320],
-        "DEPTHS": [2, 2, 6, 2],
+        "EMBED_DIMS": [4, 128, 160, 320],
+        "DEPTHS": [1, 2, 6, 2],
         "NUM_HEADS": [2, 4, 5, 10],
         "WINDOW_SIZES": [7, 7, 14, 7],
         "MLP_RATIO": 4.0,
         "DROP_RATE": 0.0,
         "DROP_PATH_RATE": 0.0,
         "USE_CHECKPOINT": False,
-        "MBCONV_EXPAND_RATIO": 4.0,
+        "MBCONV_EXPAND_RATIO": 2.0,
         "LOCAL_CONV_SIZE": 3,
     }
 }
