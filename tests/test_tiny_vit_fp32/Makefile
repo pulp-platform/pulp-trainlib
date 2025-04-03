@@ -42,6 +42,9 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_im2col_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_matmul_fp32.c
 
+# For GELU
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c
+
 include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:

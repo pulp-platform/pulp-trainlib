@@ -5,7 +5,7 @@ import numpy as np
 import onnx
 import torch
 
-from component_writers import adapt_onnx_name, conv_writer
+from component_writers import adapt_onnx_name, conv_writer, gelu_writer
 from file_writers import (
     model_components_writer,
     input_writer,
@@ -33,6 +33,7 @@ def onnx_parser(onnx_model):
     # Prepare nodes of interest
     op_types_of_interest = {
         "Conv": conv_writer,
+        "Gelu": gelu_writer,
     }
 
     # Prepare output strings and element storage dict
@@ -70,9 +71,15 @@ def onnx_parser(onnx_model):
             blob_initializations += s2
             blob_connect += s3
             forward_function += s4
+        else:
+            raise NotImplementedError(
+                f"Operation {node.op_type} is not implemented in the parser."
+            )
 
     # Extract output name
-    output_array_name = adapt_onnx_name(onnx_model.graph.output[0].name)
+    output_array_name = adapt_onnx_name(
+        all_elements[onnx_model.graph.output[0].name]["data"]
+    )
 
     # Extract parameter arrays
     parameter_arrays = dict()
@@ -125,6 +132,7 @@ def main():
         mbconv_expand_ratio=cfg["MBCONV_EXPAND_RATIO"],
         local_conv_size=cfg["LOCAL_CONV_SIZE"],
     )
+    model.eval()
 
     # Model to ONNX
     sample_input = torch.randn(

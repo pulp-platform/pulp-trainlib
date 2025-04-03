@@ -204,3 +204,92 @@ def conv_writer(node, all_elements, data_marker="float"):
     forward_function += "\tpulp_conv2d_fp32_fw_cl(&" + args_name + ");\n\n"
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def gelu_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+    output_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+
+    input_shape = all_elements[node.input[0]]["shape"]
+    dim = 1
+    for el in input_shape:
+        dim *= el
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": all_elements[node.input[0]]["shape"],
+        "data": all_elements[node.input[0]]["data"],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    input_blob_name = component_name + "_input_blob"
+    output_blob_name = component_name + "_output_blob"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct act_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define element blobs
+    structures_and_blobs += "PI_L2 struct blob " + input_blob_name + ";\n"
+    structures_and_blobs += "PI_L2 struct blob " + output_blob_name + ";\n"
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        input_blob_name,
+        {
+            "data": input_data_name,
+            "dim": dim,
+            "C": 1,
+            "W": 1,
+            "H": dim,
+        },
+    )
+
+    blob_connect += get_connect_text(
+        output_blob_name,
+        {
+            "data": output_data_name,
+            "dim": dim,
+            "C": 1,
+            "W": 1,
+            "H": dim,
+        },
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = &" + input_blob_name + ";\n"
+    blob_connect += "\t" + args_name + ".output = &" + output_blob_name + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+
+    forward_function += (
+        "\tpi_cl_team_fork(NUM_CORES, pulp_gelu_tanh_approx_fp32_fw_cl, &"
+        + args_name
+        + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
