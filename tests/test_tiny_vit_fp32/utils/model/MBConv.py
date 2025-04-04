@@ -25,7 +25,7 @@ class MBConv(nn.Module):
 
         self.act2 = activation()
 
-        self.conv3 = Conv2dBN(self.hidden_chans, out_chans, ks=1, bn_weight_init=0)
+        self.conv3 = Conv2dBN(self.hidden_chans, self.out_chans, ks=1, bn_weight_init=0)
         self.act3 = activation()
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()

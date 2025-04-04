@@ -180,10 +180,10 @@ def conv_writer(node, all_elements, data_marker="float"):
     blob_connect += "\t" + args_name + ".Upad = " + str(pads[2]) + ";\n"
     blob_connect += "\t" + args_name + ".Dpad = " + str(pads[3]) + ";\n"
 
-    if groups == 1:
-        blob_connect += "\t" + args_name + ".stride_h = " + str(strides[0]) + ";\n"
-        blob_connect += "\t" + args_name + ".stride_w = " + str(strides[1]) + ";\n"
+    blob_connect += "\t" + args_name + ".stride_h = " + str(strides[0]) + ";\n"
+    blob_connect += "\t" + args_name + ".stride_w = " + str(strides[1]) + ";\n"
 
+    if groups == 1:
         blob_connect += "\t" + args_name + ".USE_BIASES = 0;\n"
 
     blob_connect += "\n"
@@ -454,7 +454,7 @@ def transpose_writer(node, all_elements, data_marker="float"):
             + output_data_name
             + "["
             + str(output_size)
-            + "];\n"
+            + "];\n\n"
     )
 
     structures_and_blobs += (

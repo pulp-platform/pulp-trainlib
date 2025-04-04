@@ -32,8 +32,8 @@ void pulp_conv_dw_fp32_fw_cl(void *DepthWise_Conv_args) {
     ker_args.weights = DW_args->coeff;
     ker_args.output = DW_args->output;
 
-    ker_args.stride_h = 1;
-    ker_args.stride_w = 1;
+    ker_args.stride_h = DW_args->stride_h;
+    ker_args.stride_w = DW_args->stride_w;
 
     ker_args.Lpad = DW_args->Lpad;
     ker_args.Rpad = DW_args->Rpad;

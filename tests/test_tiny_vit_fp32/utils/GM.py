@@ -253,6 +253,7 @@ def main():
         verbose=False,
         opset_version=20,
         training=torch.onnx.TrainingMode.EVAL,
+        export_params=True,
     )
     onnx_model = onnx.load("TinyViT.onnx")
 

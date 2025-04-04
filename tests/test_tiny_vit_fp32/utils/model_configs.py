@@ -1,12 +1,12 @@
 MODEL_CONFIGS = {
     "DEMO_TINY_VIT_CONFIG": {
-        "IN_IMG_SIZE": 6,
+        "IN_IMG_SIZE": 16,
         "IN_CHANS": 3,
         "NUM_CLASSES": 1000,
         "EMBED_DIMS": [4, 4, 160, 320],
         "DEPTHS": [1, 2, 6, 2],
         "NUM_HEADS": [2, 4, 5, 10],
-        "WINDOW_SIZES": [7, 7, 14, 7],
+        "WINDOW_SIZES": [7, 1, 14, 7],
         "MLP_RATIO": 4.0,
         "DROP_RATE": 0.0,
         "DROP_PATH_RATE": 0.0,
