@@ -10,6 +10,7 @@ from utils.writers.component_writers import (
     gelu_writer,
     add_writer,
     transpose_writer,
+    layer_norm_writer,
 )
 from utils.writers.file_writers import (
     model_components_writer,
@@ -42,6 +43,7 @@ def onnx_parser(onnx_model):
         "Gelu": gelu_writer,
         "Add": add_writer,
         "Transpose": transpose_writer,
+        "LayerNormalization": layer_norm_writer,
     }
 
     # Prepare output strings and element storage dict

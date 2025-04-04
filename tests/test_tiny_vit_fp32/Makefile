@@ -46,6 +46,10 @@ APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_dw_fp32.c
 # For GELU
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_act_fp32.c
 
+# For LayerNorm
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_layernorm_fp32.c
+
+
 include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:

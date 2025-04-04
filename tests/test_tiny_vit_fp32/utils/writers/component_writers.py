@@ -448,25 +448,25 @@ def transpose_writer(node, all_elements, data_marker="float"):
 
     # Define data variables
     structures_and_blobs += (
-            "PI_L2 "
-            + data_marker
-            + " "
-            + output_data_name
-            + "["
-            + str(output_size)
-            + "];\n\n"
+        "PI_L2 "
+        + data_marker
+        + " "
+        + output_data_name
+        + "["
+        + str(output_size)
+        + "];\n\n"
     )
 
     structures_and_blobs += (
-            "PI_L2 int " + dim_name + "[] = {" + ", ".join(map(str, input_shape)) + "};\n"
+        "PI_L2 int " + dim_name + "[] = {" + ", ".join(map(str, input_shape)) + "};\n"
     )
 
     structures_and_blobs += (
-            "PI_L2 int "
-            + transposed_axes_name
-            + "[] = {"
-            + ", ".join(map(str, transposed_axes))
-            + "};\n"
+        "PI_L2 int "
+        + transposed_axes_name
+        + "[] = {"
+        + ", ".join(map(str, transposed_axes))
+        + "};\n"
     )
 
     structures_and_blobs += "\n\n"
@@ -488,7 +488,7 @@ def transpose_writer(node, all_elements, data_marker="float"):
     blob_connect += "\t" + args_name + ".out_matrix = " + output_data_name + ";\n"
     blob_connect += "\t" + args_name + ".dim = " + dim_name + ";\n"
     blob_connect += (
-            "\t" + args_name + ".transposed_axes = " + transposed_axes_name + ";\n"
+        "\t" + args_name + ".transposed_axes = " + transposed_axes_name + ";\n"
     )
     blob_connect += "\t" + args_name + ".n_dim = " + str(len(output_shape)) + ";\n"
 
@@ -500,7 +500,98 @@ def transpose_writer(node, all_elements, data_marker="float"):
     forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
     forward_function += "\t#endif\n\n"
     forward_function += (
-            "\tpi_cl_team_fork(NUM_CORES, transpose, &" + args_name + ");\n\n"
+        "\tpi_cl_team_fork(NUM_CORES, transpose, &" + args_name + ");\n\n"
     )
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def layer_norm_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract and define component information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    weight_data_name = adapt_onnx_name(node.input[1])
+    bias_data_name = adapt_onnx_name(node.input[2])
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    axis = node.attribute[0].i
+    epsilon = node.attribute[1].f
+
+    component_shape = all_elements[node.input[0]]["shape"]
+    total_size = 1
+    for el in component_shape:
+        total_size *= el
+
+    step_size = 1
+    for el in component_shape[axis:]:
+        step_size *= el
+
+    component_blob_name = component_name + "_args"
+    eps_data_name = component_name + "_eps"
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": component_shape,
+        "data": node.output[0],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += (
+        "PI_L2 struct LayerNorm_args_fp32 " + component_blob_name + ";\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L1 " + data_marker + " " + eps_data_name + "[1] = {" + str(epsilon) + "};\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 " + data_marker + " " + output_data_name + "[" + str(total_size) + "];\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initialization = "\t// " + component_name.upper() + "\n"
+
+    blob_initialization += get_initialization_text(
+        total_size, output_data_name, "zero_init"
+    )
+
+    blob_initialization += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    blob_connect += get_connect_text(
+        component_blob_name,
+        {
+            "x": input_data_name,
+            "weight": weight_data_name,
+            "bias": bias_data_name,
+            "output": output_data_name,
+            "eps": eps_data_name,
+            "size": total_size,
+            "step_size": step_size,
+        },
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+    forward_function += (
+        "\tpi_cl_team_fork(NUM_CORES, pulp_layerNorm_fp32_fw_cl, &"
+        + component_blob_name
+        + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initialization, blob_connect, forward_function
