@@ -5,7 +5,7 @@ import numpy as np
 import onnx
 import torch
 
-from component_writers import adapt_onnx_name, conv_writer, gelu_writer
+from component_writers import adapt_onnx_name, conv_writer, gelu_writer, add_writer
 from file_writers import (
     model_components_writer,
     input_writer,
@@ -34,6 +34,7 @@ def onnx_parser(onnx_model):
     op_types_of_interest = {
         "Conv": conv_writer,
         "Gelu": gelu_writer,
+        "Add": add_writer,
     }
 
     # Prepare output strings and element storage dict

@@ -1,28 +1,11 @@
 import numpy as np
 
-
-def get_initialization_text(dim, data_name, filler):
-    to_return = (
-        "\tfor (int i = 0; i < " + str(dim) + "; i++) " + data_name + "[i] = " + filler
-    )
-    to_return += "[i];\n" if filler not in ["zero_init", "min_float"] else ";\n"
-
-    return to_return
-
-
-def get_connect_text(blob_name, elements):
-    text = ""
-
-    for key in elements.keys():
-        text += "\t" + blob_name + "." + key + " = " + str(elements[key]) + ";\n"
-
-    text += "\n"
-
-    return text
-
-
-def adapt_onnx_name(name):
-    return "_" + str(name).replace("/", "_").replace(".", "_").replace(":", "_")
+from writers_utils import (
+    get_initialization_text,
+    get_connect_text,
+    adapt_onnx_name,
+    extract_input_information,
+)
 
 
 def conv_writer(node, all_elements, data_marker="float"):
@@ -301,6 +284,116 @@ def gelu_writer(node, all_elements, data_marker="float"):
 
     forward_function += (
         "\tpi_cl_team_fork(NUM_CORES, pulp_gelu_tanh_approx_fp32_fw_cl, &"
+        + args_name
+        + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def add_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_1_data, input_1_shape = extract_input_information(all_elements[node.input[0]])
+    input_2_data, input_2_shape = extract_input_information(all_elements[node.input[1]])
+
+    input_1_data_name = adapt_onnx_name(input_1_data)
+    input_2_data_name = adapt_onnx_name(input_2_data)
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    op1_dims_name = component_name + "_op1_dims"
+    op2_dims_name = component_name + "_op2_dims"
+
+    output_dims = tuple(np.broadcast_shapes(input_1_shape, input_2_shape))
+    output_total_size = np.prod(output_dims)
+
+    output_filler = "zero_init"
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": output_dims,
+        "data": node.output[0],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_broadcast_add_args"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += (
+        "PI_L2 struct array_broadcast_sum_fp32_args " + args_name + ";\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L2 "
+        + data_marker
+        + " "
+        + output_data_name
+        + "["
+        + str(output_total_size)
+        + "];\n\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 int "
+        + op1_dims_name
+        + "[] = {"
+        + ", ".join(map(str, input_1_shape))
+        + "};\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 int "
+        + op2_dims_name
+        + "[] = {"
+        + ", ".join(map(str, input_2_shape))
+        + "};\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_total_size, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".op_1 = " + input_1_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".op_2 = " + input_2_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".dest = " + output_data_name + ";\n\n"
+
+    blob_connect += "\t" + args_name + ".op_1_dims = " + op1_dims_name + ";\n"
+    blob_connect += "\t" + args_name + ".op_2_dims = " + op2_dims_name + ";\n\n"
+
+    blob_connect += (
+        "\t" + args_name + ".op_1_dims_len = " + str(len(input_1_shape)) + ";\n"
+    )
+    blob_connect += (
+        "\t" + args_name + ".op_2_dims_len = " + str(len(input_1_shape)) + ";\n"
+    )
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+    forward_function += (
+        "\tpi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &"
         + args_name
         + ");\n\n"
     )
