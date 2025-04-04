@@ -715,3 +715,122 @@ def matmul_writer(node, all_elements, data_marker="float"):
     forward_function += "\n"
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def split_writer(node, all_elements, data_marker="float"):
+    # Extract components of interest
+    input_shape = all_elements[node.input[0]]["shape"]
+    input_data = all_elements[node.input[0]]["data"]
+
+    split_sizes = all_elements[node.input[1]]["val"]
+    split_axis = node.attribute[0].i
+
+    assert input_shape[split_axis] == sum(split_sizes), (
+        "Split sizes do not match input shape for " + node.name
+    )
+
+    # Compute output offsets and sizes
+    root_size = 1
+    for i, el in enumerate(input_shape):
+        if i != split_axis:
+            root_size *= el
+
+    current_offset = 0
+    out_sizes = list()
+    out_offsets = list()
+    for el in split_sizes:
+        out_sizes.append(root_size * el)
+
+        out_offsets.append(current_offset)
+        current_offset += root_size * el
+
+    structures_and_blobs = "// " + adapt_onnx_name(node.name).upper() + "\n"
+
+    for i, el in enumerate(node.output):
+        structures_and_blobs += (
+            "PI_L2 "
+            + data_marker
+            + " *"
+            + adapt_onnx_name(el)
+            + " = "
+            + adapt_onnx_name(input_data)
+            + " + "
+            + str(out_offsets[i])
+            + ";\n"
+        )
+
+        # Store output dimensions
+        all_elements[node.output[i]] = {
+            "shape": input_shape[:split_axis]
+            + (split_sizes[i],)
+            + input_shape[split_axis + 1 :],
+            "data": el,
+        }
+
+    structures_and_blobs += "\n\n"
+
+    return structures_and_blobs, "", "", ""
+
+
+def mul_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+
+    # Compute input shape and total dimension
+    input_shape = all_elements[node.input[0]]["shape"]
+    dim = 1
+    for el in input_shape:
+        dim *= el
+
+    # Get multiplication factor
+    if isinstance(all_elements[node.input[1]], dict):
+        factor = all_elements[node.input[1]]["val"]
+    else:
+        factor = all_elements[node.input[1]]
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": input_shape,
+        "data": all_elements[node.input[0]]["data"],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct scalar_mul_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".scalar = " + str(factor) + ";\n"
+    blob_connect += "\t" + args_name + ".dim = " + str(dim) + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+
+    forward_function += (
+        "\tpi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &" + args_name + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function

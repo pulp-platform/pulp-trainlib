@@ -12,6 +12,8 @@ from utils.writers.component_writers import (
     transpose_writer,
     layer_norm_writer,
     matmul_writer,
+    split_writer,
+    mul_writer,
 )
 from utils.writers.file_writers import (
     model_components_writer,
@@ -46,6 +48,8 @@ def onnx_parser(onnx_model):
         "Transpose": transpose_writer,
         "LayerNormalization": layer_norm_writer,
         "MatMul": matmul_writer,
+        "Split": split_writer,
+        "Mul": mul_writer,
     }
 
     # Prepare output strings and element storage dict
