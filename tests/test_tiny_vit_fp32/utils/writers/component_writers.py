@@ -834,3 +834,80 @@ def mul_writer(node, all_elements, data_marker="float"):
     )
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def softmax_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+
+    maxes_name = component_name + "_maxes"
+    sums_name = component_name + "_sums"
+
+    input_shape = all_elements[node.input[0]]["shape"]
+
+    w = input_shape[-1]
+    h = 1
+    for el in input_shape[:-1]:
+        h *= el
+
+    filler = "zero_init"
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": input_shape,
+        "data": all_elements[node.input[0]]["data"],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct softmax_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L2 " + data_marker + " " + maxes_name + "[" + str(h) + "];\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 " + data_marker + " " + sums_name + "[" + str(h) + "];\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(h, sums_name, filler)
+    blob_initializations += get_initialization_text(h, maxes_name, filler)
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input_data = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".output_data = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".maxes = " + maxes_name + ";\n"
+    blob_connect += "\t" + args_name + ".sums = " + sums_name + ";\n"
+    blob_connect += "\t" + args_name + ".H = " + str(h) + ";\n"
+    blob_connect += "\t" + args_name + ".W = " + str(w) + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+    forward_function += "\tpulp_softmax_fp32_fw_cl(&" + args_name + ");\n\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
