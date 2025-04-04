@@ -5,7 +5,7 @@ import torch
 
 
 def add_f(x):
-    return str(x) + "f"
+    return str(float(x)) + "f"
 
 
 def tensor_to_string(tensor):
@@ -140,7 +140,7 @@ def parameters_writer(file_root_dir, parameter_arrays):
             "PI_L2 float "
             + key
             + "["
-            + str(el_size)
+            + str(int(el_size))
             + "] = {"
             + tensor_to_string(el)
             + "};\n\n"

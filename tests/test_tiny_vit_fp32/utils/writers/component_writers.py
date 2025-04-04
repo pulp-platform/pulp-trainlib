@@ -1,6 +1,6 @@
 import numpy as np
 
-from writers_utils import (
+from writers.writers_utils import (
     get_initialization_text,
     get_connect_text,
     adapt_onnx_name,

@@ -4,14 +4,19 @@ import random
 import numpy as np
 import onnx
 import torch
-
-from component_writers import adapt_onnx_name, conv_writer, gelu_writer, add_writer
-from file_writers import (
+from utils.writers.component_writers import (
+    adapt_onnx_name,
+    conv_writer,
+    gelu_writer,
+    add_writer,
+)
+from utils.writers.file_writers import (
     model_components_writer,
     input_writer,
     output_writer,
     parameters_writer,
 )
+
 from model.TinyViT import TinyViT
 from model_configs import MODEL_CONFIGS
 
@@ -44,6 +49,7 @@ def onnx_parser(onnx_model):
     forward_function = ""
 
     all_elements = {}
+    ignore_parameter_arrays = list()
 
     # Iterate through inputs of the ONNX model
     for _input in onnx_model.graph.input:
@@ -80,6 +86,92 @@ def onnx_parser(onnx_model):
                 "data": node.output[0],
                 "val": the_data,
             }
+        elif node.op_type == "Shape":
+            # FIXME: Implement for general case
+            #  (now only for TinyViT scenario, when part of flatten and operating on shape array)
+            all_elements[node.output[0]] = {"val": all_elements[node.input[0]]["shape"]}
+        elif node.op_type == "Constant":
+            # FIXME: Implement for general case
+            #  (now only for TinyViT scenario, when part of flatten and operating on shape array)
+            val = onnx.numpy_helper.to_array(node.attribute[0].t)
+
+            all_elements[node.output[0]] = {
+                "val": val,
+                "shape": val.shape,
+                "data": node.output[0],
+            }
+        elif node.op_type == "Slice":
+            # FIXME: Implement for general case
+            #  (now only for TinyViT scenario, when part of flatten and operating on shape array)
+            inp = np.array(all_elements[node.input[0]]["val"])
+
+            starts = all_elements[node.input[1]]["val"]
+            ends = all_elements[node.input[2]]["val"]
+            axes = all_elements[node.input[3]]["val"]
+
+            slice_list = list()
+
+            for i in range(axes.max() + 1):
+                if i not in axes:
+                    slice_list.append(slice(inp.shape[i]))
+                else:
+                    slice_list.append(slice(starts[i], ends[i]))
+
+            all_elements[node.output[0]] = {"val": inp[tuple(slice_list)]}
+
+            ignore_parameter_arrays.append(node.input[1])
+            ignore_parameter_arrays.append(node.input[2])
+            ignore_parameter_arrays.append(node.input[3])
+        elif node.op_type == "Concat":
+            # FIXME: Implement for general case
+            #  (now only for TinyViT scenario, when part of flatten and operating on shape array)
+            val = np.concatenate(
+                [all_elements[inp]["val"] for inp in node.input],
+                axis=node.attribute[0].i,
+            )
+
+            all_elements[node.output[0]] = {
+                "val": val,
+                "shape": tuple(val.shape),
+                "data": node.output[0],
+            }
+
+            ignore_parameter_arrays.append(node.input[1])
+        elif node.op_type == "Reshape":
+            # FIXME: Implement for general case
+            #  (now only for TinyViT scenario, when part of flatten and operating on shape array)
+            original_shape = all_elements[node.input[0]]["shape"]
+
+            if (
+                isinstance(all_elements[node.input[1]], dict)
+                and "val" in all_elements[node.input[1]].keys()
+            ):
+                target_shape = all_elements[node.input[1]]["val"]
+            else:
+                target_shape = all_elements[node.input[1]]
+
+            if -1 in target_shape:
+                min_1_index = list(target_shape).index(-1)
+
+                shape_prefix = target_shape[:min_1_index]
+                shape_postfix = target_shape[min_1_index + 1 :]
+
+                remaining_shape = np.prod(original_shape) // (
+                    np.prod(shape_prefix) * np.prod(shape_postfix)
+                )
+
+                new_shape = np.concatenate(
+                    [shape_prefix, [remaining_shape], shape_postfix]
+                )
+
+                ignore_parameter_arrays.append(node.input[1])
+            else:
+                new_shape = target_shape
+
+            all_elements[node.output[0]] = {
+                "shape": tuple(new_shape),
+                "data": all_elements[node.input[0]]["data"],
+            }
         else:
             raise NotImplementedError(
                 f"Operation {node.op_type} is not implemented in the parser."
@@ -93,7 +185,12 @@ def onnx_parser(onnx_model):
     # Extract parameter arrays
     parameter_arrays = dict()
     for el in all_elements.keys():
-        if isinstance(all_elements[el], dict) and "val" in all_elements[el].keys():
+        if (
+            isinstance(all_elements[el], dict)
+            and "val" in all_elements[el].keys()
+            and "data" in all_elements[el].keys()
+            and el not in ignore_parameter_arrays
+        ):
             parameter_arrays[adapt_onnx_name(all_elements[el]["data"])] = all_elements[
                 el
             ]["val"]

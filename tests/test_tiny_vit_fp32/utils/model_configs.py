@@ -3,7 +3,7 @@ MODEL_CONFIGS = {
         "IN_IMG_SIZE": 6,
         "IN_CHANS": 3,
         "NUM_CLASSES": 1000,
-        "EMBED_DIMS": [4, 128, 160, 320],
+        "EMBED_DIMS": [4, 4, 160, 320],
         "DEPTHS": [1, 2, 6, 2],
         "NUM_HEADS": [2, 4, 5, 10],
         "WINDOW_SIZES": [7, 7, 14, 7],
