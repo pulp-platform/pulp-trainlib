@@ -399,3 +399,108 @@ def add_writer(node, all_elements, data_marker="float"):
     )
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def transpose_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    transposed_axes = node.attribute[0].ints
+    input_shape = all_elements[node.input[0]]["shape"]
+
+    assert len(input_shape) == len(
+        transposed_axes
+    ), "Input and transposed number of axes not matching for transposition writer!"
+
+    output_shape = list()
+    output_size = 1
+    for i in transposed_axes:
+        output_shape.append(input_shape[i])
+        output_size *= input_shape[i]
+
+    assert np.prod(input_shape) == np.prod(
+        output_shape
+    ), "Input and output shapes not matching for transposition writer!"
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": tuple(output_shape),
+        "data": node.output[0],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_transpose_args"
+    dim_name = component_name + "_dim"
+    transposed_axes_name = component_name + "_transposed_axes"
+
+    output_filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct transp_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+            "PI_L2 "
+            + data_marker
+            + " "
+            + output_data_name
+            + "["
+            + str(output_size)
+            + "];\n"
+    )
+
+    structures_and_blobs += (
+            "PI_L2 int " + dim_name + "[] = {" + ", ".join(map(str, input_shape)) + "};\n"
+    )
+
+    structures_and_blobs += (
+            "PI_L2 int "
+            + transposed_axes_name
+            + "[] = {"
+            + ", ".join(map(str, transposed_axes))
+            + "};\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_size, output_data_name, output_filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".in_matrix = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".out_matrix = " + output_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".dim = " + dim_name + ";\n"
+    blob_connect += (
+            "\t" + args_name + ".transposed_axes = " + transposed_axes_name + ";\n"
+    )
+    blob_connect += "\t" + args_name + ".n_dim = " + str(len(output_shape)) + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+    forward_function += (
+            "\tpi_cl_team_fork(NUM_CORES, transpose, &" + args_name + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
