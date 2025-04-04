@@ -382,7 +382,7 @@ def add_writer(node, all_elements, data_marker="float"):
         "\t" + args_name + ".op_1_dims_len = " + str(len(input_1_shape)) + ";\n"
     )
     blob_connect += (
-        "\t" + args_name + ".op_2_dims_len = " + str(len(input_1_shape)) + ";\n"
+        "\t" + args_name + ".op_2_dims_len = " + str(len(input_2_shape)) + ";\n"
     )
 
     blob_connect += "\n"
@@ -595,3 +595,123 @@ def layer_norm_writer(node, all_elements, data_marker="float"):
     )
 
     return structures_and_blobs, blob_initialization, blob_connect, forward_function
+
+
+def matmul_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_a_name = node.input[0]
+    input_b_name = node.input[1]
+
+    input_data_a, input_a_shape = extract_input_information(all_elements[input_a_name])
+    input_data_b, input_b_shape = extract_input_information(all_elements[input_b_name])
+
+    input_data_a_name = adapt_onnx_name(input_data_a)
+    input_data_b_name = adapt_onnx_name(input_data_b)
+
+    input_a_dims_name = component_name + "_input_a_dims"
+    input_b_dims_name = component_name + "_input_b_dims"
+
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    output_shape = np.concatenate(
+        (
+            np.broadcast_shapes(input_a_shape[:-2], input_b_shape[:-2]),
+            (input_a_shape[-2],),
+            (input_b_shape[-1],),
+        )
+    )
+
+    output_total_size = 1
+    for el in output_shape:
+        output_total_size *= el
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": output_shape,
+        "data": node.output[0],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += (
+        "PI_L2 struct broadcastMatMul_args_fp32 " + args_name + ";\n"
+    )
+
+    structures_and_blobs += "\n"
+
+    # Define blobs
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L2 int "
+        + input_a_dims_name
+        + "[] = {"
+        + ", ".join(map(str, input_a_shape))
+        + "};\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 int "
+        + input_b_dims_name
+        + "[] = {"
+        + ", ".join(map(str, input_b_shape))
+        + "};\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 "
+        + data_marker
+        + " "
+        + output_data_name
+        + "["
+        + str(output_total_size)
+        + "];\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_total_size, output_data_name, filler
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += get_connect_text(
+        args_name,
+        {
+            "A": input_data_a_name,
+            "B": input_data_b_name,
+            "C": output_data_name,
+            "A_dims": input_a_dims_name,
+            "B_dims": input_b_dims_name,
+            "A_dims_len": len(input_a_shape),
+            "B_dims_len": len(input_b_shape),
+        },
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+
+    forward_function += "\tmm_broadcast_fp32(&" + args_name + ");\n"
+
+    forward_function += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
