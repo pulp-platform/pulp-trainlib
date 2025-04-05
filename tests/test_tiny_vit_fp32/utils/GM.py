@@ -15,6 +15,8 @@ from utils.writers.component_writers import (
     split_writer,
     mul_writer,
     softmax_writer,
+    reduce_mean_writer,
+    gemm_writer,
 )
 from utils.writers.file_writers import (
     model_components_writer,
@@ -52,6 +54,8 @@ def onnx_parser(onnx_model):
         "Split": split_writer,
         "Mul": mul_writer,
         "Softmax": softmax_writer,
+        "ReduceMean": reduce_mean_writer,
+        "Gemm": gemm_writer,
     }
 
     # Prepare output strings and element storage dict

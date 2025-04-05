@@ -911,3 +911,221 @@ def softmax_writer(node, all_elements, data_marker="float"):
     forward_function += "\tpulp_softmax_fp32_fw_cl(&" + args_name + ");\n\n"
 
     return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def reduce_mean_writer(node, all_elements, data_marker="float"):
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    # FIXME: Change primitive to support multiple-dim reduction
+    assert (
+        len(all_elements[node.input[1]]["val"]) == 1
+    ), "Only single dimension reduction supported at the moment."
+
+    component_name = adapt_onnx_name(node.name)
+    dims_name = component_name + "_dims"
+
+    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    input_shape = all_elements[node.input[0]]["shape"]
+    dims_to_reduce = all_elements[node.input[1]]["val"]
+    output_shape = list()
+    output_size = 1
+
+    if node.attribute[0].i == 0:
+        # Don't keep dimensions that are reduced
+        for i, el in enumerate(input_shape):
+            if i not in dims_to_reduce:
+                output_shape.append(el)
+                output_size *= el
+
+        output_shape = tuple(output_shape)
+    else:
+        # Keep dimensions that are reduced
+        for i, el in enumerate(input_shape):
+            if i in dims_to_reduce:
+                output_shape.append(1)
+            else:
+                output_shape.append(el)
+
+        output_shape = tuple(output_shape)
+
+    filler = "zero_init"
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": output_shape,
+        "data": all_elements[node.input[0]]["data"],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct reduce_mean_args_fp32 " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L2 int " + dims_name + "[] = {" + ", ".join(map(str, input_shape)) + "};\n"
+    )
+
+    structures_and_blobs += (
+        "PI_L2 "
+        + data_marker
+        + " "
+        + output_data_name
+        + "["
+        + str(output_size)
+        + "];\n"
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        np.prod(output_shape), output_data_name, filler
+    )
+
+    blob_initializations += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".input = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".output = " + output_data_name + ";\n"
+
+    blob_connect += "\t" + args_name + ".dims = " + dims_name + ";\n"
+    blob_connect += "\t" + args_name + ".dims_len = " + str(len(input_shape)) + ";\n"
+    blob_connect += (
+        "\t" + args_name + ".reduce_axis = " + str(dims_to_reduce[0]) + ";\n"
+    )
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+    forward_function += (
+        "\tpi_cl_team_fork(NUM_CORES, reduce_mean_fp32, &" + args_name + ");\n\n"
+    )
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+
+
+def gemm_writer(node, all_elements, data_marker="float"):
+    # FIXME: Currently only supports simple version found in TinyViT (C considered 0, alpha and beta considered 1,
+    #  no support for A transposition)
+
+    # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
+    component_name = adapt_onnx_name(node.name)
+
+    input_name = node.input[0]
+    weight_name = node.input[1]
+    bias_name = node.input[2]
+
+    input_data, input_shape = extract_input_information(all_elements[input_name])
+    weight_data, weight_shape = extract_input_information(all_elements[weight_name])
+    bias_data, bias_shape = extract_input_information(all_elements[bias_name])
+
+    input_data_name = adapt_onnx_name(input_data)
+    weight_data_name = adapt_onnx_name(weight_data)
+    bias_data_name = adapt_onnx_name(bias_data)
+    output_data_name = adapt_onnx_name(node.output[0])
+
+    # Check if transposed B and compute output shape
+    trans_b = False
+    for el in node.attribute:
+        if el.name == "transB":
+            trans_b = el.i == 1
+
+    if trans_b:
+        output_shape = tuple([input_shape[0], weight_shape[0]])
+    else:
+        output_shape = tuple([input_shape[0], weight_shape[1]])
+
+    output_total_size = np.prod(output_shape)
+
+    # Store output dimension
+    all_elements[node.output[0]] = {
+        "shape": output_shape,
+        "data": node.output[0],
+    }
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
+    args_name = component_name + "_args"
+    man_args_name = component_name + "_man_args"
+
+    filler = "zero_init"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Define components ~~~~~~~~~~~~~~~~~~~~
+    # Define structures
+    structures_and_blobs = "// " + component_name.upper() + "\n"
+
+    structures_and_blobs += "PI_L2 struct mm_manager_args " + man_args_name + ";\n"
+    structures_and_blobs += "PI_L2 struct matMul_args " + args_name + ";\n"
+
+    structures_and_blobs += "\n"
+
+    # Define blobs
+
+    # Define data variables
+    structures_and_blobs += (
+        "PI_L2 "
+        + data_marker
+        + " "
+        + output_data_name
+        + "["
+        + str(output_total_size)
+        + "];\n"
+    )
+
+    structures_and_blobs += "\n\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Perform initializations ~~~~~~~~~~~~~~~~~~~~
+    blob_initializations = "\t// " + component_name.upper() + "\n"
+
+    blob_initializations += get_initialization_text(
+        output_total_size, output_data_name, filler
+    )
+
+    # ~~~~~~~~~~~~~~~~~~~~ Populate blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect = "\t// " + component_name.upper() + "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Connect blobs ~~~~~~~~~~~~~~~~~~~~
+    blob_connect += "\t" + args_name + ".A = " + input_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".B = " + weight_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".bias = " + bias_data_name + ";\n"
+    blob_connect += "\t" + args_name + ".C = " + output_data_name + ";\n"
+
+    blob_connect += "\t" + args_name + ".N = " + str(input_shape[0]) + ";\n"
+    blob_connect += "\t" + args_name + ".K = " + str(input_shape[1]) + ";\n"
+    blob_connect += "\t" + args_name + ".M = " + str(weight_shape[1]) + ";\n"
+
+    blob_connect += "\t" + args_name + ".trans_B = " + str(int(trans_b)) + ";\n"
+    blob_connect += "\t" + args_name + ".USE_BIASES = " + str(1) + ";\n"
+
+    blob_connect += "\n"
+
+    # ~~~~~~~~~~~~~~~~~~~~ Forward function ~~~~~~~~~~~~~~~~~~~~
+    forward_function = "\t// " + component_name.upper() + "\n"
+
+    forward_function += "\t#ifdef DEBUG\n"
+    forward_function += '\tprintf("Working on ' + component_name + '...\\n");\n'
+    forward_function += "\t#endif\n\n"
+
+    forward_function += "\t#ifndef OPTIMIZE\n"
+    forward_function += "\tmm(" + args_name + ");\n"
+    forward_function += "\t#else\n"
+    forward_function += "\tmm_manager(&" + man_args_name + ");\n"
+    forward_function += "\t#endif\n"
+
+    forward_function += "\n"
+
+    return structures_and_blobs, blob_initializations, blob_connect, forward_function
