@@ -73,6 +73,8 @@ def conv_writer(node, all_elements, data_marker="float"):
     weight_data_name = adapt_onnx_name(w)
     output_data_name = adapt_onnx_name(node.output[0])
 
+    used_data = [input_data_name, weight_data_name, output_data_name]
+
     # Store output dimension
     all_elements[node.output[0]] = {
         "shape": (in_b,) + output_shape,
@@ -199,20 +201,31 @@ def conv_writer(node, all_elements, data_marker="float"):
     elif groups == output_c:
         forward_function += "\tpulp_conv_dw_fp32_fw_cl(&" + args_name + ");\n\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def gelu_writer(node, all_elements, data_marker="float"):
     # ~~~~~~~~~~~~~~~~~~~~ Extract node information ~~~~~~~~~~~~~~~~~~~~
     component_name = adapt_onnx_name(node.name)
 
-    input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
-    output_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+    input_data_name = output_data_name = adapt_onnx_name(
+        all_elements[node.input[0]]["data"]
+    )
 
     input_shape = all_elements[node.input[0]]["shape"]
     dim = 1
     for el in input_shape:
         dim *= el
+
+    used_data = [
+        input_data_name,
+    ]
 
     # Store output dimension
     all_elements[node.output[0]] = {
@@ -288,7 +301,13 @@ def gelu_writer(node, all_elements, data_marker="float"):
         + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def add_writer(node, all_elements, data_marker="float"):
@@ -301,6 +320,8 @@ def add_writer(node, all_elements, data_marker="float"):
     input_1_data_name = adapt_onnx_name(input_1_data)
     input_2_data_name = adapt_onnx_name(input_2_data)
     output_data_name = adapt_onnx_name(node.output[0])
+
+    used_data = [input_1_data_name, input_2_data_name, output_data_name]
 
     op1_dims_name = component_name + "_op1_dims"
     op2_dims_name = component_name + "_op2_dims"
@@ -398,7 +419,13 @@ def add_writer(node, all_elements, data_marker="float"):
         + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def transpose_writer(node, all_elements, data_marker="float"):
@@ -407,6 +434,8 @@ def transpose_writer(node, all_elements, data_marker="float"):
 
     input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
     output_data_name = adapt_onnx_name(node.output[0])
+
+    used_data = [input_data_name, output_data_name]
 
     transposed_axes = node.attribute[0].ints
     input_shape = all_elements[node.input[0]]["shape"]
@@ -503,7 +532,13 @@ def transpose_writer(node, all_elements, data_marker="float"):
         "\tpi_cl_team_fork(NUM_CORES, transpose, &" + args_name + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def layer_norm_writer(node, all_elements, data_marker="float"):
@@ -515,6 +550,8 @@ def layer_norm_writer(node, all_elements, data_marker="float"):
 
     input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
     output_data_name = adapt_onnx_name(node.output[0])
+
+    used_data = [input_data_name, weight_data_name, bias_data_name, output_data_name]
 
     axis = node.attribute[0].i
     epsilon = node.attribute[1].f
@@ -594,7 +631,13 @@ def layer_norm_writer(node, all_elements, data_marker="float"):
         + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initialization, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initialization,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def matmul_writer(node, all_elements, data_marker="float"):
@@ -615,6 +658,8 @@ def matmul_writer(node, all_elements, data_marker="float"):
 
     output_data_name = adapt_onnx_name(node.output[0])
 
+    used_data = [input_data_a_name, input_data_b_name, output_data_name]
+
     output_shape = np.concatenate(
         (
             np.broadcast_shapes(input_a_shape[:-2], input_b_shape[:-2]),
@@ -629,7 +674,7 @@ def matmul_writer(node, all_elements, data_marker="float"):
 
     # Store output dimension
     all_elements[node.output[0]] = {
-        "shape": output_shape,
+        "shape": tuple(output_shape),
         "data": node.output[0],
     }
 
@@ -714,7 +759,13 @@ def matmul_writer(node, all_elements, data_marker="float"):
 
     forward_function += "\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def split_writer(node, all_elements, data_marker="float"):
@@ -769,7 +820,7 @@ def split_writer(node, all_elements, data_marker="float"):
 
     structures_and_blobs += "\n\n"
 
-    return structures_and_blobs, "", "", ""
+    return structures_and_blobs, "", "", "", list()
 
 
 def mul_writer(node, all_elements, data_marker="float"):
@@ -777,6 +828,10 @@ def mul_writer(node, all_elements, data_marker="float"):
     component_name = adapt_onnx_name(node.name)
 
     input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
+
+    used_data = [
+        input_data_name,
+    ]
 
     # Compute input shape and total dimension
     input_shape = all_elements[node.input[0]]["shape"]
@@ -833,7 +888,13 @@ def mul_writer(node, all_elements, data_marker="float"):
         "\tpi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp32_cl, &" + args_name + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def softmax_writer(node, all_elements, data_marker="float"):
@@ -844,6 +905,8 @@ def softmax_writer(node, all_elements, data_marker="float"):
 
     maxes_name = component_name + "_maxes"
     sums_name = component_name + "_sums"
+
+    used_data = [input_data_name, maxes_name, sums_name]
 
     input_shape = all_elements[node.input[0]]["shape"]
 
@@ -858,6 +921,16 @@ def softmax_writer(node, all_elements, data_marker="float"):
     all_elements[node.output[0]] = {
         "shape": input_shape,
         "data": all_elements[node.input[0]]["data"],
+    }
+
+    all_elements[maxes_name] = {
+        "shape": (h,),
+        "data": maxes_name,
+    }
+
+    all_elements[sums_name] = {
+        "shape": (h,),
+        "data": sums_name,
     }
 
     # ~~~~~~~~~~~~~~~~~~~~ Define component information ~~~~~~~~~~~~~~~~~~~~
@@ -910,7 +983,13 @@ def softmax_writer(node, all_elements, data_marker="float"):
     forward_function += "\t#endif\n\n"
     forward_function += "\tpulp_softmax_fp32_fw_cl(&" + args_name + ");\n\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def reduce_mean_writer(node, all_elements, data_marker="float"):
@@ -925,6 +1004,8 @@ def reduce_mean_writer(node, all_elements, data_marker="float"):
 
     input_data_name = adapt_onnx_name(all_elements[node.input[0]]["data"])
     output_data_name = adapt_onnx_name(node.output[0])
+
+    used_data = [input_data_name, output_data_name]
 
     input_shape = all_elements[node.input[0]]["shape"]
     dims_to_reduce = all_elements[node.input[1]]["val"]
@@ -1016,7 +1097,13 @@ def reduce_mean_writer(node, all_elements, data_marker="float"):
         "\tpi_cl_team_fork(NUM_CORES, reduce_mean_fp32, &" + args_name + ");\n\n"
     )
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )
 
 
 def gemm_writer(node, all_elements, data_marker="float"):
@@ -1038,6 +1125,8 @@ def gemm_writer(node, all_elements, data_marker="float"):
     weight_data_name = adapt_onnx_name(weight_data)
     bias_data_name = adapt_onnx_name(bias_data)
     output_data_name = adapt_onnx_name(node.output[0])
+
+    used_data = [input_data_name, weight_data_name, bias_data_name, output_data_name]
 
     # Check if transposed B and compute output shape
     trans_b = False
@@ -1128,4 +1217,10 @@ def gemm_writer(node, all_elements, data_marker="float"):
 
     forward_function += "\n"
 
-    return structures_and_blobs, blob_initializations, blob_connect, forward_function
+    return (
+        structures_and_blobs,
+        blob_initializations,
+        blob_connect,
+        forward_function,
+        used_data,
+    )

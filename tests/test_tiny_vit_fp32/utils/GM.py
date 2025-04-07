@@ -42,6 +42,34 @@ def arg_parse():
     return parser.parse_args()
 
 
+def add_used_data(used_data, all_used_data, all_elements, current_node):
+    for el in used_data:
+        for key in all_elements.keys():
+            if el in adapt_onnx_name(key):
+                if key in all_used_data.keys():
+                    # Update last node that uses this data
+                    all_used_data[key]["end_node"] = current_node
+                else:
+                    # Introduce the new data with the birth node
+                    if (
+                        isinstance(all_elements[key], dict)
+                        and "shape" in all_elements[key].keys()
+                    ):
+                        element_shape = all_elements[key]["shape"]
+                    elif isinstance(all_elements[key], np.ndarray):
+                        element_shape = tuple(all_elements[key].shape)
+                    else:
+                        raise ValueError("Problem at element: ", all_elements[key])
+
+                    all_used_data[key] = {
+                        "shape": element_shape,
+                        "start_node": current_node,
+                        "end_node": current_node,
+                    }
+
+                break
+
+
 def onnx_parser(onnx_model):
     # Prepare nodes of interest
     op_types_of_interest = {
@@ -66,10 +94,14 @@ def onnx_parser(onnx_model):
 
     all_elements = {}
     ignore_parameter_arrays = list()
+    all_used_data = dict()
 
     # Iterate through inputs of the ONNX model
     for _input in onnx_model.graph.input:
-        all_elements[_input.name] = _input
+        all_elements[_input.name] = {
+            "shape": tuple(el.dim_value for el in _input.type.tensor_type.shape.dim),
+            "data": _input.name,
+        }
 
     # Iterate through given values in the ONNX model
     for el in onnx_model.graph.initializer:
@@ -84,7 +116,7 @@ def onnx_parser(onnx_model):
     # Iterate through onnx model nodes and perform necessary operations
     for node in onnx_model.graph.node:
         if node.op_type in op_types_of_interest.keys():
-            s1, s2, s3, s4 = op_types_of_interest[node.op_type](
+            s1, s2, s3, s4, used_data = op_types_of_interest[node.op_type](
                 node=node,
                 all_elements=all_elements,
                 data_marker="float",
@@ -94,6 +126,11 @@ def onnx_parser(onnx_model):
             blob_initializations += s2
             blob_connect += s3
             forward_function += s4
+
+            add_used_data(
+                used_data, all_used_data, all_elements, adapt_onnx_name(node.name)
+            )
+
         elif node.op_type == "Identity":
             the_data = all_elements[node.input[0]]["val"]
 
@@ -192,6 +229,54 @@ def onnx_parser(onnx_model):
             raise NotImplementedError(
                 f"Operation {node.op_type} is not implemented in the parser."
             )
+
+    # Find how much data needs to be kept for each node
+    active_data = list()
+    node_required_data = dict()
+    max_data_needed = 0
+    max_data_node = ""
+
+    for node in onnx_model.graph.node:
+        if node.op_type in op_types_of_interest.keys():
+            node_required_data[adapt_onnx_name(node.name)] = {
+                "required_data": list(),
+                "total_size": 0,
+            }
+
+            for el in active_data:
+                node_required_data[adapt_onnx_name(node.name)]["required_data"].append(
+                    all_used_data[el]
+                )
+                node_required_data[adapt_onnx_name(node.name)]["total_size"] += np.prod(
+                    all_used_data[el]["shape"]
+                )
+
+            for el in all_used_data.keys():
+                if adapt_onnx_name(node.name) == all_used_data[el]["start_node"]:
+                    active_data.append(el)
+
+                    node_required_data[adapt_onnx_name(node.name)][
+                        "required_data"
+                    ].append(all_used_data[el])
+                    node_required_data[adapt_onnx_name(node.name)][
+                        "total_size"
+                    ] += np.prod(all_used_data[el]["shape"])
+
+                if adapt_onnx_name(node.name) == all_used_data[el]["end_node"]:
+                    active_data.remove(el)
+
+            if (
+                node_required_data[adapt_onnx_name(node.name)]["total_size"]
+                > max_data_needed
+            ):
+                max_data_needed = node_required_data[adapt_onnx_name(node.name)][
+                    "total_size"
+                ]
+                max_data_node = node.name
+
+    assert len(active_data) == 0, "Error in data management, some end node was skipped."
+
+    print("Maximum data needed by an operation:", max_data_needed, "by", max_data_node)
 
     # Extract output name
     output_array_name = adapt_onnx_name(

@@ -4,6 +4,8 @@ APP = vit_fp32
 NUM_CORES = 8
 MATMUL_TYPE?=9
 DATA_TYPE?=32
+
+CONFIG_NAME = "TINY_VIT_5M"
 # End of user code
 
 TASK_NAME=sst-2
@@ -54,4 +56,4 @@ include $(RULES_DIR)/pmsis_rules.mk
 
 get_golden:
 	rm -rf BUILD/
-	python3 utils/GM.py
+	python3 utils/GM.py --config $(CONFIG_NAME)
