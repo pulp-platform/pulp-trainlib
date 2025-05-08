@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ * Copyright (C) 2021-2025 ETH Zurich and University of Bologna
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  */
 
 /**
- * Authors: Davide Nadalini
-*/ 
+ * Authors: Davide Nadalini, Calin Diaconu
+*/
 
 
 /**
@@ -28,6 +28,7 @@
  * @param input input feauture maps for the depthwise layer
  * @param output output feature maps for the depthwise layer
  * @param coeff coefficients to compute normalization, bias are included
+ * @param eps epsilon value to avoid division by zero
  * @param batch_size size of the batch to be processed by the BatchNorm layer
  * @param running_mean array of running means computed during the forward step
  * @param running_var array of running variances computed during the forward step
@@ -36,55 +37,43 @@
  * @param skip_wg_grad skips the computation of the weight grad
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  */
-struct BatchNorm_args {
-	struct blob * input;
-	struct blob * output; 
-	struct blob * coeff;
+struct BatchNorm_args_fp32 {
+    struct blob *input_blob;
+    struct blob *output_blob;
+    struct blob *coeff;
     int batch_size;
-	float * running_mean;
-	float * running_var;
-	float * running_stdev;
-	int freeze_running_params;
-	int skip_wg_grad;
-	int skip_in_grad;
+    float *running_mean;
+    float *running_var;
+    float *running_stdev;
+    int freeze_running_params;
+    int skip_wg_grad;
+    int skip_in_grad;
+
+    float *input_data;
+    float *output_data;
+
+    // Equivalent to gamma and beta
+    float *weight_data;
+    float *bias_data;
+
+    float *eps;
+
+    int B;
+    int C;
+    int H;
+    int W;
 };
+
 
 /**
  * @brief Forward function that calls the parallelized version
  * @param (void *)  (struct InstNorm_args void_args)
  */
-void pulp_batchnorm_fp32_fw_cl( void * BatchNorm_args );
+void pulp_batch_norm_fp32_fw_cl(void *BatchNorm_args_fp32);
 
-/**
- * @brief Function that calls both input and param gradient functions
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_cl( void * BatchNorm_args );
-
-/**
- * @brief Backward param gradient function that calls the parallelized version
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_param_grads_cl( void * BatchNorm_args );
-
-/**
- * @brief Backward input gradient function that calls the parallelized version
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_input_grads_cl( void * BatchNorm_args );
 
 /**
  * @brief Forward backend function parallelized on multicore
  * @param (void *)  (struct InstNorm_args void_args)
  */
-void pulp_batchnorm_parallelized_fp32_fw_cl( void * BatchNorm_args );
-/**
- * @brief Backward backend function for input gradients parallelized on multicore
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_parallelized_fp32_bw_input_grads_cl( void * BatchNorm_args );
-/**
- * @brief Backward backend function for parameters gradients parallelized on multicore
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_parallelized_fp32_bw_param_grads_cl( void * BatchNorm_args );
+void pulp_batch_norm_parallelized_fp32_fw_cl(void *BatchNorm_args_fp32);

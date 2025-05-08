@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) 2021-2022 ETH Zurich and University of Bologna
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -9,254 +9,353 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-'''
 
-'''
-Authors: Francesco Conoscenti (francesco.conoscenti@studio.unibo.it), Alberto Dequino (alberto.dequino@unibo.it)
-'''
+Authors: Francesco Conoscenti (francesco.conoscenti@studio.unibo.it), Alberto Dequino (alberto.dequino@unibo.it),
+         Calin Diaconu (calin.diaconu@studio.unibo.it)
+"""
 
-from copy import deepcopy
-import torch 
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import argparse
-import dump_utils as dump
+from copy import deepcopy
+
 import numpy as np  # Matrix and vector computation package
-import random
+import torch
+import torch.nn as nn
+
+import dump_utils as dump
 import mhsa
 
-# Set the seed for reproducability
-np.random.seed(seed=1) # <----- Sneed
-torch.manual_seed(0)
+
+class MyNet(nn.Module):
+    # Define a simple network with a mhsa layer for testing
+    def __init__(self, in_h, in_w, n_heads, att_dim):
+        super().__init__()
+        self.mhsa = mhsa.MultiHeadedSelfAttention(
+            dim=in_w, num_heads=n_heads, att_dim=att_dim
+        )
+
+    def forward(self, x, tgt_len):
+        return self.mhsa(x=x, tgt_len=tgt_len)
 
 
-##################################################################################################################################
+def hook_fn1(_, __, o):
+    # Hook to write output gradients
+    f = open("mhsa-grads.h", "w")
 
-#Visualize data with more precision
-torch.set_printoptions(precision=10, sci_mode=False) 
+    print("------------Output Grad------------")
+    for grad in o:
+        try:
+            output_grad = torch.transpose(grad, 0, 1)
+            f.write("#define G_OUTPUT_SIZE " + str(output_grad.numel()) + "\n")
+            print(output_grad)
 
-parser = argparse.ArgumentParser("MHSA Layer Test")
-parser.add_argument( '--in_width', type=int, default=8) # Token size
-parser.add_argument( '--in_height', type=int, default=4) # Sequence length
-parser.add_argument( '--ch_in', type=int, default=1)
-parser.add_argument( '--ch_out', type=int, default=1)  
-parser.add_argument( '--n_heads', type=int, default=8)
-parser.add_argument( '--weight', type=float, default=0.1)
-parser.add_argument( '--att_dim', type=int, default=8)
-parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
+            if current_step == "BACKWARD":
+                f.write(
+                    "PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {"
+                    + dump.tensor_to_string(output_grad)
+                    + "};\n"
+                )
+            else:
+                f.write(
+                    "PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {"
+                    + dump.tensor_to_string(output_grad)
+                    + "};\n"
+                )
+        except AttributeError:
+            print("None found for Gradient (output)")
 
-args = parser.parse_args()
-
-# Network parameters in_size
-in_h = args.in_height
-in_w = args.in_width
-ch_in = args.ch_in
-ch_out = args.ch_out
-n_heads = args.n_heads
-current_step = args.step
-weight_init = args.weight
-att_dim = args.att_dim
-head_dim = (int) (att_dim / n_heads);
-
-# Net step
-f_step = open('step-check.h', 'w')
-f_step.write('#define ' + str(current_step) + '\n')
-f_step.close()
-
-# Data file
-f = open("init-defines.h", "w") 
-
-f.write('#define Tin_C_l1 '+str(ch_in)+'\n')
-f.write('#define Tin_H_l1 '+str(in_h)+'\n')
-f.write('#define Tin_W_l1 '+str(in_w)+'\n')
-f.write('#define Tout_C_l1 '+str(ch_out)+'\n')
-f.write('#define Tn_heads_l1 '+str(n_heads)+'\n')
-f.write('#define Tatt_dim_l1 '+str(att_dim)+'\n')
-f.write('#define Thead_dim_l1 '+str(head_dim)+'\n')
+    f.close()
 
 
-f.close()
+def hook_fn2(_, __, o):
+    # Hook for writing output to file
+    cont = 0
+    f = open("mhsa-output.h", "w")
 
-class myNet(nn.Module):
-  def __init__(self, in_h, in_w, n_heads, att_dim):
-    super().__init__()
-    self.mhsa = mhsa.MultiHeadedSelfAttention(dim=in_w, num_heads=n_heads, att_dim=att_dim)
+    print("------------Output------------")
+    for grad in o:
+        try:
+            if cont == 0:
+                output_grad = grad
+                f.write("#define OUTPUT_SIZE " + str(output_grad.numel()) + "\n")
+                print(output_grad)
+                f.write(
+                    "PI_L2 float OUTPUT[OUTPUT_SIZE] = {"
+                    + dump.tensor_to_string(output_grad)
+                    + "};\n"
+                )
+            cont += 1
+        except AttributeError:
+            print("None found for Output")
 
-  def forward(self, x, tgt_len):
-    return self.mhsa(x=x, tgt_len=tgt_len)
-
-net = myNet(in_h=in_h, in_w=in_w, n_heads=n_heads, att_dim=att_dim)
-net.zero_grad()
-
-def hook_fn1(m, i, o):
-
-  cont = 0
-  input_grad = []
-  weight_grad = []
-  output_grad = []
-  f = open("mhsa-grads.h", "w")
-
-  print("------------Output Grad------------")
-  for grad in o:
-    try:
-      output_grad = grad
-      f.write('#define G_OUTPUT_SIZE '+str(output_grad.numel())+'\n')
-      print(output_grad)
-      if current_step=='BACKWARD_GRAD' or current_step=='BACKWARD_ERROR':
-          f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-      else:
-          f.write('PI_L2 float OUTPUT_GRAD[G_OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-
-    except AttributeError:
-      print ("None found for Gradient (output)")
-
-  f.close()
+    f.close()
 
 
-def hook_fn2(m, i, o):
+if __name__ == "__main__":
+    # ~~~~~~~~~~ INTRO ~~~~~~~~~~
+    # Set the seed for reproducibility
+    np.random.seed(seed=1)  # <----- Sneed
+    torch.manual_seed(0)
 
-     cont = 0
-     input_grad = []
-     weight_grad = []
-     output_grad = []
-     f = open("mhsa-output.h", "w")
+    # Visualize data with more precision
+    torch.set_printoptions(precision=10, sci_mode=False)
 
-     print("------------Output------------")
-     for grad in o:
-       try:
-         if cont==0:
-          output_grad = grad
-          f.write('#define OUTPUT_SIZE '+str(output_grad.numel())+'\n')
-          print(output_grad)
-          f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(output_grad)+'};\n')
-         cont+=1
-       except AttributeError:
-         print ("None found for Output")
-     f.close()
+    # Set up parser
+    parser = argparse.ArgumentParser("MHSA Layer Test")
+    parser.add_argument("--in_width", type=int, default=8)  # Token size
+    parser.add_argument("--in_height", type=int, default=4)  # Sequence length
+    parser.add_argument("--ch_in", type=int, default=1)
+    parser.add_argument("--ch_out", type=int, default=1)
+    parser.add_argument("--n_heads", type=int, default=8)
+    parser.add_argument("--weight", type=float, default=0.1)
+    parser.add_argument("--att_dim", type=int, default=8)
+    parser.add_argument(
+        "--step", type=str, default="FORWARD"
+    )  # Possible steps: FORWARD, BACKWARD
 
+    args = parser.parse_args()
 
-gradsRnn = net.mhsa.register_full_backward_hook(hook_fn1)
+    # Read arguments
+    in_h = args.in_height
+    in_w = args.in_width
+    ch_in = args.ch_in
+    ch_out = args.ch_out
+    n_heads = args.n_heads
+    current_step = args.step
+    weight_init = args.weight
+    att_dim = args.att_dim
+    head_dim = int(att_dim / n_heads)
 
-'''
-inp = torch.div(torch.ones(ch_in, in_h, in_w), 1000)
-for cin in range(ch_in):
-  for hi in range(in_h):
-    for wi in range(in_w):
-      inp[cin, hi, wi] += (cin + hi - wi)*(cin + hi + wi) * 1/1e5
-'''
-inp = torch.randn(ch_in, in_h, in_w)
+    # Write net step to file
+    f_step = open("step-check.h", "w")
+    f_step.write("#define " + str(current_step) + "\n")
+    f_step.close()
 
-inp.requires_grad = True
+    # Write input/output weights to file
+    f = open("init-defines.h", "w")
 
-label = torch.ones(in_h, in_w)
+    f.write("#define Tin_C_l1 " + str(ch_in) + "\n")
+    f.write("#define Tin_H_l1 " + str(in_h) + "\n")
+    f.write("#define Tin_W_l1 " + str(in_w) + "\n")
+    f.write("#define Tout_C_l1 " + str(ch_out) + "\n")
+    f.write("#define Tn_heads_l1 " + str(n_heads) + "\n")
+    f.write("#define Tatt_dim_l1 " + str(att_dim) + "\n")
+    f.write("#define Thead_dim_l1 " + str(head_dim) + "\n")
+    if current_step == "FORWARD":
+        f.write(
+            "#define Ttemp_max " + str(int(max(in_h * head_dim, in_h * in_h))) + "\n"
+        )
+    else:
+        f.write(
+            "#define Ttemp_max "
+            + str(
+                int(max(in_h * att_dim, 3 * att_dim * in_w, in_h * in_h, in_h * in_w))
+            )
+            + "\n"
+        )
 
-# Write input sequence
-print("------------Input sequence------------")
-f = open("input-sequence.h", "w")
-f.write("#define INPUT_SIZE "+str(inp.numel())+'\n')
-print(inp)
+    f.close()
 
-inp_copy = torch.transpose(inp, -1, -2)
+    # Define network and add hook
+    net = MyNet(in_h=in_h, in_w=in_w, n_heads=n_heads, att_dim=att_dim)
+    net.zero_grad()
 
-if current_step=='FORWARD':
-  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp_copy)+'};\n')
-else:
-  f.write('PI_L2 float INPUT[INPUT_SIZE] = {'+dump.tensor_to_string(inp_copy)+'};\n')
-f.close()
+    gradsRnn = net.mhsa.register_full_backward_hook(hook_fn1)
 
+    # ~~~~~~~~~~ MANAGE INPUT ~~~~~~~~~~
+    # Generate random input data
+    inp = torch.randn(ch_in, in_h, in_w)
+    inp.requires_grad = True
 
-# Prepare weight tensors for init
-# Input weights
-print("Shape input weights:")
-print(net.mhsa.proj_in.weight.shape)
-print(net.mhsa.proj_in.weight.data)
-print("\n")
+    # Print input data to terminal
+    print("------------Input sequence------------")
+    print(inp)
 
-'''
-in_wgt_init_tensor = torch.zeros(att_dim * 3, in_w)
-for hk in range(att_dim * 3):
-    for wk in range(in_w):
-        in_wgt_init_tensor[hk, wk] = (hk+wk)*weight_init
-'''
-in_wgt_init_tensor = torch.randn(att_dim * 3, in_w)
-#Initialize input weights
-with torch.no_grad():
-    #net.conv.weight[:, :] = weight_init
-    net.mhsa.proj_in.weight.data = deepcopy(in_wgt_init_tensor)
-    #net.rnn.bias_ih_l0[:] = 0.0
+    # Write transpose of input data to file
+    inp_copy = torch.transpose(inp, -1, -2)
 
-#in_wgt_init_tensor = torch.transpose(in_wgt_init_tensor, 0, 1)
+    f = open("input-sequence.h", "w")
+    f.write("#define INPUT_SIZE " + str(inp.numel()) + "\n")
+    f.write(
+        "PI_L2 float INPUT[INPUT_SIZE] = {" + dump.tensor_to_string(inp_copy) + "};\n"
+    )
+    f.close()
 
-# Print input weights to init file
-f = open("init-defines.h", 'a')
-f.write("\n\n// Input Projections Weigth Initialization\n")
-f.write("#define INPUT_WGT_SIZE (3*Tatt_dim_l1*Tin_W_l1)\n")
-f.write('PI_L2 float INPUT_WEIGHTS[INPUT_WGT_SIZE] = {'+dump.tensor_to_string(in_wgt_init_tensor)+'};\n')
-f.close()
+    # ~~~~~~~~~~ MANAGE INPUT WEIGHTS ~~~~~~~~~~
+    # Generate random input weights
+    in_wgt_init_tensor_q = torch.randn(att_dim, in_w)
+    in_wgt_init_tensor_k = torch.randn(att_dim, in_w)
+    in_wgt_init_tensor_v = torch.randn(att_dim, in_w)
 
+    in_bias_init_tensor_q = torch.randn(att_dim)
+    in_bias_init_tensor_k = torch.randn(att_dim)
+    in_bias_init_tensor_v = torch.randn(att_dim)
 
-# Prepare weight tensors for output projection
-# Output weights
-print("Shape output projection weights:")
-print(net.mhsa.proj_out.weight.data.shape)
-print(net.mhsa.proj_out.weight.data)
-print("\n")
-'''
-output_proj_wgt_init_tensor = torch.zeros(in_w, att_dim)
-for hk in range(in_w):
-    for wk in range(att_dim):
-        output_proj_wgt_init_tensor[hk, wk] = (hk+wk)*weight_init
-'''
-output_proj_wgt_init_tensor = torch.randn(in_w, att_dim)
-#Initialize output weights
-with torch.no_grad():
-    net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
+    # Copy input weights to network
+    with torch.no_grad():
+        net.mhsa.proj_q.weight.data = deepcopy(in_wgt_init_tensor_q)
+        net.mhsa.proj_k.weight.data = deepcopy(in_wgt_init_tensor_k)
+        net.mhsa.proj_v.weight.data = deepcopy(in_wgt_init_tensor_v)
 
+        net.mhsa.proj_q.bias.data = deepcopy(in_bias_init_tensor_q)
+        net.mhsa.proj_k.bias.data = deepcopy(in_bias_init_tensor_k)
+        net.mhsa.proj_v.bias.data = deepcopy(in_bias_init_tensor_v)
 
-#output_proj_wgt_init_tensor = torch.transpose(output_proj_wgt_init_tensor, 0, 1)
+    # Print input weights to terminal
+    print("Shape input weights:")
+    print(net.mhsa.proj_q.weight.shape)
+    print("Shape input biases:")
+    print(net.mhsa.proj_q.bias.shape)
+    print("q:")
+    print(net.mhsa.proj_q.weight.data)
+    print("k:")
+    print(net.mhsa.proj_k.weight.data)
+    print("v:")
+    print(net.mhsa.proj_v.weight.data)
+    print("\n")
 
-# Print input weights to init file
-f = open("init-defines.h", 'a')
-f.write("\n\n")
-f.write("#define OUTPUT_WGT_SIZE (Tatt_dim_l1*Tin_W_l1)\n")
-f.write('PI_L2 float OUTPUT_WEIGHTS[OUTPUT_WGT_SIZE] = {'+dump.tensor_to_string(output_proj_wgt_init_tensor)+'};\n')
-f.close()
+    # Write input weights to init file
+    f = open("init-defines.h", "a")
+    f.write("\n\n// Input Projections Weight Initialization\n")
+    f.write("#define INPUT_WGT_SIZE (" + str(in_wgt_init_tensor_q.numel()) + ")\n")
+    f.write(
+        "PI_L2 float INPUT_WEIGHTS_Q[INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(in_wgt_init_tensor_q.transpose(0, 1))
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_WEIGHTS_K[INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(in_wgt_init_tensor_k.transpose(0, 1))
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_WEIGHTS_V[INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(in_wgt_init_tensor_v.transpose(0, 1))
+        + "};\n"
+    )
 
-criterion = nn.MSELoss()
-out = net(x=inp, tgt_len=in_h)
-print("out: ")
-print(out.size())
-print(label.size())
-print(out)
-loss = criterion(out, label)
+    f.write("\n\n// Input Projections Bias Initialization\n")
+    f.write("#define INPUT_BIAS_SIZE (" + str(in_bias_init_tensor_q.numel()) + ")\n")
+    f.write(
+        "PI_L2 float INPUT_BIASES_Q[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_q)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_BIASES_K[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_k)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_BIASES_V[INPUT_BIAS_SIZE] = {"
+        + dump.tensor_to_string(in_bias_init_tensor_v)
+        + "};\n"
+    )
+    f.close()
 
-out_copy = torch.transpose(out, -1, -2)
+    # ~~~~~~~~~~ MANAGE OUTPUT WEIGHTS ~~~~~~~~~~
+    # Generate random output weights
+    output_proj_wgt_init_tensor = torch.randn(in_w, att_dim)
 
-f = open("mhsa-output.h", "w")
-f.write('#define OUTPUT_SIZE '+str(out.numel())+'\n')
-f.write('PI_L2 float OUTPUT[OUTPUT_SIZE] = {'+dump.tensor_to_string(out_copy)+'};\n')
-f.close()
+    # Copy output weights to network
+    with torch.no_grad():
+        net.mhsa.proj_out.weight.data = deepcopy(output_proj_wgt_init_tensor)
 
+    # Print output weights to terminal
+    print("Shape output projection weights:")
+    print(net.mhsa.proj_out.weight.data.shape)
+    print(net.mhsa.proj_out.weight.data)
+    print("\n")
 
-net.zero_grad()
-loss.backward()
+    # Write output weights to init file
+    f = open("init-defines.h", "a")
+    f.write("\n\n")
+    f.write(
+        "#define OUTPUT_WGT_SIZE (" + str(output_proj_wgt_init_tensor.numel()) + ")\n"
+    )
+    f.write(
+        "PI_L2 float OUTPUT_WEIGHTS[OUTPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(output_proj_wgt_init_tensor)
+        + "};\n"
+    )
+    f.close()
 
-input_wgt_grad = torch.transpose(net.mhsa.proj_in.weight.grad, 0, 1) 
-output_wgt_grad = torch.transpose(net.mhsa.proj_out.weight.grad, 0, 1)
-input_grad = inp.grad
+    # ~~~~~~~~~~ COMPUTE OUTPUT ~~~~~~~~~~
+    # Compute output
+    label = torch.ones(in_h, in_w)
+    criterion = nn.MSELoss()
+    out = net(x=inp, tgt_len=in_h)
 
+    # Print output to terminal
+    print("out: ")
+    print(out.size())
+    print(label.size())
+    print(out)
 
-f = open("mhsa-grads.h", 'a')
-f.write('#define G_INPUT_WGT_SIZE '+str(input_wgt_grad.numel())+'\n')
-f.write("PI_L2 float INPUT_WGT_GRAD[G_INPUT_WGT_SIZE] = {"+dump.tensor_to_string(input_wgt_grad)+"};\n")
-f.write('#define G_OUTPUT_WGT_SIZE '+str(output_wgt_grad.numel())+'\n')
-f.write("PI_L2 float OUTPUT_WGT_GRAD[G_OUTPUT_WGT_SIZE] = {"+dump.tensor_to_string(output_wgt_grad)+"};\n")
-f.write("#define G_IN_SIZE "+str(input_grad.numel())+ '\n')
-f.write("PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"+dump.tensor_to_string(input_grad)+ "};\n")
-f.close()
+    # Compute loss
+    loss = criterion(out, label)
 
-f = open("attention_scores.h", "w")
-f.write('#define ATTENTION_S_LENGTH '+str(net.mhsa.scores.numel())+'\n')
-f.write('PI_L2 float ATTENTION_SCORES[ATTENTION_S_LENGTH] = {'+dump.tensor_to_string(torch.transpose(net.mhsa.scores, 0, 1))+'};\n')
-f.close()
+    # Write output to file
+    out_copy = torch.transpose(out, -1, -2)
+
+    f = open("mhsa-output.h", "w")
+    f.write("#define OUTPUT_SIZE " + str(out.numel()) + "\n")
+    f.write(
+        "PI_L2 float OUTPUT[OUTPUT_SIZE] = {" + dump.tensor_to_string(out_copy) + "};\n"
+    )
+    f.close()
+
+    # Compute gradients
+    net.zero_grad()
+    loss.backward()
+
+    input_wgt_grad_q = net.mhsa.proj_q.weight.grad
+    input_wgt_grad_k = net.mhsa.proj_k.weight.grad
+    input_wgt_grad_v = net.mhsa.proj_v.weight.grad
+    output_wgt_grad = net.mhsa.proj_out.weight.grad
+    input_grad = inp.grad.transpose(1, 2)
+
+    # Write gradients to file
+    f = open("mhsa-grads.h", "a")
+
+    f.write("#define G_INPUT_WGT_SIZE " + str(input_wgt_grad_q.numel()) + "\n")
+    f.write(
+        "PI_L2 float INPUT_WGT_GRAD_Q[G_INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(input_wgt_grad_q)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_WGT_GRAD_K[G_INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(input_wgt_grad_k)
+        + "};\n"
+    )
+    f.write(
+        "PI_L2 float INPUT_WGT_GRAD_V[G_INPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(input_wgt_grad_v)
+        + "};\n"
+    )
+
+    f.write("#define G_OUTPUT_WGT_SIZE " + str(output_wgt_grad.numel()) + "\n")
+    f.write(
+        "PI_L2 float OUTPUT_WGT_GRAD[G_OUTPUT_WGT_SIZE] = {"
+        + dump.tensor_to_string(output_wgt_grad)
+        + "};\n"
+    )
+
+    f.write("#define G_IN_SIZE " + str(input_grad.numel()) + "\n")
+    f.write(
+        "PI_L2 float INPUT_GRAD[G_IN_SIZE] = {"
+        + dump.tensor_to_string(input_grad)
+        + "};\n"
+    )
+
+    f.close()
+
+    # Write attention scores to file
+    f = open("attention_scores.h", "w")
+    f.write("#define ATTENTION_S_LENGTH " + str(net.mhsa.scores.numel()) + "\n")
+    f.write(
+        "PI_L2 float ATTENTION_SCORES[ATTENTION_S_LENGTH] = {"
+        + dump.tensor_to_string(torch.transpose(net.mhsa.scores, 0, 1))
+        + "};\n"
+    )
+    f.close()

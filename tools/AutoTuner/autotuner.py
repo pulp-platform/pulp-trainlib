@@ -42,12 +42,12 @@ Tiler (Naive or DORY-based) which finds tiling schemes depending on the problem,
 # =====> USER SETTINGS <=====
 # Network setting                                         
 layer_type  = 'LINEAR'    # Options: 'PW', 'DW', 'LINEAR', 'CONV2D'  
-IN_CH       = 64
+IN_CH       = 128 * 512
 INPUT_H     = 1               
 INPUT_W     = 1                       
 KER_H       = 1                                       
 KER_W       = 1                                   
-OUT_CH      = 64
+OUT_CH      = 128 * 128
 PADDING     = 0                                            
 STRIDE      = 1
 USE_BIAS    = 1
@@ -60,20 +60,20 @@ NUM_KERNEL_BITS         = 32
 NUM_OUTPUT_BITS         = 32
 # Select if to ignore FW and WGT GRAD
 IGNORE_FW = False
-IGNORE_WGT_GRAD = False
+IGNORE_WGT_GRAD = True
 # Select if to ignore input grads
 IGNORE_IN_GRAD = False
 # Select if to use either the naive or the DORY-based tiler
 USE_NAIVE_TILER = True
 # Select if to compile locally after finding the tiling
-FIND_FASTEST_MATMUL = True
+FIND_FASTEST_MATMUL = False
 # Select if to write the file for server execution (specify trainlib's folder location on server)
 WRITE_YML_FILE = True
 trainlib_path = '../../'
 # PULP settings
 NUM_STD_MATMUL      = 24
 NUM_DW_MATMUL       = 7
-TILING_BUFFER_SIZE  = 28*1024     # Standard = 64k
+TILING_BUFFER_SIZE  = 128*1024     # Standard = 128k
 # =====> END OF USER SETTINGS <=====
 
 
