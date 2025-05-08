@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 ETH Zurich and University of Bologna
+ * Copyright (C) 2021-2025 ETH Zurich and University of Bologna
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  */
 
 /**
- * Authors: Davide Nadalini, Giacomo Saporetti
-*/ 
+ * Authors: Davide Nadalini, Giacomo Saporetti, Calin Diaconu
+*/
 
 #include "pmsis.h"
 #include "pulp_train_utils_fp16.h"
@@ -27,27 +27,34 @@
 
 
 
-void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
-{
-    struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 * skip = args->skip;
-    struct blob_fp16 * lout = args->lout;
-    struct blob_fp16 * out = args->output;
+void pulp_residualconn_fp16_fw(void *SkipConn_args_fp16) {
+    struct SkipConn_args_fp16 *args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
+    struct blob_fp16 *skip = args->skip;
+    struct blob_fp16 *lout = args->lout;
+    struct blob_fp16 *out = args->output;
 
     if (skip->dim != lout->dim || lout->dim != out->dim) {
-        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!"); 
-               printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",skip->dim,skip->C,skip->H,skip->W,lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
+        printf("\n[pulp_residualconn_fp16_fw]: Sizes of input and output activations not matching!!");
+        printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n", skip->dim, skip->C, skip->H,
+               skip->W, lout->dim, lout->C, lout->H, lout->W, out->dim, out->C, out->H, out->W);
 
         return;
     }
+
+    int dims[] = {out->dim};
 
     struct vect_sum_args_fp16 args_sum;
     args_sum.op_1 = skip->data;
     args_sum.op_2 = lout->data;
     args_sum.dest = out->data;
-    args_sum.size = out->dim;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args_sum);
+    args_sum.op_1_dims = dims;
+    args_sum.op_2_dims = dims;
+
+    args_sum.op_1_dims_len = 1;
+    args_sum.op_2_dims_len = 1;
+
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &args_sum);
 }
 
 
@@ -56,43 +63,50 @@ void pulp_residualconn_fp16_fw( void * SkipConn_args_fp16 )
 
 // BACKWARD PRIMITIVES
 
-void pulp_sumnode_fp16_bw( void * SkipConn_args_fp16 )
-{
-    struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-    struct blob_fp16 * skip = args->skip;
-    struct blob_fp16 * lout = args->lout;
-    struct blob_fp16 * out = args->output;
-  
-    if (args->skip_in_grad==0)
-   {
-    if (skip->dim != out->dim) {
-        printf("[pulp_sumnode_fp16_bw]: Sizes of input and output activations not matching!!");
-                printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",skip->dim,skip->C,skip->H,skip->W,lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
- return;
+void pulp_sumnode_fp16_bw(void *SkipConn_args_fp16) {
+    struct SkipConn_args_fp16 *args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
+    struct blob_fp16 *skip = args->skip;
+    struct blob_fp16 *lout = args->lout;
+    struct blob_fp16 *out = args->output;
+
+    if (args->skip_in_grad == 0) {
+        if (skip->dim != out->dim) {
+            printf("[pulp_sumnode_fp16_bw]: Sizes of input and output activations not matching!!");
+            printf("\ngot (NCHW) Skip: %d,%d,%d,%d Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n", skip->dim, skip->C, skip->H,
+                   skip->W, lout->dim, lout->C, lout->H, lout->W, out->dim, out->C, out->H, out->W);
+            return;
+        }
+
+        int dims[] = {skip->dim};
+
+        struct vect_sum_args_fp16 args_sum;
+
+        args_sum.op_1 = out->diff;
+        args_sum.op_2 = skip->diff;
+        args_sum.dest = skip->diff;
+
+        args_sum.op_1_dims = dims;
+        args_sum.op2_dims = dims;
+
+        args_sum.op_1_dims_len = 1;
+        args_sum.op_2_dims_len = 1;
+
+        pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &args_sum);
     }
-
-    struct vect_sum_args_fp16 args_sum;
-    args_sum.op_1 = out->diff;
-    args_sum.op_2 = skip->diff;
-    args_sum.dest = skip->diff;
-    args_sum.size = skip->dim;
-
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &args_sum);
-   }
 }
 
 
-void pulp_residualconn_fp16_bw( void * SkipConn_args_fp16 )
-{
-    struct SkipConn_args_fp16 * args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
-  //  struct blob_fp16 * skip = args->skip;
-    struct blob_fp16 * lout = args->lout;
-    struct blob_fp16 * out = args->output;
+void pulp_residualconn_fp16_bw(void *SkipConn_args_fp16) {
+    struct SkipConn_args_fp16 *args = (struct SkipConn_args_fp16 *) SkipConn_args_fp16;
+    //  struct blob_fp16 * skip = args->skip;
+    struct blob_fp16 *lout = args->lout;
+    struct blob_fp16 *out = args->output;
 
     if (lout->dim != out->dim) {
-        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output activations not matching!!"); 
-                printf("\ngot (NCHW)  Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n",lout->dim,lout->C,lout->H,lout->W,out->dim,out->C,out->H,out->W);
-return;
+        printf("[pulp_residualconn_fp16_bw]: Sizes of input and output activations not matching!!");
+        printf("\ngot (NCHW)  Lout: %d,%d,%d,%d Out:%d,%d,%d,%d\n", lout->dim, lout->C, lout->H, lout->W, out->dim,
+               out->C, out->H, out->W);
+        return;
     }
 
     // Copy gradient into the input
