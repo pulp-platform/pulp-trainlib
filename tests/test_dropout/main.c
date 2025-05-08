@@ -24,7 +24,7 @@ int main (void) {
   printf("\nLaunching random number generation procedure...\n");
   pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, net_step, NULL));
 
-  printf("Transposition successful!\n");
+  printf("Dropout successful!\n");
   pi_cluster_close(&cluster_dev);
 
   pmsis_exit(0);
