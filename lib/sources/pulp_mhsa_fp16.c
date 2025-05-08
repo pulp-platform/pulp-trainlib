@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 University of Bologna
+ * Copyright (C) 2023-2025 University of Bologna
  * All rights reserved.
  *
  * This software may be modified and distributed under the terms
@@ -48,12 +48,12 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     int E = mhsa_args->input->W;                                //  Input Sequence element size
     int F = mhsa_args->attention_map->W;                        //  Hidden dimension of attention (N. Heads * Head dimension)
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d", L, E, F);
-    #endif
+#endif
 
     int H = F / n_heads;                                        //  Head dimension
-    fp16 scaling = (fp16) (1 / sqrt(H));                               //  Scaling factor to avoid vanishing gradients
+    fp16 scaling = (fp16)(1 / sqrt(H));                               //  Scaling factor to avoid vanishing gradients
     //float scaling = q_rsqrt_fp16((float)H);
 
 
@@ -75,14 +75,19 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
     // T0_q
     struct transp_args_fp16 transp_args0_q;
-    transp_args0_q.matrix = coeffDataWinQ;
-    transp_args0_q.transp_matrix = temp;
-    transp_args0_q.N = E;
-    transp_args0_q.M = F;
+
+    int dim[] = {E, F};
+    int tr_axes[] = {1, 0};
+
+    transp_args0_q.in_matrix = coeffDataWinQ;
+    transp_args0_q.out_matrix = temp;
+    transp_args0_q.dim = dim;
+    transp_args0_q.transposed_axes = tr_axes;
+    transp_args0_q.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args0_q);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nT0_q result\n\ncoeffDataWinQ [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -96,7 +101,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args0_q.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M1_q
     // Projecting input sequence into Q
@@ -109,18 +114,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_q.M = L;
     matMul_args1_q.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_q);
-    #else
+#else
     struct mm_manager_args_fp16 man_args1_q;
     man_args1_q.mm_args = &matMul_args1_q;
     man_args1_q.layer_type = LAYER_LINEAR;
     man_args1_q.step_type = STEP_FW;
     man_args1_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_q);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM1_q result\n\ncoeffDataWinQ: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
@@ -141,7 +146,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args1_q.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // Bias_addition_q
     struct mm_bias_add_args_fp16 mm_bias_add_args_q;
@@ -154,14 +159,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
     // T0_k
     struct transp_args_fp16 transp_args0_k;
-    transp_args0_k.matrix = coeffDataWinK;
-    transp_args0_k.transp_matrix = temp;
-    transp_args0_k.N = E;
-    transp_args0_k.M = F;
+
+    dim[] = {E, F};
+
+    transp_args0_k.in_matrix = coeffDataWinK;
+    transp_args0_k.out_matrix = temp;
+    transp_args0_k.dim = dim;
+    transp_args0_k.transposed_axes = tr_axes;
+    transp_args0_k.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args0_k);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nT0_k result\n\ncoeffDataWinK [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -175,7 +184,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args0_k.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M1_k
     // Projecting input sequence into K
@@ -188,18 +197,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_k.M = L;
     matMul_args1_k.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_k);
-    #else
+#else
     struct mm_manager_args_fp16 man_args1_k;
     man_args1_k.mm_args = &matMul_args1_k;
     man_args1_k.layer_type = LAYER_LINEAR;
     man_args1_k.step_type = STEP_FW;
     man_args1_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_k);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM1_k result\n\ncoeffDataWinK: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
@@ -220,7 +229,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args1_k.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // Bias_addition_k
     struct mm_bias_add_args_fp16 mm_bias_add_args_k;
@@ -233,14 +242,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
     // T0_v
     struct transp_args_fp16 transp_args0_v;
-    transp_args0_v.matrix = coeffDataWinV;
-    transp_args0_v.transp_matrix = temp;
-    transp_args0_v.N = E;
-    transp_args0_v.M = F;
+
+    dim = {E, F};
+
+    transp_args0_v.in_matrix = coeffDataWinV;
+    transp_args0_v.out_matrix = temp;
+    transp_args0_v.dim = dim;
+    transp_args0_v.transposed_axes = tr_axes;
+    transp_args0_v.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args0_v);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nT0_v result\n\ncoeffDataWinV [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -254,7 +267,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args0_v.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M1_v
     // Projecting input sequence into V
@@ -267,18 +280,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_v.M = L;
     matMul_args1_v.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_v);
-    #else
+#else
     struct mm_manager_args_fp16 man_args1_v;
     man_args1_v.mm_args = &matMul_args1_v;
     man_args1_v.layer_type = LAYER_LINEAR;
     man_args1_v.step_type = STEP_FW;
     man_args1_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_v);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM1_v result\n\ncoeffDataWinV: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
@@ -299,7 +312,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args1_v.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // Bias_addition_v
     struct mm_bias_add_args_fp16 mm_bias_add_args_v;
@@ -322,14 +335,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
         //  T1
         struct transp_args_fp16 transp_args1;
-        transp_args1.matrix = k + L * i * H;
-        transp_args1.transp_matrix = temp;
-        transp_args1.N = H;
-        transp_args1.M = L;
+
+        dim = {H, L};
+
+        transp_args1.in_matrix = k + L * i * H;
+        transp_args1.out_matrix = temp;
+        transp_args1.dim = dim;
+        transp_args1.transposed_axes = tr_axes;
+        transp_args1.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args1);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T1 result\n\nk: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -343,7 +360,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args1.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // M2
         // Multiply it with the i-th head's Q chunk
@@ -356,18 +373,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         matMul_args2.M = L;
         matMul_args2.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args2);
-        #else
+#else
         struct mm_manager_args_fp16 man_args2;
         man_args2.mm_args = &matMul_args2;
         man_args2.layer_type = LAYER_LINEAR;
         man_args2.step_type = STEP_FW;
         man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M2 result\n\ntemp: %d %d\n", i, L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
@@ -388,7 +405,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args2.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================== OP 4 ==================================================
@@ -400,25 +417,25 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         s_m_args.scalar = scaling;
         s_m_args.dim = L * L;
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - scalar result\n\nsoftmax_buffer (BEFORE scaling): %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
             printf("%.8f ", s_m_args.input[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nsoftmax_buffer (AFTER scaling): %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
             printf("%.8f ", s_m_args.input[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================== OP 5 ==================================================
@@ -433,14 +450,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         //  row-wise max and sums, therefore it is necessary to transpose_fp16 the current head buffer.
         // T2
         struct transp_args_fp16 transp_args2;
-        transp_args2.matrix = softmax_buffer + i * L * L;
-        transp_args2.transp_matrix = temp;
-        transp_args2.N = L;
-        transp_args2.M = L;
+
+        dim = {L, L};
+
+        transp_args2.in_matrix = softmax_buffer + i * L * L;
+        transp_args2.out_matrix = temp;
+        transp_args2.dim = dim;
+        transp_args2.transposed_axes = tr_axes;
+        transp_args2.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -454,7 +475,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args2.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         //  Softmax algorithm
         struct softmax_args_fp16 softmax_arg;
@@ -467,7 +488,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
 
         pulp_softmax_fp16_fw_cl(&softmax_arg);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - softmax result\n\ntemp: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -481,7 +502,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", softmax_arg.output_data[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================== OP 6 ==================================================
@@ -495,14 +516,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose_fp16 the memory buffer again.
         struct transp_args_fp16 transp_args3;
-        transp_args3.matrix = softmax_buffer + i * L * L;
-        transp_args3.transp_matrix = temp;
-        transp_args3.N = L;
-        transp_args3.M = L;
+
+        dim = {L, L};
+
+        transp_args3.in_matrix = softmax_buffer + i * L * L;
+        transp_args3.out_matrix = temp;
+        transp_args3.dim = dim;
+        transp_args3.transposed_axes = tr_axes;
+        transp_args3.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args3);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -516,7 +541,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args3.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // M3
         struct matMul_args_fp16 matMul_args3;
@@ -528,18 +553,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args3);
-        #else
+#else
         struct mm_manager_args_fp16 man_args3;
         man_args3.mm_args = &matMul_args3;
         man_args3.layer_type = LAYER_LINEAR;
         man_args3.step_type = STEP_FW;
         man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M3 result\n\nv: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -560,7 +585,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args3.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -580,18 +605,18 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args4.M = L;
     matMul_args4.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args4);
-    #else
+#else
     struct mm_manager_args_fp16 man_args4;
     man_args4.mm_args = &matMul_args4;
     man_args4.layer_type = LAYER_LINEAR;
     man_args4.step_type = STEP_FW;
     man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM4 result\n\ncoeffDataWout: %d %d\n", E, F);
         for (int j=0; j<E*F; j++){
             if(!(j%(F))) printf("\n");
@@ -612,7 +637,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args4.C[j]);
         }
         printf("\n\n");
-    #endif
+#endif
 }
 
 
@@ -680,14 +705,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
     // T1
     struct transp_args_fp16 transp_args1;
-    transp_args1.matrix = attention_map;
-    transp_args1.transp_matrix = temp;
-    transp_args1.N = F;
-    transp_args1.M = L;
+
+    dim = {F, L};
+
+    transp_args1.in_matrix = attention_map;
+    transp_args1.out_matrix = temp;
+    transp_args1.dim = dim;
+    transp_args1.transposed_axes = tr_axes;
+    transp_args1.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args1);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\n~~~~~~~~~~~~~~~BACKWARD PASS~~~~~~~~~~~~~~~\n\n");
     printf("\nT1 result\n\nattention_map: %d %d\n", F, L);
     for (int j=0; j<H*L; j++){
@@ -702,7 +731,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args1.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M1
     struct matMul_args_fp16 matMul_args1;
@@ -714,18 +743,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1);
-    #else
+#else
     struct mm_manager_args_fp16 man_args1;
     man_args1.mm_args = &matMul_args1;
     man_args1.layer_type = LAYER_LINEAR;
     man_args1.step_type = STEP_FW;
     man_args1.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM1 result\n\noutDiff: %d %d\n", E, L);
     for (int j=0; j<E*L; j++){
         if(!(j%(L))) printf("\n");
@@ -746,18 +775,22 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args1.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // T2
     struct transp_args_fp16 transp_args2;
-    transp_args2.matrix = coeffDataWout;
-    transp_args2.transp_matrix = temp;
-    transp_args2.N = E;
-    transp_args2.M = F;
+
+    dim = {E, F};
+
+    transp_args2.in_matrix = coeffDataWout;
+    transp_args2.out_matrix = temp;
+    transp_args2.dim = dim;
+    transp_args2.transposed_axes = tr_axes;
+    transp_args2.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\ncoeffDataWout: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -771,7 +804,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args2.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M2
     struct matMul_args_fp16 matMul_args2;
@@ -783,18 +816,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args2.M = L;
     matMul_args2.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args2);
-    #else
+#else
     struct mm_manager_args_fp16 man_args2;
     man_args2.mm_args = &matMul_args2;
     man_args2.layer_type = LAYER_LINEAR;
     man_args2.step_type = STEP_FW;
     man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM2 result\n\ntemp: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
@@ -815,7 +848,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args2.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // Cycle on the heads
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -850,18 +883,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args3);
-        #else
+#else
         struct mm_manager_args_fp16 man_args3;
         man_args3.mm_args = &matMul_args3;
         man_args3.layer_type = LAYER_LINEAR;
         man_args3.step_type = STEP_FW;
         man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M3 result\n\nattention_map_diff: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -882,18 +915,22 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args3.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // T3
         struct transp_args_fp16 transp_args3;
-        transp_args3.matrix = v + i * L * H;
-        transp_args3.transp_matrix = temp;
-        transp_args3.N = H;
-        transp_args3.M = L;
+
+        dim = {H, L};
+
+        transp_args3.in_matrix = v + i * L * H;
+        transp_args3.out_matrix = temp;
+        transp_args3.dim = dim;
+        transp_args3.transposed_axes = tr_axes;
+        transp_args3.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args3);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T3 result\n\nv: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -907,7 +944,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args3.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // M4
         struct matMul_args_fp16 matMul_args4;
@@ -919,18 +956,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args4);
-        #else
+#else
         struct mm_manager_args_fp16 man_args4;
         man_args4.mm_args = &matMul_args4;
         man_args4.layer_type = LAYER_LINEAR;
         man_args4.step_type = STEP_FW;
         man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M4 result\n\ntemp: %d %d\n", i, L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
@@ -951,7 +988,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args4.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================ BACKPROP 5 ================================================
@@ -969,15 +1006,19 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         // ~~~~~~~~~~~~~~~~~~ "IN-PLACE"_TRANSFORM (grad) [L x L] ~~~~~~~~~~~~~~~~~~                                              (T5 & C2)
 
         // T4
+        dim = {L, L};
+
         struct transp_args_fp16 transp_args4;
-        transp_args4.matrix = softmax_buffer_diff + i * L * L;
-        transp_args4.transp_matrix = temp;
-        transp_args4.N = L;
-        transp_args4.M = L;
+
+        transp_args4.in_matrix = softmax_buffer_diff + i * L * L;
+        transp_args4.out_matrix = temp;
+        transp_args4.dim = dim;
+        transp_args4.transposed_axes = tr_axes;
+        transp_args4.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T4 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -991,7 +1032,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args4.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // C1
         struct copy_args_fp16 copy_args1;
@@ -1001,7 +1042,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args1);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - C1 result\n\ntemp: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1015,7 +1056,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", copy_args1.to[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // SM
         struct softmax_args_fp16 softmax_arg;
@@ -1028,7 +1069,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
         pulp_softmax_fp16_bw_cl(&softmax_arg);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - softmax backprop result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1049,18 +1090,22 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", softmax_arg.input_diff[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // T5
         struct transp_args_fp16 transp_args5;
-        transp_args5.matrix = grad;
-        transp_args5.transp_matrix = temp;
-        transp_args5.N = L;
-        transp_args5.M = L;
+
+        dim = {L, L};
+
+        transp_args5.in_matrix = grad;
+        transp_args5.out_matrix = temp;
+        transp_args5.dim = dim;
+        transp_args5.transposed_axes = tr_axes;
+        transp_args5.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args5);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T5 result\n\ngrad: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1074,7 +1119,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args5.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // C2
         struct copy_args_fp16 copy_args2;
@@ -1084,7 +1129,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args2);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - C2 result\n\ntemp: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1098,7 +1143,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", copy_args1.to[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================ BACKPROP 4 ================================================
@@ -1116,25 +1161,25 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         s_m_args.scalar = scaling;
         s_m_args.dim = L * L;
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - backprop scalar result\n\ngrad (BEFORE scaling): %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
             printf("%.8f ", s_m_args.input[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\ngrad (AFTER scaling): %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
             printf("%.8f ", s_m_args.input[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
 
         // ================================================ BACKPROP 3 ================================================
@@ -1159,14 +1204,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
         // T6
         struct transp_args_fp16 transp_args6;
-        transp_args6.matrix = q + i * L * H;
-        transp_args6.transp_matrix = temp;
-        transp_args6.N = H;
-        transp_args6.M = L;
+
+        dim = {H, L};
+
+        transp_args6.in_matrix = q + i * L * H;
+        transp_args6.out_matrix = temp;
+        transp_args6.dim = dim;
+        transp_args6.transposed_axes = tr_axes;
+        transp_args6.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args6);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T6 result\n\nq: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1180,7 +1229,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args6.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // M5
         struct matMul_args_fp16 matMul_args5;
@@ -1192,18 +1241,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args5.M = H;
         matMul_args5.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args5);
-        #else
+#else
         struct mm_manager_args_fp16 man_args5;
         man_args5.mm_args = &matMul_args5;
         man_args5.layer_type = LAYER_LINEAR;
         man_args5.step_type = STEP_FW;
         man_args5.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args5);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M5 result\n\ngrad: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1224,18 +1273,22 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args5.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // T7
         struct transp_args_fp16 transp_args7;
-        transp_args7.matrix = k_diff + i * L * H;
-        transp_args7.transp_matrix = temp;
-        transp_args7.N = L;
-        transp_args7.M = H;
+
+        dim = {L, H};
+
+        transp_args7.in_matrix = k_diff + i * L * H;
+        transp_args7.out_matrix = temp;
+        transp_args7.dim = dim;
+        transp_args7.transposed_axes = tr_axes;
+        transp_args7.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args7);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - T7 result\n\nk_diff: %d %d\n", i, L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
@@ -1249,7 +1302,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", transp_args7.transp_matrix[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // C3
         struct copy_args_fp16 copy_args3;
@@ -1259,7 +1312,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
         pi_cl_team_fork(NUM_CORES, copy_fp16, &copy_args3);
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - C3 result\n\ntemp: %d %d\n", i, L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
@@ -1273,7 +1326,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", copy_args2.to[j]);
         }
         printf("\n\n");
-        #endif
+#endif
 
         // M6
         struct matMul_args_fp16 matMul_args6;
@@ -1285,18 +1338,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
 
-        #ifndef OPTIMIZE
+#ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args6);
-        #else
+#else
         struct mm_manager_args_fp16 man_args6;
         man_args6.mm_args = &matMul_args6;
         man_args6.layer_type = LAYER_LINEAR;
         man_args6.step_type = STEP_FW;
         man_args6.matmul_type = opt_matmul_type; //MATMUL_TYPE
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args6);
-        #endif
+#endif
 
-        #ifdef DEBUG
+#ifdef DEBUG
         printf("\n\n\nHead %d - M6 result\n\nk: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
@@ -1317,7 +1370,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
             printf("%.8f ", matMul_args6.C[j]);
         }
         printf("\n\n");
-        #endif
+#endif
     }
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1359,14 +1412,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
 
     // T8
     struct transp_args_fp16 transp_args8;
-    transp_args8.matrix = inputData;
-    transp_args8.transp_matrix = temp;
-    transp_args8.N = E;
-    transp_args8.M = L;
+
+    dim = {E, L};
+
+    transp_args8.in_matrix = inputData;
+    transp_args8.out_matrix = temp;
+    transp_args8.dim = dim;
+    transp_args8.transposed_axes = tr_axes;
+    transp_args8.n_dim = 2;
 
     pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args8);
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nT8 result\n\ninputData: %d %d\n", E, L);
     for (int j=0; j<E*L; j++){
         if(!(j%(L))) printf("\n");
@@ -1380,7 +1437,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", transp_args8.transp_matrix[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M7_q
     struct matMul_args_fp16 matMul_args7_q;
@@ -1392,18 +1449,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_q.M = E;
     matMul_args7_q.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_q);
-    #else
+#else
     struct mm_manager_args_fp16 man_args7_q;
     man_args7_q.mm_args = &matMul_args7_q;
     man_args7_q.layer_type = LAYER_LINEAR;
     man_args7_q.step_type = STEP_FW;
     man_args7_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args7_q);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM7_q result\n\nq_diff: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
@@ -1424,7 +1481,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args7_q.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M7_k
     struct matMul_args_fp16 matMul_args7_k;
@@ -1436,18 +1493,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_k.M = E;
     matMul_args7_k.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_k);
-    #else
+#else
     struct mm_manager_args_fp16 man_args7_k;
     man_args7_k.mm_args = &matMul_args7_k;
     man_args7_k.layer_type = LAYER_LINEAR;
     man_args7_k.step_type = STEP_FW;
     man_args7_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args7_k);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM7_k result\n\nk_diff: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
@@ -1468,7 +1525,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args7_k.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M7_v
     struct matMul_args_fp16 matMul_args7_v;
@@ -1480,18 +1537,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_v.M = E;
     matMul_args7_v.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_v);
-    #else
+#else
     struct mm_manager_args_fp16 man_args7_v;
     man_args7_v.mm_args = &matMul_args7_v;
     man_args7_v.layer_type = LAYER_LINEAR;
     man_args7_v.step_type = STEP_FW;
     man_args7_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args7_v);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM7_v result\n\nv_diff: %d %d\n", F, L);
     for (int j=0; j<F*L; j++){
         if(!(j%(L))) printf("\n");
@@ -1512,7 +1569,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args7_v.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // M8_q
     struct matMul_args_fp16 matMul_args8_q;
@@ -1524,18 +1581,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_q.M = L;
     matMul_args8_q.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_q);
-    #else
+#else
     struct mm_manager_args_fp16 man_args8_q;
     man_args8_q.mm_args = &matMul_args8_q;
     man_args8_q.layer_type = LAYER_LINEAR;
     man_args8_q.step_type = STEP_FW;
     man_args8_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args8_q);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM8_q result\n\ncoeffDataWinQ [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -1556,16 +1613,24 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args8_q.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // SUM_q
-    struct vect_sum_args_fp16 vect_sum_args;
+    int dims[1] = {E * L};
+
+    struct array_broadcast_sum_fp16_args vect_sum_args;
+
     vect_sum_args.op_1 = inputDiff;
     vect_sum_args.op_2 = temp;
     vect_sum_args.dest = inputDiff;
-    vect_sum_args.size = E * L;
 
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    vect_sum_args.op_1_dims = dims;
+    vect_sum_args.op_2_dims = dims;
+
+    vect_sum_args.op_1_dims_len = 1;
+    vect_sum_args.op_2_dims_len = 1;
+
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 
     // M8_k
     struct matMul_args_fp16 matMul_args8_k;
@@ -1577,18 +1642,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_k.M = L;
     matMul_args8_k.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_k);
-    #else
+#else
     struct mm_manager_args_fp16 man_args8_k;
     man_args8_k.mm_args = &matMul_args8_k;
     man_args8_k.layer_type = LAYER_LINEAR;
     man_args8_k.step_type = STEP_FW;
     man_args8_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args8_k);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM8_k result\n\ncoeffDataWinK [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -1609,10 +1674,10 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args8_k.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // SUM_k
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 
     // M8_v
     struct matMul_args_fp16 matMul_args8_v;
@@ -1624,18 +1689,18 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_v.M = L;
     matMul_args8_v.trans_B = 0;
 
-    #ifndef OPTIMIZE
+#ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_v);
-    #else
+#else
     struct mm_manager_args_fp16 man_args8_v;
     man_args8_v.mm_args = &matMul_args8_v;
     man_args8_v.layer_type = LAYER_LINEAR;
     man_args8_v.step_type = STEP_FW;
     man_args8_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
     pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args8_v);
-    #endif
+#endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     printf("\n\n\nM8_v result\n\ncoeffDataWinV [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
@@ -1656,11 +1721,960 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         printf("%.8f ", matMul_args8_v.C[j]);
     }
     printf("\n\n");
-    #endif
+#endif
 
     // SUM_v
-    pi_cl_team_fork(NUM_CORES, vect_sum_fp16, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp16, &vect_sum_args);
 }
+
+//FORWARD INFERENCE
+void pulp_mhsa_mobilebert_inference_fp16_fw_cl(void *Mhsa_args) {
+    // ======================================== DECLARATIONS ========================================
+    struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+
+    fp16 *coeffDataWinQ = mhsa_args->coeff_in_q->data;         //  Input Projection Weights for Query (transposed)
+    fp16 *coeffDataWinK = mhsa_args->coeff_in_k->data;         //  Input Projection Weights for Key (transposed)
+    fp16 *coeffDataWinV = mhsa_args->coeff_in_v->data;         //  Input Projection Weights for Value (transposed)
+
+    fp16 *coeffBiasWinQ = mhsa_args->bias_in_q->data;          //  Input Projection Biases for Query
+    fp16 *coeffBiasWinK = mhsa_args->bias_in_k->data;          //  Input Projection Biases for Key
+    fp16 *coeffBiasWinV = mhsa_args->bias_in_v->data;          //  Input Projection Biases for Value
+
+    fp16 *coeffDataWout = mhsa_args->coeff_out->data;          //  Output Projection Weights (Already transposed from GM)
+    fp16 *coeffBiasWout = mhsa_args->bias_out->data;           //  Output Projection Biases
+    
+    fp16 *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
+    fp16 *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
+    fp16 *inputData = mhsa_args->input->data;                  //  Input vector (L x E)
+    fp16 *inputDataBn = mhsa_args->input_bn->data;             //  Input vector bottlenecked (L x F)
+    fp16 *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
+    fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
+    fp16 *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
+    fp16 *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
+    fp16 *qt = mhsa_args->q->data;                             //  Pointer to the first element of Q transposed
+    fp16 *kt = mhsa_args->k->data;                             //  Pointer to the first element of K transposed
+    fp16 *vt = mhsa_args->v->data;                             //  Pointer to the first element of V transposed
+    int n_heads = mhsa_args->n_heads;                           //  Number of heads used for MHSA
+
+    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
+
+    int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
+    int E = mhsa_args->input->W;                                //  Input Sequence element size
+    int F = mhsa_args->input_bn->W;                             //  Hidden dimension of attention (N. Heads * Head dimension)
+
+    //printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d\n", L, E, F);
+
+    int H = F / n_heads;                                        //  Head dimension
+    fp16 scaling = q_rsqrt_fp16((fp16) H);                         //  Scaling factor to avoid vanishing gradients
+    //float scaling = 1/sqrt(H);
+
+    // M1_q
+    // (Wq)t * input_bn
+    struct matMul_args_fp16 matMul_args1_q;
+    matMul_args1_q.A = coeffDataWinQ;                              //  F x F
+    matMul_args1_q.B = inputDataBn;                                //  L x F
+    matMul_args1_q.C = qt;                                         //  F x L
+    matMul_args1_q.N = F;
+    matMul_args1_q.K = F;
+    matMul_args1_q.M = L;
+    matMul_args1_q.trans_B = 1;
+    matMul_args1_q.bias = coeffBiasWinQ;
+    matMul_args1_q.USE_BIASES = 1;
+    matMul_args1_q.bias_transposed = 1;
+    matMul_args1_q.bias_dim = F;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_q);
+    #else
+    struct mm_manager_args_fp16 man_args1_q;
+    man_args1_q.mm_args = &matMul_args1_q;
+    man_args1_q.layer_type = LAYER_LINEAR;
+    man_args1_q.step_type = STEP_FW;
+    man_args1_q.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_q);
+    #endif
+
+    // M1_k
+    // (Wk)t * input_bn
+    struct matMul_args_fp16 matMul_args1_k;
+    matMul_args1_k.A = coeffDataWinK;                              //  F x F
+    matMul_args1_k.B = inputDataBn;                                //  L x F
+    matMul_args1_k.C = kt;                                         //  F x L
+    matMul_args1_k.N = F;
+    matMul_args1_k.K = F;
+    matMul_args1_k.M = L;
+    matMul_args1_k.trans_B = 1;
+    matMul_args1_k.bias = coeffBiasWinK;
+    matMul_args1_k.USE_BIASES = 1;
+    matMul_args1_k.bias_transposed = 1;
+    matMul_args1_k.bias_dim = F;
+
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_k);
+    #else
+    struct mm_manager_args_fp16 man_args1_k;
+    man_args1_k.mm_args = &matMul_args1_k;
+    man_args1_k.layer_type = LAYER_LINEAR;
+    man_args1_k.step_type = STEP_FW;
+    man_args1_k.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_k);
+    #endif
+
+    //  Cycle on the different heads
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    for (int i = 0; i < n_heads; i++) {
+        //  T1
+        struct transp_args_fp16 transp_args1;
+        transp_args1.matrix = kt + L * i * H;
+        transp_args1.transp_matrix = temp;
+        transp_args1.N = H;
+        transp_args1.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args1);
+
+        // M2
+        // Multiply it with the i-th head's transposed Q chunk
+        struct matMul_args_fp16 matMul_args2;
+        matMul_args2.A = temp;
+        matMul_args2.B = qt + L * i * H;
+        matMul_args2.C = softmax_buffer + i * L * L;
+        matMul_args2.N = L;
+        matMul_args2.K = H;
+        matMul_args2.M = L;
+        matMul_args2.trans_B = 0;
+        matMul_args2.USE_BIASES = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args2);
+        #else
+        struct mm_manager_args_fp16 man_args2;
+        man_args2.mm_args = &matMul_args2;
+        man_args2.layer_type = LAYER_LINEAR;
+        man_args2.step_type = STEP_FW;
+        man_args2.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args2);
+        #endif
+
+
+        // ================================================== OP 4 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        struct scalar_mul_args_fp16 s_m_args;
+        s_m_args.input = softmax_buffer + i * L * L;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = L * L;
+
+        pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
+
+        // ================================================== OP 5 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   (T2)
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
+
+        //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+        //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+        //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+        // T2
+        struct transp_args_fp16 transp_args2;
+        transp_args2.matrix = softmax_buffer + i * L * L;
+        transp_args2.transp_matrix = temp;
+        transp_args2.N = L;
+        transp_args2.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args2);
+
+        //  Softmax algorithm
+        struct softmax_args_fp16 softmax_arg;
+        softmax_arg.input_data = temp;
+        softmax_arg.output_data = softmax_buffer + i * L * L;
+        softmax_arg.maxes = maxes;
+        softmax_arg.sums = sums;
+        softmax_arg.H = L;
+        softmax_arg.W = L;
+
+        pulp_softmax_fp16_fw_cl(&softmax_arg);
+    }
+
+
+    // M1_v
+    // (Wv)t * input
+    struct matMul_args_fp16 matMul_args1_v;
+    matMul_args1_v.A = coeffDataWinV;                              //  F x E
+    matMul_args1_v.B = inputData;                                  //  L x E
+    matMul_args1_v.C = vt;                                         //  F x L
+    matMul_args1_v.N = F;
+    matMul_args1_v.K = E;
+    matMul_args1_v.M = L;
+    matMul_args1_v.trans_B = 1;
+    matMul_args1_v.bias = coeffBiasWinV;
+    matMul_args1_v.USE_BIASES = 1;
+    matMul_args1_v.bias_transposed = 1;
+    matMul_args1_v.bias_dim = F;
+
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_v);
+    #else
+    struct mm_manager_args_fp16 man_args1_v;
+    man_args1_v.mm_args = &matMul_args1_v;
+    man_args1_v.layer_type = LAYER_LINEAR;
+    man_args1_v.step_type = STEP_FW;
+    man_args1_v.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args1_v);
+    #endif
+
+
+    for (int i = 0; i < n_heads; i++) {
+        // ================================================== OP 6 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
+        // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+
+        // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
+
+        // T3
+        //  Each head result has to be appended to the full attention map, to do so we require to store the current
+        //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+        struct transp_args_fp16 transp_args3;
+        transp_args3.matrix = softmax_buffer + i * L * L;
+        transp_args3.transp_matrix = temp;
+        transp_args3.N = L;
+        transp_args3.M = L;
+
+        pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args3);
+
+        // M3
+        struct matMul_args_fp16 matMul_args3;
+        matMul_args3.A = vt + L * i * H;
+        matMul_args3.B = temp;
+        matMul_args3.C = attention_map + L * i * H;
+        matMul_args3.N = H;
+        matMul_args3.K = L;
+        matMul_args3.M = L;
+        matMul_args3.trans_B = 0;
+
+        #ifndef OPTIMIZE
+        pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args3);
+        #else
+        struct mm_manager_args_fp16 man_args3;
+        man_args3.mm_args = &matMul_args3;
+        man_args3.layer_type = LAYER_LINEAR;
+        man_args3.step_type = STEP_FW;
+        man_args3.matmul_type = opt_matmul_type; //MATMUL_TYPE
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args3);
+        #endif
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // ================================================== OP 7 ==================================================
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> temp ~~~~~~~~~~~~~~~~~~~~~~       (M4)
+    // ~~~~~~~~~~~~~~~~~~~~~~     F x F     @     F x L     ->  F x L  ~~~~~~~~~~~~~~~~~~~~~~
+
+    // M4
+    //  Final attention map projection
+    struct matMul_args_fp16 matMul_args4;
+    matMul_args4.A = coeffDataWout;
+    matMul_args4.B = attention_map;
+    matMul_args4.C = temp;
+    matMul_args4.N = F;
+    matMul_args4.K = F;
+    matMul_args4.M = L;
+    matMul_args4.trans_B = 0;
+    matMul_args4.bias = coeffBiasWout;
+    matMul_args4.USE_BIASES = 1;
+    matMul_args4.bias_transposed = 1;
+    matMul_args4.bias_dim = F;
+
+    #ifndef OPTIMIZE
+    pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args4);
+    #else
+    struct mm_manager_args_fp16 man_args4;
+    man_args4.mm_args = &matMul_args4;
+    man_args4.layer_type = LAYER_LINEAR;
+    man_args4.step_type = STEP_FW;
+    man_args4.matmul_type = opt_matmul_type; //MATMUL_TYPE
+    pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args4);
+    #endif
+
+    // T4
+    // The last transpose to original shape
+    struct transp_args_fp16 transp_args4;
+    transp_args4.matrix = temp;
+    transp_args4.transp_matrix = outData;
+    transp_args4.N = F;
+    transp_args4.M = L;
+
+    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args4);
+}
+
+
+void tiled_matmul_mhsa_fp16(void* matmul_args, void* tiled_matmul_mhsa_args, int projection){
+    struct matMul_args_fp16 * args = (struct matMul_args_fp16 *)matmul_args;
+    struct Tiled_Matmul_Mhsa_args_fp16 * tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16*) tiled_matmul_mhsa_args;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 1){
+        tile_h = tiled_args->tile_h_p;
+        tile_w = tiled_args->tile_w_p;
+        tile_dim = tiled_args->tile_dim_p;
+    }
+    else if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_attv;
+        tile_w = tiled_args->tile_w_attv;
+        tile_dim = tiled_args->tile_dim_attv;
+    }
+    fp16* BUFF = tiled_args->BUFF;
+    pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+    pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+    
+    int n_tiles_i = (args->N) / tile_h;
+    int n_tiles_j = (args->M) / tile_w;
+    int K = args->K;
+    
+    fp16* IN_DATA = BUFF;
+    fp16* W_DATA = BUFF + K * tile_h;
+    fp16* OUT_DATA = W_DATA + K * tile_w;
+    fp16* BIAS_DATA = OUT_DATA + tile_dim;
+    
+    tiled_args->mm_args->A = IN_DATA;
+    tiled_args->mm_args->B = W_DATA;
+    tiled_args->mm_args->C = OUT_DATA;
+    tiled_args->mm_args->N = tile_h;
+    tiled_args->mm_args->K = K;
+    tiled_args->mm_args->M = tile_w;
+    tiled_args->mm_args->trans_B = args->trans_B;
+    tiled_args->mm_args->bias = BIAS_DATA;
+    tiled_args->mm_args->bias_dim = tile_w;
+    tiled_args->mm_args->USE_BIASES = args->USE_BIASES;
+    tiled_args->mm_args->bias_transposed = args->bias_transposed;
+    
+    for(int j = 0; j < n_tiles_j; j++){
+        if(!tiled_args->mm_args->trans_B){
+            pi_cl_dma_cmd_2d((uint32_t) (args->B + j * tile_w), (uint32_t) (W_DATA), 2 * tile_w * K, 2 * (args->M), 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            if(args->USE_BIASES == 1){
+                pi_cl_dma_cmd((uint32_t) (args->bias + j * tile_w), (uint32_t) (BIAS_DATA), 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+                pi_cl_dma_cmd_wait(cmd_load);
+            }   
+        }
+        else{
+            pi_cl_dma_cmd_2d((uint32_t) (args->B + j * tile_w * K), (uint32_t) (W_DATA), 2 * tile_w * K, 2 * K, 2 * K, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+        }
+        for(int i = 0; i < n_tiles_i; i++){
+            if(tiled_args->mm_args->bias_transposed && args->USE_BIASES == 1){
+                pi_cl_dma_cmd((uint32_t) (args->bias + i * tile_h), (uint32_t) (BIAS_DATA), 2 * tile_h, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+                pi_cl_dma_cmd_wait(cmd_load);
+            }
+            pi_cl_dma_cmd_2d((uint32_t) (args->A + i * K * tile_h), (uint32_t) (IN_DATA), 2 * K * tile_h, 2 * K, 2 * K, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            tiled_args->man_args->mm_args = tiled_args->mm_args;
+            pi_cl_team_fork(NUM_CORES, mm_manager_fp16, tiled_args->man_args);
+            pi_cl_dma_cmd_2d((uint32_t) (args->C + i * args->M * tile_h + tile_w * j), (uint32_t) (OUT_DATA), 2 * tile_dim, 2 * (args->M), 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+        }
+    }
+}
+
+void tiled_transpose_mhsa_fp16(void *transpose_args, void* Tiled_matmul_mhsa_args, int projection){
+    struct transp_args_fp16 *args = (struct transp_args_fp16 *) transpose_args;
+    struct Tiled_Matmul_Mhsa_args_fp16 * tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16*) Tiled_matmul_mhsa_args;
+    struct transp_args_fp16 args_l1;
+
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    if(projection == 0){
+        tile_h = tiled_args->tile_h_sm;
+        tile_w = tiled_args->tile_w_sm;
+        tile_dim = tiled_args->tile_dim_sm;
+    }
+    else if(projection == 1){
+        tile_h = tiled_args->tile_h_out_tr;
+        tile_w = tiled_args->tile_w_out_tr;
+        tile_dim = tiled_args->tile_dim_out_tr;
+    }
+    else if(projection == 2){
+        tile_h = tiled_args->tile_h_tr;
+        tile_w = tiled_args->tile_w_tr;
+        tile_dim = tiled_args->tile_dim_tr;
+    }
+    fp16* BUFF = tiled_args->BUFF;
+    pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+    pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+
+    int N = args->N;
+    int M = args->M;
+    int n_tiles_i = M / tile_h;
+    int n_tiles_j = N / tile_w;
+
+    fp16* IN_DATA = BUFF;
+    fp16* OUT_DATA = BUFF + tile_dim;
+
+    args_l1.matrix = IN_DATA;
+    args_l1.transp_matrix = OUT_DATA;
+    args_l1.N = tile_w;
+    args_l1.M = tile_h;
+    
+    for(int i = 0; i < n_tiles_i; i++){
+        for(int j = 0; j < n_tiles_j; j++){
+            pi_cl_dma_cmd_2d((uint32_t) (args->matrix + i * tile_h + j * tile_w * M), (uint32_t) (IN_DATA), 2 * tile_dim, 2 * M, 2 * tile_h, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_wait(cmd_load);
+            pi_cl_team_fork(NUM_CORES, transpose_fp16, &args_l1);
+            pi_cl_dma_cmd_2d((uint32_t) (args->transp_matrix + j * tile_w + i * tile_h * N), (uint32_t) (OUT_DATA), 2 * tile_dim, 2 * N, 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_wait(cmd_store);
+        }
+    }
+}
+
+void tiled_mhsa_fp16(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
+    // ======================================== DECLARATIONS ========================================
+    struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+    struct Tiled_Matmul_Mhsa_args_fp16 *tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16 *) Tiled_mhsa_matmul_args; 
+
+    int tile_h = tiled_args->tile_h_sm;
+    int tile_w = tiled_args->tile_w_sm;
+    int tile_dim = tiled_args->tile_dim_sm;
+    fp16* BUFF = tiled_args->BUFF;
+    pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+    pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+
+    fp16 *coeffDataWinQ = mhsa_args->coeff_in_q->data;         //  Input Projection Weights for Query (transposed)
+    fp16 *coeffDataWinK = mhsa_args->coeff_in_k->data;         //  Input Projection Weights for Key (transposed)
+    fp16 *coeffDataWinV = mhsa_args->coeff_in_v->data;         //  Input Projection Weights for Value (transposed)
+
+    fp16 *coeffBiasWinQ = mhsa_args->bias_in_q->data;          //  Input Projection Biases for Query
+    fp16 *coeffBiasWinK = mhsa_args->bias_in_k->data;          //  Input Projection Biases for Key
+    fp16 *coeffBiasWinV = mhsa_args->bias_in_v->data;          //  Input Projection Biases for Value
+
+    fp16 *coeffDataWout = mhsa_args->coeff_out->data;          //  Output Projection Weights (Already transposed from GM)
+    fp16 *coeffBiasWout = mhsa_args->bias_out->data;           //  Output Projection Biases
+    
+    fp16 *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
+    fp16 *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
+    fp16 *inputData = mhsa_args->input->data;                  //  Input vector (L x E)
+    fp16 *inputDataBn = mhsa_args->input_bn->data;             //  Input vector bottlenecked (L x F)
+    fp16 *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
+    fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
+    fp16 *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
+    fp16 *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
+    fp16 *qt = mhsa_args->q->data;                             //  Pointer to the first element of Q transposed
+    fp16 *kt = mhsa_args->k->data;                             //  Pointer to the first element of K transposed
+    fp16 *vt = mhsa_args->v->data;                             //  Pointer to the first element of V transposed
+    int n_heads = mhsa_args->n_heads;                           //  Number of heads used for MHSA
+
+    int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
+
+    int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
+    int E = mhsa_args->input->W;                                //  Input Sequence element size
+    int F = mhsa_args->coeff_in_q->H;                           //  Hidden dimension of attention (N. Heads * Head dimension)
+
+    //printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d\n", L, E, F);
+
+    int H = F / n_heads;                                        //  Head dimension
+    float scaling = q_rsqrt_fp16((float) H);                    //  Scaling factor to avoid vanishing gradients
+    //float scaling = 1/sqrt(H);
+
+    // M1_q
+    // (Wq)t * input_bn
+    struct matMul_args_fp16 matMul_args1_q;
+    matMul_args1_q.A = coeffDataWinQ;                              //  F x F
+    matMul_args1_q.B = inputDataBn;                                //  L x F
+    matMul_args1_q.C = qt;                                         //  F x L
+    matMul_args1_q.N = mhsa_args->coeff_in_q->H;
+    matMul_args1_q.K = mhsa_args->coeff_in_q->W;
+    matMul_args1_q.M = L;
+    matMul_args1_q.trans_B = 1;
+    matMul_args1_q.bias = coeffBiasWinQ;
+    matMul_args1_q.USE_BIASES = 1;
+    matMul_args1_q.bias_transposed = 1;
+    matMul_args1_q.bias_dim = F;
+    
+    tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args, 1);
+
+    // M1_k
+    // (Wk)t * input_bn
+    struct matMul_args_fp16 matMul_args1_k;
+    matMul_args1_k.A = coeffDataWinK;                              //  F x F
+    matMul_args1_k.B = inputDataBn;                                //  L x F
+    matMul_args1_k.C = kt;                                         //  F x L
+    matMul_args1_k.N = mhsa_args->coeff_in_k->H;
+    matMul_args1_k.K = mhsa_args->coeff_in_k->W;
+    matMul_args1_k.M = L;
+    matMul_args1_k.trans_B = 1;
+    matMul_args1_k.bias = coeffBiasWinK;
+    matMul_args1_k.USE_BIASES = 1;
+    matMul_args1_k.bias_transposed = 1;
+    matMul_args1_k.bias_dim = F;
+
+    tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args, 1);
+    
+    //  Cycle on the different heads
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    for (int i = 0; i < n_heads; i++) {
+        //  T1
+        struct transp_args_fp16 transp_args1;
+        transp_args1.matrix = kt + L * i * H;
+        transp_args1.transp_matrix = temp;
+        transp_args1.N = H;
+        transp_args1.M = L;
+        
+        tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args, 2);
+
+
+        // M2
+        // Multiply it with the i-th head's transposed Q chunk
+        struct matMul_args_fp16 matMul_args2;
+        matMul_args2.A = temp;
+        matMul_args2.B = qt + L * i * H;
+        matMul_args2.C = softmax_buffer + i * L * L;
+        matMul_args2.N = L;
+        matMul_args2.K = H;
+        matMul_args2.M = L;
+        matMul_args2.trans_B = 0;
+        matMul_args2.USE_BIASES = 0;
+        
+        tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args, 0);
+
+
+        // ================================================== OP 4 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        struct scalar_mul_args_fp16 s_m_args;
+        s_m_args.input = BUFF;
+        s_m_args.scalar = scaling;
+        s_m_args.dim = tile_dim;
+
+        for(int k = 0; k < (L / tile_h); k++){
+            for(int j = 0; j < (L / tile_w); j++){
+                pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+                pi_cl_dma_cmd_wait(cmd_load);
+                pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
+                pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+                pi_cl_dma_cmd_wait(cmd_store);
+            }
+        }
+
+        // ================================================== OP 5 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   (T2)
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //
+        // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
+        // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
+
+        //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+        //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+        //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+        // T2
+        struct transp_args_fp16 transp_args2;
+        transp_args2.matrix = softmax_buffer + i * L * L;
+        transp_args2.transp_matrix = temp;
+        transp_args2.N = L;
+        transp_args2.M = L;
+
+        tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args, 0);
+
+        //  Softmax algorithm
+        struct softmax_args_fp16 softmax_arg;
+        softmax_arg.input_data = temp;
+        softmax_arg.output_data = softmax_buffer + i * L * L;
+        softmax_arg.maxes = maxes;
+        softmax_arg.sums = sums;
+        softmax_arg.H = L;
+        softmax_arg.W = L;
+        
+        pulp_softmax_fp16_fw_cl_tiled(&softmax_arg, Tiled_mhsa_matmul_args);
+    }
+
+    
+    // M1_v
+    // (Wv)t * input
+    struct matMul_args_fp16 matMul_args1_v;
+    matMul_args1_v.A = coeffDataWinV;                              //  F x E
+    matMul_args1_v.B = inputData;                                  //  L x E
+    matMul_args1_v.C = vt;                                         //  F x L
+    matMul_args1_v.N = F;
+    matMul_args1_v.K = E;
+    matMul_args1_v.M = L;
+    matMul_args1_v.trans_B = 1;
+    matMul_args1_v.bias = coeffBiasWinV;
+    matMul_args1_v.USE_BIASES = 1;
+    matMul_args1_v.bias_transposed = 1;
+    matMul_args1_v.bias_dim = F;
+    
+    tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args, 1);
+
+    
+    for (int i = 0; i < n_heads; i++) {
+        // ================================================== OP 6 ==================================================
+        // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
+        // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+
+        // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
+        // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
+
+        // T3
+        //  Each head result has to be appended to the full attention map, to do so we require to store the current
+        //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+        struct transp_args_fp16 transp_args3;
+        transp_args3.matrix = softmax_buffer + i * L * L;
+        transp_args3.transp_matrix = temp;
+        transp_args3.N = L;
+        transp_args3.M = L;
+
+        tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args, 0);
+
+        // M3
+        struct matMul_args_fp16 matMul_args3;
+        matMul_args3.A = vt + L * i * H;
+        matMul_args3.B = temp;
+        matMul_args3.C = attention_map + L * i * H;
+        matMul_args3.N = H;
+        matMul_args3.K = L;
+        matMul_args3.M = L;
+        matMul_args3.trans_B = 0;
+        
+        tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args, 2);
+    }
+    
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // ================================================== OP 7 ==================================================
+    // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> temp ~~~~~~~~~~~~~~~~~~~~~~       (M4)
+    // ~~~~~~~~~~~~~~~~~~~~~~     F x F     @     F x L     ->  F x L  ~~~~~~~~~~~~~~~~~~~~~~
+
+    // M4
+    //  Final attention map projection
+    struct matMul_args_fp16 matMul_args4;
+    matMul_args4.A = coeffDataWout;
+    matMul_args4.B = attention_map;
+    matMul_args4.C = temp;
+    matMul_args4.N = mhsa_args->coeff_out->H;
+    matMul_args4.K = mhsa_args->coeff_out->W;
+    matMul_args4.M = L;
+    matMul_args4.trans_B = 0;
+    matMul_args4.bias = coeffBiasWout;
+    matMul_args4.USE_BIASES = 1;
+    matMul_args4.bias_transposed = 1;
+    matMul_args4.bias_dim = E;
+    
+    tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args, 1);
+
+    // T4
+    // The last transpose to original shape
+    struct transp_args_fp16 transp_args4;
+    transp_args4.matrix = temp;
+    transp_args4.transp_matrix = outData;
+    transp_args4.N = mhsa_args->input_bn->W;
+    transp_args4.M = L;
+
+    tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args, 1);
+}
+
+// void tiled_mhsa_fp16_flash(void *Mhsa_args, void* Tiled_mhsa_matmul_args, fp16* BUFF_L2, pi_fs_file_t *file_p, int size){
+//     // ======================================== DECLARATIONS ========================================
+//     // BUFF_L2 = (fp16*) pi_l2_malloc(size * 2);
+//     struct Mhsa_args_fp16 *mhsa_args = (struct Mhsa_args_fp16 *) Mhsa_args;
+//     struct Tiled_Matmul_Mhsa_args_fp16 *tiled_args = (struct Tiled_Matmul_Mhsa_args_fp16 *) Tiled_mhsa_matmul_args;
+
+//     int tile_h = tiled_args->tile_h;
+//     int tile_w = tiled_args->tile_w;
+//     int tile_dim = tiled_args->tile_dim;
+//     fp16* BUFF = tiled_args->BUFF;
+//     pi_cl_dma_cmd_t * cmd_store = tiled_args->cmd_store;
+//     pi_cl_dma_cmd_t * cmd_load = tiled_args->cmd_load;
+
+//     int L = mhsa_args->input->H;                                //  Input/Output Sequence length    
+//     int E = mhsa_args->input->W;                                //  Input Sequence element size
+//     int F = mhsa_args->input_bn->W;                             //  Hidden dimension of attention (N. Heads * Head dimension)
+
+//     pi_cl_fs_req_t req1;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_q->data, (void*) (BUFF_L2), (F * F * 2), 1, &req1);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req1);
+//     fp16 *coeffDataWinQ = BUFF_L2; 
+
+//     pi_cl_fs_req_t req2;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_k->data, (void*) (BUFF_L2 + F * F), (F * F * 2), 1, &req2);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req2);
+//     fp16 *coeffDataWinK = BUFF_L2 + F * F; 
+
+//     pi_cl_fs_req_t req3;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_in_v->data, (void*) (BUFF_L2 + F * F * 2), (F * E * 2), 1, &req3);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req3);
+//     fp16 *coeffDataWinV = BUFF_L2 + F * F * 2; 
+
+//     pi_cl_fs_req_t req4;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_q->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E)), (F * 2), 1, &req4);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req4);
+//     fp16 *coeffBiasWinQ = BUFF_L2 + F * F * 2 + (F * E); 
+
+//     pi_cl_fs_req_t req5;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_k->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + F), (F * 2), 1, &req5);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req5);
+//     fp16 *coeffBiasWinK = BUFF_L2 + (F * F * 2) + (F * E) + F; 
+
+//     pi_cl_fs_req_t req6;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_in_v->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 2)), (F * 2), 1, &req6);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req6);
+//     fp16 *coeffBiasWinV = BUFF_L2 + (F * F * 2) + (F * E) + (F * 2); 
+
+//     pi_cl_fs_req_t req7;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->coeff_out->data, (void*) (BUFF_L2 + (F * F * 2) + (F * E) + (F * 3)), (F * F * 2), 1, &req7);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req7);
+//     fp16 *coeffDataWout = BUFF_L2 + (F * F * 2) + (F * E) + (F * 3);
+
+//     pi_cl_fs_req_t req8;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->bias_out->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 3)), (F * 2), 1, &req8);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req8);
+//     fp16 *coeffBiasWout = BUFF_L2 + (F * F * 3) + (F * E) + (F * 3);
+
+//     pi_cl_fs_req_t req9;
+//     pi_cl_fs_copy(file_p, (uint32_t) mhsa_args->input->data, (void*) (BUFF_L2 + (F * F * 3) + (F * E) + (F * 4)), (L * E * 2), 1, &req9);
+//     // pi_cl_fs_read(file_p, (void*) (W_DATA_L2), (args->M * args->K * 2), &req2);
+//     pi_cl_fs_wait(&req9);
+//     fp16 *inputData = BUFF_L2 + (F * F * 3) + (F * E) + (F * 4);
+
+    
+//     fp16 *attention_map = mhsa_args->attention_map->data;      //  Buffer saving the MHSA map before output projection
+//     fp16 *outData = mhsa_args->output->data;                   //  Output sequence (Transposed, E x L)
+//     fp16 *inputDataBn = mhsa_args->input_bn->data;             //  Input vector bottlenecked (L x F)
+//     fp16 *temp = mhsa_args->temp_buffer;                       //  Support buffer used in the attention head loop
+//     fp16 *softmax_buffer = mhsa_args->softmax_buffer->data;    //  Buffer containing the softmax results (necessary to save for backward pass)
+//     fp16 *maxes = mhsa_args->maxes;                            //  Buffer containing the row-wise maxes in the softmax process
+//     fp16 *sums = mhsa_args->sums;                              //  Buffer containing the row-wise exponential sums in the softmax process
+//     fp16 *qt = mhsa_args->q->data;                             //  Pointer to the first element of Q transposed
+//     fp16 *kt = mhsa_args->k->data;                             //  Pointer to the first element of K transposed
+//     fp16 *vt = mhsa_args->v->data;                             //  Pointer to the first element of V transposed
+//     int n_heads = mhsa_args->n_heads;                          //  Number of heads used for MHSA
+
+//     int opt_matmul_type = mhsa_args->opt_matmul_type_fw;        //  Matmul type used
+
+//     //printf("\n~~~~~~~~~~~~~~~FORWARD PASS~~~~~~~~~~~~~~~\n\nPrinting the parameters: L-%d, E-%d, F-%d\n", L, E, F);
+
+//     int H = F / n_heads;                                        //  Head dimension
+//     float scaling = q_rsqrt_fp16((float) H);                    //  Scaling factor to avoid vanishing gradients
+//     //float scaling = 1/sqrt(H);
+
+//     // M1_q
+//     // (Wq)t * input_bn
+//     struct matMul_args_fp16 matMul_args1_q;
+//     matMul_args1_q.A = coeffDataWinQ;                              //  F x F
+//     matMul_args1_q.B = inputDataBn;                                //  L x F
+//     matMul_args1_q.C = qt;                                         //  F x L
+//     matMul_args1_q.N = F;
+//     matMul_args1_q.K = F;
+//     matMul_args1_q.M = L;
+//     matMul_args1_q.trans_B = 1;
+//     matMul_args1_q.bias = coeffBiasWinQ;
+//     matMul_args1_q.USE_BIASES = 1;
+//     matMul_args1_q.bias_transposed = 1;
+//     matMul_args1_q.bias_dim = F;
+
+//     tiled_matmul_mhsa_fp16(&matMul_args1_q, Tiled_mhsa_matmul_args);
+
+//     // M1_k
+//     // (Wk)t * input_bn
+//     struct matMul_args_fp16 matMul_args1_k;
+//     matMul_args1_k.A = coeffDataWinK;                              //  F x F
+//     matMul_args1_k.B = inputDataBn;                                //  L x F
+//     matMul_args1_k.C = kt;                                         //  F x L
+//     matMul_args1_k.N = F;
+//     matMul_args1_k.K = F;
+//     matMul_args1_k.M = L;
+//     matMul_args1_k.trans_B = 1;
+//     matMul_args1_k.bias = coeffBiasWinK;
+//     matMul_args1_k.USE_BIASES = 1;
+//     matMul_args1_k.bias_transposed = 1;
+//     matMul_args1_k.bias_dim = F;
+
+//     tiled_matmul_mhsa_fp16(&matMul_args1_k, Tiled_mhsa_matmul_args);
+
+
+//     //  Cycle on the different heads
+//     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ F -> H ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//     for (int i = 0; i < n_heads; i++) {
+//         //  T1
+//         struct transp_args_fp16 transp_args1;
+//         transp_args1.matrix = kt + L * i * H;
+//         transp_args1.transp_matrix = temp;
+//         transp_args1.N = H;
+//         transp_args1.M = L;
+
+//         tiled_transpose_mhsa_fp16(&transp_args1, Tiled_mhsa_matmul_args);
+
+//         // M2
+//         // Multiply it with the i-th head's transposed Q chunk
+//         struct matMul_args_fp16 matMul_args2;
+//         matMul_args2.A = temp;
+//         matMul_args2.B = qt + L * i * H;
+//         matMul_args2.C = softmax_buffer + i * L * L;
+//         matMul_args2.N = L;
+//         matMul_args2.K = H;
+//         matMul_args2.M = L;
+//         matMul_args2.trans_B = 0;
+//         matMul_args2.USE_BIASES = 0;
+
+//         tiled_matmul_mhsa_fp16(&matMul_args2, Tiled_mhsa_matmul_args);
+
+
+//         // ================================================== OP 4 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer *= scalar ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~           L x L          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//         struct scalar_mul_args_fp16 s_m_args;
+//         s_m_args.input = BUFF;
+//         s_m_args.scalar = scaling;
+//         s_m_args.dim = tile_dim;
+
+//         for(int k = 0; k < L / tile_h; k++){
+//             for(int j = 0; j < L / tile_w; j++){
+//                 pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+//                 pi_cl_dma_cmd_wait(cmd_load);
+//                 pi_cl_team_fork(NUM_CORES, pulp_scalar_mul_fp16_cl, &s_m_args);
+//                 pi_cl_dma_cmd_2d((uint32_t) ((softmax_buffer + i * L * L) + k * L * tile_h + j * tile_w), (uint32_t) (BUFF), 2 * tile_dim, 2 * L, 2 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+//                 pi_cl_dma_cmd_wait(cmd_store);
+//             }
+//         }
+
+//         // ================================================== OP 5 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer -T-> temp [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   (T2)
+//         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      L x L     -T->         L x L              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//         //
+//         // ~~~~~~~~~~~~~~~~~~ temp [softmax_buffer ^ T] -SM-> softmax_buffer [softmax_buffer ^ T]  ~~~~~~~~~~~~~~~~~~
+//         // ~~~~~~~~~~~~~~~~~~          L x L            -SM->               L x L                  ~~~~~~~~~~~~~~~~~~
+
+//         //  Due to the fact that we multiplied K * Qt instead of Q * Kt like in the original MHSA model, the current
+//         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
+//         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
+//         // T2
+//         struct transp_args_fp16 transp_args2;
+//         transp_args2.matrix = softmax_buffer + i * L * L;
+//         transp_args2.transp_matrix = temp;
+//         transp_args2.N = L;
+//         transp_args2.M = L;
+
+//         tiled_transpose_mhsa_fp16(&transp_args2, Tiled_mhsa_matmul_args);
+
+//         //  Softmax algorithm
+//         struct softmax_args_fp16 softmax_arg;
+//         softmax_arg.input_data = temp;
+//         softmax_arg.output_data = softmax_buffer + i * L * L;
+//         softmax_arg.maxes = maxes;
+//         softmax_arg.sums = sums;
+//         softmax_arg.H = L;
+//         softmax_arg.W = L;
+
+//         pulp_softmax_fp16_fw_cl_tiled(&softmax_arg, Tiled_mhsa_matmul_args);
+//     }
+
+
+//     // M1_v
+//     // (Wv)t * input
+//     struct matMul_args_fp16 matMul_args1_v;
+//     matMul_args1_v.A = coeffDataWinV;                              //  F x E
+//     matMul_args1_v.B = inputData;                                  //  L x E
+//     matMul_args1_v.C = vt;                                         //  F x L
+//     matMul_args1_v.N = F;
+//     matMul_args1_v.K = E;
+//     matMul_args1_v.M = L;
+//     matMul_args1_v.trans_B = 1;
+//     matMul_args1_v.bias = coeffBiasWinV;
+//     matMul_args1_v.USE_BIASES = 1;
+//     matMul_args1_v.bias_transposed = 1;
+//     matMul_args1_v.bias_dim = F;
+
+//     tiled_matmul_mhsa_fp16(&matMul_args1_v, Tiled_mhsa_matmul_args);
+
+
+//     for (int i = 0; i < n_heads; i++) {
+//         // ================================================== OP 6 ==================================================
+//         // ~~~~~~~~~~~~~~~~~~~~~~ softmax_buffer [softmax_buffer ^ T] -T-> temp [softmax_buffer] ~~~~~~~~~~~~~~~~~~~~~~     (T3)
+//         // ~~~~~~~~~~~~~~~~~~~~~~               L x L                 -T->        L x L          ~~~~~~~~~~~~~~~~~~~~~~
+
+//         // ~~~~~~~~~~~~~~~~~~~~~~   v   @ temp [softmax_buffer] -> attention_map ~~~~~~~~~~~~~~~~~~~~~~                     (M3)
+//         // ~~~~~~~~~~~~~~~~~~~~~~ H x L @        L x L          ->     H x L     ~~~~~~~~~~~~~~~~~~~~~~
+
+//         // T3
+//         //  Each head result has to be appended to the full attention map, to do so we require to store the current
+//         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
+//         struct transp_args_fp16 transp_args3;
+//         transp_args3.matrix = softmax_buffer + i * L * L;
+//         transp_args3.transp_matrix = temp;
+//         transp_args3.N = L;
+//         transp_args3.M = L;
+
+//         tiled_transpose_mhsa_fp16(&transp_args3, Tiled_mhsa_matmul_args);
+
+//         // M3
+//         struct matMul_args_fp16 matMul_args3;
+//         matMul_args3.A = vt + L * i * H;
+//         matMul_args3.B = temp;
+//         matMul_args3.C = attention_map + L * i * H;
+//         matMul_args3.N = H;
+//         matMul_args3.K = L;
+//         matMul_args3.M = L;
+//         matMul_args3.trans_B = 0;
+
+//         tiled_matmul_mhsa_fp16(&matMul_args3, Tiled_mhsa_matmul_args);
+//     }
+
+//     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H -> F ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//     // ================================================== OP 7 ==================================================
+//     // ~~~~~~~~~~~~~~~~~~~~~~ coeffDataWout @ attention_map -> temp ~~~~~~~~~~~~~~~~~~~~~~       (M4)
+//     // ~~~~~~~~~~~~~~~~~~~~~~     F x F     @     F x L     ->  F x L  ~~~~~~~~~~~~~~~~~~~~~~
+
+//     // M4
+//     //  Final attention map projection
+//     struct matMul_args_fp16 matMul_args4;
+//     matMul_args4.A = coeffDataWout;
+//     matMul_args4.B = attention_map;
+//     matMul_args4.C = temp;
+//     matMul_args4.N = F;
+//     matMul_args4.K = F;
+//     matMul_args4.M = L;
+//     matMul_args4.trans_B = 0;
+//     matMul_args4.bias = coeffBiasWout;
+//     matMul_args4.USE_BIASES = 1;
+//     matMul_args4.bias_transposed = 1;
+//     matMul_args4.bias_dim = F;
+
+//     tiled_matmul_mhsa_fp16(&matMul_args4, Tiled_mhsa_matmul_args);
+
+//     // T4
+//     // The last transpose to original shape
+//     struct transp_args_fp16 transp_args4;
+//     transp_args4.matrix = temp;
+//     transp_args4.transp_matrix = outData;
+//     transp_args4.N = F;
+//     transp_args4.M = L;
+
+//     tiled_transpose_mhsa_fp16(&transp_args4, Tiled_mhsa_matmul_args);
+//     // pi_l2_free(BUFF_L2, size * 2);
+// }
+
+
 
 
 /*

@@ -62,8 +62,7 @@ PI_L2 struct blob layer18_in, layer18_wgt, layer18_out;
 PI_L2 struct blob layer19_in, layer19_wgt, layer19_out;
 
 // Define DNN layer structures
-PI_L1 struct vect_sum_args vect_sum_args;
-PI_L1 struct vect_sum_args_fp16 vect_sum_args_fp16;
+PI_L1 struct array_broadcast_sum_fp32_args vect_sum_args;
 PI_L2 struct DepthWise_Conv_args l0_args;
 PI_L2 struct PointWise_Conv_args l1_args;
 PI_L2 struct InstNorm_args l2_args;
@@ -1018,205 +1017,212 @@ void forward()
 }
 
 // Backward pass function
-void backward()
-{
-  loss_args.output = &output_blob;
-  loss_args.target = output_blob.diff;
-  loss_args.wr_loss = &loss;
-  // FIX THIS!!
-  //pi_cl_dma_cmd((uint32_t) (LABEL + idx*NUM_CLASSES), (uint32_t) (output_blob.diff), 4*NUM_CLASSES, PI_CL_DMA_DIR_EXT2LOC , cmd_load);
-  pi_cl_dma_cmd_wait(cmd_load);
-  
-  //for(int i=0; i<NUM_CLASSES; i++) printf("\n%.5f",*(OUT_DATA + i));
-  //for(int i=0; i<NUM_CLASSES; i++) printf("\n%.5f",*(OUT_DIFF + i));
-  pulp_CrossEntropyLoss_backward(&loss_args);
-  //pulp_MSELoss(&loss_args);
-  store_output(&layer18_out, 2);
-  //printf("\n%.5f", loss);
+void backward() {
+    loss_args.output = &output_blob;
+    loss_args.target = output_blob.diff;
+    loss_args.wr_loss = &loss;
+    // FIX THIS!!
+    //pi_cl_dma_cmd((uint32_t) (LABEL + idx*NUM_CLASSES), (uint32_t) (output_blob.diff), 4*NUM_CLASSES, PI_CL_DMA_DIR_EXT2LOC , cmd_load);
+    pi_cl_dma_cmd_wait(cmd_load);
 
-	reset_dim();
-	load_input(&layer18_in, 1);
-	load_coeff(&layer18_wgt, 1);
-	load_output(&layer18_out, 2);
-	copy_struct_param((unsigned int) &l18_args, (unsigned int) &linear_args, sizeof(l18_args));
-	pulp_linear_fp32_bw_cl(&linear_args);
-	store_coeff(&layer18_wgt, 0);
-	store_input(&layer18_in, 0);
-  //PrintBlob(&output_blob, 0);
-  
-	reset_dim();
-	load_output(&layer17_out, 2);
-	store_output(&layer17_in, 0);
+    //for(int i=0; i<NUM_CLASSES; i++) printf("\n%.5f",*(OUT_DATA + i));
+    //for(int i=0; i<NUM_CLASSES; i++) printf("\n%.5f",*(OUT_DIFF + i));
+    pulp_CrossEntropyLoss_backward(&loss_args);
+    //pulp_MSELoss(&loss_args);
+    store_output(&layer18_out, 2);
+    //printf("\n%.5f", loss);
 
-	reset_dim();
-	load_input(&layer16_in, 1);
-	load_output(&layer16_out, 2);
-	pulp_relu_fp32_bw_cl(&act_args);
-	store_input(&layer16_in, 0);
+    reset_dim();
+    load_input(&layer18_in, 1);
+    load_coeff(&layer18_wgt, 1);
+    load_output(&layer18_out, 2);
+    copy_struct_param((unsigned int) &l18_args, (unsigned int) &linear_args, sizeof(l18_args));
+    pulp_linear_fp32_bw_cl(&linear_args);
+    store_coeff(&layer18_wgt, 0);
+    store_input(&layer18_in, 0);
+    //PrintBlob(&output_blob, 0);
 
-	reset_dim();
-	load_input(&layer15_in, 1);
-	load_coeff(&layer15_wgt, 1);
-	load_output(&layer15_out, 2);
-	copy_struct_param((unsigned int) &l15_args, (unsigned int) &InstNorm_args, sizeof(l15_args));
-	pulp_instnorm_fp32_bw_cl(&InstNorm_args);
-	store_coeff(&layer15_wgt, 0);
-	store_input(&layer15_in, 0);
+    reset_dim();
+    load_output(&layer17_out, 2);
+    store_output(&layer17_in, 0);
 
-	reset_dim();
-	load_input(&layer14_in, 1);
-	load_coeff(&layer14_wgt, 1);
-	load_output(&layer14_out, 2);
-	copy_struct_param((unsigned int) &l14_args, (unsigned int) &PW_args, sizeof(l14_args));
-	pulp_conv_pw_fp32_bw_cl(&PW_args);
-	store_coeff(&layer14_wgt, 0);
-	store_input(&layer14_in, 0);
+    reset_dim();
+    load_input(&layer16_in, 1);
+    load_output(&layer16_out, 2);
+    pulp_relu_fp32_bw_cl(&act_args);
+    store_input(&layer16_in, 0);
 
-	reset_dim();
-	load_input(&layer13_in, 1);
-	load_coeff(&layer13_wgt, 1);
-	load_output(&layer13_out, 2);
-	copy_struct_param((unsigned int) &l13_args, (unsigned int) &DW_args, sizeof(l13_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer13_wgt, 0);
-	store_input(&layer13_in, 0);
+    reset_dim();
+    load_input(&layer15_in, 1);
+    load_coeff(&layer15_wgt, 1);
+    load_output(&layer15_out, 2);
+    copy_struct_param((unsigned int) &l15_args, (unsigned int) &InstNorm_args, sizeof(l15_args));
+    pulp_instnorm_fp32_bw_cl(&InstNorm_args);
+    store_coeff(&layer15_wgt, 0);
+    store_input(&layer15_in, 0);
 
-	reset_dim();
-	load_input(&layer12_in, 1);
-	load_output(&layer12_out, 2);
-	pulp_relu_fp32_bw_cl(&act_args);
-	store_input(&layer12_in, 0);
+    reset_dim();
+    load_input(&layer14_in, 1);
+    load_coeff(&layer14_wgt, 1);
+    load_output(&layer14_out, 2);
+    copy_struct_param((unsigned int) &l14_args, (unsigned int) &PW_args, sizeof(l14_args));
+    pulp_conv_pw_fp32_bw_cl(&PW_args);
+    store_coeff(&layer14_wgt, 0);
+    store_input(&layer14_in, 0);
 
-	reset_dim();
-	load_input(&layer11_in, 1);
-	load_coeff(&layer11_wgt, 1);
-	load_output(&layer11_out, 2);
-	copy_struct_param((unsigned int) &l11_args, (unsigned int) &InstNorm_args, sizeof(l11_args));
-	pulp_instnorm_fp32_bw_cl(&InstNorm_args);
-	store_coeff(&layer11_wgt, 0);
-	store_input(&layer11_in, 0);
+    reset_dim();
+    load_input(&layer13_in, 1);
+    load_coeff(&layer13_wgt, 1);
+    load_output(&layer13_out, 2);
+    copy_struct_param((unsigned int) &l13_args, (unsigned int) &DW_args, sizeof(l13_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer13_wgt, 0);
+    store_input(&layer13_in, 0);
 
-	reset_dim();
-	load_input(&layer10_in, 1);
-	load_coeff(&layer10_wgt, 1);
-	load_output(&layer10_out, 2);
-	copy_struct_param((unsigned int) &l10_args, (unsigned int) &PW_args, sizeof(l10_args));
-	pulp_conv_pw_fp32_bw_cl(&PW_args);
-	store_coeff(&layer10_wgt, 0);
-	store_input(&layer10_in, 0);
+    reset_dim();
+    load_input(&layer12_in, 1);
+    load_output(&layer12_out, 2);
+    pulp_relu_fp32_bw_cl(&act_args);
+    store_input(&layer12_in, 0);
 
-	reset_dim();
-	load_input(&layer9_in, 1);
-	load_coeff(&layer9_wgt, 1);
-	load_output(&layer9_out, 2);
-	copy_struct_param((unsigned int) &l9_args, (unsigned int) &DW_args, sizeof(l9_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer9_wgt, 0);
-	store_input(&layer9_in, 0);
+    reset_dim();
+    load_input(&layer11_in, 1);
+    load_coeff(&layer11_wgt, 1);
+    load_output(&layer11_out, 2);
+    copy_struct_param((unsigned int) &l11_args, (unsigned int) &InstNorm_args, sizeof(l11_args));
+    pulp_instnorm_fp32_bw_cl(&InstNorm_args);
+    store_coeff(&layer11_wgt, 0);
+    store_input(&layer11_in, 0);
 
-	reset_dim();
-	load_input(&layer9_in, 1);
-	load_coeff(&layer9_wgt, 1);
-	load_output(&layer9_out, 2);
-	copy_struct_param((unsigned int) &l9_args, (unsigned int) &DW_args, sizeof(l9_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer9_wgt, 0);
-	store_input(&layer9_in, 0);
+    reset_dim();
+    load_input(&layer10_in, 1);
+    load_coeff(&layer10_wgt, 1);
+    load_output(&layer10_out, 2);
+    copy_struct_param((unsigned int) &l10_args, (unsigned int) &PW_args, sizeof(l10_args));
+    pulp_conv_pw_fp32_bw_cl(&PW_args);
+    store_coeff(&layer10_wgt, 0);
+    store_input(&layer10_in, 0);
 
+    reset_dim();
+    load_input(&layer9_in, 1);
+    load_coeff(&layer9_wgt, 1);
+    load_output(&layer9_out, 2);
+    copy_struct_param((unsigned int) &l9_args, (unsigned int) &DW_args, sizeof(l9_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer9_wgt, 0);
+    store_input(&layer9_in, 0);
 
-  reset_dim();
-	load_input(&layer8_2_in, 1);
-	load_coeff(&layer8_2_wgt, 1);
-	load_output(&layer8_2_out, 2);
-	copy_struct_param((unsigned int) &l8_2_args, (unsigned int) &PW_args, sizeof(l8_2_args));
-	pulp_conv_pw_fp32_bw_cl(&PW_args);
-	store_coeff(&layer8_2_wgt, 0);
-	store_input(&layer8_2_in, 0);
-
-  reset_dim();
-	load_input(&layer8_1_in, 1);
-	load_coeff(&layer8_1_wgt, 1);
-	load_output(&layer8_1_out, 2);
-	copy_struct_param((unsigned int) &l8_1_args, (unsigned int) &DW_args, sizeof(l8_1_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer8_1_wgt, 0);
-	store_input(&layer8_1_in, 0);
+    reset_dim();
+    load_input(&layer9_in, 1);
+    load_coeff(&layer9_wgt, 1);
+    load_output(&layer9_out, 2);
+    copy_struct_param((unsigned int) &l9_args, (unsigned int) &DW_args, sizeof(l9_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer9_wgt, 0);
+    store_input(&layer9_in, 0);
 
 
-  reset_dim();
-	load_input(&layer9_in, 0);
-	load_output(&layer8_1_in, 0);
-  vect_sum_args.op_1 = output_blob.diff;
-  vect_sum_args.op_2 = input_blob.diff;
-  vect_sum_args.dest = input_blob.diff;
-  vect_sum_args.size = input_blob.dim;
-  pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
-	store_input(&layer9_in, 0);
+    reset_dim();
+    load_input(&layer8_2_in, 1);
+    load_coeff(&layer8_2_wgt, 1);
+    load_output(&layer8_2_out, 2);
+    copy_struct_param((unsigned int) &l8_2_args, (unsigned int) &PW_args, sizeof(l8_2_args));
+    pulp_conv_pw_fp32_bw_cl(&PW_args);
+    store_coeff(&layer8_2_wgt, 0);
+    store_input(&layer8_2_in, 0);
 
-	reset_dim();
-	load_input(&layer7_in, 1);
-	load_output(&layer7_out, 2);
-	pulp_relu_fp32_bw_cl(&act_args);
-	store_input(&layer7_in, 0);
+    reset_dim();
+    load_input(&layer8_1_in, 1);
+    load_coeff(&layer8_1_wgt, 1);
+    load_output(&layer8_1_out, 2);
+    copy_struct_param((unsigned int) &l8_1_args, (unsigned int) &DW_args, sizeof(l8_1_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer8_1_wgt, 0);
+    store_input(&layer8_1_in, 0);
 
-	reset_dim();
-	load_input(&layer6_in, 1);
-	load_coeff(&layer6_wgt, 1);
-	load_output(&layer6_out, 2);
-	copy_struct_param((unsigned int) &l6_args, (unsigned int) &InstNorm_args, sizeof(l6_args));
-	pulp_instnorm_fp32_bw_cl(&InstNorm_args);
-	store_coeff(&layer6_wgt, 0);
-	store_input(&layer6_in, 0);
 
-	reset_dim();
-	load_input(&layer5_in, 1);
-	load_coeff(&layer5_wgt, 1);
-	load_output(&layer5_out, 2);
-	copy_struct_param((unsigned int) &l5_args, (unsigned int) &PW_args, sizeof(l5_args));
-	pulp_conv_pw_fp32_bw_cl(&PW_args);
-	store_coeff(&layer5_wgt, 0);
-	store_input(&layer5_in, 0);
+    reset_dim();
+    load_input(&layer9_in, 0);
+    load_output(&layer8_1_in, 0);
 
-	reset_dim();
-	load_input(&layer4_in, 1);
-	load_coeff(&layer4_wgt, 1);
-	load_output(&layer4_out, 2);
-	copy_struct_param((unsigned int) &l4_args, (unsigned int) &DW_args, sizeof(l4_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer4_wgt, 0);
-	store_input(&layer4_in, 0);
+    vect_sum_args.op_1 = output_blob.diff;
+    vect_sum_args.op_2 = input_blob.diff;
+    vect_sum_args.dest = input_blob.diff;
 
-	reset_dim();
-	load_input(&layer3_in, 1);
-	load_output(&layer3_out, 2);
-	pulp_relu_fp32_bw_cl(&act_args);
-	store_input(&layer3_in, 0);
+    vect_sum_args.op_1_dims = {input_blob.dim};
+    vect_sum_args.op_2_dims = {input_blob.dim};
 
-	reset_dim();
-	load_input(&layer2_in, 1);
-	load_coeff(&layer2_wgt, 1);
-	load_output(&layer2_out, 2);
-	copy_struct_param((unsigned int) &l2_args, (unsigned int) &InstNorm_args, sizeof(l2_args));
-	pulp_instnorm_fp32_bw_cl(&InstNorm_args);
-	store_coeff(&layer2_wgt, 0);
-	store_input(&layer2_in, 0);
+    vect_sum_args.op_1_dims_len = 1;
+    vect_sum_args.op_2_dims_len = 1;
 
-	reset_dim();
-	load_input(&layer1_in, 1);
-	load_coeff(&layer1_wgt, 1);
-	load_output(&layer1_out, 2);
-	copy_struct_param((unsigned int) &l1_args, (unsigned int) &PW_args, sizeof(l1_args));
-	pulp_conv_pw_fp32_bw_cl(&PW_args);
-	store_coeff(&layer1_wgt, 0);
-	store_input(&layer1_in, 0);
+    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &vect_sum_args);
 
-	reset_dim();
-	load_input(&layer0_in, 1);
-	load_coeff(&layer0_wgt, 1);
-	load_output(&layer0_out, 2);
-	copy_struct_param((unsigned int) &l0_args, (unsigned int) &DW_args, sizeof(l0_args));
-	pulp_conv_dw_fp32_bw_cl(&DW_args);
-	store_coeff(&layer0_wgt, 0);
+    store_input(&layer9_in, 0);
+
+    reset_dim();
+    load_input(&layer7_in, 1);
+    load_output(&layer7_out, 2);
+    pulp_relu_fp32_bw_cl(&act_args);
+    store_input(&layer7_in, 0);
+
+    reset_dim();
+    load_input(&layer6_in, 1);
+    load_coeff(&layer6_wgt, 1);
+    load_output(&layer6_out, 2);
+    copy_struct_param((unsigned int) &l6_args, (unsigned int) &InstNorm_args, sizeof(l6_args));
+    pulp_instnorm_fp32_bw_cl(&InstNorm_args);
+    store_coeff(&layer6_wgt, 0);
+    store_input(&layer6_in, 0);
+
+    reset_dim();
+    load_input(&layer5_in, 1);
+    load_coeff(&layer5_wgt, 1);
+    load_output(&layer5_out, 2);
+    copy_struct_param((unsigned int) &l5_args, (unsigned int) &PW_args, sizeof(l5_args));
+    pulp_conv_pw_fp32_bw_cl(&PW_args);
+    store_coeff(&layer5_wgt, 0);
+    store_input(&layer5_in, 0);
+
+    reset_dim();
+    load_input(&layer4_in, 1);
+    load_coeff(&layer4_wgt, 1);
+    load_output(&layer4_out, 2);
+    copy_struct_param((unsigned int) &l4_args, (unsigned int) &DW_args, sizeof(l4_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer4_wgt, 0);
+    store_input(&layer4_in, 0);
+
+    reset_dim();
+    load_input(&layer3_in, 1);
+    load_output(&layer3_out, 2);
+    pulp_relu_fp32_bw_cl(&act_args);
+    store_input(&layer3_in, 0);
+
+    reset_dim();
+    load_input(&layer2_in, 1);
+    load_coeff(&layer2_wgt, 1);
+    load_output(&layer2_out, 2);
+    copy_struct_param((unsigned int) &l2_args, (unsigned int) &InstNorm_args, sizeof(l2_args));
+    pulp_instnorm_fp32_bw_cl(&InstNorm_args);
+    store_coeff(&layer2_wgt, 0);
+    store_input(&layer2_in, 0);
+
+    reset_dim();
+    load_input(&layer1_in, 1);
+    load_coeff(&layer1_wgt, 1);
+    load_output(&layer1_out, 2);
+    copy_struct_param((unsigned int) &l1_args, (unsigned int) &PW_args, sizeof(l1_args));
+    pulp_conv_pw_fp32_bw_cl(&PW_args);
+    store_coeff(&layer1_wgt, 0);
+    store_input(&layer1_in, 0);
+
+    reset_dim();
+    load_input(&layer0_in, 1);
+    load_coeff(&layer0_wgt, 1);
+    load_output(&layer0_out, 2);
+    copy_struct_param((unsigned int) &l0_args, (unsigned int) &DW_args, sizeof(l0_args));
+    pulp_conv_dw_fp32_bw_cl(&DW_args);
+    store_coeff(&layer0_wgt, 0);
 }
 
 // Compute loss and output gradient

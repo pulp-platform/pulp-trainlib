@@ -181,6 +181,12 @@ void leakyrelu_core_bw_fp32( void * leakyrelu_args );
 */
 void pulp_softmax_fp32_fw_cl( void * act_args );
 
+/**
+ * @brief Forward pass function tiled in L1.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_softmax_fp32_fw_cl_tiled( void * act_args , void * Tiled_matmul_mhsa_args);
 
 /**
  * @brief Backward pass function.
@@ -273,3 +279,11 @@ void pulp_vector_softmax_fp32(float* out, float* in, float* buffer_n_cores, unsi
  * @param (void*) (struct swiglu_args void_args) 
  */
 void pulp_swiglu_fp32_cl(void *swiglu_args);
+
+
+/**
+ * @brief GELU activation layer, using the tanh approximation. Approximation of the gelu(approximate="tanh") function
+ * from torch.nn.functional.
+ * @param (void*) (struct act_args void_args)
+ */
+void pulp_gelu_tanh_approx_fp32_fw_cl(void* void_args);

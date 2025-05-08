@@ -24,30 +24,45 @@
 
 
 #if DATA_TYPE == FP32
-// Inout data
+// Tanh data
 PI_L1 struct act_args act_args;
 PI_L1 struct leakyrelu_args leakyrelu_args;
-PI_L1 struct softmax_args softmax_args;
+PI_L1 struct tanh_args tanh_args;
 
+// ReLU
 PI_L1 struct blob relu_in_blob;
 PI_L1 struct blob relu_out_blob;
 PI_L1 float relu_out[OUT_SIZE];
 PI_L1 float relu_out_grad[OUT_SIZE];
 PI_L1 float relu_in_grad[IN_SIZE];
 
+// Softmax
+PI_L1 struct softmax_args softmax_args;
+
 PI_L1 struct blob softmax_in_blob;
 PI_L1 struct blob softmax_out_blob;
+
 PI_L1 float softmax_out[SOFTMAX_OUT_SIZE];
+
 PI_L1 float softmax_out_grad[SOFTMAX_OUT_SIZE];
 PI_L1 float softmax_in_grad[SOFTMAX_IN_SIZE];
+
 PI_L1 float softmax_maxes[Tin_H];
 PI_L1 float softmax_sums[Tin_H];
 
+// Sigmoid
 PI_L1 struct blob sigmoid_in_blob;
 PI_L1 struct blob sigmoid_out_blob;
 PI_L1 float sigmoid_out[OUT_SIZE];
 PI_L1 float sigmoid_out_grad[OUT_SIZE];
 PI_L1 float sigmoid_in_grad[IN_SIZE];
+
+// GELU
+PI_L1 struct blob gelu_in_blob;
+PI_L1 struct blob gelu_out_blob;
+PI_L1 float gelu_out[OUT_SIZE];
+
+PI_L1 float tanh_out[OUT_SIZE];
 
 PI_L1 struct blob leakyrelu_in_blob;
 PI_L1 struct blob leakyrelu_out_blob;
@@ -91,7 +106,7 @@ PI_L1 fp16 leakyrelu_in_grad[IN_SIZE];
 #endif
 
 
-void prepare_data () {
+void prepare_data() {
     // Initialize to 0
     for (int i = 0; i < OUT_SIZE; i++) {
         relu_out[i] = 0;
@@ -156,6 +171,20 @@ void prepare_data () {
     sigmoid_out_blob.W = Tout_W;
     sigmoid_out_blob.C = Tout_C;
 
+
+    // GELU args
+    gelu_in_blob.data = GELU_IN;
+    gelu_in_blob.dim = Tin_C * Tin_H * Tin_W;
+    gelu_in_blob.H = Tin_H;
+    gelu_in_blob.W = Tin_W;
+    gelu_in_blob.C = Tin_C;
+
+    gelu_out_blob.data = gelu_out;
+    gelu_out_blob.dim = Tout_C * Tout_H * Tout_W;
+    gelu_out_blob.H = Tout_H;
+    gelu_out_blob.W = Tout_W;
+    gelu_out_blob.C = Tout_C;
+
     // LeakyReLU args
     leakyrelu_in_blob.data = LEAKYRELUIN;
     leakyrelu_in_blob.diff = leakyrelu_in_grad;
@@ -173,12 +202,12 @@ void prepare_data () {
 }
 
 
-void net_step () {
+void net_step() {
     // Initialize profiler
-    #ifdef PROF_NET
+#ifdef PROF_NET
     INIT_STATS();
     PRE_START_STATS();
-    #endif
+#endif
 
     // Initialize the data
     prepare_data();
@@ -191,60 +220,60 @@ void net_step () {
     act_args.output = &relu_out_blob;
 
     // Print statistics for forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Apply ReLU activation
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_relu_fp32_fw_cl(&act_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_relu_fp16_fw_cl(&act_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop the statistics for the forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check output match
     printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(relu_out, RELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(relu_out, RELUOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
     // Initialize profiler for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("\nBackward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Compute gradient for ReLU
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_relu_fp32_bw_cl(&act_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_relu_fp16_bw_cl(&act_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop statistics for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check gradient match
     printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(relu_in_grad, RELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(relu_in_grad, RELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
     // ~~~~~~~~~~ Verify softmax activation ~~~~~~~~~~
     printf("\n----- SOFTMAX RESULTS -----\n");
@@ -260,60 +289,60 @@ void net_step () {
     softmax_args.sums = softmax_sums;
 
     // Print statistics for forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Apply softmax activation
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_softmax_fp32_fw_cl(&softmax_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_softmax_fp16_fw_cl(&softmax_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop the statistics for the forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check output match
     printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(softmax_out, SOFTMOUTPUT, SOFTMAX_OUT_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
     // Initialize profiler for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("\nBackward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Compute gradient for softmax
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_softmax_fp32_bw_cl(&softmax_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_softmax_fp16_bw_cl(&softmax_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop statistics for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check gradient match
     printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(softmax_in_grad, SOFTMIN_GRAD, SOFTMAX_IN_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
 
     // ~~~~~~~~~~ Verify sigmoid activation ~~~~~~~~~~
@@ -324,61 +353,120 @@ void net_step () {
     act_args.output = &sigmoid_out_blob;
 
     // Print statistics for forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("Forward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Apply sigmoid activation
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_sigmoid_fp32_fw_cl(&act_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_sigmoid_fp16_fw_cl(&act_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop the statistics for the forward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check output match
     printf("\nChecking output..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(sigmoid_out, SIGMOIDOUTPUT, OUT_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
     // Initialize profiler for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     printf("\nBackward stats: \n");
     START_STATS();
-    #endif
+#endif
 
     // Compute gradient for softmax
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     pulp_sigmoid_fp32_bw_cl(&act_args);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     pulp_sigmoid_fp16_bw_cl(&act_args);
-    #else
-    #endif
+#else
+#endif
 
     // Stop statistics for backward pass
-    #ifdef PROF_NET
+#ifdef PROF_NET
     STOP_STATS();
-    #endif
+#endif
 
     // Check gradient match
     printf("\nChecking in grad..\n");
-    #if DATA_TYPE == FP32
+#if DATA_TYPE == FP32
     verify_tensor(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #elif DATA_TYPE == FP16
+#elif DATA_TYPE == FP16
     verify_tensor_fp16(sigmoid_in_grad, SIGMOIDIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
-    #else
-    #endif
+#else
+#endif
 
+
+    // ~~~~~~~~~~ Verify GELU with tanh approximation activation ~~~~~~~~~~
+    printf("\n----- GELU - TANH APPROX - RESULTS -----\n");
+
+    // Prepare GELU struct
+    act_args.input = &gelu_in_blob;
+    act_args.output = &gelu_out_blob;
+
+    // Print statistics for forward pass
+#ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+#endif
+
+    // Apply GELU activation
+#if DATA_TYPE == FP32
+    pulp_gelu_tanh_approx_fp32_fw_cl(&act_args);
+#endif
+
+    // Stop the statistics for the forward pass
+#ifdef PROF_NET
+    STOP_STATS();
+#endif
+
+    // Check output match
+    printf("\nChecking output..\n");
+#if DATA_TYPE == FP32
+    verify_tensor(gelu_out, GELU_OUTPUT, OUT_SIZE, GELU_TANH_APPROX_ERROR_TOLERANCE);
+#endif
+
+    // ~~~~~~~~~~ Verify tanh activation ~~~~~~~~~~
+    printf("\n----- TANH RESULTS -----\n");
+
+    // Prepare TANH struct
+    tanh_args.input = TANH_IN;
+    tanh_args.output = tanh_out;
+    tanh_args.dim = OUT_SIZE;
+
+    // Print statistics for forward pass
+#ifdef PROF_NET
+    printf("Forward stats: \n");
+    START_STATS();
+#endif
+
+    // Apply TANH activation
+#if DATA_TYPE == FP32
+    pi_cl_team_fork(NUM_CORES, tanh_prll, &tanh_args);
+#endif
+
+    // Stop the statistics for the forward pass
+#ifdef PROF_NET
+    STOP_STATS();
+#endif
+
+    // Check output match
+    printf("\nChecking output..\n");
+#if DATA_TYPE == FP32
+    verify_tensor(tanh_out, TANH_OUTPUT, OUT_SIZE, TANH_ERROR_TOLERANCE);
+#endif
 
     // ~~~~~~~~~~ Verify LeakyReLU activation ~~~~~~~~~~
     printf("\n----- LEAKYRELU RESULTS -----\n");
@@ -443,7 +531,6 @@ void net_step () {
     verify_tensor_fp16(leakyrelu_in_grad, LEAKYRELUIN_GRAD, IN_SIZE, ERROR_TOLERANCE);
     #else
     #endif
-
 
     return;
 }

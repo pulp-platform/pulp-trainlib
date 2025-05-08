@@ -27,6 +27,8 @@
 struct act_args_fp16 {
     struct blob_fp16 * input;
     struct blob_fp16 * output;
+    int H;
+    int W;
 };
 
 
@@ -166,6 +168,13 @@ void leakyrelu_core_bw_fp16( void * leakyrelu_args_fp16 );
 */
 void pulp_softmax_fp16_fw_cl( void * act_args_fp16 );
 
+/**
+ * @brief Forward pass function tiled in L1.
+ * @param input Input for softmax.
+ * @param output Output of softmax.
+*/
+void pulp_softmax_fp16_fw_cl_tiled( void * act_args , void * Tiled_matmul_mhsa_args);
+
 
 /**
  * @brief Backward pass function.
@@ -181,3 +190,14 @@ void pulp_softmax_fp16_bw_cl( void * act_args_fp16 );
  * @param output Output of gelu.
 */
 void pulp_gelu_fp16_fw_cl( void* act_args_fp16);
+
+struct swiglu_args_fp16{
+    fp16* in1;
+    fp16* in2;
+    fp16* out;
+    int dim;
+};
+
+void pulp_vector_softmax_fp16(fp16* out, fp16* in, fp16* buffer_n_cores, unsigned int size);
+
+void pulp_swiglu_fp16_cl(void *swiglu_args);

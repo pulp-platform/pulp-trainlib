@@ -15,8 +15,8 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
-*/ 
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Calin Diaconu
+*/
 
 
 /**
@@ -24,12 +24,19 @@
  * Use pi_cl_team_fork(NUM_CORES, MM_NAME, &args) to parallelize.
  */
 
+
+/**
+ * @brief Matrix multiplication algorithm, supporting multiple-sized arrays, with NumPy-style broadcasting.
+ * @param broadcastMatMul_args_fp32 pointer to a broadcastMatMul_args_fp32 structure
+ */
+void mm_broadcast_fp32(void *broadcastMatMul_args_fp32);
+
 /**
  * @brief Naive matrix multiply algorithm, performing C=A*B (C is N*M, A is N*K, B is K*M). Parallelizes on N.
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -37,7 +44,7 @@ void mm(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_add(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -45,7 +52,7 @@ void mm_add(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M(
-	void * matMul_args
+        void *matMul_args
 );
 
 
@@ -63,7 +70,7 @@ void mm_M(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_u2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -71,7 +78,7 @@ void mm_u2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_1x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -79,7 +86,7 @@ void mm_unroll_1x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_1x4(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -87,7 +94,7 @@ void mm_unroll_1x4(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_1x8(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -95,7 +102,7 @@ void mm_unroll_1x8(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_2x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -103,7 +110,7 @@ void mm_unroll_2x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_4x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -111,7 +118,7 @@ void mm_unroll_4x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_8x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -119,7 +126,7 @@ void mm_unroll_8x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_2x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -127,7 +134,7 @@ void mm_unroll_2x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_2x4(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -135,7 +142,7 @@ void mm_unroll_2x4(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_4x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -143,7 +150,7 @@ void mm_unroll_4x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_unroll_4x4(
-    void * matMul_args
+        void *matMul_args
 );
 
 
@@ -155,7 +162,7 @@ void mm_unroll_4x4(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_u2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -163,7 +170,7 @@ void mm_M_u2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_2x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -171,7 +178,7 @@ void mm_M_unroll_2x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_4x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -179,7 +186,7 @@ void mm_M_unroll_4x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_8x1(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -187,7 +194,7 @@ void mm_M_unroll_8x1(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_1x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -195,7 +202,7 @@ void mm_M_unroll_1x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_1x4(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -203,7 +210,7 @@ void mm_M_unroll_1x4(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_1x8(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -211,7 +218,7 @@ void mm_M_unroll_1x8(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_2x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -219,7 +226,7 @@ void mm_M_unroll_2x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_4x2(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -227,7 +234,7 @@ void mm_M_unroll_4x2(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_2x4(
-    void * matMul_args
+        void *matMul_args
 );
 
 /**
@@ -235,5 +242,5 @@ void mm_M_unroll_2x4(
  * @param matMul_args pointer to a matMul_args structure (please refer to this to setup the args)
  */
 void mm_M_unroll_4x4(
-    void * matMul_args
+        void *matMul_args
 );

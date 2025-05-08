@@ -20,7 +20,7 @@
  *
  * Authors: Alberto Dequino, Calin Diaconu
 */ 
-
+#include "pmsis.h"
 
 /**
  * Multi-Head Self Attention layer configuration structure
@@ -29,6 +29,7 @@
 /**
  * @brief Structure for MHSA Training in FP32
  * @param input             Input vector for the MHSA layer.
+ * @param input_bn          Bottlenecked input for the MHSA layer.
  * @param n_heads           Number of heads the attention operation is divided.
  * @param output            Output vector.
  * @param coeff_in_q        Weight for input projection for query.
@@ -50,6 +51,7 @@
 
 struct Mhsa_args {
     struct blob *input;
+    struct blob *input_bn;
     int n_heads;
     int opt_matmul_type_fw;
     int opt_matmul_type_wg;
@@ -65,6 +67,7 @@ struct Mhsa_args {
     struct blob *bias_in_v;
 
     struct blob *coeff_out;
+    struct blob *bias_out;
     struct blob *q;
     struct blob *k;
     struct blob *v;
@@ -77,6 +80,33 @@ struct Mhsa_args {
     float *partial_exp_sum;
     float *maxes;
     float *sums;
+};
+
+
+struct Tiled_Matmul_Mhsa_args{
+    struct matMul_args * mm_args;
+    struct mm_manager_args * man_args;
+    float* BUFF;
+    int tile_h;
+    int tile_w;
+    int tile_dim;
+    int tile_h_p;
+    int tile_w_p;
+    int tile_dim_p;
+    int tile_h_sm;
+    int tile_w_sm;
+    int tile_dim_sm;
+    int tile_h_tr;
+    int tile_w_tr;
+    int tile_dim_tr;
+    int tile_h_attv;
+    int tile_w_attv;
+    int tile_dim_attv;
+    int tile_h_out_tr;
+    int tile_w_out_tr;
+    int tile_dim_out_tr;
+    pi_cl_dma_cmd_t * cmd_store;
+    pi_cl_dma_cmd_t * cmd_load;
 };
 
 
@@ -107,3 +137,20 @@ void pulp_mhsa_fp32_fw_cl_2(void * Mhsa_args);
  * @param Mhsa_args structure configuring the MHSA layer.
  */
 void pulp_mhsa_fp32_bw_cl(void * Mhsa_args);
+
+
+// INFERENCE FUNCTIONS
+/**
+ * @brief Inference function for the mobilebert encoder layer, modified version of the forward function
+ * @param Mhsa_args structure configuring the MHSA layer.
+ */
+void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void* Mhsa_args);
+
+void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void* Mhsa_args);
+
+
+void tiled_mhsa_fp32(void* Mhsa_args, void* tiled_matmul_mhsa_args);
+
+void tiled_matmul_mhsa(void* matmul_args, void* tiled_matmul_mhsa_args, int projection);
+
+void tiled_transpose_mhsa(void* transpose_args, void* Tiled_matmul_mhsa_args, int projection);
