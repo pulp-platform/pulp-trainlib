@@ -23,9 +23,13 @@ VIT_COMPONENTS_WRITERS = {
 
 for i in range(12):
     VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_norm1"] = layer_norm_writer
-    VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_pre_attn_transpose"] = transpose_writer
+    VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_pre_attn_transpose"] = (
+        transpose_writer
+    )
     VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_attn"] = mhsa_writer
-    VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_post_attn_transpose"] = transpose_writer
+    VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_post_attn_transpose"] = (
+        transpose_writer
+    )
     VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_proj"] = linear_writer
     VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_add_1"] = vector_sum_writer
     VIT_COMPONENTS_WRITERS[f"transformer_blocks_{i}_norm2"] = layer_norm_writer
