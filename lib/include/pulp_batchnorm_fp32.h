@@ -73,42 +73,7 @@ void pulp_batch_norm_fp32_fw_cl(void *BatchNorm_args_fp32);
 
 
 /**
- * @brief Function that calls both input and param gradient functions
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_cl(void *BatchNorm_args_fp32);
-
-
-/**
- * @brief Backward param gradient function that calls the parallelized version
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_param_grads_cl(void *BatchNorm_args_fp32);
-
-
-/**
- * @brief Backward input gradient function that calls the parallelized version
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_fp32_bw_input_grads_cl(void *BatchNorm_args_fp32);
-
-
-/**
  * @brief Forward backend function parallelized on multicore
  * @param (void *)  (struct InstNorm_args void_args)
  */
 void pulp_batch_norm_parallelized_fp32_fw_cl(void *BatchNorm_args_fp32);
-
-
-/**
- * @brief Backward backend function for input gradients parallelized on multicore
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_parallelized_fp32_bw_input_grads_cl(void *BatchNorm_args_fp32);
-
-
-/**
- * @brief Backward backend function for parameters gradients parallelized on multicore
- * @param (void *)  (struct InstNorm_args void_args)
- */
-void pulp_batchnorm_parallelized_fp32_bw_param_grads_cl(void *BatchNorm_args_fp32);
