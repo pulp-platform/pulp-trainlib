@@ -6,7 +6,7 @@ PROBABILITY?=0.23
 SEED?=0
 SIZE?=100
 USE_MASK?=0
-DATA_TYPE?=float
+DATA_TYPE?=float		# 'float' or 'fp16'
 # End of user code
 
 TRAIN_LIB=../../lib

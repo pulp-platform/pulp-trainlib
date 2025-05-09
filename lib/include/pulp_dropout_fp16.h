@@ -48,4 +48,4 @@ struct dropout_args_fp16{
 /**
  * @brief FP16 Dropout function
  */
- void pulp_cl_dropout_fp16(void * dropout_args);
+ void pulp_dropout_fp16_cl(void * dropout_args);

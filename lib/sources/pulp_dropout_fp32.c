@@ -24,8 +24,8 @@
 #include "pulp_dropout_fp32.h"
 #include "pmsis.h"
 
-void pulp_cl_dropout_fp32(void * dropout_args){
-    struct dropout_args_fp32* args = (struct dropout_args*)dropout_args;
+void pulp_dropout_fp32_cl(void * dropout_args){
+    struct dropout_args_fp32 *args = (struct dropout_args *) dropout_args;
     float prob = args->probability;
     if(prob==0.0f){
         return;

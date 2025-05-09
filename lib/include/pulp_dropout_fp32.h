@@ -47,4 +47,4 @@ struct dropout_args_fp32{
 /**
  * @brief FP32 Dropout function
  */
- void pulp_cl_dropout_fp32(void * dropout_args);
+ void pulp_dropout_fp32_cl(void * dropout_args);

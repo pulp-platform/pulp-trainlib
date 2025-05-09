@@ -30,7 +30,7 @@ void net_step ()
     START_STATS();
     #endif
 
-    pi_cl_team_fork(NUM_CORES, pulp_cl_dropout_fp16, &args);
+    pi_cl_team_fork(NUM_CORES, pulp_dropout_fp16_cl, &args);
 
     #ifdef PROF_NET
     STOP_STATS();
@@ -51,7 +51,7 @@ void net_step ()
     START_STATS();
     #endif
 
-    pi_cl_team_fork(NUM_CORES, pulp_cl_dropout_fp32, &args);
+    pi_cl_team_fork(NUM_CORES, pulp_dropout_fp32_cl, &args);
 
     #ifdef PROF_NET
     STOP_STATS();

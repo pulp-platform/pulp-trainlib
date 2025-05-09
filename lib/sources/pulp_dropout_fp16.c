@@ -24,7 +24,7 @@
 #include "pulp_dropout_fp16.h"
 #include "pmsis.h"
 
-void pulp_cl_dropout_fp16(void * dropout_args){
+void pulp_dropout_fp16_cl(void * dropout_args){
     struct dropout_args_fp16* args = (struct dropout_args_fp16*)dropout_args;
     fp16 prob = args->probability;
     if(prob==0.0f){
