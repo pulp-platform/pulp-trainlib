@@ -2,10 +2,10 @@ APP = layernorm_fp32
 
 # User code
 NUM_CORES?=8
-DATA_TYPE?=fp32
+DATA_TYPE?=fp32		# 'fp32'
 
-INPUT_WIDTH?=200
-INPUT_HEIGHT?=280
+INPUT_WIDTH?=16
+INPUT_HEIGHT?=16
 # End of user code
 
 TASK_NAME=sst-2

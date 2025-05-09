@@ -2,8 +2,8 @@ APP = test_instnorm_fp32
 
 # User Section
 CI?=8
-HI?=16
-WI?=16
+HI?=4
+WI?=4
 NUM_CORES?=8
 HWC?=0
 STEP?='FORWARD'			# 'FORWARD' or 'BACKWARD_GRAD' or 'BACKWARD_ERROR'

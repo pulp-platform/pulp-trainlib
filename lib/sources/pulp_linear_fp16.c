@@ -99,12 +99,12 @@ void pulp_linear_fp16_bw_param_grads_cl( void * Linear_args_fp16 )
 
   struct matMul_args_fp16 matMul_args;
 
-#ifdef DEBUG
+  #ifdef DEBUG
   printf("\nLinear outDiff\n");
   for(int i=0; i<FC_args->output->dim; i++)
     printf("%4.2e ", outDiff[i]);
   printf("\n");
-#endif
+  #endif
 
   matMul_args.A = outDiff;
   matMul_args.B = inData;
