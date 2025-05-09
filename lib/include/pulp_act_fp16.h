@@ -18,6 +18,7 @@
  * Activation functions configuration structure
  */
 
+#include "pulp_train_defines.h"
 
 /**
  * @brief Structure for activation functions

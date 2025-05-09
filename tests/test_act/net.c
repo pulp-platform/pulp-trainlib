@@ -75,6 +75,7 @@ PI_L1 float leakyrelu_in_grad[IN_SIZE];
 PI_L1 struct act_args_fp16 act_args;
 PI_L1 struct leakyrelu_args_fp16 leakyrelu_args;
 PI_L1 struct softmax_args_fp16 softmax_args;
+PI_L1 struct tanh_args_fp16 tanh_args;
 
 PI_L1 struct blob_fp16 relu_in_blob;
 PI_L1 struct blob_fp16 relu_out_blob;
@@ -95,6 +96,12 @@ PI_L1 struct blob_fp16 sigmoid_out_blob;
 PI_L1 fp16 sigmoid_out[OUT_SIZE];
 PI_L1 fp16 sigmoid_out_grad[OUT_SIZE];
 PI_L1 fp16 sigmoid_in_grad[IN_SIZE];
+
+PI_L1 struct blob_fp16 gelu_in_blob;
+PI_L1 struct blob_fp16 gelu_out_blob;
+PI_L1 fp16 gelu_out[OUT_SIZE];
+
+PI_L1 fp16 tanh_out[OUT_SIZE];
 
 PI_L1 struct blob_fp16 leakyrelu_in_blob;
 PI_L1 struct blob_fp16 leakyrelu_out_blob;

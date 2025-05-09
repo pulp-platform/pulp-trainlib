@@ -127,6 +127,60 @@ void relu_core_bw_fp32( void * act_args )
 }
 
 
+
+
+void pulp_leakyrelu_fp32_fw_cl( void * leakyrelu_args ) 
+{
+  struct leakyrelu_args * args = (struct leakyrelu_args *) leakyrelu_args;
+  pi_cl_team_fork(NUM_CORES, leakyrelu_core_fw_fp32, leakyrelu_args);
+}
+
+
+void pulp_leakyrelu_fp32_bw_cl( void * leakyrelu_args )
+{
+  struct leakyrelu_args * args = (struct leakyrelu_args *) leakyrelu_args;
+  pi_cl_team_fork(NUM_CORES, leakyrelu_core_bw_fp32, leakyrelu_args);
+}
+
+
+void leakyrelu_core_fw_fp32( void * leakyrelu_args )
+{
+  struct leakyrelu_args * args = (struct leakyrelu_args *) leakyrelu_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* outData = args->output->data;
+  float neg_slope = args->negative_slope;
+
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
+    outData[i] = inData[i] > 0 ? inData[i] : inData[i]*neg_slope;
+  }
+}
+
+
+void leakyrelu_core_bw_fp32( void * leakyrelu_args )
+{
+  struct leakyrelu_args * args = (struct leakyrelu_args *) leakyrelu_args;
+  int dim = args->input->dim;
+  float* inData = args->input->data;
+  float* inDiff = args->input->diff;
+  float* outDiff = args->output->diff;
+  float neg_slope = args->negative_slope;
+
+  const int blockSize=(dim+NUM_CORES-1)/NUM_CORES;
+  const int start = pi_core_id()*blockSize;
+  const int stop = start + blockSize > dim ? dim : start+blockSize;
+
+  for (int i = start; i < stop; i++) {
+    inDiff[i] = inData[i] > 0 ? outDiff[i] : outDiff[i]*neg_slope;
+  }
+}
+
+
+
 // ~~~~~~~~~~~~~~~~~~~~ SOFTMAX ~~~~~~~~~~~~~~~~~~~~
 // Forward pass of the FP32 softmax
 // Performs a softmax activation on each row

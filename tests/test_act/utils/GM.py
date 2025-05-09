@@ -364,6 +364,20 @@ def main():
         f.write("PI_L2 fp16 SIGMOIDIN_GRAD[IN_SIZE] = {" + dump.tensor_to_string(sigmoid_input.grad.half()) + "};\n")
         f.write("PI_L1 fp16 SIGMOIDLABEL[OUT_SIZE] = {" + dump.tensor_to_string(sigmoid_label.half()) + "};\n")
 
+        f.write("PI_L2 fp16 GELU_LOSS = {" + str(gelu_loss.data.item()) + "};\n")
+        f.write("PI_L2 fp16 GELU_OUTPUT[OUT_SIZE] = {" + dump.tensor_to_string(gelu_out.half()) + "};\n")
+        f.write("PI_L2 fp16 GELU_OUTPUT_GRAD[OUT_SIZE] = {" + dump.tensor_to_string(gelu_out.grad.half()) + "};\n")
+        f.write("PI_L1 fp16 GELU_IN[IN_SIZE] = {" + dump.tensor_to_string(gelu_input.half()) + "};\n")
+        f.write("PI_L2 fp16 GELU_IN_GRAD[IN_SIZE] = {" + dump.tensor_to_string(gelu_input.grad.half()) + "};\n")
+        f.write("PI_L1 fp16 GELU_LABEL[OUT_SIZE] = {" + dump.tensor_to_string(gelu_label.half()) + "};\n")
+
+        f.write("PI_L2 fp16 TANH_LOSS = {" + str(tanh_loss.data.item()) + "};\n")
+        f.write("PI_L2 fp16 TANH_OUTPUT[OUT_SIZE] = {" + dump.tensor_to_string(tanh_out.half()) + "};\n")
+        f.write("PI_L2 fp16 TANH_OUTPUT_GRAD[OUT_SIZE] = {" + dump.tensor_to_string(tanh_out.grad.half()) + "};\n")
+        f.write("PI_L1 fp16 TANH_IN[IN_SIZE] = {" + dump.tensor_to_string(tanh_input.half()) + "};\n")
+        f.write("PI_L2 fp16 TANH_IN_GRAD[IN_SIZE] = {" + dump.tensor_to_string(tanh_input.grad.half()) + "};\n")
+        f.write("PI_L1 fp16 TANH_LABEL[OUT_SIZE] = {" + dump.tensor_to_string(tanh_label.half()) + "};\n")
+
         f.write("PI_L2 fp16 LEAKYRELULOSS = {" + str(leakyrelu_loss.data.item()) + "};\n")
         f.write("PI_L2 fp16 LEAKYRELUOUTPUT[OUT_SIZE] = {" + dump.tensor_to_string(leakyrelu_out) + "};\n")
         f.write("PI_L2 fp16 LEAKYRELUOUTPUT_GRAD[OUT_SIZE] = {" + dump.tensor_to_string(leakyrelu_out.grad) + "};\n")
