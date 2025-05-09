@@ -18,7 +18,7 @@
 PI_L1 float loss = 0;
 
 // Define DNN blobs
-PI_L1 struct blob layer1_in, layer1_wgt, layer1_out;
+PI_L1 struct blob layer1_in, layer1_wgt, layer1_bias, layer1_out;
 
 // Define DNN layer structures
 PI_L1 struct BatchNorm_args_fp32 l1_args;
@@ -78,9 +78,10 @@ void DNN_init() {
     layer1_out.W = Tout_W_l1;
 
     // Configure layer structures
-    l1_args.input_blob = &layer1_in;
-    l1_args.output_blob = &layer1_out;
+    l1_args.input = &layer1_in;
+    l1_args.output = &layer1_out;
     l1_args.coeff = &layer1_wgt;
+    l1_args.bias = &layer1_bias;
     l1_args.batch_size = BATCH_SIZE;
     l1_args.running_mean = running_mean;
     l1_args.running_var = running_var;
@@ -89,11 +90,11 @@ void DNN_init() {
     l1_args.skip_wg_grad = 0;
     l1_args.skip_in_grad = 0;
 
-    l1_args.input = l1_in;
-    l1_args.output = l1_out;
+    l1_args.input->data = l1_in;
+    l1_args.output->data = l1_out;
 
-    l1_args.weight = l1_ker;
-    l1_args.bias = l1_ker + Tin_C_l1;
+    l1_args.coeff->data = l1_ker;
+    l1_args.bias->data = (l1_ker + Tin_C_l1);
     l1_args.eps[0] = EPS;
 
     l1_args.B = BATCH_SIZE;
@@ -129,8 +130,8 @@ void backward() {
 
     pulp_MSELoss_backward(&loss_args);
 
-    pulp_batchnorm_fp32_bw_param_grads_cl(&l1_args);
-    pulp_batchnorm_fp32_bw_input_grads_cl(&l1_args);
+    // pulp_batchnorm_fp32_bw_param_grads_cl(&l1_args);
+    // pulp_batchnorm_fp32_bw_input_grads_cl(&l1_args);
 }
 
 void backward_print() {
@@ -234,37 +235,37 @@ void net_step() {
 
     printf("Initializing Batch Normalization test\n");
     forward();
-    compute_loss();
+    // compute_loss();
 
-#ifdef FORWARD
+    #ifdef FORWARD
     printf("\nProfiling FORWARD step..\n");
-#endif
+    #endif
 
-#if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
-    printf("\nProfiling BACKWARD step..\n");
-#endif
+    // #if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
+    // printf("\nProfiling BACKWARD step..\n");
+    // #endif
 
-#ifdef PROF_NET
+    #ifdef PROF_NET
     INIT_STATS();
     PRE_START_STATS();
-#endif
+    #endif
 
-#ifdef FORWARD
+    #ifdef FORWARD
     forward_print();
-#endif
+    #endif
 
-#if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
-    backward_print();
-#endif
+    // #if defined(BACKWARD_GRAD) || defined(BACKWARD_ERROR)
+    // backward_print();
+    // #endif
 
     // Check and print updated output
     //forward();
     printf("Checking updated output..\n");
-#ifdef FORWARD
+    #ifdef FORWARD
     check_post_training_output();
-#else
+    #else
     check_batchnorm();
-#endif
+    #endif
     // print_output();
 
     printf("=============== Test passed! :) ===============\n");

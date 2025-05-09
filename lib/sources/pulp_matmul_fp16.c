@@ -172,9 +172,9 @@ void mm_broadcast_fp16(void *broadcastMatMul_args) {
 
         current_matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &current_matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_current_matMul_args;
 
         man_current_matMul_args.mm_args = &current_matMul_args;
@@ -182,8 +182,8 @@ void mm_broadcast_fp16(void *broadcastMatMul_args) {
         man_current_matMul_args.layer_type = LAYER_LINEAR;
         man_current_matMul_args.step_type = STEP_FW;
 
-        pi_cl_team_fork(NUM_CORES, mm_manager, &man_current_matMul_args);
-#endif
+        pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_current_matMul_args);
+        #endif
     }
 }
 

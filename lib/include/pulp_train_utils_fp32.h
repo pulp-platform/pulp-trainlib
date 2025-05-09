@@ -86,10 +86,14 @@ struct im2col_args {
  * @param dim Array of integers representing the dimensions of the input array
  * @param transposed_axes Array of integers representing the permutation of the axes
  * @param n_dim Integer representing the number of dimensions of the input array
+ * @param N In case of a matrix transposition, number of rows
+ * @param M In case of a matrix transposition, number of columns
  */
 struct transp_args {
     float *in_matrix;
     float *out_matrix;
+    int N;
+    int M;
     int *dim;
     int *transposed_axes;
     int n_dim;
@@ -606,7 +610,14 @@ int verify_tensor(float *tensor_out, float *tensor_ref, int size, float toleranc
 
 
 /**
- * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose, &args) to parallelize.
+ * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose_matrix, &args) to parallelize.
+ * @param void_args (void *) (struct transp_args void_args)
+ */
+void transpose_matrix(void *void_args);
+
+
+/**
+ * @brief Transpose two dims of a multi-dimensional tensor. Use pi_cl_team_fork(NUM_CORES, transpose, &args) to parallelize.
  * @param void_args (void *) (struct transp_args void_args)
  */
 void transpose(void *void_args);

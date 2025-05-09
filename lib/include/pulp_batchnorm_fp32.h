@@ -38,9 +38,10 @@
  * @param skip_in_grad skips the computation of the input grad (1st DNN layer)
  */
 struct BatchNorm_args_fp32 {
-    struct blob *input_blob;
-    struct blob *output_blob;
+    struct blob *input;
+    struct blob *output;
     struct blob *coeff;
+    struct blob *bias;
     int batch_size;
     float *running_mean;
     float *running_var;
@@ -49,8 +50,8 @@ struct BatchNorm_args_fp32 {
     int skip_wg_grad;
     int skip_in_grad;
 
-    float *input_data;
-    float *output_data;
+    // float *input_data;
+    // float *output_data;
 
     // Equivalent to gamma and beta
     float *weight_data;

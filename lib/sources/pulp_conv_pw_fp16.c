@@ -54,16 +54,16 @@ void pulp_conv_pw_fp16_fw_cl(void *PointWise_Conv_args_fp16) {
         matMul_args.K = pW * pH * Cin;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_FW;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
@@ -75,21 +75,21 @@ void pulp_conv_pw_fp16_fw_cl(void *PointWise_Conv_args_fp16) {
         matMul_args.K = Cin;
         matMul_args.trans_B = 1;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_FW;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-#endif
+        #endif
     } else {
         printf("[pulp_conv_pw_fp16_fw_cl] Invalid HWC parameter!\n");
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("FORWARD PW LAYER \n\n");
     for (int i=0; i<Cout*pW*pH; i++) {
       if ((i+1)%pW==0) {
@@ -99,7 +99,7 @@ void pulp_conv_pw_fp16_fw_cl(void *PointWise_Conv_args_fp16) {
         printf(" %f \n", outData[i]);
     }
     printf("\n");
-#endif
+    #endif
 
     return;
 }
@@ -136,9 +136,9 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(void *PointWise_Conv_args_fp16) {
     int H_out = PW_args->output->H;
     int C_out = PW_args->output->C;
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("OUTDIM %d %d %d ", W_in, H_in, C_in);
-#endif
+    #endif
 
     fp16 *inData = PW_args->input->data;
     fp16 *inDiff = PW_args->input->diff;
@@ -165,16 +165,16 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(void *PointWise_Conv_args_fp16) {
         matMul_args.K = W_out * H_out;
         matMul_args.trans_B = 1;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_WGT_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
@@ -188,17 +188,19 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(void *PointWise_Conv_args_fp16) {
         tr_args.out_matrix = transp_buffer;
         tr_args.dim = dims;
         tr_args.transposed_axes = tr_axes;
-        tr_args.n_axes = 2;
+        tr_args.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
 
-        dims[] = {H_in * W_in, C_in};
+        //dims = {H_in * W_in, C_in};
+        dims[0] = H_in * W_in;
+        dims[1] = C_in;
 
         tr_args.in_matrix = inData;
         tr_args.out_matrix = (transp_buffer + H_out * W_out * C_out);
         tr_args.dim = dims;
         tr_args.transposed_axes = tr_axes;
-        tr_args.n_axes = 2;
+        tr_args.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
 
@@ -286,7 +288,7 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
         tr_args.out_matrix = transp_buffer;
         tr_args.dim = dims;
         tr_args.transposed_axes = tr_axes;
-        tr_args.n_axes = 2;
+        tr_args.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
 
@@ -322,7 +324,7 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
         tr_args.out_matrix = transp_buffer;
         tr_args.dim = dims;
         tr_args.transposed_axes = tr_axes;
-        tr_args.n_axes = 2;
+        tr_args.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
 

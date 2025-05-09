@@ -36,6 +36,46 @@ int verify_tensor(float *tensor_out, float *tensor_ref, int size, float toleranc
 }
 
 
+void transpose_matrix(void *void_args) 
+{
+    struct transp_args args = *((struct transp_args *)void_args);
+    float * matrix = args.in_matrix;
+    float * transp_matrix = args.out_matrix;
+    int N = args.N;
+    int M = args.M;
+
+    // Parallelize on N or M depending on the wides available dimension
+    if (N > M) 
+    {
+        int blockSize = (N+NUM_CORES-1) / NUM_CORES;
+        int start = pi_core_id()*blockSize;
+        int stop = start+blockSize > N ? N : start+blockSize;
+
+        for (int i=start; i<stop; i++)
+        {
+            for (int j=0; j<M; j++)
+            {
+                transp_matrix[j*N+i] = matrix[i*M+j];
+            }
+        }
+    }
+    else 
+    {
+        int blockSize = (M+NUM_CORES-1) / NUM_CORES;
+        int start = pi_core_id()*blockSize;
+        int stop = start+blockSize > M ? M : start+blockSize;
+
+        for (int j=start; j<stop; j++)
+        {
+            for (int i=0; i<N; i++)
+            {
+                transp_matrix[j*N+i] = matrix[i*M+j];
+            }
+        }
+    }    
+}
+
+
 void transpose(void *void_args) {
     // Extract passed arguments
     struct transp_args args = *((struct transp_args *) void_args);

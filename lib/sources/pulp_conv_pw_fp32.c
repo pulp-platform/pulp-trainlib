@@ -52,16 +52,16 @@ void pulp_conv_pw_fp32_fw_cl(void *PointWise_Conv_args) {
         matMul_args.K = Cin;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_FW;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
@@ -73,21 +73,21 @@ void pulp_conv_pw_fp32_fw_cl(void *PointWise_Conv_args) {
         matMul_args.K = Cin;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_FW;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     } else {
         printf("[pulp_conv_pw_fp32_fw_cl] Invalid HWC parameter!\n");
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("FORWARD PW LAYER \n\n");
     for (int i=0; i<Cout*pW*pH; i++) {
       if ((i+1)%pW==0) {
@@ -97,7 +97,7 @@ void pulp_conv_pw_fp32_fw_cl(void *PointWise_Conv_args) {
         printf(" %f \n", outData[i]);
     }
     printf("\n");
-#endif
+    #endif
 
     return;
 }
@@ -134,9 +134,9 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
     int H_out = PW_args->output->H;
     int C_out = PW_args->output->C;
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("OUTDIM %d %d %d ", W_in, H_in, C_in);
-#endif
+    #endif
 
     float *inData = PW_args->input->data;
     float *inDiff = PW_args->input->diff;
@@ -164,28 +164,30 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
         matMul_args.K = W_out * H_out;
         matMul_args.trans_B = 1;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_WGT_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
         // Transpose HWC inData
-        int dims[] = {E, F};
-        int t_axes = {1, 0};
+        int dims[] = {C_in, H_in*W_in};
+        int t_axes[] = {1, 0};
 
         struct transp_args tr_args;
         tr_args.in_matrix = inData;
         tr_args.out_matrix = tr_buff;
         tr_args.dim = dims;
         tr_args.transposed_axes = t_axes;
+        //tr_args.M = C_in; 
+        //tr_args.N = H_in*W_in; 
         tr_args.n_dim = 2;
 
         pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
@@ -198,21 +200,21 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
         matMul_args.K = W_out * H_out;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_WGT_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     } else {
         printf("[pulp_conv_pw_fp32_bw_param_grads_cl] Invalid HWC parameter!\n");
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("%d %d %d %d\n\n", pW,pH,C_in,C_out);
 
     printf("GRADIENT PW LAYER \n\n");
@@ -224,7 +226,7 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
         printf(" %f \n", coeffDiff[i]);
     }
     printf("\n");
-#endif
+    #endif
 }
 
 
@@ -244,9 +246,9 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
     int H_out = PW_args->output->H;
     int C_out = PW_args->output->C;
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("OUTDIM %d %d %d ", W_out, H_out, C_out);
-#endif
+    #endif
 
     float *inData = PW_args->input->data;
     float *inDiff = PW_args->input->diff;
@@ -287,16 +289,16 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
         matMul_args.K = C_out;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_IN_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
@@ -323,21 +325,21 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
         matMul_args.K = C_out;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
-#else
+        #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_IN_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager, &man_args);
-#endif
+        #endif
     } else {
         printf("[pulp_conv_pw_fp32_bw_input_grads_cl] Invalid HWC parameter!\n");
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     // to PRINT outDiff orderly
     printf("ERROR PROP PW LAYER \n\n");
     for (int i=0; i<W_in*H_in*C_in; i++) {
@@ -349,5 +351,5 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
       else
         printf(" %f ", i, inDiff[i]);
     }
-#endif
+    #endif
 }

@@ -87,10 +87,14 @@ struct im2col_args_fp16 {
  * @param dim Array of integers representing the dimensions of the input array
  * @param transposed_axes Array of integers representing the permutation of the axes
  * @param n_dim Integer representing the number of dimensions of the input array
+ * @param N In case of a matrix transposition, number of rows
+ * @param M In case of a matrix transposition, number of columns
  */
 struct transp_args_fp16 {
     fp16 *in_matrix;
     fp16 *out_matrix;
+    int N;
+    int M;
     int *dim;
     int *transposed_axes;
     int n_dim;
@@ -557,6 +561,13 @@ struct reduce_mean_args_fp16 {
  * @return int 0, 1: flag that notifies if the checked tensor contains errors
  */
 int verify_tensor_fp16(fp16 *tensor_out, fp16 *tensor_ref, int size, fp16 tolerance);
+
+
+/**
+ * @brief Transpose a matrix with specified N, M sizes into another matrix array. Use pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &args) to parallelize.
+ * @param void_args (void *) (struct transp_args_fp16 void_args)
+ */
+void transpose_matrix_fp16(void *void_args);
 
 
 /**

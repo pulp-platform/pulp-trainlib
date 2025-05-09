@@ -63,8 +63,8 @@ void pulp_batch_norm_parallelized_fp32_fw_cl(void *batch_norm_args) {
      */
     struct BatchNorm_args_fp32 *bn_args = (struct BatchNorm_args_fp32 *) batch_norm_args;
 
-    float *input = bn_args->input_data;
-    float *output = bn_args->output_data;
+    float *input = bn_args->input->data;
+    float *output = bn_args->output->data;
 
     float *weight = bn_args->weight_data;
     float *bias = bn_args->bias_data;
