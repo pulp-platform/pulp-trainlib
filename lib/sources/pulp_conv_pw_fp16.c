@@ -181,28 +181,32 @@ void pulp_conv_pw_fp16_bw_param_grads_cl(void *PointWise_Conv_args_fp16) {
         struct transp_args_fp16 tr_args;
 
         // Transpose weights in the first part of the buffer
-        int dims[] = {C_out, H_out * W_out};
-        int tr_axes[] = {1, 0};
+        // int dims[] = {C_out, H_out * W_out};
+        // int tr_axes[] = {1, 0};
 
         tr_args.in_matrix = outDiff;
         tr_args.out_matrix = transp_buffer;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = tr_axes;
-        tr_args.n_dim = 2;
+        // tr_args.dim = dims;
+        tr_args.N = H_out * W_out;
+        tr_args.M = C_out;
+        // tr_args.transposed_axes = tr_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &tr_args);
 
         //dims = {H_in * W_in, C_in};
-        dims[0] = H_in * W_in;
-        dims[1] = C_in;
+        // dims[0] = H_in * W_in;
+        // dims[1] = C_in;
 
         tr_args.in_matrix = inData;
         tr_args.out_matrix = (transp_buffer + H_out * W_out * C_out);
-        tr_args.dim = dims;
-        tr_args.transposed_axes = tr_axes;
-        tr_args.n_dim = 2;
+        tr_args.N = C_in;
+        tr_args.M = H_in * W_in;
+        // tr_args.dim = dims;
+        // tr_args.transposed_axes = tr_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &tr_args);
 
         matMul_args.A = transp_buffer; //outDiff;
         matMul_args.B = (transp_buffer + H_out * W_out * C_out); //inData;
@@ -258,9 +262,9 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
     int H_out = PW_args->output->H;
     int C_out = PW_args->output->C;
 
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("OUTDIM %d %d %d ", W_out, H_out, C_out);
-#endif
+    #endif
 
     fp16 *inData = PW_args->input->data;
     fp16 *inDiff = PW_args->input->diff;
@@ -280,17 +284,19 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
     if (HWC == 0) {
         struct transp_args_fp16 tr_args;
 
-        int dims[] = {C_out, C_in};
-        int tr_axes[] = {1, 0};
+        // int dims[] = {C_out, C_in};
+        // int tr_axes[] = {1, 0};
 
         // Transpose weights in the first part of the buffer
         tr_args.in_matrix = coeffData;
         tr_args.out_matrix = transp_buffer;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = tr_axes;
-        tr_args.n_dim = 2;
+        tr_args.N = C_out;
+        tr_args.M = C_in;
+        // tr_args.dim = dims;
+        // tr_args.transposed_axes = tr_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &tr_args);
 
         matMul_args.A = transp_buffer; // coeffData; // transp
         matMul_args.B = outDiff;
@@ -300,33 +306,35 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
         matMul_args.K = pW * pH * C_out;
         matMul_args.trans_B = 0;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_IN_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-#endif
+        #endif
     }
         // HWC format for both input and output
     else if (HWC == 1) {
         // NON-OPTIMIZED CHW
         struct transp_args_fp16 tr_args;
 
-        int dims[] = {C_out, C_in};
-        int tr_axes[] = {1, 0};
+        // int dims[] = {C_out, C_in};
+        // int tr_axes[] = {1, 0};
 
         // Transpose weights in the first part of the buffer
         tr_args.in_matrix = coeffData;
         tr_args.out_matrix = transp_buffer;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = tr_axes;
-        tr_args.n_dim = 2;
+        tr_args.N = C_out;
+        tr_args.M = C_in;
+        // tr_args.dim = dims;
+        // tr_args.transposed_axes = tr_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &tr_args);
 
         matMul_args.A = outDiff;
         matMul_args.B = transp_buffer; // coeffData;

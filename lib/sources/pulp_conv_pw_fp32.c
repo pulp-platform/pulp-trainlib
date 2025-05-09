@@ -178,19 +178,19 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
         // HWC format for both input and output
     else if (HWC == 1) {
         // Transpose HWC inData
-        int dims[] = {C_in, H_in*W_in};
-        int t_axes[] = {1, 0};
+        //int dims[] = {H_in*W_in, C_in};
+        //int t_axes[] = {1, 0};
 
         struct transp_args tr_args;
         tr_args.in_matrix = inData;
         tr_args.out_matrix = tr_buff;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = t_axes;
-        //tr_args.M = C_in; 
-        //tr_args.N = H_in*W_in; 
-        tr_args.n_dim = 2;
+        // tr_args.dim = dims;
+        // tr_args.transposed_axes = t_axes;
+        tr_args.M = C_in; 
+        tr_args.N = H_in*W_in; 
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix, &tr_args);
         // COMPUTE GRADIENT
         matMul_args.A = tr_buff;
         matMul_args.B = outDiff;
@@ -267,18 +267,20 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
     // CHW format for both input and output
     if (HWC == 0) {
         // Transpose weights
-        int dims[] = {C_out, C_in};
-        int t_axes[] = {1, 0};
+        // int dims[] = {C_out, C_in};
+        // int t_axes[] = {1, 0};
 
         struct transp_args tr_args;
 
         tr_args.in_matrix = coeffData;
         tr_args.out_matrix = tr_buffer;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = t_axes;
-        tr_args.n_dim = 2;
+        // tr_args.dim = dims;
+        tr_args.M = C_out; 
+        tr_args.N = C_in; 
+        // tr_args.transposed_axes = t_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix, &tr_args);
 
         // COMPUTE ACTIV_GRAD
         matMul_args.A = tr_buffer; // coeffData; // transp ?
@@ -303,18 +305,20 @@ void pulp_conv_pw_fp32_bw_input_grads_cl(void *PointWise_Conv_args) {
         // HWC format for both input and output
     else if (HWC == 1) {
         // Transpose weights
-        int dims[] = {C_out, C_in};
-        int t_axes[] = {1, 0};
+        // int dims[] = {C_out, C_in};
+        // int t_axes[] = {1, 0};
 
         struct transp_args tr_args;
 
         tr_args.in_matrix = coeffData;
         tr_args.out_matrix = tr_buffer;
-        tr_args.dim = dims;
-        tr_args.transposed_axes = t_axes;
-        tr_args.n_dim = 2;
+        // tr_args.dim = dims;
+        tr_args.M = C_in; 
+        tr_args.N = C_out; 
+        // tr_args.transposed_axes = t_axes;
+        // tr_args.n_dim = 2;
 
-        pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
+        pi_cl_team_fork(NUM_CORES, transpose_matrix, &tr_args);
 
         // COMPUTE ACTIV_GRAD
         matMul_args.A = outDiff;
