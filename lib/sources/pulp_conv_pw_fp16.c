@@ -344,21 +344,21 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
         matMul_args.K = C_out;
         matMul_args.trans_B = 1;
 
-#ifndef OPTIMIZE
+        #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args);
-#else
+        #else
         struct mm_manager_args_fp16 man_args;
         man_args.mm_args = &matMul_args;
         man_args.layer_type = LAYER_PW_CONV;
         man_args.step_type = STEP_IN_GRAD;
         man_args.matmul_type = opt_matmul_type; //MATMUL_TYPE;
         pi_cl_team_fork(NUM_CORES, mm_manager_fp16, &man_args);
-#endif
+        #endif
     } else {
         printf("[pulp_conv_pw_fp16_bw_input_grads_cl] Invalid HWC parameter!\n");
     }
 
-#ifdef DEBUG
+    #ifdef DEBUG
     // to PRINT outDiff orderly
     printf("ERROR PROP PW LAYER \n\n");
     for (int i=0; i<W_in*H_in*C_in; i++) {
@@ -370,5 +370,5 @@ void pulp_conv_pw_fp16_bw_input_grads_cl(void *PointWise_Conv_args_fp16) {
       else
         printf(" %f ", i, inDiff[i]);
     }
-#endif
+    #endif
 }

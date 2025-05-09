@@ -193,7 +193,7 @@ void pulp_conv2d_fp16_fw_cl(void *Conv2D_args_fp16) {
             matMul_args.Upad = Upad;
             matMul_args.Dpad = Dpad;
 
-#ifdef OPTIMIZE
+            #ifdef OPTIMIZE
             int padding = Lpad + Rpad + Upad + Dpad;
             int stride = stride_h + stride_w;
             if (pH == 3 && pW == 3 && padding == 4 && stride == 4)
@@ -201,7 +201,7 @@ void pulp_conv2d_fp16_fw_cl(void *Conv2D_args_fp16) {
             else if (pH == 5 && pW == 5 && padding == 4 && stride == 4)
             pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_k5x5_s2_p1_fp16, &matMul_args);
             else
-#endif
+            #endif
             pi_cl_team_fork(NUM_CORES, naive_conv2d_fw_kernel_CHW_fp16, &matMul_args);
         }
 
@@ -353,18 +353,20 @@ void pulp_conv2d_fp16_bw_param_grads_cl(void *Conv2D_args_fp16) {
 
             pi_cl_team_fork(NUM_CORES, pulp_im2col_fp16, &im2col_args);
 
-            int dim[] = {C_out, H_out * W_out};
-            int tr_axes[] = {1, 0};
+            // int dim[] = {C_out, H_out * W_out};
+            // int tr_axes[] = {1, 0};
 
             struct transp_args_fp16 tr_args;
 
             tr_args.in_matrix = outDiff;
             tr_args.out_matrix = tr_buffer;
-            tr_args.dim = dim;
-            tr_args.transposed_axes = tr_axes;
-            tr_args.n_axes = 2;
+            tr_args.N = H_out * W_out;
+            tr_args.M = C_out;
+            // tr_args.dim = dim;
+            // tr_args.transposed_axes = tr_axes;
+            // tr_args.n_dim = 2;
 
-            pi_cl_team_fork(NUM_CORES, transpose_fp16, &tr_args);
+            pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &tr_args);
 
             matMul_args.A = tr_buffer; // outDiff;
             matMul_args.B = i2c_buffer;
