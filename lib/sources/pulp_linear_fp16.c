@@ -215,11 +215,23 @@ void pulp_linear_fp16_fw_cl_kernel( void * man_args )
 
   fp16 *__restrict__ biasData = matMul_args->bias;
 
+  // printf("\n");
+  // printf("inData: 0x%x\n", (unsigned int)inData);
+  // printf("coeffData: 0x%x\n", (unsigned int)coeffData);
+  // printf("outData: 0x%x\n", (unsigned int)outData);
+  // printf("biasData: 0x%x\n", (unsigned int)biasData);
+  // printf("\n");
+
   const uint32_t N = matMul_args->N;
   const uint32_t K = matMul_args->K;
   const uint32_t M = matMul_args->M;
   const uint32_t trans_B = matMul_args->trans_B;
   const uint32_t USE_BIASES = matMul_args->USE_BIASES;
+
+  // printf("Output (before matmul): ");
+  // for (int i=0; i<N; i++) {
+  //   printf("[(0x%x) %f] ", (unsigned int)&outData[i], outData[i]);
+  // } printf("\n");
 
   #ifndef OPTIMIZE
   mm_fp16(matMul_args);
@@ -227,17 +239,30 @@ void pulp_linear_fp16_fw_cl_kernel( void * man_args )
   mm_manager_fp16(manager_args);
   #endif
 
+  // printf("Output (before biases): ");
+  // for (int i=0; i<N; i++) {
+  //   printf("[(0x%x) %f] ", (unsigned int)&outData[i], outData[i]);
+  // } printf("\n");
+
   // N -- Co
   const uint32_t blockSize = (N+NUM_CORES-1) / NUM_CORES;
   const uint32_t start = pi_core_id()*blockSize;
   const uint32_t stop = start+blockSize > N ? N : start+blockSize;
 
-  if (USE_BIASES == 1) {
-    //for (int i=0; i<N; i++){
-    for (uint32_t i=start; i < stop; i++) {
+  if (USE_BIASES == 1 && pi_core_id() == 0) {
+    for (int i=0; i<N; i++){
+    //for (uint32_t i=start; i < stop; i++) {
+      printf("outData[%d] = %f, biasData[%d] = %f\n", i, outData[i], i, biasData[i]);
       outData[i] += biasData[i];
     }
   }
+
+  // printf("Output (after biases):  ");
+  // for (int i=0; i<N; i++) {
+  //   printf("[(0x%x) %f] ", (unsigned int)&outData[i], outData[i]);
+  // } printf("\n");
+  // printf("\nEND DEBUG\n\n");
+
 }
 
 void pulp_linear_fp16_bw_param_grads_cl_kernel( void * man_args )

@@ -324,23 +324,23 @@ static inline void train(){
 
   #ifdef FORWARD
   printf("FORWARD CHECK: \n");
-  // printf("Linear forward in: \n");
-  // for (int i=0; i<Tin_l0; i++) {
-  //   printf("%f ", l0_in[i]);
-  // } printf("\n");
-  // printf("FC weights: \n");
-  // for (int i=0; i<Tin_l0*Tout_l0; i++) {
-  //   if ((i%Tin_l0==0) && (i!=0)) printf("\n");
-  //   printf("%f ", l0_ker[i]);
-  // } printf("\n");
-  // printf("FC biases: \n");
-  // for (int i=0; i<Tout_l0; i++) {
-  //   printf("%f ", l0_bias[i]);
-  // } printf("\n");
-  // printf("Linear forward out: \n");
-  // for (int i=0; i<Tout_l0; i++) {
-  //   printf("%f ", l0_out[i]);
-  // } printf("\n");
+  //printf("\nLinear forward in: \n");
+  //for (int i=0; i<Tin_l0; i++) {
+  //  printf("%f ", l0_in[i]);
+  //} printf("\n");
+  //printf("FC weights: \n");
+  //for (int i=0; i<Tin_l0*Tout_l0; i++) {
+  //  if ((i%Tin_l0==0) && (i!=0)) printf("\n");
+  //  printf("%f ", l0_ker[i]);
+  //} printf("\n");
+  //printf("FC biases: \n");
+  //for (int i=0; i<Tout_l0; i++) {
+  //  printf("%f ", l0_bias[i]);
+  //} printf("\n");
+  //printf("Linear forward out: \n");
+  //for (int i=0; i<Tout_l0; i++) {
+  //  printf("%f ", l0_out[i]);
+  //} printf("\n\n");
   compare_tensors(l0_out, L0_OUT_FW, Tout_l0);
   check_tensor(l0_out, L0_OUT_FW, Tout_l0);
   #endif

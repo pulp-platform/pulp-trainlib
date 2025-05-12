@@ -205,6 +205,14 @@ void mm_fp16(void * void_args) {
     const uint32_t start = pi_core_id() * blockSize;
     const uint32_t stop = start + blockSize > N ? N : start + blockSize;
 
+    #ifdef DEBUG
+    // Output tracking
+    printf("mm_fp16 OUTPUT DATA (size=%d, addr=0x%x):\n", N, (unsigned int)&C);
+    for (int i=0; i<N; i++) {
+        printf("%f ", C[i]);
+    } printf("\n");
+    #endif
+
     // =====> B NOT TRANSPOSED <=====
     if (transp == 0) {
         if (K == 1) {
@@ -212,7 +220,7 @@ void mm_fp16(void * void_args) {
                 for (uint32_t j = 0; j < M; j++) {
                     C[i * M + j] = A[i * K] * B[j];
 #ifdef DEBUG
-                    printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K, j, C[i*M+j], A[i*K], B[j]);
+                    printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K, j, C[i*M+j], A[i*K], B[j]);
 #endif
                 }
             }
@@ -223,7 +231,7 @@ void mm_fp16(void * void_args) {
                     for (uint32_t k = 0; k < K; k++) {
                         temp += A[i * K + k] * B[j + k * M];
 #ifdef DEBUG
-                        printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f", i*M+j, i*K+k, j+k*M, C[i*M+j], A[i*K+k], B[j+k*M]);
+                        printf("C[%i] += A[%i] * B[%i] -> %f = %f * %f\n", i*M+j, i*K+k, j+k*M, temp, A[i*K+k], B[j+k*M]);
 #endif
                     }
                     C[i * M + j] = temp;

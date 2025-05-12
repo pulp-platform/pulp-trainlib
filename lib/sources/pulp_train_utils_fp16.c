@@ -1267,6 +1267,13 @@ void mm_manager_fp16(void *void_args) {
 
     #ifdef DEBUG
     printf("Running layer %d, step %d, matmul %d\n", layer_type, step_type, matmul_type);
+    // Output tracking
+    fp16 * outp = matMul_args->C;
+    int size_outp = matMul_args->N;
+    printf("mm_manager_fp16 OUTPUT DATA (size=%d, addr=0x%x):\n", size_outp, (unsigned int)&outp);
+    for (int i=0; i<size_outp; i++) {
+        printf("%f ", outp[i]);
+    } printf("\n");
     #endif
 
     // =====> CONV2D
