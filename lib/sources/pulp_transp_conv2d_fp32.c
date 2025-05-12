@@ -143,12 +143,12 @@ void pulp_transp_conv2d_fp32_bw_cl( void * Transp_Conv2D_args )
 
     if (skip_wg_grad == 0)
     {
-      pulp_transp_conv2d_fp32_bw_param_grads_cl(Conv2D_args);
+      pulp_transp_conv2d_fp32_bw_param_grads_cl(Transp_Conv2D_args);
     }
 
     if (skip_in_grad == 0)
     {
-      pulp_transp_conv2d_fp32_bw_input_grads_cl(Conv2D_args); 
+      pulp_transp_conv2d_fp32_bw_input_grads_cl(Transp_Conv2D_args); 
     }
 }
 

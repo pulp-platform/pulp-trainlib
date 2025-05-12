@@ -149,18 +149,20 @@ PULP-TrainLib's repository is organized with these branches:
 
 # Available features status log
 
-> Note: checked are complete, unchecked are ongoing
+> Note: checked are complete, unchecked are ongoing/buggy
 
 PULP-TrainLib:
 
-- [X] Forward passes for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
-- [X] Weight gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
-- [X] Input gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected (FP32, FP16)
-- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions (FP32, FP16)
+- [X] Forward passes for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected, Transposed Convolution 2D (FP32, FP16)
+- [X] Weight gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected, Transposed Convolution 2D (FP32, FP16)
+- [X] Input gradients for DepthWise, PointWise Convolutions and Conv2D, Fully-Connected, Transposed Convolution 2D (FP32, FP16)
+- [X] CWH data layout for DepthWise, PointWise and 2D Convolutions, Transposed Convolution 2D (FP32, FP16)
 - [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
 - [X] Stride and Padding (only naive 2D Convolutions, without im2col+mm optimization)
 - [X] ReLU, Leaky ReLU, Sigmoid activation functions (FP32, FP16)
 - [X] Gradient Descent optimizer (FP32, FP16)
+- [X] L1Loss, MSE Loss, berHu Loss (FP32, FP16)
+- [ ] CrossEntropyLoss (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)
 - [X] RNN training primitives (FP32)
 - [X] Multihead Self Attention training primitives (FP32)
