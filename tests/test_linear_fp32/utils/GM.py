@@ -84,11 +84,12 @@ else:
             initial_weights[i][j] = temp_value
             temp_value = temp_value + 0.01
 
-temp_value_bias = 0.5
-initial_bias = torch.zeros(out_size)
-for i in range(out_size):
-    initial_bias[i] = temp_value_bias
-    temp_value_bias = temp_value_bias + 0.5
+if use_bias == True:
+    temp_value_bias = 0.5
+    initial_bias = torch.zeros(out_size)
+    for i in range(out_size):
+        initial_bias[i] = temp_value_bias
+        temp_value_bias = temp_value_bias + 0.5
 
 indata = torch.div(torch.ones(in_size), 100000)
 indata.requires_grad = True
@@ -103,13 +104,19 @@ print("\nInitializing net parameters to {}.\nParameters are: ".format(initial_we
 
 
 net.lin.weight = nn.Parameter(initial_weights)
-net.lin.bias = nn.Parameter(initial_bias)
+if use_bias == True:
+    net.lin.bias = nn.Parameter(initial_bias)
 for name, parameter in net.named_parameters():
     print(name, parameter, parameter.shape)
 
 
 f.write('PI_L2 float L0_WEIGHTS_params[L0_WEIGHTS] = {'+dump.tensor_to_string(net.lin.weight)+'};\n')
-f.write('PI_L2 float L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(net.lin.bias)+'};\n')
+if use_bias == True:
+    f.write('PI_L2 float L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(net.lin.bias)+'};\n')
+else: 
+    zero_biases = torch.zeros(out_size)
+    f.write('PI_L2 float L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(zero_biases)+'};\n')
+
 
 # Optimizer and criterion
 criterion = nn.MSELoss()
@@ -138,8 +145,11 @@ for i in range(1):
         print(name, parameter.grad, parameter.grad.shape, parameter.grad.dtype)
         if name == 'lin.weight':
             f.write('PI_L2 float L0_WEIGHT_GRAD [L0_WEIGHTS] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
-        elif name == 'lin.bias': 
+        elif name == 'lin.bias' and use_bias == True: 
             f.write('PI_L2 float L0_BIAS_GRAD [L0_OUT_CH] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
+    if use_bias == False:
+        zero_biases = torch.zeros(out_size)
+        f.write('PI_L2 float L0_BIAS_GRAD [L0_OUT_CH] = {'+dump.tensor_to_string(zero_biases)+'};\n')
     '''
     for name, parameter in net.named_parameters():
         print(name, parameter.grad, parameter.grad.shape, parameter.grad.dtype)
