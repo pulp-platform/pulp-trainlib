@@ -75,7 +75,7 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
 
     // T0_q
     int dims[] = {E, F};
-    int t_axes = {1, 0};
+    int t_axes[] = {1, 0};
 
     struct transp_args transp_args0_q;
     transp_args0_q.in_matrix = coeffDataWinQ;
@@ -90,14 +90,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     printf("\n\n\nT0_q result\n\ncoeffDataWinQ [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
-        printf("%.8f ",  transp_args0_q.matrix[j]);
+        printf("%.8f ",  transp_args0_q.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", transp_args0_q.transp_matrix[j]);
+        printf("%.8f ", transp_args0_q.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -158,7 +158,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed, &mm_bias_add_args_q);
 
     // T0_k
-    dims = {E, F};
+    dims[0] = E;
+    dims[1] = F;
 
     struct transp_args transp_args0_k;
     transp_args0_k.in_matrix = coeffDataWinK;
@@ -173,14 +174,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     printf("\n\n\nT0_k result\n\ncoeffDataWinK [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
-        printf("%.8f ",  transp_args0_k.matrix[j]);
+        printf("%.8f ",  transp_args0_k.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", transp_args0_k.transp_matrix[j]);
+        printf("%.8f ", transp_args0_k.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -241,7 +242,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     pi_cl_team_fork(NUM_CORES, mm_bias_add_transposed, &mm_bias_add_args_k);
 
     // T0_v
-    dims = {E, F};
+    dims[0] = E;
+    dims[1] = F;
 
     struct transp_args transp_args0_v;
 
@@ -257,14 +259,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
     printf("\n\n\nT0_v result\n\ncoeffDataWinV [^T]: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
-        printf("%.8f ",  transp_args0_v.matrix[j]);
+        printf("%.8f ",  transp_args0_v.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", transp_args0_v.transp_matrix[j]);
+        printf("%.8f ", transp_args0_v.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -335,7 +337,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    L x H     @ H x L ->      L x L     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         //  T1
-        dims = {H, L};
+        dims[0] = H;
+        dims[1] = L;
 
         struct transp_args transp_args1;
 
@@ -351,14 +354,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T1 result\n\nk: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args1.matrix[j]);
+            printf("%.8f ",  transp_args1.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
-            printf("%.8f ", transp_args1.transp_matrix[j]);
+            printf("%.8f ", transp_args1.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -451,7 +454,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         //  head buffer is transposed. To achieve the best experimental accuracy, the Softmax algorithm requires to compute
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
         // T2
-        dims[] = {L, L};
+        dims[0] = L;
+        dims[1] = L;
 
         struct transp_args transp_args2;
 
@@ -467,14 +471,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args2.matrix[j]);
+            printf("%.8f ",  transp_args2.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", transp_args2.transp_matrix[j]);
+            printf("%.8f ", transp_args2.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -517,7 +521,8 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         // T3
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
-        dims[] = {L, L};
+        dims[0] = L;
+        dims[1] = L;
 
         struct transp_args transp_args3;
 
@@ -533,14 +538,14 @@ void pulp_mhsa_fp32_fw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T2 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args3.matrix[j]);
+            printf("%.8f ",  transp_args3.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", transp_args3.transp_matrix[j]);
+            printf("%.8f ", transp_args3.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -727,14 +732,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     printf("\nT1 result\n\nattention_map: %d %d\n", F, L);
     for (int j=0; j<H*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  transp_args1.matrix[j]);
+        printf("%.8f ",  transp_args1.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", L, F);
     for (int j=0; j<L*F; j++){
         if(!(j%(F))) printf("\n");
-        printf("%.8f ", transp_args1.transp_matrix[j]);
+        printf("%.8f ", transp_args1.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -785,12 +790,13 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
     // T2
-    dims = {E, F};
+    dims[0] = E;
+    dims[1] = F;
 
     struct transp_args transp_args2;
 
-    transp_args2.matrix = coeffDataWout;
-    transp_args2.transp_matrix = temp;
+    transp_args2.in_matrix = coeffDataWout;
+    transp_args2.out_matrix = temp;
     transp_args2.dim = dims;
     transp_args2.transposed_axes = t_axes;
     transp_args2.n_dim = 2;
@@ -801,14 +807,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     printf("\n\n\ncoeffDataWout: %d %d\n", E, F);
     for (int j=0; j<E*F; j++){
         if(!(j%(F))) printf("\n");
-        printf("%.8f ",  transp_args2.matrix[j]);
+        printf("%.8f ",  transp_args2.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", F, E);
     for (int j=0; j<F*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", transp_args2.transp_matrix[j]);
+        printf("%.8f ", transp_args2.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -927,7 +933,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
         // T3
-        dims[] = {L, H};
+        dims[0] = L;
+        dims[1] = H;
 
         struct transp_args transp_args3;
 
@@ -943,14 +950,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T3 result\n\nv: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args3.matrix[j]);
+            printf("%.8f ",  transp_args3.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
-            printf("%.8f ", transp_args3.transp_matrix[j]);
+            printf("%.8f ", transp_args3.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -1016,7 +1023,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         // ~~~~~~~~~~~~~~~~~~ "IN-PLACE"_TRANSFORM (grad) [L x L] ~~~~~~~~~~~~~~~~~~                                              (T5 & C2)
 
         // T4
-        dims[] = {L, L};
+        dims[0] = L;
+        dims[1] = L;
 
         struct transp_args transp_args4;
 
@@ -1032,14 +1040,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T4 result\n\nsoftmax_buffer: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args4.matrix[j]);
+            printf("%.8f ",  transp_args4.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", transp_args4.transp_matrix[j]);
+            printf("%.8f ", transp_args4.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -1103,7 +1111,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
         // T5
-        dims[] = {L, L};
+        dims[0] = L;
+        dims[1] = L;
 
         struct transp_args transp_args5;
 
@@ -1119,14 +1128,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T5 result\n\ngrad: %d %d\n", i, L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args5.matrix[j]);
+            printf("%.8f ",  transp_args5.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, L);
         for (int j=0; j<L*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", transp_args5.transp_matrix[j]);
+            printf("%.8f ", transp_args5.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -1213,7 +1222,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ H x L @ L x L -> H x L  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // T6
-        dims[] = {H, L};
+        dims[0] = H;
+        dims[1] = L;
 
         struct transp_args transp_args6;
 
@@ -1229,14 +1239,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T6 result\n\nq: %d %d\n", i, H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ",  transp_args6.matrix[j]);
+            printf("%.8f ",  transp_args6.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
-            printf("%.8f ", transp_args6.transp_matrix[j]);
+            printf("%.8f ", transp_args6.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -1287,7 +1297,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
         // T7
-        dims[] = {L, H};
+        dims[0] = L;
+        dims[1] = H;
 
         struct transp_args transp_args7;
 
@@ -1303,14 +1314,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
         printf("\n\n\nHead %d - T7 result\n\nk_diff: %d %d\n", i, L, H);
         for (int j=0; j<L*H; j++){
             if(!(j%(H))) printf("\n");
-            printf("%.8f ",  transp_args7.matrix[j]);
+            printf("%.8f ",  transp_args7.in_matrix[j]);
         }
         printf("\n");
 
         printf("\ntemp: %d %d\n", H, L);
         for (int j=0; j<H*L; j++){
             if(!(j%(L))) printf("\n");
-            printf("%.8f ", transp_args7.transp_matrix[j]);
+            printf("%.8f ", transp_args7.out_matrix[j]);
         }
         printf("\n\n");
 #endif
@@ -1423,7 +1434,8 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     // ~~~~~~~~~~~~~~~~~~~~~~   E x L   + E x L ->   E x L    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // T8
-    dims[] = {E, L};
+    dims[0] = E;
+    dims[1] = L;
 
     struct transp_args transp_args8;
 
@@ -1439,14 +1451,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
     printf("\n\n\nT8 result\n\ninputData: %d %d\n", E, L);
     for (int j=0; j<E*L; j++){
         if(!(j%(L))) printf("\n");
-        printf("%.8f ",  transp_args8.matrix[j]);
+        printf("%.8f ",  transp_args8.in_matrix[j]);
     }
     printf("\n");
 
     printf("\ntemp: %d %d\n", L, E);
     for (int j=0; j<L*E; j++){
         if(!(j%(E))) printf("\n");
-        printf("%.8f ", transp_args8.transp_matrix[j]);
+        printf("%.8f ", transp_args8.out_matrix[j]);
     }
     printf("\n\n");
 #endif
@@ -1632,21 +1644,14 @@ void pulp_mhsa_fp32_bw_cl(void *Mhsa_args) {
 #endif
 
     // SUM_q
-    int dims[] = {E * L};
-
     struct vect_sum_args vect_sum_args;
 
     vect_sum_args.op_1 = inputDiff;
     vect_sum_args.op_2 = temp;
-    vect_sum_args.dest = inputDiff;
+    vect_sum_args.dest = inputDiff;;
+    vect_sum_args.size = E * L;
 
-    vect_sum_args.op_1_dims = dims;
-    vect_sum_args.op_2_dims = dims;
-
-    vect_sum_args.op_1_dims_len = 1;
-    vect_sum_args.op_2_dims_len = 1;
-
-    pi_cl_team_fork(NUM_CORES, array_broadcast_sum_fp32, &vect_sum_args);
+    pi_cl_team_fork(NUM_CORES, vect_sum, &vect_sum_args);
 
     // M8_k
     struct matMul_args matMul_args8_k;
@@ -1844,8 +1849,8 @@ void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
     for (int i = 0; i < n_heads; i++) {
         //  T1
         struct transp_args transp_args1;
-        transp_args1.matrix = kt + L * i * H;
-        transp_args1.transp_matrix = temp;
+        transp_args1.in_matrix = kt + L * i * H;
+        transp_args1.out_matrix = temp;
         transp_args1.N = H;
         transp_args1.M = L;
 
@@ -1898,8 +1903,8 @@ void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
         // T2
         struct transp_args transp_args2;
-        transp_args2.matrix = softmax_buffer + i * L * L;
-        transp_args2.transp_matrix = temp;
+        transp_args2.in_matrix = softmax_buffer + i * L * L;
+        transp_args2.out_matrix = temp;
         transp_args2.N = L;
         transp_args2.M = L;
 
@@ -1958,8 +1963,8 @@ void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
         struct transp_args transp_args3;
-        transp_args3.matrix = softmax_buffer + i * L * L;
-        transp_args3.transp_matrix = temp;
+        transp_args3.in_matrix = softmax_buffer + i * L * L;
+        transp_args3.out_matrix = temp;
         transp_args3.N = L;
         transp_args3.M = L;
 
@@ -2022,8 +2027,8 @@ void pulp_mhsa_mobilebert_inference_fp32_fw_cl(void *Mhsa_args) {
     // T4
     // The last transpose to original shape
     struct transp_args transp_args4;
-    transp_args4.matrix = temp;
-    transp_args4.transp_matrix = outData;
+    transp_args4.in_matrix = temp;
+    transp_args4.out_matrix = outData;
     transp_args4.N = F;
     transp_args4.M = L;
 
@@ -2143,17 +2148,17 @@ void tiled_transpose_mhsa(void *transpose_args, void* Tiled_matmul_mhsa_args, in
     float* IN_DATA = BUFF;
     float* OUT_DATA = BUFF + tile_dim;
 
-    args_l1.matrix = IN_DATA;
-    args_l1.transp_matrix = OUT_DATA;
+    args_l1.in_matrix = IN_DATA;
+    args_l1.out_matrix = OUT_DATA;
     args_l1.N = tile_w;
     args_l1.M = tile_h;
     
     for(int i = 0; i < n_tiles_i; i++){
         for(int j = 0; j < n_tiles_j; j++){
-            pi_cl_dma_cmd_2d((uint32_t) (args->matrix + i * tile_h + j * tile_w * M), (uint32_t) (IN_DATA), 4 * tile_dim, 4 * M, 4 * tile_h, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
+            pi_cl_dma_cmd_2d((uint32_t) (args->in_matrix + i * tile_h + j * tile_w * M), (uint32_t) (IN_DATA), 4 * tile_dim, 4 * M, 4 * tile_h, PI_CL_DMA_DIR_EXT2LOC, cmd_load);
             pi_cl_dma_cmd_wait(cmd_load);
             pi_cl_team_fork(NUM_CORES, transpose, &args_l1);
-            pi_cl_dma_cmd_2d((uint32_t) (args->transp_matrix + j * tile_w + i * tile_h * N), (uint32_t) (OUT_DATA), 4 * tile_dim, 4 * N, 4 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
+            pi_cl_dma_cmd_2d((uint32_t) (args->out_matrix + j * tile_w + i * tile_h * N), (uint32_t) (OUT_DATA), 4 * tile_dim, 4 * N, 4 * tile_w, PI_CL_DMA_DIR_LOC2EXT, cmd_store);
             pi_cl_dma_cmd_wait(cmd_store);
         }
     }
@@ -2248,8 +2253,8 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     for (int i = 0; i < n_heads; i++) {
         //  T1
         struct transp_args transp_args1;
-        transp_args1.matrix = kt + L * i * H;
-        transp_args1.transp_matrix = temp;
+        transp_args1.in_matrix = kt + L * i * H;
+        transp_args1.out_matrix = temp;
         transp_args1.N = H;
         transp_args1.M = L;
 
@@ -2303,8 +2308,8 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         //  row-wise max and sums, therefore it is necessary to transpose the current head buffer.
         // T2
         struct transp_args transp_args2;
-        transp_args2.matrix = softmax_buffer + i * L * L;
-        transp_args2.transp_matrix = temp;
+        transp_args2.in_matrix = softmax_buffer + i * L * L;
+        transp_args2.out_matrix = temp;
         transp_args2.N = L;
         transp_args2.M = L;
 
@@ -2354,8 +2359,8 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
         //  Each head result has to be appended to the full attention map, to do so we require to store the current
         //  softmax buffer data following the H x L convention, therefore we need to transpose the memory buffer again.
         struct transp_args transp_args3;
-        transp_args3.matrix = softmax_buffer + i * L * L;
-        transp_args3.transp_matrix = temp;
+        transp_args3.in_matrix = softmax_buffer + i * L * L;
+        transp_args3.out_matrix = temp;
         transp_args3.N = L;
         transp_args3.M = L;
 
@@ -2401,8 +2406,8 @@ void tiled_mhsa_fp32(void *Mhsa_args, void* Tiled_mhsa_matmul_args){
     // T4
     // The last transpose to original shape
     struct transp_args transp_args4;
-    transp_args4.matrix = temp;
-    transp_args4.transp_matrix = outData;
+    transp_args4.in_matrix = temp;
+    transp_args4.out_matrix = outData;
     transp_args4.N = mhsa_args->input_bn->W;
     transp_args4.M = L;
 
@@ -2460,8 +2465,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
     // T1
     struct transp_args transp_args1;
-    transp_args1.matrix = attention_map;
-    transp_args1.transp_matrix = temp;
+    transp_args1.in_matrix = attention_map;
+    transp_args1.out_matrix = temp;
     transp_args1.N = F;
     transp_args1.M = L;
 
@@ -2491,8 +2496,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
     // T2
     struct transp_args transp_args2;
-    transp_args2.matrix = coeffDataWout;
-    transp_args2.transp_matrix = temp;
+    transp_args2.in_matrix = coeffDataWout;
+    transp_args2.out_matrix = temp;
     transp_args2.N = E;
     transp_args2.M = F;
 
@@ -2546,8 +2551,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
         // T3
         struct transp_args transp_args3;
-        transp_args3.matrix = v + i * L * H;
-        transp_args3.transp_matrix = temp;
+        transp_args3.in_matrix = v + i * L * H;
+        transp_args3.out_matrix = temp;
         transp_args3.N = H;
         transp_args3.M = L;
 
@@ -2601,8 +2606,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
     for (int i = 0; i < n_heads; i++) {
         // T4
         struct transp_args transp_args4;
-        transp_args4.matrix = softmax_buffer_diff + i * L * L;
-        transp_args4.transp_matrix = temp;
+        transp_args4.in_matrix = softmax_buffer_diff + i * L * L;
+        transp_args4.out_matrix = temp;
         transp_args4.N = L;
         transp_args4.M = L;
 
@@ -2621,8 +2626,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
         // T5
         struct transp_args transp_args5;
-        transp_args5.matrix = grad;
-        transp_args5.transp_matrix = temp;
+        transp_args5.in_matrix = grad;
+        transp_args5.out_matrix = temp;
         transp_args5.N = L;
         transp_args5.M = L;
 
@@ -2645,8 +2650,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
         // T6
         struct transp_args transp_args6;
-        transp_args6.matrix = q + i * L * H;
-        transp_args6.transp_matrix = temp;
+        transp_args6.in_matrix = q + i * L * H;
+        transp_args6.out_matrix = temp;
         transp_args6.N = H;
         transp_args6.M = L;
 
@@ -2676,8 +2681,8 @@ void pulp_mhsa_mobilebert_inference_fp32_bw_cl(void *Mhsa_args){
 
         // T7
         struct transp_args transp_args7;
-        transp_args7.matrix = k_diff + i * L * H;
-        transp_args7.transp_matrix = temp;
+        transp_args7.in_matrix = k_diff + i * L * H;
+        transp_args7.out_matrix = temp;
         transp_args7.N = L;
         transp_args7.M = H;
 
