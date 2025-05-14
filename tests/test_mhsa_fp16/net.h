@@ -34,8 +34,8 @@
 #define Tker_l0     (Tin_l0*Tout_l0)
 
 // Tensor checksum definition
-#define CHECK_TOLERANCE 0.001
-#define ERROR_TOLERANCE 0.001
+#define CHECK_TOLERANCE 0x00000021
+#define ERROR_TOLERANCE 0x00000001
 
 // PULP DEFINES
 #define STACK_SIZE      4096

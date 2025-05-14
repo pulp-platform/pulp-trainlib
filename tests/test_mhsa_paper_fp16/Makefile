@@ -49,7 +49,7 @@ NUM_MATMULS?=24		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings
 
-TRAIN_LIB=/home/alberto/pulp-trainlib/lib
+TRAIN_LIB=../../lib
 TRAIN_LIB_SRCS=$(TRAIN_LIB)/sources
 APP_SRCS = main.c net_l1.c
 
