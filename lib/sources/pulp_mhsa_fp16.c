@@ -113,6 +113,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_q.K = E;
     matMul_args1_q.M = L;
     matMul_args1_q.trans_B = 0;
+    matMul_args1_q.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_q);
@@ -197,6 +198,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_k.K = E;
     matMul_args1_k.M = L;
     matMul_args1_k.trans_B = 0;
+    matMul_args1_k.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_k);
@@ -281,6 +283,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args1_v.K = E;
     matMul_args1_v.M = L;
     matMul_args1_v.trans_B = 0;
+    matMul_args1_v.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1_v);
@@ -375,6 +378,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         matMul_args2.K = H;
         matMul_args2.M = L;
         matMul_args2.trans_B = 0;
+        matMul_args2.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args2);
@@ -557,6 +561,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
+        matMul_args3.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args3);
@@ -609,6 +614,7 @@ void pulp_mhsa_fp16_fw_cl(void *Mhsa_args) {
     matMul_args4.K = F;
     matMul_args4.M = L;
     matMul_args4.trans_B = 0;
+    matMul_args4.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args4);
@@ -748,6 +754,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args1.K = L;
     matMul_args1.M = F;
     matMul_args1.trans_B = 0;
+    matMul_args1.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args1);
@@ -822,6 +829,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args2.K = E;
     matMul_args2.M = L;
     matMul_args2.trans_B = 0;
+    matMul_args2.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args2);
@@ -889,6 +897,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args3.K = L;
         matMul_args3.M = L;
         matMul_args3.trans_B = 0;
+        matMul_args3.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args3);
@@ -963,6 +972,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args4.K = H;
         matMul_args4.M = L;
         matMul_args4.trans_B = 0;
+        matMul_args4.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args4);
@@ -1251,6 +1261,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args5.K = L;
         matMul_args5.M = H;
         matMul_args5.trans_B = 0;
+        matMul_args5.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args5);
@@ -1349,6 +1360,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
         matMul_args6.K = L;
         matMul_args6.M = L;
         matMul_args6.trans_B = 0;
+        matMul_args6.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
         pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args6);
@@ -1461,6 +1473,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_q.K = L;
     matMul_args7_q.M = E;
     matMul_args7_q.trans_B = 0;
+    matMul_args7_q.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_q);
@@ -1505,6 +1518,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_k.K = L;
     matMul_args7_k.M = E;
     matMul_args7_k.trans_B = 0;
+    matMul_args7_k.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_k);
@@ -1549,6 +1563,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args7_v.K = L;
     matMul_args7_v.M = E;
     matMul_args7_v.trans_B = 0;
+    matMul_args7_v.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args7_v);
@@ -1593,6 +1608,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_q.K = F;
     matMul_args8_q.M = L;
     matMul_args8_q.trans_B = 0;
+    matMul_args8_q.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_q);
@@ -1654,6 +1670,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_k.K = F;
     matMul_args8_k.M = L;
     matMul_args8_k.trans_B = 0;
+    matMul_args8_k.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_k);
@@ -1701,6 +1718,7 @@ void pulp_mhsa_fp16_bw_cl(void *Mhsa_args) {
     matMul_args8_v.K = F;
     matMul_args8_v.M = L;
     matMul_args8_v.trans_B = 0;
+    matMul_args8_v.USE_BIASES = 0;
 
 #ifndef OPTIMIZE
     pi_cl_team_fork(NUM_CORES, mm_fp16, &matMul_args8_v);
