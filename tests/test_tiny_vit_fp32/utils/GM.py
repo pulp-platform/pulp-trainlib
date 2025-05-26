@@ -131,6 +131,14 @@ def onnx_parser(onnx_model):
                 used_data, all_used_data, all_elements, adapt_onnx_name(node.name)
             )
 
+            if node.op_type == "Transpose":
+                new_shape = list(all_elements[node.output[0]]["shape"])
+
+                for reshape_output in onnx_model.graph.value_info:
+                    if reshape_output.name == node.output[0]:
+                        for iii, d in enumerate(reshape_output.type.tensor_type.shape.dim):
+                            d.dim_value = new_shape[iii]
+
         elif node.op_type == "Identity":
             the_data = all_elements[node.input[0]]["val"]
 
@@ -225,6 +233,11 @@ def onnx_parser(onnx_model):
                 "shape": tuple(new_shape),
                 "data": all_elements[node.input[0]]["data"],
             }
+
+            for reshape_output in onnx_model.graph.value_info:
+                if reshape_output.name == node.output[0]:
+                    for iii, d in enumerate(reshape_output.type.tensor_type.shape.dim):
+                        d.dim_value = new_shape[iii]
         else:
             raise NotImplementedError(
                 f"Operation {node.op_type} is not implemented in the parser."
@@ -354,6 +367,12 @@ def main():
         training=torch.onnx.TrainingMode.EVAL,
         export_params=True,
     )
+
+    # Infer node output dimensions
+    onnx_model = onnx.load("TinyViT.onnx")
+    onnx_model = onnx.shape_inference.infer_shapes(onnx_model)
+
+    onnx.save_model(onnx_model, "TinyViT.onnx")
     onnx_model = onnx.load("TinyViT.onnx")
 
     # Parse onnx
@@ -366,6 +385,17 @@ def main():
         parameter_arrays,
         input_name,
     ) = onnx_parser(onnx_model)
+
+    inputs_to_save = [
+        sample_input.numpy(),
+    ] + list(parameter_arrays.values())
+
+    np.savez("inputs.npz", *inputs_to_save)
+    np.savez("outputs.npz", input=model(sample_input).detach())
+
+    onnx.save_model(onnx_model, "TinyViT.onnx")
+
+    input("Stop if only exporting ONNX model.")
 
     # Write input sequence
     input_writer(
