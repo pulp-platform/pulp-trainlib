@@ -142,7 +142,7 @@ if __name__ == "__main__":
     f.write("#define Thead_dim_l1 " + str(head_dim) + "\n")
     if current_step == "FORWARD":
         f.write(
-            "#define Ttemp_max " + str(int(max(in_h * head_dim, in_h * in_h))) + "\n"
+            "#define Ttemp_max " + str(int(max(in_w * head_dim, in_h * head_dim, in_h * in_h, in_w * in_w))) + "\n"
         )
     else:
         f.write(

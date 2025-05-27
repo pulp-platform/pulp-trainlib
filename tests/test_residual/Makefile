@@ -1,8 +1,8 @@
 APP = test_residual
 
-CI?=64
-HI?=56
-WI?=56
+CI?=8
+HI?=4
+WI?=6
 KER?=1
 NUM_CORES?=8
 HWC?=0
@@ -20,6 +20,8 @@ APP_SRCS += main.c net.c
 
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv2d_fp16.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp32.c
+APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_conv_naive_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp32.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_train_utils_fp16.c
 APP_SRCS += $(TRAIN_LIB_SRCS)/pulp_losses_fp32.c
