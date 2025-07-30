@@ -154,17 +154,19 @@ static inline void train() {
     struct transp_args transp_args;
 #if MOD == 0
     int dims[] = {Tin_C_l1, Tin_H_l1 * Tin_W_l1};
-    int t_axes = {1, 0};
+    // int t_axes = {1, 0};
 
     float transp_buffer[Tin_H_l1 * Tin_W_l1 * Tin_C_l1];
 
     transp_args.in_matrix = l1_in;
     transp_args.out_matrix = transp_buffer;
     transp_args.dim = dims;
-    transp_args.transposed_axes = t_axes;
-    transp_args.n_dim = 2;
+    transp_args.N = Tin_C_l1;
+    transp_args.M = Tin_H_l1 * Tin_W_l1;
+    // transp_args.transposed_axes = t_axes;
+    // transp_args.n_dim = 2;
 
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix, &transp_args);
 
     struct copy_args copy_args;
     copy_args.from = transp_buffer;
@@ -173,17 +175,19 @@ static inline void train() {
     pi_cl_team_fork(NUM_CORES, copy, &copy_args);
 #else
     int dims[] = {Tout_C_l1, Tout_H_l1 * Tout_W_l1};
-    int t_axes = {1, 0};
+    // int t_axes = {1, 0};
 
     float transp_buffer[Tout_H_l1 * Tout_W_l1 * Tout_C_l1];
 
     transp_args.in_matrix = l1_out;
     transp_args.out_matrix = transp_buffer;
     transp_args.dim = dims;
-    transp_args.transposed_axes = t_axes;
-    transp_args.n_dim = 2;
+    transp_args.N = Tout_C_l1;
+    transp_args.M = Tout_H_l1 * Tout_W_l1;
+    // transp_args.transposed_axes = t_axes;
+    // transp_args.n_dim = 2;
 
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix, &transp_args);
 
     struct copy_args copy_args;
     copy_args.from = transp_buffer;
@@ -197,17 +201,19 @@ static inline void train() {
     struct transp_args_fp16 transp_args;
 #if MOD == 0
     int dims = {Tin_C_l1, Tin_H_l1 * Tin_W_l1};
-    int t_axes = {1, 0};
+    // int t_axes = {1, 0};
 
     fp16 transp_buffer[Tin_H_l1 * Tin_W_l1 * Tin_C_l1];
 
     transp_args.in_matrix = l1_in;
     transp_args.out_matrix = transp_buffer;
-    transp_args.dim = dims;
-    transp_args.transposed_axes = t_axes;
-    transp_args.n_dim = 2;
+    // transp_args.dim = dims;
+    // transp_args.transposed_axes = t_axes;
+    // transp_args.n_dim = 2;
+    transp_args.N = Tin_C_l1;
+    transp_args.M = Tin_H_l1 * Tin_W_l1;
 
-    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &transp_args);
 
     struct copy_args_fp16 copy_args;
     copy_args.from = transp_buffer;
@@ -222,11 +228,13 @@ static inline void train() {
 
     transp_args.transp_matrix = transp_buffer;
     transp_args.matrix = l1_out;
-    transp_args.dim = dims;
-    transp_args.transposed_axes = t_axes;
-    transp_args.n_dim = 2;
+    // transp_args.dim = dims;
+    // transp_args.transposed_axes = t_axes;
+    // transp_args.n_dim = 2;
+    transp_args.N = Tout_C_l1;
+    transp_args.M = Tout_H_l1 * Tout_W_l1;
 
-    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &transp_args);
 
     struct copy_args_fp16 copy_args;
     copy_args.from = transp_buffer;
@@ -325,14 +333,14 @@ static inline void train() {
 #if MOD==0
     printf("\n\nCHW Reference Input:\n");
     // Transpose again to CHW to better visualize
-    transp_args.matrix = l1_in;
-    transp_args.transp_matrix = transp_buffer;
+    transp_args.in_matrix = l1_in;
+    transp_args.out_matrix = transp_buffer;
     transp_args.M = Tin_C_l1;
     transp_args.N = Tin_H_l1*Tin_W_l1;
 #if DATA_BITS == 32
-    pi_cl_team_fork(NUM_CORES, transpose, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix, &transp_args);
 #elif DATA_BITS == 16
-    pi_cl_team_fork(NUM_CORES, transpose_fp16, &transp_args);
+    pi_cl_team_fork(NUM_CORES, transpose_matrix_fp16, &transp_args);
 #endif
     copy_args.from = transp_buffer;
     copy_args.to = l1_in;
@@ -356,7 +364,7 @@ static inline void train() {
     for (int idx=0; idx<i2c_check_size; idx++)
     {
 #if IM2ROW == 0
-        if (!(idx%(Tin_H_l1*Tin_W_l1))) printf("\n");
+        if (!(idx%(Tin_C_l1*Tker_H_l1))) printf("\n");
 #else
         if (!(idx%(Tin_C_l1*Tker_H_l1*Tker_W_l1))) printf("\n");
 #endif
@@ -371,8 +379,8 @@ static inline void train() {
 #else
     printf("\n\nCHW Reference Ouput:\n");
     // Transpose again to CHW to better visualize
-    transp_args.matrix = l1_out;
-    transp_args.transp_matrix = transp_buffer;
+    transp_args.in_matrix = l1_out;
+    transp_args.out_matrix = transp_buffer;
     transp_args.M = Tout_C_l1;
     transp_args.N = Tout_H_l1*Tout_W_l1;
 #if DATA_BITS == 32
@@ -402,7 +410,7 @@ static inline void train() {
     for (int idx=0; idx<i2c_check_size; idx++)
     {
 #if IM2ROW == 0
-        if (!(idx%((Tin_H_l1)*(Tin_W_l1)))) printf("\n");
+        if (!(idx%((Tout_C_l1)*(Tker_H_l1)))) printf("\n");
 #else
         if (!(idx%((Tker_H_l1)*(Tker_W_l1)*Tout_C_l1))) printf("\n");
 #endif
