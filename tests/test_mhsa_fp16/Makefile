@@ -1,10 +1,10 @@
 APP = mhsa_fp16
 
 # User settings
-IN_H?=196 # Sequence Length
-IN_W?=160 # Token Size
-N_HEADS?=5
-ATT_DIM?=160 #Hidden dimension
+IN_H?=20 # Sequence Length
+IN_W?=40 # Token Size
+N_HEADS?=2
+ATT_DIM?=40 #Hidden dimension
 
 IN_CH?=1
 OUT_CH?=1

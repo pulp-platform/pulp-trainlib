@@ -244,13 +244,13 @@ void pulp_rnn_fp32_bw_cl(void *Rnn_args) {
 
     // Calculate gradient for State Weights
     // Transpose State
-    int dims[] = {N, M};
-    int t_axes[] = {1, 0};
+    dims[0] = N;
+    dims[1] = M;
 
     struct transp_args transp_args2;
 
-    transp_args2.matrix = hiddState;
-    transp_args2.transp_matrix = temp;
+    transp_args2.in_matrix = hiddState;
+    transp_args2.out_matrix = temp;
     transp_args2.dim = dims;
     transp_args2.transposed_axes = t_axes;
     transp_args2.n_dim = 2;
@@ -301,7 +301,8 @@ void pulp_rnn_fp32_bw_cl(void *Rnn_args) {
 
     // Calculate the Gradient of the Input
     // Transpose Input Weights
-    dims = {K, M};
+    dims[0] = K;
+    dims[1] = M;
 
     struct transp_args transp_args3;
 

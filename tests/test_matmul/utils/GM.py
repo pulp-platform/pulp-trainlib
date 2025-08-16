@@ -127,12 +127,41 @@ if matmul_alg == 'STANDARD':
             B.transpose(0, 1)
         else:
             C = torch.mm(input=A, mat2=B, out=C)
+    elif (data_type == 'bf16'):
+        # Matrices to be multiplied
+        A = torch.Tensor(in_size, mid_size).to(torch.bfloat16)
+        if transp == '1':
+            B = torch.Tensor(out_size, mid_size).to(torch.bfloat16)
+        else:
+            B = torch.Tensor(mid_size, out_size).to(torch.bfloat16)
+        C = torch.Tensor(in_size, out_size).to(torch.bfloat16)
+
+        A = torch.div(torch.randn(in_size, mid_size), divider).to(torch.bfloat16)
+        for i in range(A.shape[0]):
+            for j in range(A.shape[1]):
+                A[i][j] += (i+j+0.1)/divider
+
+        if transp == '1':
+            B = torch.zeros(out_size, mid_size).to(torch.bfloat16)
+        else:
+            B = torch.zeros(mid_size, out_size).to(torch.bfloat16)
+
+        for i in range(B.shape[0]):
+            for j in range(B.shape[1]):
+                B[i][j] = i*j+0.1
+
+        if transp == '1':
+            C = torch.mm(input=A, mat2=B.transpose(0, 1), out=C)
+            B.transpose(0, 1)
+        else:
+            C = torch.mm(input=A, mat2=B, out=C)
 
     else :  # Error message
         print('Invalid data type selection!!')
         exit()
 
-
+    if data_type == 'bf16':
+        data_type = 'fp16'
 
     # Print data and create data header file
     f = open('net_args.h', "w") 
