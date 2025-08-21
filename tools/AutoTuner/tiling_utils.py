@@ -43,6 +43,7 @@ def get_tiling (DW,
                 BitOut=32,
                 NUM_RESULTS=10,
                 layer_type='CONV2D',
+                use_bias=1,
                 NAIVE=True,
                 NUM_CORES=8,
                 IGNORE_IN_GRAD=False): 
@@ -92,6 +93,7 @@ def get_tiling (DW,
                                                                             NUM_RESULTS=NUM_RESULTS,
                                                                             Solution_idx=0,
                                                                             layer_type=layer_type,
+                                                                            use_bias=use_bias,
                                                                             ignore_in_grads=ignore_in_grads,
                                                                             NUM_CORES=NUM_CORES
                                                                             )        
@@ -769,6 +771,7 @@ def steven_the_tiler (DW=0,
                       NUM_RESULTS=10,
                       Solution_idx=0,
                       layer_type='CONV2D',
+                      use_bias=1,
                       ignore_in_grads=False,
                       NUM_CORES=8
                       ):
@@ -883,7 +886,7 @@ def steven_the_tiler (DW=0,
                         # Compute memocc for the new tile
                         memocc_raw = compute_memory_footprint(layer_type=layer_type, C_in=chin, H_in=height, 
                                                     W_in=width, C_out=chout, H_out=height-filter_size1+1, W_out=width-filter_size2+1,
-                                                    IN_BYTES=int(BitIn/8), KER_BYTES=int(BitW/8), OUT_BYTES=int(BitOut/8))
+                                                    IN_BYTES=int(BitIn/8), KER_BYTES=int(BitW/8), OUT_BYTES=int(BitOut/8), USE_BIAS=use_bias)
                         if ignore_in_grads:
                             max_memocc = max(memocc_raw[0], memocc_raw[1])
                         else:
@@ -938,7 +941,7 @@ def steven_the_tiler (DW=0,
             H_output.append(tile_t[1]-filter_size1+1)
             W_output.append(tile_t[2]-filter_size2+1)
             memocc_reread = compute_memory_footprint(layer_type, tile_t[0], tile_t[1], tile_t[2], tile_t[3],
-                                                    tile_t[1]-filter_size1+1, tile_t[2]-filter_size2+1, 4, 4, 4)
+                                                    tile_t[1]-filter_size1+1, tile_t[2]-filter_size2+1, 4, 4, 4, USE_BIAS=use_bias)
             print("Solution " + str(NUM_FOUND_SOLUTIONS) + " has a memocc of " + str(memocc_reread[0]) + ", " + str(memocc_reread[1]) + ", "
                                 + str(memocc_reread[2]) + " bytes.")
             Obj_values.append(memocc_t)
@@ -1065,7 +1068,7 @@ def sort_results (sim_result_file, tiling_idx_list, matmul_names_list, matmul_cy
 
 
 # Compute the memory footprint of a layer (RETURNS RESULT IN BYTE)
-def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out, IN_BYTES, KER_BYTES, OUT_BYTES):
+def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out, IN_BYTES, KER_BYTES, OUT_BYTES, USE_BIAS):
 
     # Internal variables
     if isinstance(C_in, list):
@@ -1136,13 +1139,15 @@ def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out,
         in_act  = Cin
         ker     = Cin * Cout
         out_act = Cout
-        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES
+        bias    = Cout
+        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES + bias * KER_BYTES
         memory_size_bytes.append(tot_FW)
         # WGT_G
         in_act  = Cin
         ker     = Cin * Cout
         out_act = Cout
-        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES
+        bias    = Cout
+        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + out_act * OUT_BYTES + bias * KER_BYTES
         memory_size_bytes.append(tot_WGT)
         # IN_G
         in_act  = Cin
@@ -1157,17 +1162,19 @@ def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out,
         conv2d_ker_W = Win - Wout + 1
         in_act  = Cin * Hin * Win
         ker     = conv2d_ker_H * conv2d_ker_W * Cin * Cout
+        bias    = Cout
         im2colF = Cin * conv2d_ker_H * conv2d_ker_W * (Win-conv2d_ker_W+1) * (Hin-conv2d_ker_H+1) 
         out_act = (Win-conv2d_ker_W+1) * (Hin-conv2d_ker_H+1) * Cout
-        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + im2colF * IN_BYTES + out_act * OUT_BYTES
+        tot_FW  = in_act * IN_BYTES + ker * KER_BYTES + bias * KER_BYTES + im2colF * IN_BYTES + out_act * OUT_BYTES
         memory_size_bytes.append(tot_FW)
         # WGT_G
         in_act  = Cin * Hin * Win
         ker     = conv2d_ker_H * conv2d_ker_W * Cin * Cout
+        bias    = Cout
         im2colW = Cin * conv2d_ker_H * conv2d_ker_W * (Win-conv2d_ker_W+1) * (Hin-conv2d_ker_H+1)
         # im2colW = Cout * conv2d_ker_H * conv2d_ker_W * (Win-conv2d_ker_W+1) * (Hin-conv2d_ker_H+1)
         out_act = (Win-conv2d_ker_W+1) * (Hin-conv2d_ker_H+1) * Cout
-        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + im2colW * IN_BYTES + out_act * OUT_BYTES
+        tot_WGT = in_act * IN_BYTES + ker * KER_BYTES + bias * KER_BYTES + im2colW * IN_BYTES + out_act * OUT_BYTES
         memory_size_bytes.append(tot_WGT)
         # IN_G
         in_act  = Cin * Hin * Win
@@ -1179,5 +1186,8 @@ def compute_memory_footprint (layer_type, C_in, H_in, W_in, C_out, H_out, W_out,
 
     else:
         print("Invalid layer entry for memocc calculation!!")
+
+    if USE_BIAS == 1 and layer_type not in ['CONV2D', 'LINEAR']:
+        print("Bias not handled for selected layer type and will be ignored.")
 
     return memory_size_bytes

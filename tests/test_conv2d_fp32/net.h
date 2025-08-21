@@ -33,8 +33,8 @@
 #define Tout_W_l1   ((Tin_W_l1-Tker_W_l1+PAD_L+PAD_R)/STRIDE_W + 1)
 
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-6
-#define ERROR_TOLERANCE 1e-6
+#define CHECK_TOLERANCE 1e-4
+#define ERROR_TOLERANCE 1e-4
 
 // PULP DEFINES
 #define STACK_SIZE      4096

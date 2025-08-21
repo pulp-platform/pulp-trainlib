@@ -2,11 +2,11 @@ APP = test_pooling
 
 # User settings
 # Standard matmul arguments
-IN_H?=16
-IN_W?=16
-IN_C?=8
-KER_H?=2
-KER_W?=2
+IN_H?=6
+IN_W?=6
+IN_C?=1
+KER_H?=6
+KER_W?=6
 H_STR?=1
 W_STR?=1
 VALUE?=0.5

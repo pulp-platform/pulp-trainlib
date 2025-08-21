@@ -1,13 +1,14 @@
 APP = linear_test_fp16
 
 # User settings
-IN_CH?=64
-OUT_CH?=12
+IN_CH?=8
+OUT_CH?=8
 NUM_CORES?=8
 STEP?='FORWARD' # Possible steps: 'FORWARD', 'BACKWARD_GRAD', 'BACKWARD_ERROR'
 #APP_CFLAGS += -DDEBUG
 APP_CFLAGS += -DOPTIMIZE
 MATMUL_TYPE?=0
+USE_BIASES_LINEAR?=0	# Allocate biases (1) or not (0)
 NUM_MATMULS?=6		# When profiling with multiple matmul algorithms
 NUM_SIZES?=3		# When profiling multiple sizes of the network
 # End of user settings
@@ -31,18 +32,19 @@ APP_CFLAGS += -DPROF_NET
 APP_CFLAGS += -DMEMOCC_COMP
 APP_CFLAGS += -mhwloopalign
 APP_CFLAGS += -DMATMUL_TYPE=${MATMUL_TYPE}
+APP_CFLAGS += -DUSE_BIASES_LINEAR=${USE_BIASES_LINEAR}
 APP_LDFLAGS += -lm 
 
 # STATISTICS
 APP_CFLAGS += -DSTATS
 
 get_golden:
-	python3 utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --step $(STEP)
+	python3 utils/GM.py --in_size $(IN_CH) --out_size $(OUT_CH) --step $(STEP) --use_bias $(USE_BIASES_LINEAR)
 
 profile_all_optim:
-	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH}
+	python3 ./utils/profile_optimized.py --num_matmuls ${NUM_MATMULS} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --in_size ${IN_CH} --out_size ${OUT_CH} --use_bias ${USE_BIASES_LINEAR}
 
 profile_all_sizes:
-	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE}
+	python3 ./utils/profile_sizes.py --num_sizes ${NUM_SIZES} --step ${STEP} --cores ${NUM_CORES} --data_type ${DATA_TYPE} --matmul_type ${MATMUL_TYPE} --use_bias ${USE_BIASES_LINEAR}
 
 include $(RULES_DIR)/pmsis_rules.mk

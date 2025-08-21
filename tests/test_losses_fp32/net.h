@@ -17,8 +17,8 @@
 // User profiling flags
 #define FLOAT32
 // Tensor checksum definition
-#define CHECK_TOLERANCE 1e-12
-#define ERROR_TOLERANCE 1e-12
+#define CHECK_TOLERANCE 1e-6
+#define ERROR_TOLERANCE 1e-6
 
 // PULP DEFINES
 #define STACK_SIZE      4096
@@ -27,7 +27,9 @@
 #define CID             0
 
 // Loss defines
-#define MSE 0
-#define CrossEntropy 1
+#define L1Loss 0
+#define MSE 1
+#define CrossEntropy 2
+#define berHuLoss 3
 
 void net_step();

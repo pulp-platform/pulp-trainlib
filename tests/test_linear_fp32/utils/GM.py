@@ -34,6 +34,7 @@ parser.add_argument( '--in_size', type=int, default=1024 )
 parser.add_argument( '--out_size', type=int, default=8 )
 parser.add_argument( '--file_name', type=str, default='linear-data.h')
 parser.add_argument( '--step', type=str, default='FORWARD')     # Possible steps: FORWARD, BACKWARD_GRAD, BACKWARD_ERROR
+parser.add_argument( '--use_bias', type=int, default=0)
 args = parser.parse_args()
 
 # Network parametersin_size
@@ -41,6 +42,7 @@ in_size = args.in_size
 out_size = args.out_size
 simple_kernel = False
 current_step = args.step
+use_bias = args.use_bias
 
 # Net step
 f_step = open('step-check.h', 'w')
@@ -62,7 +64,7 @@ class LinLayer (nn.Module):
 
     def __init__(self):
         super(LinLayer, self).__init__()
-        self.lin = nn.Linear(in_features=in_size, out_features=out_size, bias=False)
+        self.lin = nn.Linear(in_features=in_size, out_features=out_size, bias=bool(use_bias))
 
     def forward(self, x):
         out = self.lin(x)
@@ -82,6 +84,13 @@ else:
             initial_weights[i][j] = temp_value
             temp_value = temp_value + 0.01
 
+if use_bias == True:
+    temp_value_bias = 0.5
+    initial_bias = torch.zeros(out_size)
+    for i in range(out_size):
+        initial_bias[i] = temp_value_bias
+        temp_value_bias = temp_value_bias + 0.5
+
 indata = torch.div(torch.ones(in_size), 100000)
 indata.requires_grad = True
 print("\nInput data is: ", indata, indata.shape, indata.dtype)
@@ -95,11 +104,19 @@ print("\nInitializing net parameters to {}.\nParameters are: ".format(initial_we
 
 
 net.lin.weight = nn.Parameter(initial_weights)
+if use_bias == True:
+    net.lin.bias = nn.Parameter(initial_bias)
 for name, parameter in net.named_parameters():
     print(name, parameter, parameter.shape)
 
 
 f.write('PI_L2 float L0_WEIGHTS_params[L0_WEIGHTS] = {'+dump.tensor_to_string(net.lin.weight)+'};\n')
+if use_bias == True:
+    f.write('PI_L2 float L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(net.lin.bias)+'};\n')
+else: 
+    zero_biases = torch.zeros(out_size)
+    f.write('PI_L2 float L0_BIAS_params[L0_OUT_CH] = {'+dump.tensor_to_string(zero_biases)+'};\n')
+
 
 # Optimizer and criterion
 criterion = nn.MSELoss()
@@ -126,8 +143,18 @@ for i in range(1):
     print("\nNetwork gradients are: ")
     for name, parameter in net.named_parameters():
         print(name, parameter.grad, parameter.grad.shape, parameter.grad.dtype)
+        if name == 'lin.weight':
+            f.write('PI_L2 float L0_WEIGHT_GRAD [L0_WEIGHTS] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
+        elif name == 'lin.bias' and use_bias == True: 
+            f.write('PI_L2 float L0_BIAS_GRAD [L0_OUT_CH] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
+    if use_bias == False:
+        zero_biases = torch.zeros(out_size)
+        f.write('PI_L2 float L0_BIAS_GRAD [L0_OUT_CH] = {'+dump.tensor_to_string(zero_biases)+'};\n')
+    '''
+    for name, parameter in net.named_parameters():
+        print(name, parameter.grad, parameter.grad.shape, parameter.grad.dtype)
     f.write('PI_L2 float L0_WEIGHT_GRAD [L0_WEIGHTS] = {'+dump.tensor_to_string(parameter.grad)+'};\n')
-
+    '''
     print("\nInput grad is: ", indata.grad)
     f.write('PI_L2 float L0_IN_GRAD [L0_IN_CH] = {'+dump.tensor_to_string(indata.grad)+'};\n')
 

@@ -37,7 +37,7 @@ int main (void) {
       return -1;
   }
 
-  printf("\nLaunching matmul evaluation...\n\n");
+  printf("\nLaunching loss function evaluation...\n\n");
   pi_cluster_send_task_to_cl(&cluster_dev, pi_cluster_task(&cl_task, net_step, NULL));
 
   printf("\nOptimizer evaluation successfully terminated :)\n");
