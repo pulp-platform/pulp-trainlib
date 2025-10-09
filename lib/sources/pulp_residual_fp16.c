@@ -43,7 +43,8 @@ void pulp_residualconn_fp16_fw(void *SkipConn_args_fp16) {
 
     int dims[] = {out->dim};
 
-    struct vect_sum_args_fp16 args_sum;
+    struct array_broadcast_sum_fp16_args args_sum;
+    
     args_sum.op_1 = skip->data;
     args_sum.op_2 = lout->data;
     args_sum.dest = out->data;
@@ -79,14 +80,14 @@ void pulp_sumnode_fp16_bw(void *SkipConn_args_fp16) {
 
         int dims[] = {skip->dim};
 
-        struct vect_sum_args_fp16 args_sum;
+        struct array_broadcast_sum_fp16_args args_sum;
 
         args_sum.op_1 = out->diff;
         args_sum.op_2 = skip->diff;
         args_sum.dest = skip->diff;
 
         args_sum.op_1_dims = dims;
-        args_sum.op2_dims = dims;
+        args_sum.op_2_dims = dims;
 
         args_sum.op_1_dims_len = 1;
         args_sum.op_2_dims_len = 1;
