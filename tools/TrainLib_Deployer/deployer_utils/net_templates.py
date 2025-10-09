@@ -317,7 +317,7 @@ def ReLU_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def ReLU_template_BW(layer_number, DATA_TYPE):
+def ReLU_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
     if DATA_TYPE == "FP32":
         template = "  pulp_relu_fp32_bw_cl(&l" + str(layer_number) + "_args);\n"
     elif DATA_TYPE == "FP16":
