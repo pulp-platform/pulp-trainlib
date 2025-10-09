@@ -252,7 +252,7 @@ void pulp_linear_fp16_fw_cl_kernel( void * man_args )
   if (USE_BIASES == 1 && pi_core_id() == 0) {
     for (int i=0; i<N; i++){
     //for (uint32_t i=start; i < stop; i++) {
-      printf("outData[%d] = %f, biasData[%d] = %f\n", i, outData[i], i, biasData[i]);
+      // printf("outData[%d] = %f, biasData[%d] = %f\n", i, outData[i], i, biasData[i]);
       outData[i] += biasData[i];
     }
   }
