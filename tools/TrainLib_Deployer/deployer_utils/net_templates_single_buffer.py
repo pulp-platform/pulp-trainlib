@@ -30,14 +30,17 @@ def linear_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def linear_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def linear_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == "FP32":
-            template = (
-                "  pulp_linear_fp32_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_linear_fp32_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_linear_fp32_bw_input_grads_cl(&l"
@@ -45,11 +48,14 @@ def linear_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_L
                     + "_args);\n"
                 )
         elif DATA_TYPE == "FP16":
-            template = (
-                "  pulp_linear_fp16_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_linear_fp16_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_linear_fp16_bw_input_grads_cl(&l"
@@ -81,14 +87,17 @@ def conv2d_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def conv2d_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def conv2d_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == "FP32":
-            template = (
-                "  pulp_conv2d_fp32_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv2d_fp32_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv2d_fp32_bw_input_grads_cl(&l"
@@ -96,11 +105,14 @@ def conv2d_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_L
                     + "_args);\n"
                 )
         elif DATA_TYPE == "FP16":
-            template = (
-                "  pulp_conv2d_fp16_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv2d_fp16_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv2d_fp16_bw_input_grads_cl(&l"
@@ -132,14 +144,17 @@ def DW_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def DW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def DW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == "FP32":
-            template = (
-                "  pulp_conv_dw_fp32_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv_dw_fp32_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv_dw_fp32_bw_input_grads_cl(&l"
@@ -147,11 +162,14 @@ def DW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER
                     + "_args);\n"
                 )
         elif DATA_TYPE == "FP16":
-            template = (
-                "  pulp_conv_dw_fp16_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv_dw_fp16_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv_dw_fp16_bw_input_grads_cl(&l"
@@ -183,14 +201,17 @@ def PW_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def PW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER):
+def PW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER, UPDATE_LAYER):
     if SEPARATE_BACKWARD_STEPS == True:
         if DATA_TYPE == "FP32":
-            template = (
-                "  pulp_conv_pw_fp32_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv_pw_fp32_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv_pw_fp32_bw_input_grads_cl(&l"
@@ -198,11 +219,14 @@ def PW_template_BW(layer_number, DATA_TYPE, SEPARATE_BACKWARD_STEPS, FIRST_LAYER
                     + "_args);\n"
                 )
         elif DATA_TYPE == "FP16":
-            template = (
-                "  pulp_conv_pw_fp16_bw_param_grads_cl(&l"
-                + str(layer_number)
-                + "_args);\n"
-            )
+            if UPDATE_LAYER:
+                template = (
+                    "  pulp_conv_pw_fp16_bw_param_grads_cl(&l"
+                    + str(layer_number)
+                    + "_args);\n"
+                )
+            else:
+                template = ""
             if FIRST_LAYER == False:
                 template += (
                     "  pulp_conv_pw_fp16_bw_input_grads_cl(&l"
@@ -287,14 +311,16 @@ def ReLU_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def ReLU_template_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == "FP32":
-        template = "\tpulp_relu_fp32_bw_cl(&act_args);\n"
-    elif DATA_TYPE == "FP16":
-        template = "\tpulp_relu_fp16_bw_cl(&act_args);\n"
-    else:
-        print("[net_templates.ReLU_template_BW]: Invalid data type!")
-        exit()
+def ReLU_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ""
+    if FIRST_LAYER == False:
+        if DATA_TYPE == "FP32":
+            template = "\tpulp_relu_fp32_bw_cl(&act_args);\n"
+        elif DATA_TYPE == "FP16":
+            template = "\tpulp_relu_fp16_bw_cl(&act_args);\n"
+        else:
+            print("[net_templates.ReLU_template_BW]: Invalid data type!")
+            exit()
     return template
 
 def Sigmoid_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
