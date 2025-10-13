@@ -360,22 +360,24 @@ def AvgPool_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def AvgPool_template_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == "FP32":
-        template = (
-            "\tpi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &l"
-            + str(layer_number)
-            + "_args);\n"
-        )
-    elif DATA_TYPE == "FP16":
-        template = (
-            "\tpi_cl_team_fork(NUM_CORES, pulp_avgpool_fp16_bw_cl, &l"
-            + str(layer_number)
-            + "_args);\n"
-        )
-    else:
-        print("[net_templates.AvgPool_template_BW]: Invalid data type!")
-        exit()
+def AvgPool_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ""
+    if FIRST_LAYER == False:
+        if DATA_TYPE == "FP32":
+            template = (
+                "\tpi_cl_team_fork(NUM_CORES, pulp_avgpool_fp32_bw_cl, &l"
+                + str(layer_number)
+                + "_args);\n"
+            )
+        elif DATA_TYPE == "FP16":
+            template = (
+                "\tpi_cl_team_fork(NUM_CORES, pulp_avgpool_fp16_bw_cl, &l"
+                + str(layer_number)
+                + "_args);\n"
+            )
+        else:
+            print("[net_templates.AvgPool_template_BW]: Invalid data type!")
+            exit()
     return template
 
 
@@ -398,22 +400,24 @@ def MaxPool_template_FW(layer_number, DATA_TYPE):
     return template
 
 
-def MaxPool_template_BW(layer_number, DATA_TYPE):
-    if DATA_TYPE == "FP32":
-        template = (
-            "\tpi_cl_team_fork(NUM_CORES, pulp_maxpool_fp32_bw_cl, &l"
-            + str(layer_number)
-            + "_args);\n"
-        )
-    elif DATA_TYPE == "FP16":
-        template = (
-            "\tpi_cl_team_fork(NUM_CORES, pulp_maxpool_fp16_bw_cl, &l"
-            + str(layer_number)
-            + "_args);\n"
-        )
-    else:
-        print("[net_templates.MaxPool_template_BW]: Invalid data type!")
-        exit()
+def MaxPool_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ""
+    if FIRST_LAYER == False:
+        if DATA_TYPE == "FP32":
+            template = (
+                "\tpi_cl_team_fork(NUM_CORES, pulp_maxpool_fp32_bw_cl, &l"
+                + str(layer_number)
+                + "_args);\n"
+            )
+        elif DATA_TYPE == "FP16":
+            template = (
+                "\tpi_cl_team_fork(NUM_CORES, pulp_maxpool_fp16_bw_cl, &l"
+                + str(layer_number)
+                + "_args);\n"
+            )
+        else:
+            print("[net_templates.MaxPool_template_BW]: Invalid data type!")
+            exit()
     return template
 
 
