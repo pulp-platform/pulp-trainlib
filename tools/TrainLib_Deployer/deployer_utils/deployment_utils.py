@@ -670,7 +670,7 @@ def GenerateGM(proj_folder_path, project_name,
     # Dump input and output of the network to the header file for the MCU
     f.write("f = open('io_data.h', 'a')\n")
     f.write("f.write('// Input and Output data\\n')\n")
-    f.write("f.write('#define IN_SIZE "+str(in_ch_l[0]*win_l[0]*hin_l[0])+"\\n')\n")
+    f.write("f.write('#define IN_SIZE '+str(in_ch_l[0]*win_l[0]*hin_l[0])+'\\n')\n")
     # Fake input data definition
     memory_loc = 'L1'
     if USE_DMA == 'SB' or USE_DMA == 'DB':
