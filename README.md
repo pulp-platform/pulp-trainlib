@@ -160,7 +160,7 @@ PULP-TrainLib:
 - [X] HWC data layout for PointWise Convolution (FP32, FP16) and 2D Convolutions (FP32, FP16)
 - [X] Stride and Padding (only naive 2D Convolutions, without im2col+mm optimization)
 - [X] ReLU, Leaky ReLU, Sigmoid activation functions (FP32, FP16)
-- [X] Gradient Descent optimizer (FP32, FP16)
+- [X] Gradient Descent optimizer (FP32, FP16) with weight decay
 - [X] L1Loss, MSE Loss, berHu Loss (FP32, FP16)
 - [ ] CrossEntropyLoss (FP32, FP16)
 - [X] Max and Average Pooling (FP32, FP16)

@@ -23,6 +23,9 @@
  * =====> GENERAL INCLUDES <=====
  */
 
+#ifndef PULP_TRAIN_H
+#define PULP_TRAIN_H
+
 #include "pmsis.h"
 #include "pulp_train_defines.h"
 #include "pulp_random.h"
@@ -77,4 +80,4 @@
 #include "pulp_transp_conv2d_fp16.h"
 #include "pulp_embedding_fp16.h"
 
-
+#endif
