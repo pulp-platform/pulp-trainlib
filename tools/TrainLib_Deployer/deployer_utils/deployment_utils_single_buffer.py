@@ -192,7 +192,7 @@ DNN Composer backend functions
 def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                 data_type_l, bias_l, update_layer_l, sumnode_connections, MAX_LAYER_DIM,
                 PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
@@ -1578,6 +1578,7 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 f.write("\topt_l"+str(layer)+".use_biases = 0;\n")
             f.write("\topt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
+            f.write("\topt_l"+str(layer)+".weight_decay_lambda = WEIGHT_DECAY;\n")
             if data_type_l[layer] == 'FP32':
                 f.write("\tset_buffer_pointers(&layer"+str(layer)+"_in, &layer"+str(layer)+"_wgt, &layer"+str(layer)+"_bias, &layer"+str(layer)+"_out, PU_SKIP_IN_GRAD);\n")
             else:

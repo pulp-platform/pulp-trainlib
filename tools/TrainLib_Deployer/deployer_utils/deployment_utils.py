@@ -369,7 +369,7 @@ def GenerateMakefile(proj_folder_path, project_name, layers_l, NUM_CORES, data_t
 def GenerateGM(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                 data_type_l, bias_l, update_layer_l, sumnode_connections, USE_DMA):
 
     # Check if GPU is available, else keep fake FP16
@@ -401,6 +401,7 @@ def GenerateGM(proj_folder_path, project_name,
     # Define hyperparameters
     f.write("# Define hyperparameters\n")
     f.write("learning_rate = "+str(learning_rate)+"\n")
+    f.write("weight_decay = "+str(weight_decay)+"\n")
     f.write("batch_size = "+str(batch_size)+"\n")
     f.write("epochs = "+str(epochs)+"\n")
     f.write("\n")
@@ -444,10 +445,12 @@ def GenerateGM(proj_folder_path, project_name,
 
     # Write hyperparameters to header
     f.write("f = open('init-defines.h', 'a')\n")
+    f.write("f.write('#pragma once\\n\\n')\n")
     f.write("f.write('\\n// HYPERPARAMETERS\\n')\n")
     f.write("f.write('#define LEARNING_RATE '+str(learning_rate)+'\\n')\n")
     f.write("f.write('#define EPOCHS '+str(epochs)+'\\n')\n")
     f.write("f.write('#define BATCH_SIZE '+str(batch_size)+'\\n')\n")
+    f.write("f.write('#define WEIGHT_DECAY '+str(weight_decay)+'\\n')\n")
     f.write("f.close()\n\n")
 
     # Create input data and label
@@ -607,6 +610,7 @@ def GenerateGM(proj_folder_path, project_name,
 
     # Write init weights to header file
     f.write("f = open('io_data.h', 'w')\n")
+    f.write("f.write('#pragma once\\n\\n')\n")
     f.write("f.write('// Init weights\\n')\n")
     for layer in range(len(layers_l)):
         if (layers_l[layer] not in ['ReLU', 'LeakyReLU', 'Sigmoid', 'MaxPool',  'AvgPool', 'Skipnode', 'Sumnode']):
@@ -643,7 +647,7 @@ def GenerateGM(proj_folder_path, project_name,
 
     # Define optimizer
     if optimizer == 'SGD':
-        f.write("optimizer = optim."+str(optimizer)+"(net.parameters(), lr=learning_rate, momentum=0)\n")
+        f.write("optimizer = optim."+str(optimizer)+"(net.parameters(), lr=learning_rate, momentum=0, weight_decay=weight_decay)\n")
     else:
         print("[deployment_utils.GenerateGM]: Invalid optimizer!!\n!")
         exit()
@@ -708,7 +712,7 @@ def GenerateGM(proj_folder_path, project_name,
 def GenerateNet(proj_folder_path, project_name,
                 layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                 h_str_l, w_str_l, h_pad_l, w_pad_l,
-                epochs, batch_size, learning_rate, optimizer, loss_fn,
+                epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                 data_type_l, bias_l, update_layer_l, sumnode_connections,
                 PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
@@ -1777,6 +1781,7 @@ def GenerateNet(proj_folder_path, project_name,
             else:
                 f.write("  opt_l"+str(layer)+".use_biases = 0;\n")
             f.write("  opt_l"+str(layer)+".learning_rate = LEARNING_RATE;\n")
+            f.write("  opt_l"+str(layer)+".weight_decay_lambda = WEIGHT_DECAY;\n")
             if optimizer == "SGD":
                 if data_type_l[layer] == 'FP32':
                     f.write("  pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &opt_l"+str(layer)+");\n")

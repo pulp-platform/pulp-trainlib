@@ -60,6 +60,7 @@ proj_folder     = project_path + project_name + '/'
 epochs          = 20
 batch_size      = 1                   # BATCHING NOT IMPLEMENTED!!
 learning_rate   = 0.01
+weight_decay    = 0.1 
 optimizer       = "SGD"                # Name of PyTorch's optimizer
 loss_fn         = "MSELoss"            # Name of PyTorch's loss function
 
@@ -190,7 +191,7 @@ else:
     composer.DNN_Composer(proj_folder, project_name, 
                             layer_list, in_ch_list, out_ch_list, hk_list, wk_list, 
                             hin_list, win_list, h_str_list, w_str_list, h_pad_list, w_pad_list,
-                            epochs, batch_size, learning_rate, optimizer, loss_fn,
+                            epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                             NUM_CORES, data_type_list, bias_list, update_layer_list, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list,
                             sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
 

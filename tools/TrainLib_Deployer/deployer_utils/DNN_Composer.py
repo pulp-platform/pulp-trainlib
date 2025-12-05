@@ -212,7 +212,7 @@ generates the code for PULP
 def DNN_Composer (proj_folder_path, project_name,
                   layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                   h_str_l, w_str_l, h_pad_l, w_pad_l,
-                  epochs, batch_size, learning_rate, optimizer, loss_fn,
+                  epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                   NUM_CORES, data_type_l, bias_l, update_layer_l, opt_mm_fw_list, opt_mm_wg_list, opt_mm_ig_list,
                   sumnode_connections, USE_DMA, PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS):
 
@@ -226,7 +226,7 @@ def DNN_Composer (proj_folder_path, project_name,
     utils.GenerateGM(proj_folder_path, project_name,
                         layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                         h_str_l, w_str_l, h_pad_l, w_pad_l,
-                        epochs, batch_size, learning_rate, optimizer, loss_fn,
+                        epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                         data_type_l, bias_l, update_layer_l, sumnode_connections, USE_DMA)
 
 
@@ -236,7 +236,7 @@ def DNN_Composer (proj_folder_path, project_name,
         utils.GenerateNet(proj_folder_path, project_name,
                     layers_l, in_ch_l, out_ch_l, hk_l, wk_l, hin_l, win_l,
                     h_str_l, w_str_l, h_pad_l, w_pad_l,
-                    epochs, batch_size, learning_rate, optimizer, loss_fn,
+                    epochs, batch_size, learning_rate, weight_decay, optimizer, loss_fn,
                     data_type_l, bias_l, update_layer_l, sumnode_connections,
                     PROFILE_SINGLE_LAYERS, SEPARATE_BACKWARD_STEPS, CONV2D_USE_IM2COL, PRINT_TRAIN_LOSS)
         
