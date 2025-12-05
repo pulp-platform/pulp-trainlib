@@ -29,12 +29,14 @@
  * @param weights blob of the weights (with their gradient inside)
  * @param bias blob of the biases (with their gradient inside)
  * @param learning_rate the learning rate of the optimizer
+ * @param weight_decay_lambda weightdecay factor lambda. Set it to zero if you don't want to use weight decay. 
  * @param use_biases flag: use bias (1) or not use bias (0).
  */
 struct optim_args_fp16 {
   struct blob_fp16 * weights;
   struct blob_fp16 * biases;
   fp16 learning_rate;
+  fp16 weight_decay_lambda;
   int use_biases;
 };
 
@@ -46,7 +48,7 @@ struct optim_args_fp16 {
 
 /**
  * @brief Gradient descent optimizer for a single layer. Use pi_cl_team_fork(NUM_CORES, pulp_gradient_descent_fp32, &args) to parallelize.
- * @param optim_args pointer to optim_args structure (see pulp_train_utils_fp32.h) 
+ * @param optim_args pointer to optim_args structure
  */
 void pulp_gradient_descent_fp16(
     void * optim_args

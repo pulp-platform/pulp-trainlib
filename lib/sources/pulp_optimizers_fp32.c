@@ -31,6 +31,7 @@ void pulp_gradient_descent_fp32 (void * optim_args)
     int use_biases = args->use_biases;
     const int wgt_size = args->weights->dim; 
     float lr = args->learning_rate;
+    float lambda = args->weight_decay_lambda;
 
     #ifdef DEBUG
     printf("\n*** WEIGHTS ***\n");
@@ -44,10 +45,19 @@ void pulp_gradient_descent_fp32 (void * optim_args)
     int start = pi_core_id()*blockSize;
     int stop = start+blockSize > wgt_size ? wgt_size : start+blockSize;
 
-    for (int i=start; i<stop; i++) 
-    {   
-        weights[i] -= lr * weight_grad[i];
-    }    
+    if (lambda == 0) {
+        for (int i=start; i<stop; i++) 
+        {   
+            weights[i] -= lr * weight_grad[i];
+        }    
+    }
+    else {
+        for (int i=start; i<stop; i++) 
+        {   
+            weight_grad[i] += lambda * weights[i];
+            weights[i] -= lr * weight_grad[i];
+        }            
+    }
 
     #ifdef DEBUG
     printf("\n*** WEIGHTS ***\n");
@@ -72,10 +82,19 @@ void pulp_gradient_descent_fp32 (void * optim_args)
         int start_bias = pi_core_id()*blockSize_bias;
         int stop_bias = start_bias+blockSize_bias > bias_size ? bias_size : start_bias+blockSize_bias;
 
-        for (int i=start_bias; i<stop_bias; i++) 
-        {   
-            biases[i] -= lr * bias_grad[i];
-        }    
+        if (lambda == 0) {
+            for (int i=start_bias; i<stop_bias; i++) 
+            {   
+                biases[i] -= lr * bias_grad[i];
+            }    
+        }
+        else {
+            for (int i=start_bias; i<stop_bias; i++) 
+            {   
+                bias_grad[i] += lambda * biases[i];
+                biases[i] -= lr * bias_grad[i];
+            }            
+        }
 
         #ifdef DEBUG
         printf("\n*** BIASES ***\n");
