@@ -1046,7 +1046,7 @@ def GenerateNet(proj_folder_path, project_name,
         if len(layers_l) == 1:                          # DNN is 1 layer long
             f.write("\tlayer"+str(layer)+"_out.data = l0_out;\n")
             if layer >= last_updated_idx:
-                f.write("\layer"+str(layer)+"_out.diff = l0_out_diff;\n")
+                f.write("\tlayer"+str(layer)+"_out.diff = l0_out_diff;\n")
             f.write("\tlayer"+str(layer)+"_out.dim = Tout_C_l0*Tout_H_l0*Tout_W_l0;\n")
             f.write("\tlayer"+str(layer)+"_out.C = Tout_C_l0;\n")
             f.write("\tlayer"+str(layer)+"_out.H = Tout_H_l0;\n")
