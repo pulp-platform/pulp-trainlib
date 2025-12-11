@@ -15,7 +15,7 @@
  */
 
 /**
- * Authors: Davide Nadalini, Leonardo Ravaglia
+ * Authors: Davide Nadalini, Leonardo Ravaglia, Carlo Marcantonio
 */ 
 
 #include "math.h"
@@ -23,55 +23,115 @@
 #include "pulp_losses_fp32.h"
 
 
-void pulp_CrossEntropyLoss ( void * loss_args )
+void pulp_CrossEntropyLoss(void *loss_args)
 {
-  struct loss_args * args = (struct loss_args *) loss_args;
-  float * outData = args->output->data;
-  float * target = args->target;
-  float * wr_loss = args->wr_loss;
-  int size = args->output->dim;
+    struct loss_args *args = (struct loss_args *) loss_args;
 
-  float loss = 0.0;
-  for(int i=0; i<size; i++){
-    loss += -target[i]*logf(outData[i]);
-    
-    #ifdef DEBUG
-      printf("target: %f, out_data:%f\n", target[i], outData[i]);
-      printf("loss:%f \n",loss);
-    #endif
-  }
+    float *logits  = args->output->data;  // raw scores (no softmax)
+    float *target  = args->target;        // one-hot (or prob) vector, length = num_cls
+    float *wr_loss = args->wr_loss;
+    int    num_cls = args->output->dim;
 
-  // Skip printf profiling in debug mode
-  #ifdef DEBUG
-  #ifdef PROF_NET
-  pi_perf_stop();
-  #endif
-  printf("\nLoss: %+.4f\n", loss);  
-  #ifdef PROF_NET
-  pi_perf_start();
-  #endif
-  #endif  
+    // --- Numerically stable log-sum-exp over classes ---
+    float max_logit = logits[0];
+    for (int i = 1; i < num_cls; ++i) {
+        float li = logits[i];
+        if (li > max_logit) max_logit = li;
+    }
 
-  *wr_loss = loss;
+    float sum_exp = 0.0f;
+    for (int i = 0; i < num_cls; ++i) {
+        sum_exp += expf(logits[i] - max_logit);
+    }
+    float log_sum_exp = logf(sum_exp) + max_logit;
+
+    // L = - sum_i y_i * log_softmax(z)_i
+    //    = - ( dot(y, z) - log_sum_exp * sum_i y_i )
+    float dot_yz = 0.0f;
+    float sum_y  = 0.0f;
+
+    for (int i = 0; i < num_cls; ++i) {
+        float yi = target[i];
+        float zi = logits[i];
+        dot_yz += yi * zi;
+        sum_y  += yi;
+    }
+
+    if (sum_y == 0.0f) {
+        // degenerate case: avoid NaN; treat as 1.0
+        sum_y = 1.0f;
+    }
+
+    float loss_f32 = -(dot_yz - log_sum_exp * sum_y);
+
+#ifdef DEBUG
+    printf("num_classes: %d\n", num_cls);
+    for (int i = 0; i < num_cls; ++i) {
+        printf("logits[%d] = %+f, target[%d] = %+f\n",
+               i, logits[i], i, target[i]);
+    }
+    printf("max_logit = %+f, log_sum_exp = %+f\n", max_logit, log_sum_exp);
+    printf("dot_yz = %+f, sum_y = %+f\n", dot_yz, sum_y);
+    printf("loss (float32) = %+f\n", loss_f32);
+#endif
+
+    *wr_loss = loss_f32;
+
+#ifdef DEBUG
+#ifdef PROF_NET
+    pi_perf_stop();
+#endif
+    printf("\nLoss: %+.4f\n", *wr_loss);
+#ifdef PROF_NET
+    pi_perf_start();
+#endif
+#endif
 }
 
-
-void pulp_CrossEntropyLoss_backward ( void * loss_args )
+void pulp_CrossEntropyLoss_backward(void *loss_args)
 {
-  struct loss_args * args = (struct loss_args *) loss_args;
-  float * outData = args->output->data;
-  float * outDiff = args->output->diff;
-  float * target = args->target;
-  float * wr_loss = args->wr_loss;
-  int size = args->output->dim;
+    struct loss_args *args = (struct loss_args *) loss_args;
 
-  for(int i=0; i<size; i++){
-    outDiff[i] = (-target[i] / outData[i]);
-    
-    #ifdef DEBUG
-    printf("target: %+.4f, out_diff: %+.4f, out_data:%+.4f\n", target[i], outDiff[i], outData[i]);
-    #endif
-  }
+    float *logits  = args->output->data;  // raw scores (no softmax)
+    float *outDiff = args->output->diff;  // dL/d(logits), length = num_cls
+    float *target  = args->target;        // one-hot (or prob) vector
+    int    num_cls = args->output->dim;
+
+    // --- Numerically stable softmax(logits) ---
+    float max_logit = logits[0];
+    for (int i = 1; i < num_cls; ++i) {
+        float li = logits[i];
+        if (li > max_logit) max_logit = li;
+    }
+
+    float sum_exp = 0.0f;
+    for (int i = 0; i < num_cls; ++i) {
+        sum_exp += expf(logits[i] - max_logit);
+    }
+    float inv_sum_exp = 1.0f / sum_exp;
+
+    // sum_y for general case (label smoothing / soft targets)
+    float sum_y = 0.0f;
+    for (int i = 0; i < num_cls; ++i) {
+        sum_y += target[i];
+    }
+    if (sum_y == 0.0f) {
+        sum_y = 1.0f;
+    }
+
+    for (int i = 0; i < num_cls; ++i) {
+        float zi   = logits[i];
+        float yi   = target[i];
+        float p_i  = expf(zi - max_logit) * inv_sum_exp;  // softmax_i
+        float grad = p_i * sum_y - yi;                    // = p_i - yi if sum_y == 1
+
+        outDiff[i] = grad;
+
+#ifdef DEBUG
+        printf("i=%d, logits=%+f, target=%+f, p_i=%+f, grad=%+f\n",
+               i, zi, yi, p_i, grad);
+#endif
+    }
 }
 
 
