@@ -129,9 +129,11 @@ void dw_kernel_weight_grad(void *kernel_DW_args) {
     uint32_t start = pi_core_id() * blockSize;
     uint32_t stop = start + blockSize > C_in ? C_in : start + blockSize;
 
-    for (int ch = 0; ch < C_in; ch++) {
+    for (int ch = start; ch < stop; ch++) {
         for (int hk = 0; hk < pH; hk++) {
             for (int wk = 0; wk < pW; wk++) {
+                int idx = wk + hk * pW + ch * pH * pW;
+                float old_val = coeffDiff[idx];
                 float temp = 0;
 
                 for (int ho = 0; ho < H_out; ho++) {
@@ -142,7 +144,7 @@ void dw_kernel_weight_grad(void *kernel_DW_args) {
                     }
                 }
 
-                coeffDiff[wk + hk * pW + ch * pH * pW] = temp;
+                coeffDiff[idx] += temp;
             }
         }
     }

@@ -165,7 +165,7 @@ void pulp_conv_pw_fp32_bw_param_grads_cl(void *PointWise_Conv_args) {
         matMul_args.trans_B = 1;
 
         #ifndef OPTIMIZE
-        pi_cl_team_fork(NUM_CORES, mm, &matMul_args);
+        pi_cl_team_fork(NUM_CORES, mm_add, &matMul_args);
         #else
         struct mm_manager_args man_args;
         man_args.mm_args = &matMul_args;
