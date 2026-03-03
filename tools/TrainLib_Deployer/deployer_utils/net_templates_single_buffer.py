@@ -323,13 +323,46 @@ def ReLU_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
             exit()
     return template
 
+def LeakyReLU_template_FW(layer_number, DATA_TYPE):
+    if DATA_TYPE == "FP32":
+        template = "  pulp_leakyrelu_fp32_fw_cl(&act_args);\n"
+    elif DATA_TYPE == "FP16":
+        template = "  pulp_leakyrelu_fp16_fw_cl(&act_args);\n"
+    else:
+        print("[net_templates.LeakyReLU_template_FW]: Invalid data type!")
+        exit()
+    return template
+
+def LeakyReLU_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
+    template = ''
+    if FIRST_LAYER == False:
+        if DATA_TYPE == 'FP32':
+            template = "  pulp_leakyrelu_fp32_bw_cl(&act_args);\n"
+        elif DATA_TYPE == 'FP16':
+            template = "  pulp_leakyrelu_fp16_bw_cl(&act_args);\n"
+        else:
+            print("[net_templates.LeakyReLU_template_BW]: Invalid data type!")
+            exit()  
+    return template
+
+
+def Sigmoid_template_FW(layer_number, DATA_TYPE):
+    if DATA_TYPE == 'FP32':
+        template = "  pulp_sigmoid_fp32_fw_cl(&act_args);\n"
+    elif DATA_TYPE == 'FP16':
+        template = "  pulp_sigmoid_fp16_fw_cl(&act_args);\n"
+    else:
+        print("[net_templates.Sigmoid_template_FW]: Invalid data type!")
+        exit()  
+    return template
+
 def Sigmoid_template_BW(layer_number, DATA_TYPE, FIRST_LAYER):
     template = ''
     if FIRST_LAYER == False:
         if DATA_TYPE == 'FP32':
-            template = "\tpulp_sigmoid_fp32_bw_cl(&act_args);\n"
+            template = "  pulp_sigmoid_fp32_bw_cl(&act_args);\n"
         elif DATA_TYPE == 'FP16':
-            template = "\tpulp_sigmoid_fp16_bw_cl(&act_args);\n"
+            template = "  pulp_sigmoid_fp16_bw_cl(&act_args);\n"
         else:
             print("[net_templates.Sigmoid_template_BW]: Invalid data type!")
             exit()  
@@ -859,6 +892,19 @@ def PW_config_template(layer_number, skip_in_grad, DATA_TYPE, update_layer):
 
 
 def ReLU_config_template(layer_number, DATA_TYPE):
+    template = "  l" + str(layer_number) + "_args.input = &input_blob;\n"
+    template += "  l" + str(layer_number) + "_args.output = &output_blob;\n"
+    return template
+
+
+def LeakyReLU_config_template(layer_number, DATA_TYPE):
+    template = "  l" + str(layer_number) + "_args.input = &input_blob;\n"
+    template += "  l" + str(layer_number) + "_args.output = &output_blob;\n"
+    template += "  l" + str(layer_number) + "_args.negative_slope = 0.01;\n"        
+    return template
+
+
+def Sigmoid_config_template(layer_number, DATA_TYPE):
     template = "  l" + str(layer_number) + "_args.input = &input_blob;\n"
     template += "  l" + str(layer_number) + "_args.output = &output_blob;\n"
     return template
