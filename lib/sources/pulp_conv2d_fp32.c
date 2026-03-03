@@ -787,12 +787,24 @@ void im2col_conv2d_param_grad_kernel(void *void_args) {
 #endif
 
     // Handle biases
-    if (USE_BIASES == 1) {
+    if (USE_BIASES == 1 && HWC == 0) {
         for (uint32_t co = start; co < stop; co++) {
             float temp = 0;
-            for (uint32_t ho = 0; ho < pH; ho++) {
-                for (uint32_t wo = 0; wo < pW; wo++) {
-                    temp += inData[wo + ho * pW + co * pH * pW];
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
+                    temp += outDiff[wo + ho * H_out + co * H_out * W_out];
+                }
+            }
+            biasDiff[co] = temp;
+        }
+    }
+
+    else if (USE_BIASES == 1 && HWC == 1) {
+        for (uint32_t co = start; co < stop; co++) {
+            float temp = 0;
+            for (uint32_t ho = 0; ho < H_out; ho++) {
+                for (uint32_t wo = 0; wo < W_out; wo++) {
+                    temp += outDiff[wo * C_out + ho * C_out * W_out + co];
                 }
             }
             biasDiff[co] = temp;
