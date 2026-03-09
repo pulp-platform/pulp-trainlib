@@ -295,10 +295,10 @@ void pulp_conv2d_fp32_bw_param_grads_cl(void *Conv2D_args) {
             im2col_args.c = C2D_args->coeff;
             im2col_args.output = C2D_args->output;
             im2col_args.pBuffer = i2c_buffer;
-            im2col_args.Lpad = 0; //Lpad;
-            im2col_args.Rpad = 0; //Rpad;
-            im2col_args.Upad = 0; //Upad;
-            im2col_args.Dpad = 0; //Dpad;
+            im2col_args.Lpad = Lpad;
+            im2col_args.Rpad = Rpad;
+            im2col_args.Upad = Upad;
+            im2col_args.Dpad = Dpad;
             im2col_args.mod = 0;
             im2col_args.stride_w = stride_w;
             im2col_args.stride_h = stride_h;
@@ -319,8 +319,16 @@ void pulp_conv2d_fp32_bw_param_grads_cl(void *Conv2D_args) {
             matMul_args.bias = biasDiff;
             matMul_args.USE_BIASES = USE_BIASES;
 
-            matMul_args.pH = H_out;
-            matMul_args.pW = W_out;
+            matMul_args.H = H_in;
+            matMul_args.W = W_in;
+            matMul_args.pH = pH;
+            matMul_args.pW = pW;
+            matMul_args.Lpad = Lpad;
+            matMul_args.Rpad = Rpad;
+            matMul_args.Upad = Upad;
+            matMul_args.Dpad = Dpad;
+            matMul_args.stride_h = stride_h;
+            matMul_args.stride_w = stride_w;
 
             matMul_args.bias_dim = bias_dim;
 
@@ -366,7 +374,7 @@ void pulp_conv2d_fp32_bw_param_grads_cl(void *Conv2D_args) {
 
             pi_cl_team_fork(NUM_CORES, transpose, &tr_args);
 
-            matMul_args.A = tr_buffer; // outDiff;
+            matMul_args.A = tr_buffer; // outDiff transposed;
             matMul_args.B = i2c_buffer;
             matMul_args.C = coeffDiff;
             matMul_args.N = C_out;
@@ -378,8 +386,16 @@ void pulp_conv2d_fp32_bw_param_grads_cl(void *Conv2D_args) {
             matMul_args.bias = biasDiff;
             matMul_args.USE_BIASES = USE_BIASES;
 
-            matMul_args.pH = H_out;
-            matMul_args.pW = W_out;
+            matMul_args.H = H_in;
+            matMul_args.W = W_in;
+            matMul_args.pH = pH;
+            matMul_args.pW = pW;
+            matMul_args.Lpad = Lpad;
+            matMul_args.Rpad = Rpad;
+            matMul_args.Upad = Upad;
+            matMul_args.Dpad = Dpad;
+            matMul_args.stride_h = stride_h;
+            matMul_args.stride_w = stride_w;
 
             matMul_args.bias_dim = bias_dim;
 
@@ -691,9 +707,6 @@ void im2col_conv2d_fw_kernel(void *void_args) {
     uint32_t Upad = args->Upad;
     uint32_t Dpad = args->Dpad;
 
-    // const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
-    // const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
-
     const uint32_t H_out = pH;
     const uint32_t W_out = pW;
 
@@ -747,37 +760,7 @@ void im2col_conv2d_param_grad_kernel(void *void_args) {
     struct mm_manager_args *man_args = (struct mm_manager_args *) void_args;
     struct matMul_args *args = man_args->mm_args;
 
-    float *__restrict__ inData = args->A;
-    float *__restrict__ coeffDiff = args->B;
-    float *__restrict__ outDiff = args->C;
-
-    float *__restrict__ biasDiff = args->bias;
     const uint32_t USE_BIASES = args->USE_BIASES;
-
-    const uint32_t H_in = args->H;
-    const uint32_t W_in = args->W;
-    const uint32_t pW = args->pW;
-    const uint32_t pH = args->pH;
-    const uint32_t C_in = args->pCin;
-    const uint32_t C_out = args->N;
-
-    uint32_t h_str = args->stride_h;
-    uint32_t w_str = args->stride_w;
-    uint32_t Lpad = args->Lpad;
-    uint32_t Rpad = args->Rpad;
-    uint32_t Upad = args->Upad;
-    uint32_t Dpad = args->Dpad;
-
-    const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
-    const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
-
-    const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
-    const uint32_t start = pi_core_id() * blockSize;
-    const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
-
-    const uint32_t HWC = args->HWC;
-
-    int padding = Lpad + Rpad + Upad + Dpad;
 
     // Perform simple matrix multiplication
 #ifndef OPTIMIZE
@@ -787,34 +770,39 @@ void im2col_conv2d_param_grad_kernel(void *void_args) {
 #endif
 
     // Handle biases
-    if (USE_BIASES == 1 && HWC == 0) {
+    if (USE_BIASES == 1) {
+        float *__restrict__ outDiff = args->A;
+        float *__restrict__ biasDiff = args->bias;
+
+        const uint32_t H_in = args->H;
+        const uint32_t W_in = args->W;
+        const uint32_t pW = args->pW;
+        const uint32_t pH = args->pH;
+        const uint32_t C_out = args->N;
+
+        uint32_t h_str = args->stride_h;
+        uint32_t w_str = args->stride_w;
+        uint32_t Lpad = args->Lpad;
+        uint32_t Rpad = args->Rpad;
+        uint32_t Upad = args->Upad;
+        uint32_t Dpad = args->Dpad;
+
+        const uint32_t H_out = (H_in - pH + Upad + Dpad) / h_str + 1;
+        const uint32_t W_out = (W_in - pW + Lpad + Rpad) / w_str + 1;
+
+        const uint32_t blockSize = (C_out + NUM_CORES - 1) / NUM_CORES;
+        const uint32_t start = pi_core_id() * blockSize;
+        const uint32_t stop = start + blockSize > C_out ? C_out : start + blockSize;
+
         for (uint32_t co = start; co < stop; co++) {
             float temp = 0;
             for (uint32_t ho = 0; ho < H_out; ho++) {
                 for (uint32_t wo = 0; wo < W_out; wo++) {
-                    temp += outDiff[wo + ho * H_out + co * H_out * W_out];
+                    temp += outDiff[wo + ho * W_out + co * H_out * W_out];
                 }
             }
             biasDiff[co] = temp;
         }
-    }
-
-    else if (USE_BIASES == 1 && HWC == 1) {
-        for (uint32_t co = start; co < stop; co++) {
-            float temp = 0;
-            for (uint32_t ho = 0; ho < H_out; ho++) {
-                for (uint32_t wo = 0; wo < W_out; wo++) {
-                    temp += outDiff[wo * C_out + ho * C_out * W_out + co];
-                }
-            }
-            biasDiff[co] = temp;
-        }
-    }
-
-    if (HWC != 0 && HWC != 1) {
-        // Unsupported layout
-        printf("[im2col_conv2d_param_grad_kernel:] Invalid selection of the HWC layout (1 for HWC, 0 for CHW). Actual value: %d. Biases not used, even if provided!\n",
-               HWC);
     }
 
     if (USE_BIASES != 0 && USE_BIASES != 1) {

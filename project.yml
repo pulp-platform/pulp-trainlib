@@ -97,14 +97,14 @@
 # see documentation for the many options for specifying this.
 :paths:
   :test:
-    - +:generic/**
-    - -:generic/support
+    - +:unittests/generic/**
+    - -:unittests/generic/support
   :source:
-    - ../lib/sources/**
+    - lib/sources/**
   :include:
-    - ../lib/include/**
+    - lib/include/**
   :support:
-    - generic/support
+    - unittests/generic/support
 
 # You can even specify specific files to add or remove from your test
 # and release collections. Usually it's better to use paths and let
@@ -126,6 +126,16 @@
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build.
   :use_test_definition: FALSE
+
+# Enable address sanitizer
+#:flags:
+#  :test:
+#    :compile:
+#      - -fsanitize=address
+#      - -fno-omit-frame-pointer
+#      - -g
+#    :link:
+#      - -fsanitize=address
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
@@ -187,6 +197,7 @@
 # Configuration options specific to Unity.
 :unity:
   :defines:
+  :use_param_tests: true
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
@@ -203,6 +214,7 @@
 # These libraries are automatically injected into the build process. Those specified as
 # common will be used in all types of builds. Otherwise, libraries can be injected in just
 # tests or releases. These options are MERGED with the options in supplemental yaml files.
+
 :libraries:
   :placement: :end
   :flag: "-l${1}"

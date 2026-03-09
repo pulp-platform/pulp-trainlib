@@ -18,6 +18,8 @@ pip install gcovr
 
 Ceedling takes care of building, running and test coverage report generation.
 
+NOTE: all cmds below must be executed from the root directory of this git repository.
+
 Running all tests:
 
 ```
@@ -48,4 +50,4 @@ ceedling test:test_pulp_matmul_fp32
 gdb --tui --args build/test/out/test_pulp_matmul_fp32/test_pulp_matmul_fp32.out
 ```
 
-Once in the debugger set for example a breakpoint  (`b test_pulp_matmul_fp32.c:306`) and hit `r`.
+Once in the debugger set for example a breakpoint  (`b test_pulp_matmul_fp32_mm_M_u2_transp`) and hit `r`.

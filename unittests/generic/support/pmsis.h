@@ -2,8 +2,9 @@
 #define PMSIS_H
 
 #include <stdint.h>
+#include <stdio.h>
 
-/* 
+/*
  * typedefs
  */
 typedef uint16_t float16alt;
@@ -17,7 +18,7 @@ typedef struct
 {
     uint32_t ext;
     uint32_t loc;
-    uint32_t id; 
+    uint32_t id;
     uint16_t size;
     pi_cl_dma_dir_e dir;                        \
     uint8_t merge;
