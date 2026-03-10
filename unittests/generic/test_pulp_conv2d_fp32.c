@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "unity.h"
+#include "test_utils.h"
 
 #include "pmsis.h"
 #include "pulp_train_defines.h"
@@ -142,13 +143,6 @@ static struct TestVector test_vectors[] = {
     }
 };
 
-void set_array(float *array, size_t size, float value)
-{
-    for (int i = 0; i < size; i++) {
-        array[i] = value;
-    }
-}
-
 // create a deep copy of a test vector
 void copy_test_vector(const struct TestVector *src, struct TestVector* dst)
 {
@@ -202,10 +196,10 @@ void create_test_vectors(int hwc, int use_im2col, int padding, struct Conv2D_arg
     copy_test_vector(&v, &a);
 
     // set some buffers to zero for the argument blobs
-    set_array(a.in.diff, a.in.dim, 0.0);
-    set_array(a.out.data, a.out.dim, 0.0);
-    set_array(a.weight.diff, a.weight.dim, 0.0);
-    set_array(a.bias.diff, a.bias.dim, 0.0);
+    set_array_fp32(a.in.diff, a.in.dim, 0.0);
+    set_array_fp32(a.out.data, a.out.dim, 0.0);
+    set_array_fp32(a.weight.diff, a.weight.dim, 0.0);
+    set_array_fp32(a.bias.diff, a.bias.dim, 0.0);
 
     // allocate workspace buffers in case needed
     int im2col_buffer_size = v.in.dim * v.out.C * v.weight.W * v.weight.H;
@@ -281,7 +275,7 @@ void test_pulp_conv2d_fp32_fw_cl(int hwc, int use_im2col, int padding)
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
-        set_array(expected.out.data, expected.out.dim, 0.0);
+        set_array_fp32(expected.out.data, expected.out.dim, 0.0);
     }
 
     pulp_conv2d_fp32_fw_cl(&args);
@@ -306,8 +300,8 @@ void test_pulp_conv2d_fp32_bw_param_grads_cl(int hwc, int use_im2col, int paddin
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
-        set_array(expected.weight.diff, expected.weight.dim, 0.0);
-        set_array(expected.bias.diff, expected.bias.dim, 0.0);
+        set_array_fp32(expected.weight.diff, expected.weight.dim, 0.0);
+        set_array_fp32(expected.bias.diff, expected.bias.dim, 0.0);
     }
 
     pulp_conv2d_fp32_bw_param_grads_cl(&args);
@@ -333,7 +327,7 @@ void test_pulp_conv2d_fp32_bw_input_grads_cl(int hwc, int use_im2col, int paddin
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
-        set_array(expected.in.diff, expected.in.dim, 0.0);
+        set_array_fp32(expected.in.diff, expected.in.dim, 0.0);
     }
 
     pulp_conv2d_fp32_bw_input_grads_cl(&args);
@@ -356,11 +350,11 @@ void test_pulp_conv2d_fp32_bw_cl(int skip_wg_grad, int skip_in_grad)
     args.skip_in_grad = skip_in_grad;
 
     if (skip_wg_grad) {
-        set_array(expected.weight.diff, expected.weight.dim, 0);
-        set_array(expected.bias.diff, expected.bias.dim, 0);
+        set_array_fp32(expected.weight.diff, expected.weight.dim, 0);
+        set_array_fp32(expected.bias.diff, expected.bias.dim, 0);
     }
     if (skip_in_grad) {
-        set_array(expected.in.diff, expected.in.dim, 0);
+        set_array_fp32(expected.in.diff, expected.in.dim, 0);
     }
 
     pulp_conv2d_fp32_bw_cl(&args);
