@@ -61,6 +61,9 @@ static struct TestVector test_vectors[] = {
     },
 };
 
+static struct Linear_args args;
+static struct TestVector expected;
+
 // create a deep copy of a test vector
 void copy_test_vector(const struct TestVector *src, struct TestVector* dst)
 {
@@ -97,14 +100,14 @@ void free_test_vector(struct TestVector *v)
     free(v->bias.diff);
 }
 
-void create_test_vectors(struct Linear_args* args, struct TestVector* expected)
+void create_test_vectors(void)
 {
     static struct TestVector a;
     struct TestVector v = test_vectors[0];
 
     // create two deep copies of the test vector so that we don't overwrite the
     // original one. One copy to populate args and one as expected values
-    copy_test_vector(&v, expected);
+    copy_test_vector(&v, &expected);
     copy_test_vector(&v, &a);
 
     // set some buffers to zero for the argument blobs
@@ -114,76 +117,60 @@ void create_test_vectors(struct Linear_args* args, struct TestVector* expected)
     set_array_fp32(a.bias.diff, a.bias.dim, 0.0);
 
     // potulate linear parameter struct
-    args->input = &a.in;
-    args->coeff = &a.weight;
-    args->bias = &a.bias;
-    args->output = &a.out;
-    args->skip_wg_grad = 0;
-    args->skip_in_grad = 0;
-    args->opt_matmul_type_fw = 0;
-    args->opt_matmul_type_wg = 0;
-    args->opt_matmul_type_ig = 0;
-    args->use_biases = 1;
+    args.input = &a.in;
+    args.coeff = &a.weight;
+    args.bias = &a.bias;
+    args.output = &a.out;
+    args.skip_wg_grad = 0;
+    args.skip_in_grad = 0;
+    args.opt_matmul_type_fw = 0;
+    args.opt_matmul_type_wg = 0;
+    args.opt_matmul_type_ig = 0;
+    args.use_biases = 1;
 }
 
-void free_test_vectors(struct Linear_args* args, struct TestVector* expected)
+void free_test_vectors(void)
 {
-    free(args->input->data);
-    free(args->input->diff);
-    free(args->output->data);
-    free(args->output->diff);
-    free(args->coeff->data);
-    free(args->coeff->diff);
-    free(args->bias->data);
-    free(args->bias->diff);
-    free_test_vector(expected);
+    free(args.input->data);
+    free(args.input->diff);
+    free(args.output->data);
+    free(args.output->diff);
+    free(args.coeff->data);
+    free(args.coeff->diff);
+    free(args.bias->data);
+    free(args.bias->diff);
+    free_test_vector(&expected);
 }
 
 // called before each test
 void setUp(void)
 {
+    create_test_vectors();
 }
 
 // called after each test
 void tearDown(void)
 {
+    free_test_vectors();
 }
 
 void test_pulp_linear_fp32_fw_cl(void)
 {
-    struct Linear_args args;
-    struct TestVector expected;
-    create_test_vectors(&args, &expected);
-
     pulp_linear_fp32_fw_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.out.data, args.output->data, args.output->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 void test_pulp_linear_fp32_bw_param_grads_cl(void)
 {
-    struct Linear_args args;
-    struct TestVector expected;
-    create_test_vectors(&args, &expected);
-
     pulp_linear_fp32_bw_param_grads_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.weight.diff, args.coeff->diff, args.coeff->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.bias.diff, args.bias->diff, args.bias->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 void test_pulp_linear_fp32_bw_input_grads_cl(void)
 {
-    struct Linear_args args;
-    struct TestVector expected;
-    create_test_vectors(&args, &expected);
-
     pulp_linear_fp32_bw_input_grads_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.in.diff, args.input->diff, args.input->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 TEST_CASE(0, 0) // calculate both weight and input gradients
@@ -191,10 +178,6 @@ TEST_CASE(1, 0) // skip weight gradient calculation
 TEST_CASE(0, 1) // skip input gradient calculation
 void test_pulp_linear_fp32_bw_cl(int skip_wg_grad, int skip_in_grad)
 {
-    struct Linear_args args;
-    struct TestVector expected;
-    create_test_vectors(&args, &expected);
-
     // test skip grad calculations
     args.skip_wg_grad = skip_wg_grad;
     args.skip_in_grad = skip_in_grad;
@@ -211,8 +194,6 @@ void test_pulp_linear_fp32_bw_cl(int skip_wg_grad, int skip_in_grad)
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.in.diff, args.input->diff, args.input->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.weight.diff, args.coeff->diff, args.coeff->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.bias.diff, args.bias->diff, args.bias->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 

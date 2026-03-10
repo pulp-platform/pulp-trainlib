@@ -143,6 +143,9 @@ static struct TestVector test_vectors[] = {
     }
 };
 
+static struct Conv2D_args args;
+static struct TestVector expected;
+
 // create a deep copy of a test vector
 void copy_test_vector(const struct TestVector *src, struct TestVector* dst)
 {
@@ -179,7 +182,7 @@ void free_test_vector(struct TestVector *v)
     free(v->bias.diff);
 }
 
-void create_test_vectors(int hwc, int use_im2col, int padding, struct Conv2D_args* args, struct TestVector* expected)
+void create_test_vectors(int hwc, int use_im2col, int padding)
 {
     int idx = hwc + 2*padding;
     static struct TestVector a;
@@ -190,9 +193,9 @@ void create_test_vectors(int hwc, int use_im2col, int padding, struct Conv2D_arg
     v.out.dim = v.out.C * v.out.H * v.out.W;
     v.weight.dim = v.weight.C * v.weight.H * v.weight.W * v.out.C;
 
-    // create two deep copies of the test vector so that we don't overwrite the
-    // original one. One copy to populate args and one as expected values
-    copy_test_vector(&v, expected);
+    // create two deep copies of the test vector so that the original one
+    // cannot be overwritten. One copy to populate args and one as expected values
+    copy_test_vector(&v, &expected);
     copy_test_vector(&v, &a);
 
     // set some buffers to zero for the argument blobs
@@ -211,42 +214,42 @@ void create_test_vectors(int hwc, int use_im2col, int padding, struct Conv2D_arg
     float *bt_buffer = calloc(bt_buffer_size, sizeof(float));
 
     // potulate conv2d parameter struct
-    args->input = &a.in;
-    args->coeff = &a.weight;
-    args->bias = &a.bias;
-    args->output = &a.out;
-    args->Lpad = padding;
-    args->Rpad = padding;
-    args->Upad = padding;
-    args->Dpad = padding;
-    args->stride_h = 1;
-    args->stride_w = 1;
-    args->i2c_buffer = im2col_buffer;
-    args->bt_buffer = bt_buffer;
-    args->skip_wg_grad = 0;
-    args->skip_in_grad = 0;
-    args->HWC = hwc;
-    args->opt_matmul_type_fw = 0;
-    args->opt_matmul_type_wg = 0;
-    args->opt_matmul_type_ig = 0;
-    args->USE_IM2COL = use_im2col;
-    args->USE_DMA_IM2COL = 0;
-    args->USE_BIASES = 1;
+    args.input = &a.in;
+    args.coeff = &a.weight;
+    args.bias = &a.bias;
+    args.output = &a.out;
+    args.Lpad = padding;
+    args.Rpad = padding;
+    args.Upad = padding;
+    args.Dpad = padding;
+    args.stride_h = 1;
+    args.stride_w = 1;
+    args.i2c_buffer = im2col_buffer;
+    args.bt_buffer = bt_buffer;
+    args.skip_wg_grad = 0;
+    args.skip_in_grad = 0;
+    args.HWC = hwc;
+    args.opt_matmul_type_fw = 0;
+    args.opt_matmul_type_wg = 0;
+    args.opt_matmul_type_ig = 0;
+    args.USE_IM2COL = use_im2col;
+    args.USE_DMA_IM2COL = 0;
+    args.USE_BIASES = 1;
 }
 
-void free_test_vectors(struct Conv2D_args* args, struct TestVector* expected)
+void free_test_vectors(void)
 {
-    free(args->input->data);
-    free(args->input->diff);
-    free(args->output->data);
-    free(args->output->diff);
-    free(args->coeff->data);
-    free(args->coeff->diff);
-    free(args->bias->data);
-    free(args->bias->diff);
-    free(args->i2c_buffer);
-    free(args->bt_buffer);
-    free_test_vector(expected);
+    free(args.input->data);
+    free(args.input->diff);
+    free(args.output->data);
+    free(args.output->diff);
+    free(args.coeff->data);
+    free(args.coeff->diff);
+    free(args.bias->data);
+    free(args.bias->diff);
+    free(args.i2c_buffer);
+    free(args.bt_buffer);
+    free_test_vector(&expected);
 }
 
 // called before each test
@@ -257,6 +260,7 @@ void setUp(void)
 // called after each test
 void tearDown(void)
 {
+    free_test_vectors();
 }
 
 TEST_CASE(1, 1, 0)  // HWC, im2col, no padding
@@ -269,9 +273,7 @@ TEST_CASE(0, 0, 1)  // CHW, naive,  same padding
 TEST_CASE(1, 0, 1)  // HWC, naive,  same padding
 void test_pulp_conv2d_fp32_fw_cl(int hwc, int use_im2col, int padding)
 {
-    struct Conv2D_args args;
-    struct TestVector expected;
-    create_test_vectors(hwc, use_im2col, padding, &args, &expected);
+    create_test_vectors(hwc, use_im2col, padding);
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
@@ -280,8 +282,6 @@ void test_pulp_conv2d_fp32_fw_cl(int hwc, int use_im2col, int padding)
 
     pulp_conv2d_fp32_fw_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.out.data, args.output->data, args.output->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 TEST_CASE(1, 1, 0)  // HWC, im2col, no padding
@@ -294,9 +294,7 @@ TEST_CASE(0, 0, 1)  // CHW, naive,  same padding
 TEST_CASE(1, 0, 1)  // HWC, naive,  same padding
 void test_pulp_conv2d_fp32_bw_param_grads_cl(int hwc, int use_im2col, int padding)
 {
-    struct Conv2D_args args;
-    struct TestVector expected;
-    create_test_vectors(hwc, use_im2col, padding, &args, &expected);
+    create_test_vectors(hwc, use_im2col, padding);
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
@@ -307,8 +305,6 @@ void test_pulp_conv2d_fp32_bw_param_grads_cl(int hwc, int use_im2col, int paddin
     pulp_conv2d_fp32_bw_param_grads_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.weight.diff, args.coeff->diff, args.coeff->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.bias.diff, args.bias->diff, args.bias->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 TEST_CASE(1, 1, 0)  // HWC, im2col, no padding
@@ -321,9 +317,7 @@ TEST_CASE(0, 0, 1)  // CHW, naive,  same padding
 TEST_CASE(1, 0, 1)  // HWC, naive,  same padding
 void test_pulp_conv2d_fp32_bw_input_grads_cl(int hwc, int use_im2col, int padding)
 {
-    struct Conv2D_args args;
-    struct TestVector expected;
-    create_test_vectors(hwc, use_im2col, padding, &args, &expected);
+    create_test_vectors(hwc, use_im2col, padding);
 
     // for the naive HWC case, we haven't implemented it yet so expect zeros
     if (hwc == 1 && use_im2col == 0) {
@@ -332,8 +326,6 @@ void test_pulp_conv2d_fp32_bw_input_grads_cl(int hwc, int use_im2col, int paddin
 
     pulp_conv2d_fp32_bw_input_grads_cl(&args);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.in.diff, args.input->diff, args.input->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 TEST_CASE(0, 0) // calculate both weight and input gradients
@@ -341,9 +333,7 @@ TEST_CASE(1, 0) // skip weight gradient calculation
 TEST_CASE(0, 1) // skip input gradient calculation
 void test_pulp_conv2d_fp32_bw_cl(int skip_wg_grad, int skip_in_grad)
 {
-    struct Conv2D_args args;
-    struct TestVector expected;
-    create_test_vectors(0, 0, 0, &args, &expected);
+    create_test_vectors(0, 0, 0);
 
     // test skip grad calculations
     args.skip_wg_grad = skip_wg_grad;
@@ -361,8 +351,6 @@ void test_pulp_conv2d_fp32_bw_cl(int skip_wg_grad, int skip_in_grad)
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.in.diff, args.input->diff, args.input->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.weight.diff, args.coeff->diff, args.coeff->dim);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(DELTA, expected.bias.diff, args.bias->diff, args.bias->dim);
-
-    free_test_vectors(&args, &expected);
 }
 
 #endif // TEST

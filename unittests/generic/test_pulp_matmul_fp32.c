@@ -72,11 +72,11 @@ void create_test_vectors(int transp, int use_k1)
     set_array_fp32(mm_args.C, mm_args.N * mm_args.M, 0.0);
 }
 
-void free_test_vectors(struct matMul_args* args)
+void free_test_vectors(void)
 {
-    if (args->C != NULL) {
-        free(args->C);
-        args->C = NULL;
+    if (mm_args.C != NULL) {
+        free(mm_args.C);
+        mm_args.C = NULL;
     }
 }
 
@@ -88,7 +88,7 @@ void setUp(void)
 // called after each test
 void tearDown(void)
 {
-    free_test_vectors(&mm_args);
+    free_test_vectors();
 }
 
 TEST_CASE(0,0)
