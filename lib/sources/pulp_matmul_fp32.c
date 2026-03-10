@@ -2119,9 +2119,9 @@ void mm_M_u2(void *matMul_args) {
         // =====> B IS TRANSPOSED <=====
     else {
         for (uint32_t i = 0; i < N; i++) {
-            float temp = 0;
-
             for (uint32_t j = start; j < stop; j++) {
+                float temp = 0;
+
                 for (uint32_t k = 0; k < (K & 0xfffffffe); k = k + 2) {
                     temp += A[i * K + k] * B[k + j * K];
                     temp += A[i * K + k + 1] * B[k + 1 + j * K];
