@@ -122,10 +122,8 @@ void pulp_im2row_fp32(void * im2col_args){
       // FORWARD & WEIGHT GRAD
       if (mod==0)
       {
-        if ((Hin-Hk+Upad+Dpad+Hstr) % Hstr > 0)     {printf("\n[pulp_im2col_fp32] Invalid H stride (non multiple H sizes): have H_in=%d, H_ker=%d, U_pad=%d, D_pad=%d, H_stride=%d, remainder=%d", Hin, Hk, Upad, Dpad, Hstr, (Hin-Hk+Upad+Dpad+Hstr) % Hstr); return;}
-        else                                        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
-        if ((Win-Wk+Lpad+Rpad+Wstr) % Wstr > 0)     {printf("\n[pulp_im2col_fp32] Invalid W stride (non multiple W sizes): have W_in=%d, W_ker=%d, L_pad=%d, R_pad=%d, W_stride=%d, remainder=%d", Win, Wk, Lpad, Rpad, Wstr, (Win-Wk+Lpad+Rpad+Wstr) % Wstr); return;}
-        else                                        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
+        Htot = (Hin-Hk+Upad+Dpad+Hstr)/Hstr;
+        Wtot = (Win-Wk+Lpad+Rpad+Wstr)/Wstr;
 
         uint32_t padding = Lpad + Rpad + Upad + Dpad;
 
@@ -172,7 +170,7 @@ void pulp_im2row_fp32(void * im2col_args){
                     uint32_t w_pad_cond = wk + wo*Wstr;
                     uint32_t h_pad_cond = hk + ho*Hstr;
 
-                    if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+(Hk)-Dpad) || (w_pad_cond>Wo+(Wk)-Rpad))) {
+                    if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>=(Hin+Upad)) || (w_pad_cond>=(Win+Lpad)))) {
                       // Padding
                       i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
                       //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);
@@ -286,10 +284,10 @@ void pulp_im2row_fp32(void * im2col_args){
           for (uint32_t ho=0; ho<Htot; ho++) {
             for (uint32_t wo=0; wo<Wtot; wo++) {
               // Initialize padding conditions and variables
-              int pad_l = Lpad - wo*Wstr;  
-              int pad_r = wo*Wstr + (Wk) - Wtot - Rpad;
+              int pad_l = Lpad - wo*Wstr;
+              int pad_r = wo*Wstr + (Wk) - (int)(Win + Lpad);
               int pad_u = Upad - ho*Hstr;
-              int pad_d = ho*Hstr + (Hk) - Htot - Dpad;
+              int pad_d = ho*Hstr + (Hk) - (int)(Hin + Upad);
               uint32_t row_size = Wk;                // Transfer lenght (length of a row)
               uint32_t col_size = Hk;
               int in_shift_idx = 0;             // Index to shift input reading
@@ -811,7 +809,7 @@ void pulp_im2col_fp32(void * im2col_args){
                     uint32_t w_pad_cond = wk + wo*Wstr;
                     uint32_t h_pad_cond = hk + ho*Hstr;
 
-                    if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>Ho+(Hk)-Dpad) || (w_pad_cond>Wo+(Wk)-Rpad))) {
+                    if ((padding>0)&&((h_pad_cond<Upad) || (w_pad_cond<Lpad) || (h_pad_cond>=(Hin+Upad)) || (w_pad_cond>=(Win+Lpad)))) {
                       // Padding
                       i2c_buf[kernel_idx+segment_idx+i2c_inner_idx] = 0;
                       //printf("(pad) i2c_buf[%d]=%f                        kernel_idx=%d, segment_idx=%d, ho=%d\n", kernel_idx+segment_idx, i2c_buf[kernel_idx+segment_idx], kernel_idx, segment_idx, ho);

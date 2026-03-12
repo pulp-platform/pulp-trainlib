@@ -70,7 +70,20 @@ void pulp_conv_dw_fp32_bw_param_grads_cl(void *DepthWise_Conv_args) {
     ker_args.weights = DW_args->coeff;
     ker_args.output = DW_args->output;
 
-    pi_cl_team_fork(NUM_CORES, dw_kernel_weight_grad, &ker_args);
+    ker_args.stride_h = DW_args->stride_h;
+    ker_args.stride_w = DW_args->stride_w;
+
+    ker_args.Lpad = DW_args->Lpad;
+    ker_args.Rpad = DW_args->Rpad;
+    ker_args.Upad = DW_args->Upad;
+    ker_args.Dpad = DW_args->Dpad;
+
+    if (ker_args.Lpad || ker_args.Rpad || ker_args.Upad || ker_args.Dpad ||
+        ker_args.stride_h != 1 || ker_args.stride_w != 1) {
+        pi_cl_team_fork(NUM_CORES, dw_kernel_weight_grad_padded, &ker_args);
+    } else {
+        pi_cl_team_fork(NUM_CORES, dw_kernel_weight_grad, &ker_args);
+    }
 }
 
 
@@ -82,5 +95,18 @@ void pulp_conv_dw_fp32_bw_input_grads_cl(void *DepthWise_Conv_args) {
     ker_args.weights = DW_args->coeff;
     ker_args.output = DW_args->output;
 
-    pi_cl_team_fork(NUM_CORES, dw_kernel_input_grad, &ker_args);
+    ker_args.stride_h = DW_args->stride_h;
+    ker_args.stride_w = DW_args->stride_w;
+
+    ker_args.Lpad = DW_args->Lpad;
+    ker_args.Rpad = DW_args->Rpad;
+    ker_args.Upad = DW_args->Upad;
+    ker_args.Dpad = DW_args->Dpad;
+
+    if (ker_args.Lpad || ker_args.Rpad || ker_args.Upad || ker_args.Dpad ||
+        ker_args.stride_h != 1 || ker_args.stride_w != 1) {
+        pi_cl_team_fork(NUM_CORES, dw_kernel_input_grad_padded, &ker_args);
+    } else {
+        pi_cl_team_fork(NUM_CORES, dw_kernel_input_grad, &ker_args);
+    }
 }

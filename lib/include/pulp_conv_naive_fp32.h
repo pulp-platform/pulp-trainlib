@@ -37,10 +37,26 @@ void dw_kernel_weight_grad(
 );
 
 /**
+ * @brief Weight gradient kernel for Depthwise Convolution with padding and arbitrary stride.
+ * @param matMul_DW_args  pointer to a kernel_DW_args structure
+*/
+void dw_kernel_weight_grad_padded(
+    void * matMul_DW_args
+);
+
+/**
  * @brief Naive core kernel for Depthwise Convolution (input gradient). Parallelizes on the channels.
  * @param matMul_DW_args  pointer to a matMul_DW_args structure (please refer to pulp_train_utils_fp32.h)
 */
 void dw_kernel_input_grad(
+    void * matMul_DW_args
+);
+
+/**
+ * @brief Input gradient kernel for Depthwise Convolution with padding and arbitrary stride.
+ * @param matMul_DW_args  pointer to a kernel_DW_args structure
+*/
+void dw_kernel_input_grad_padded(
     void * matMul_DW_args
 );
 

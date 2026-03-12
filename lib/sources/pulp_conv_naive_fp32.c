@@ -109,7 +109,7 @@ void dw_kernel_forward(void *kernel_DW_args) {
 }
 
 
-// Naive weight grad kernel for DepthWise Convolution
+// Naive weight grad kernel for DepthWise Convolution (stride=1, no padding)
 void dw_kernel_weight_grad(void *kernel_DW_args) {
     struct kernel_DW_args *args = (struct kernel_DW_args *) kernel_DW_args;
 
@@ -141,6 +141,68 @@ void dw_kernel_weight_grad(void *kernel_DW_args) {
 
                         temp += inData[wk + wo + (hk + ho) * W_in + ch * H_in * W_in] *
                                 outDiff[wo + ho * W_out + ch * H_out * W_out];
+                    }
+                }
+
+                coeffDiff[idx] += temp;
+            }
+        }
+    }
+}
+
+
+// Weight grad kernel for DepthWise Convolution with padding and arbitrary stride
+void dw_kernel_weight_grad_padded(void *kernel_DW_args) {
+    struct kernel_DW_args *args = (struct kernel_DW_args *) kernel_DW_args;
+
+    float *inData = args->input->data;
+    float *coeffDiff = args->weights->diff;
+    float *outDiff = args->output->diff;
+
+    int C_in  = (int) args->input->C;
+    int H_in  = (int) args->input->H;
+    int W_in  = (int) args->input->W;
+    int pH    = (int) args->weights->H;
+    int pW    = (int) args->weights->W;
+    int H_out = (int) args->output->H;
+    int W_out = (int) args->output->W;
+
+    int Upad     = args->Upad;
+    int Lpad     = args->Lpad;
+    int stride_h = args->stride_h;
+    int stride_w = args->stride_w;
+
+    int blockSize = (C_in + NUM_CORES - 1) / NUM_CORES;
+    int start = pi_core_id() * blockSize;
+    int stop  = start + blockSize > C_in ? C_in : start + blockSize;
+
+    /* Precompute valid output-row range for each kernel row (ho_min/ho_max per hk). */
+    for (int ch = start; ch < stop; ch++) {
+        int ch_in_off  = ch * H_in  * W_in;
+        int ch_out_off = ch * H_out * W_out;
+        for (int hk = 0; hk < pH; hk++) {
+            /* h_in = ho*stride_h + hk - Upad  must be in [0, H_in) */
+            int ho_min = (Upad - hk + stride_h - 1) / stride_h;
+            if (ho_min < 0) ho_min = 0;
+            int ho_max = (H_in - 1 + Upad - hk) / stride_h + 1;
+            if (ho_max > H_out) ho_max = H_out;
+
+            for (int wk = 0; wk < pW; wk++) {
+                /* w_in = wo*stride_w + wk - Lpad  must be in [0, W_in) */
+                int wo_min = (Lpad - wk + stride_w - 1) / stride_w;
+                if (wo_min < 0) wo_min = 0;
+                int wo_max = (W_in - 1 + Lpad - wk) / stride_w + 1;
+                if (wo_max > W_out) wo_max = W_out;
+
+                int idx = wk + hk * pW + ch * pH * pW;
+                float temp = 0;
+
+                for (int ho = ho_min; ho < ho_max; ho++) {
+                    int h_in = ho * stride_h + hk - Upad;
+                    for (int wo = wo_min; wo < wo_max; wo++) {
+                        int w_in = wo * stride_w + wk - Lpad;
+                        temp += inData[w_in + h_in * W_in + ch_in_off] *
+                                outDiff[wo + ho * W_out + ch_out_off];
                     }
                 }
 
@@ -190,6 +252,72 @@ void dw_kernel_input_grad(void *kernel_DW_args) {
                 }
 
                 inDiff[win + hin * W_in + ch * H_in * W_in] = temp;
+            }
+        }
+    }
+}
+
+
+// Input grad kernel for DepthWise Convolution with padding and arbitrary stride
+void dw_kernel_input_grad_padded(void *kernel_DW_args) {
+    struct kernel_DW_args *args = (struct kernel_DW_args *) kernel_DW_args;
+
+    float *inDiff    = args->input->diff;
+    float *coeffData = args->weights->data;
+    float *outDiff   = args->output->diff;
+
+    int C_in  = (int) args->input->C;
+    int H_in  = (int) args->input->H;
+    int W_in  = (int) args->input->W;
+    int pH    = (int) args->weights->H;
+    int pW    = (int) args->weights->W;
+    int H_out = (int) args->output->H;
+    int W_out = (int) args->output->W;
+    int Upad     = args->Upad;
+    int Lpad     = args->Lpad;
+    int stride_h = args->stride_h;
+    int stride_w = args->stride_w;
+
+    int blockSize = (C_in + NUM_CORES - 1) / NUM_CORES;
+    int start = pi_core_id() * blockSize;
+    int stop  = start + blockSize > C_in ? C_in : start + blockSize;
+
+    /* For each input position (ch, hin, win):
+     *   dX[ch,hin,win] = sum_{valid ho,wo} dY[ch,ho,wo] * W[ch, hin+Upad-ho*sh, win+Lpad-wo*sw]
+     *
+     * Precompute valid ho/wo ranges to avoid branch-heavy innermost loops
+     * (branches in innermost loops miscompile under GCC -O3 -ffast-math on RISC-V).
+     */
+    for (int ch = start; ch < stop; ch++) {
+        int ch_in_off  = ch * H_in  * W_in;
+        int ch_out_off = ch * H_out * W_out;
+        int ch_w_off   = ch * pH * pW;
+
+        for (int hin = 0; hin < H_in; hin++) {
+            /* ho range: hk = hin+Upad - ho*sh must be in [0, pH) */
+            int a_h   = hin + Upad - pH + 1;
+            int ho_min = (a_h <= 0) ? 0 : (a_h + stride_h - 1) / stride_h;
+            int ho_max = (hin + Upad) / stride_h + 1;
+            if (ho_max > H_out) ho_max = H_out;
+
+            for (int win = 0; win < W_in; win++) {
+                /* wo range: wk = win+Lpad - wo*sw must be in [0, pW) */
+                int a_w   = win + Lpad - pW + 1;
+                int wo_min = (a_w <= 0) ? 0 : (a_w + stride_w - 1) / stride_w;
+                int wo_max = (win + Lpad) / stride_w + 1;
+                if (wo_max > W_out) wo_max = W_out;
+
+                float temp = 0;
+                for (int ho = ho_min; ho < ho_max; ho++) {
+                    int hk      = hin + Upad - ho * stride_h;
+                    int out_row = ho * W_out + ch_out_off;
+                    int w_row   = hk * pW    + ch_w_off;
+                    for (int wo = wo_min; wo < wo_max; wo++) {
+                        int wk = win + Lpad - wo * stride_w;
+                        temp += coeffData[wk + w_row] * outDiff[wo + out_row];
+                    }
+                }
+                inDiff[win + hin * W_in + ch_in_off] = temp;
             }
         }
     }
