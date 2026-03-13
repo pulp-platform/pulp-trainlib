@@ -57,11 +57,6 @@ void pulp_CrossEntropyLoss(void *loss_args)
         sum_y  += yi;
     }
 
-    if (sum_y == 0.0f) {
-        // degenerate case: avoid NaN; treat as 1.0
-        sum_y = 1.0f;
-    }
-
     float loss_f32 = -(dot_yz - log_sum_exp * sum_y);
 
 #ifdef DEBUG
@@ -114,9 +109,6 @@ void pulp_CrossEntropyLoss_backward(void *loss_args)
     float sum_y = 0.0f;
     for (int i = 0; i < num_cls; ++i) {
         sum_y += target[i];
-    }
-    if (sum_y == 0.0f) {
-        sum_y = 1.0f;
     }
 
     for (int i = 0; i < num_cls; ++i) {
