@@ -54,8 +54,8 @@ void pulp_gradient_descent_fp32 (void * optim_args)
     else {
         for (int i=start; i<stop; i++) 
         {   
-            weight_grad[i] += lambda * weights[i];
-            weights[i] -= lr * weight_grad[i];
+            float weight_grad_decayed = weight_grad[i] + lambda * weights[i];
+            weights[i] -= lr * weight_grad_decayed;
         }            
     }
 
@@ -91,8 +91,8 @@ void pulp_gradient_descent_fp32 (void * optim_args)
         else {
             for (int i=start_bias; i<stop_bias; i++) 
             {   
-                bias_grad[i] += lambda * biases[i];
-                biases[i] -= lr * bias_grad[i];
+                float bias_grad_decayed = bias_grad[i] + lambda * biases[i];
+                biases[i] -= lr * bias_grad_decayed;
             }            
         }
 

@@ -376,17 +376,18 @@ void naive_conv2d_param_grad_kernel_CHW(void *matMul_args) {
                                 // Pad conditions
                                 int pad_cond_h = h_str * ho + hk - Upad;
                                 int pad_cond_w = w_str * wo + wk - Lpad;
+                                int out_idx = wo + ho * W_out + co * H_out * W_out;
 
                                 if ((pad_cond_h >= 0) && (pad_cond_w >= 0) && (pad_cond_h < H_in) &&
                                     (pad_cond_w < W_in)) {
-                                    int out_idx = wo + ho * W_out + co * H_out * W_out;
                                     int in_idx = (w_str * wo + wk - Lpad) + (h_str * ho + hk - Upad) * W_in +
                                                  ci * H_in * W_in;
 
                                     temp += outDiff[out_idx] * inData[in_idx];
 
-                                    if (USE_BIASES == 1) bias_temp += outDiff[out_idx];
                                 }
+
+                                if (USE_BIASES == 1) bias_temp += outDiff[out_idx];
                             }
                         }
                         coeffDiff[wk + hk * pW + ci * pH * pW + co * pH * pW * C_in] = temp;
